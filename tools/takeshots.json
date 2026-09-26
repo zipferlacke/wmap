@@ -1,0 +1,43 @@
+{
+  "themes": {
+    "light": "_light",
+    "dark": ""
+  },
+  "formats": {
+    "narrow": [412, 915, 2],
+    "wide": [1366, 1024, 2]
+  },
+  "offline": false,
+  "shots": [
+    {
+      "url": "http://localhost:8765/index.html?view=9.9365,51.5343,16.3,55,-25",
+      "out": "../appdata/screenshot-{format}-1{theme}.png",
+      "steps": [["wait", 9000], ["shot"]]
+    },
+    {
+      "url": "http://localhost:8765/index.html?view=9.9365,51.5343,15.4&q=Parkplatz",
+      "out": "../appdata/screenshot-{format}-2{theme}.png",
+      "steps": [["wait", 12000], ["shot"]]
+    },
+    {
+      "url": "http://localhost:8765/index.html?view=9.9365,51.5343,14&q=Cron%20%26%20Lanz%20G%C3%B6ttingen",
+      "out": "../appdata/screenshot-{format}-3{theme}.png",
+      "steps": [["wait", 10000], ["shot"]]
+    },
+    {
+      "url": "http://localhost:8765/index.html?view=9.9365,51.5343,10&from=G%C3%B6ttingen&to=Hann.%20M%C3%BCnden&profile=bike",
+      "out": "../appdata/screenshot-{format}-4{theme}.png",
+      "steps": [["wait", 12000], ["shot"]]
+    },
+    {
+      "url": "http://localhost:8765/index.html?sim&view=9.9365,51.5343,13&from=G%C3%B6ttingen%20Weender%20Tor&to=Bovenden&profile=car",
+      "out": "../appdata/screenshot-{format}-5{theme}.png",
+      "steps": [["wait", 10000], ["click", ".start-nav"], ["wait", 9000], ["shot"]]
+    },
+    {
+      "url": "http://localhost:8765/index.html?view=9.9365,51.5343,12&reach=9.9365,51.5343",
+      "out": "../appdata/screenshot-{format}-6{theme}.png",
+      "steps": [["wait", 10000], ["click", ".reach-cats .chip[data-cat=bakery]"], ["wait", 10000], ["shot"]]
+    }
+  ]
+}

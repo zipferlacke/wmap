@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Tour planen – WMap</title>
+    <link rel="manifest" href="./appdata/manifest.json">
+    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#1a73e8">
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/tours.css">
+    <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+</head>
+
+<body class="tour-page">
+    <!-- Kopf: Name bearbeiten und alle Werkzeuge der Tour -->
+    <header class="tour-head panel">
+        <a class="button" data-shape="round no-background" href="./tours.html" title="Zu meinen Touren">
+            <span class="msr">arrow_back</span>
+        </a>
+        <input id="tour-name" class="tour-name" type="text" placeholder="Name der Tour" aria-label="Name der Tour">
+        <span class="tour-saved" aria-live="polite"></span>
+        <div class="tour-tools edit-only">
+            <button type="button" id="undo" class="button" data-shape="round no-background" title="Rückgängig" disabled>
+                <span class="msr">undo</span>
+            </button>
+            <button type="button" id="reverse" class="button" data-shape="round no-background" title="Richtung umkehren">
+                <span class="msr">swap_horiz</span>
+            </button>
+            <button type="button" id="roundtrip" class="button" data-shape="round no-background" title="Zurück zum Start">
+                <span class="msr">replay</span>
+            </button>
+            <button type="button" id="clear" class="button" data-shape="round no-background" title="Alle Punkte löschen">
+                <span class="msr">delete_sweep</span>
+            </button>
+        </div>
+        <div class="tour-tools">
+            <button type="button" id="share" class="button" data-shape="round no-background" title="Teilen">
+                <span class="msr">share</span>
+            </button>
+            <button type="button" id="export" class="button" data-shape="round no-background" title="Als GPX exportieren">
+                <span class="msr">download</span>
+            </button>
+            <button type="button" id="delete" class="button edit-only" data-shape="round no-background" title="Tour löschen">
+                <span class="msr">delete</span>
+            </button>
+            <button type="button" id="save" class="button primary"><span class="msr">save</span> <span class="save-label">Speichern</span></button>
+        </div>
+    </header>
+
+    <main>
+        <section id="map"></section>
+
+        <div class="tour-profiles chip-row edit-only" role="radiogroup" aria-label="Fortbewegung"></div>
+        <p class="tour-hint" hidden></p>
+
+        <!-- Unten immer: Zahlen, Höhenprofil, Wege, Beschreibung -->
+        <dialog id="sheet" class="dialog sheet tour-panel" aria-label="Tourdaten">
+            <button type="button" class="sheet-grip" aria-label="Höhe ändern: ziehen, doppelt tippen für ganz auf oder zu"></button>
+            <section class="view">
+                <header class="sheet-head tour-stats">
+                    <div><strong class="st-length">–</strong><small>Strecke</small></div>
+                    <div><strong class="st-time">–</strong><small>Dauer ca.</small></div>
+                    <div><strong class="st-up">–</strong><small>Anstieg</small></div>
+                    <div><strong class="st-down">–</strong><small>Abstieg</small></div>
+                </header>
+                <p class="tour-status" hidden></p>
+                <div class="elevation"></div>
+                <div class="tour-ways"></div>
+                <label class="tour-desc">
+                    <span class="section-title">Beschreibung</span>
+                    <textarea id="tour-desc" rows="3" placeholder="Worum geht es bei dieser Tour? Einkehr, Parken, Tipps …"></textarea>
+                </label>
+            </section>
+        </dialog>
+    </main>
+
+    <!-- Teilen: Link zum Kopieren -->
+    <dialog id="share-dialog" class="dialog confirm">
+        <h2><span class="msr">share</span> Tour teilen</h2>
+        <p>Wer den Link öffnet, sieht die Tour mit Karte und Höhenprofil und kann sie übernehmen.</p>
+        <input id="share-link" type="text" readonly aria-label="Link">
+        <div class="confirm-actions">
+            <button type="button" class="button" value="close">Schließen</button>
+            <button type="button" class="button primary" value="copy"><span class="msr">content_copy</span> Link kopieren</button>
+        </div>
+    </dialog>
+
+    <script type="module" src="./js/tour.js"></script>
+</body>
+
+</html>

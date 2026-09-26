@@ -1,0 +1,71 @@
+{
+    "welcome": [
+        "<b>WMap</b> ist eine Karte für unterwegs: 3D-Gelände und Gebäude, eine Suche, die Tippfehler verzeiht, und Routen für Fuß, Rad und Auto – alles auf Basis offener Daten.",
+        "Suche einen Ort, eine Adresse oder einfach „Parkplatz“, „Bäckerei“ oder „Fluss“ – oder tippe auf <span class=\"msr\">directions</span> und plane deine Route."
+    ],
+    "minVersion": "0.1.0",
+    "changelog": [
+        {
+            "version": "0.4.1",
+            "date": "2026-09-27",
+            "changes": [
+                "Suche nach Parkplätzen, Tankstellen, Cafés usw. zeigt Treffer sofort – direkt aus den Kartenkacheln, auch entlang der Route und in der Erreichbarkeit",
+                "Overpass ergänzt nur noch im Hintergrund, fragt bei hängenden Servern parallel den nächsten und merkt sich Ergebnisse"
+            ]
+        },
+        {
+            "version": "0.4.0",
+            "date": "2026-09-26",
+            "changes": [
+                "Fahrspuren auf der Karte: kurz vor der Kreuzung die Fahrbahn in echter Breite, die richtige Spur blau, Pfeile auf dem Asphalt",
+                "Tempo und Tempolimit in einem Element wie bei Google",
+                "Kurze Fragen unterwegs: „Baustelle noch da?“, am Ziel „Parkplatz kostenlos? wie teuer? für alle?“ – mit Vermerk für andere",
+                "Ohne OSM-Konto gehen Antworten als Hinweis an OpenStreetMap; „Melden“ in der Navigation (Stau, Unfall, Baustelle, Gefahr, Sperrung)",
+                "Ziel und Zwischenstopps in der Navigation immer markiert",
+                "Weniger doppelte Straßennummern im geneigten Blick, ruhigere Hausfarben, Dialog scrollt nicht mehr seitlich"
+            ]
+        },
+        {
+            "version": "0.3.0",
+            "date": "2026-09-26",
+            "changes": [
+                "Navigation flüssig: Der Pfeil gleitet auf der Straße, die Karte dreht sich mit dem Straßenverlauf, GPS-Ausreißer werden verworfen, Aussetzer überbrückt",
+                "Ruhigerer Zoom: Stadt nah, Autobahn weiter; 30 Sekunden vor dem Abbiegen näher, an verzwickten Stellen fast aus Fahrersicht – in den Einstellungen anpassbar",
+                "Ansagen ohne Straßennamen: Richtung, Orte und A-/B-Nummern, „an der Ampel“, „bitte links einordnen“",
+                "Fahrspuren, Tempolimit, aktuelles Tempo, Ortsname, Kompass und 3D-Schalter in der Navigation; Pfeile an den Abbiegungen und Ampeln auf der Karte",
+                "Route liegt unter den 3D-Häusern",
+                "Unterwegs entlang der Route suchen und einen Zwischenstopp einlegen",
+                "Alles im Dialog unten statt in Popups – mit Zurück links und Schließen rechts, der Kopf bleibt beim Scrollen stehen",
+                "Routeneingabe klappt nach der Berechnung zu einer Zeile zusammen",
+                "Zug-Abfahrten an Bahnhöfen (DB-Daten über DBF); bessere Suche nach „… Bahnhof“",
+                "Schneller und sparsamer: Höhendaten nur bis Zoom 16, begrenzte Pixeldichte, kein Neuzeichnen im Stand"
+            ]
+        },
+        {
+            "version": "0.2.0",
+            "date": "2026-09-26",
+            "changes": [
+                "Offline unterwegs: Beim Start der Navigation wird die Karte entlang der Strecke gespeichert, Funklöcher fallen nicht mehr auf; eine laufende Navigation lässt sich nach dem Neuladen fortsetzen",
+                "Navigation zoomt 30 Sekunden vor dem Abbiegen heran und berechnet beim Verfahren in Fahrtrichtung neu",
+                "Mitmachen bei OpenStreetMap: kurze Fragen zu Orten, an denen du warst – Parkgebühr, Öffnungszeiten, Belag, Beleuchtung, fehlende Wege; Antworten gehen mit deinem OSM-Konto direkt in die Karte",
+                "Neue Einstellungen: Offline-Karten, Datensparmodus, Aufzeichnung für „Mitmachen“, OSM-Konto"
+            ]
+        },
+        {
+            "version": "0.1.0",
+            "date": "2026-09-26",
+            "changes": [
+                "Suche über Photon (komoot): verzeiht Tippfehler, gewichtet nach dem Kartenausschnitt, mit Verlauf „Zuletzt genutzt“",
+                "Kategorien wie Parkplätze, Tankstellen, E-Ladesäulen, Bäckereien, Flüsse oder Fußballplätze – sofort aus der Karte, danach vollständig mit Flächen",
+                "Orte mit Bild und Kurzbeschreibung aus Wikipedia, Öffnungszeiten als Woche, Stellplätzen, Gebühr, Belag und Links; Spritpreise über Tankerkönig",
+                "Routenplanung mit bis zu fünf Routen, immer auch einer ohne Autobahn, Zwischenzielen und „Entlang der Route“",
+                "Höhenprofil mit Anstieg, Abstieg, höchstem und tiefstem Punkt – die Stelle unter dem Zeiger wird auf der Karte markiert",
+                "Verkehrslage auf Autobahnen: Baustellen, Sperrungen und Meldungen in Fahrtrichtung, Vollsperrungen umfahren",
+                "Navigation mit Ansagen, mitwachsendem Zoom, Neuberechnung beim Verfahren und wählbarer Stimme",
+                "Erreichbarkeit: was in Minuten oder Kilometern erreichbar ist – und was es dort gibt",
+                "3D von selbst beim Heranzoomen, Datensparmodus mit Rückfrage im Mobilfunknetz, mit WASD durch die Karte",
+                "Touren speichern, teilen und als GPX exportieren (erste Fassung)"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,14 @@
+@import url("https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css");
+
+#map {
+  position: fixed;
+  inset: 0;
+}
+#map {
+  position: fixed;
+  inset: 0;
+
+  & .maplibregl-ctrl-group {
+    border-radius: 8px;
+  }
+}

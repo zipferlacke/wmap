@@ -1,16 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Touren</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Meine Touren – WMap</title>
+    <link rel="manifest" href="./appdata/manifest.json">
+    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#1a73e8">
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/tours.css">
 </head>
-<body>
-    <header>
-        Touren
-    </header>
-    <main id="touren">
 
-    </main>
+<body class="tours-page">
+    <header class="tours-head">
+        <h1>Meine Touren</h1>
+        <a class="button primary" href="./index.html"><span class="msr">directions</span> Route planen</a>
+    </header>
+    <main id="touren" class="tour-list"></main>
+
+    <script type="module" src="./js/tours.js"></script>
 </body>
+
 </html>

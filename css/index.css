@@ -1,0 +1,4 @@
+@import "../libs/wuefl-libs/css/import.css";
+@import "../libs/wuefl-libs/diagramm/diagramm.css";
+@import "./maplibre_custom.css";
+@import "./app.css";
