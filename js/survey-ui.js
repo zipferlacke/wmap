@@ -5,7 +5,7 @@
 import { QUESTS, questions, answer, skip, scan, queue, commentFor, anonNotes, editsAsNotes, remarkNotes } from './survey.js';
 import { account, login, upload, changesetUrl } from './osm-api.js';
 import { contribute } from './trace.js';
-import { hoursTable, parseWeek, buildHours, DAYS_DE } from './poi-info.js';
+import { hoursTable, parseWeek, buildHours, formatHours, DAYS_DE } from './poi-info.js';
 import { showHighlight } from './map.js';
 import { esc } from './geo.js';
 
@@ -103,14 +103,19 @@ export class SurveyView {
     const sub = [when, MODE[q.mode]].filter(Boolean).join(' · ');
     let body = '';
     if (def.kind === 'hours' && this.#editing !== q.key) {
-      body = `${hoursTable(q.tags.opening_hours) ?? ''}
+      body = `<div class="quest-hours">${hoursTable(q.tags.opening_hours) ?? ''}</div>
         <div class="quest-options">
           <button type="button" class="button primary" data-answer="yes"><span class="msr">check</span> Stimmt noch</button>
-          <button type="button" class="button" data-act="edit"><span class="msr">edit</span> Geändert</button>
-          <button type="button" class="button" data-answer="gone"><span class="msr">storefront</span> Gibt es nicht mehr</button>
+          <button type="button" class="button" data-act="edit"><span class="msr">edit_calendar</span> Andere Zeiten</button>
+          <button type="button" class="button" data-answer="gone"><span class="msr">store_off</span> Gibt es nicht mehr</button>
         </div>`;
     } else if (def.kind === 'hours' || def.kind === 'hours-new') {
-      body = this.#editor(q);
+      // Erst die schnellen Antworten, dann die Woche zum Ausfüllen
+      body = `<div class="quest-options quest-quick">
+          <button type="button" class="button" data-answer="24/7"><span class="msr">all_inclusive</span> Rund um die Uhr</button>
+          <button type="button" class="button" data-answer="gone"><span class="msr">store_off</span> Gibt es nicht mehr</button>
+        </div>
+        ${this.#editor(q)}`;
     } else {
       body = `<div class="quest-options">${def.options.map((o) => `
         <button type="button" class="button" data-answer="${esc(o.value)}">${o.icon ? `<span class="msr">${esc(o.icon)}</span> ` : ''}${esc(o.label)}</button>`).join('')}
@@ -130,7 +135,10 @@ export class SurveyView {
     </li>`;
   }
 
-  /** Woche zum Ausfüllen: je Tag geöffnet ja/nein, Zeiten, optional Mittagspause. */
+  /**
+   * Woche zum Ausfüllen: je Tag ein Chip (antippen = geöffnet/geschlossen),
+   * daneben die Zeiten und „+ Pause“ für eine Mittagspause.
+   */
   #editor(q) {
     const week = (q.tags.opening_hours && parseWeek(q.tags.opening_hours))
       ?? [...Array(5).fill([[480, 1080]]), [[480, 780]], []];
@@ -138,26 +146,31 @@ export class SurveyView {
       const spans = week[i] ?? [];
       const [a, b] = spans[0] ?? [480, 1080];
       const [c, e] = spans[1] ?? [840, 1080];
-      return `<tr data-day="${i}">
-        <th><label><input type="checkbox" class="he-open" ${spans.length ? 'checked' : ''}> ${d}</label></th>
-        <td class="he-times">
-          <input type="time" class="he-a" value="${toTime(a)}"> – <input type="time" class="he-b" value="${toTime(b)}">
-          <label class="he-split-label" title="Mittagspause"><input type="checkbox" class="he-split" ${spans.length > 1 ? 'checked' : ''}> Pause</label>
-          <span class="he-second"><input type="time" class="he-c" value="${toTime(c)}"> – <input type="time" class="he-e" value="${toTime(e)}"></span>
-        </td></tr>`;
+      return `<div class="he-day${spans.length ? '' : ' closed'}${spans.length > 1 ? ' split' : ''}" data-day="${i}">
+        <label class="he-chip" title="Geöffnet?"><input type="checkbox" class="he-open" ${spans.length ? 'checked' : ''}><span>${d}</span></label>
+        <span class="he-closed">geschlossen</span>
+        <span class="he-times">
+          <span class="he-span"><input type="time" class="he-a" value="${toTime(a)}" aria-label="${d} ab"><i>–</i><input type="time" class="he-b" value="${toTime(b)}" aria-label="${d} bis"></span>
+          <span class="he-span he-second"><input type="time" class="he-c" value="${toTime(c)}" aria-label="${d} nach der Pause ab"><i>–</i><input type="time" class="he-e" value="${toTime(e)}" aria-label="${d} bis"></span>
+          <label class="he-pause" title="Mittagspause"><input type="checkbox" class="he-split" ${spans.length > 1 ? 'checked' : ''}><span class="msr">coffee</span><span class="he-pause-label">Pause</span></label>
+        </span>
+      </div>`;
     }).join('');
+    const back = this.#editing === q.key && QUESTS[q.quest].kind === 'hours'
+      ? '<button type="button" class="button" data-act="unedit">Zurück</button>' : '';
     return `<div class="hours-editor">
-      <table>${rows}</table>
-      <button type="button" class="link-button" data-act="copy-mo">Montag für Di–Fr übernehmen</button>
+      <div class="he-week">${rows}</div>
+      <button type="button" class="link-button he-copy" data-act="copy-mo"><span class="msr">content_copy</span> Montag für Di–Fr übernehmen</button>
       <p class="he-preview"></p>
       <div class="quest-options">
+        ${back}
         <button type="button" class="button primary" data-act="save-hours"><span class="msr">check</span> Speichern</button>
       </div>
     </div>`;
   }
 
   #readEditor(ed) {
-    return [...ed.querySelectorAll('tr[data-day]')].map((tr) => {
+    return [...ed.querySelectorAll('.he-day')].map((tr) => {
       if (!tr.querySelector('.he-open').checked) return [];
       const v = (c) => tr.querySelector(c).value;
       const spans = [[toMin(v('.he-a')), toMin(v('.he-b'))]];
@@ -167,14 +180,16 @@ export class SurveyView {
   }
 
   #preview(ed) {
-    for (const tr of ed.querySelectorAll('tr[data-day]')) {
+    for (const tr of ed.querySelectorAll('.he-day')) {
       const open = tr.querySelector('.he-open').checked;
       tr.classList.toggle('closed', !open);
       tr.classList.toggle('split', tr.querySelector('.he-split').checked);
     }
     const q = questions.list().find((x) => x.key === ed.closest('.quest').dataset.key);
     const text = buildHours(this.#readEditor(ed), q?.tags.opening_hours ?? '');
-    ed.querySelector('.he-preview').innerHTML = text ? `<code>${esc(text)}</code>` : 'An keinem Tag geöffnet?';
+    // Lesbar statt OSM-Schreibweise („Di 14:00–18:00“ statt „Tu 14:00-18:00“)
+    ed.querySelector('.he-preview').innerHTML = text
+      ? `<span class="msr">visibility</span> ${esc(formatHours(text)).replace(/\n/g, ' · ')}` : 'An keinem Tag geöffnet?';
   }
 
   async #click(e) {
@@ -195,11 +210,14 @@ export class SurveyView {
       this.#editing = q.key;
       card.outerHTML = this.#card(q);
       this.#preview(this.#root.querySelector(`.quest[data-key="${CSS.escape(q.key)}"] .hours-editor`));
+    } else if (act === 'unedit') {
+      this.#editing = null;
+      card.outerHTML = this.#card(q);
     } else if (act === 'copy-mo') {
       const ed = card.querySelector('.hours-editor');
-      const mo = ed.querySelector('tr[data-day="0"]');
+      const mo = ed.querySelector('.he-day[data-day="0"]');
       for (let d = 1; d <= 4; d += 1) {
-        const tr = ed.querySelector(`tr[data-day="${d}"]`);
+        const tr = ed.querySelector(`.he-day[data-day="${d}"]`);
         for (const c of ['.he-open', '.he-split']) tr.querySelector(c).checked = mo.querySelector(c).checked;
         for (const c of ['.he-a', '.he-b', '.he-c', '.he-e']) tr.querySelector(c).value = mo.querySelector(c).value;
       }
@@ -215,6 +233,8 @@ export class SurveyView {
     } else if (act === 'never') {
       skip(q, { forever: true });
       this.render();
+    } else if (btn.dataset.answer === '24/7') {
+      this.#done(q, { hours: '24/7' });
     } else if (btn.dataset.answer) {
       this.#done(q, btn.dataset.answer);
     }

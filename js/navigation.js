@@ -170,7 +170,7 @@ const LANE_ICON = {
 /* ── Navigation ───────────────────────────────────────────────────────────── */
 
 export class Navigation {
-  #map; #el; #onExit; #onRoute; #onFix; #onReroute; #onSearch; #onArrive; #onReport;
+  #map; #el; #onExit; #onRoute; #onFix; #onReroute; #onSearch; #onArrive; #onReport; #onShare;
   #route = null; #profile = 'car'; #highways = true; #targets = []; #extras = null;
   #watch = null; #sim = null; #wakeLock = null; #marker = null; #targetMarkers = [];
   #roadFor = null; #cover = null; #shift = 0; #lefts = null; #towards = new Map();
@@ -193,7 +193,7 @@ export class Navigation {
    * @param opts.onArrive   am Ziel angekommen (Punkt des Ziels, Profil)
    * @param opts.onReport   „Melden“ gedrückt (eigener Standort)
    */
-  constructor(map, el, { onExit, onRoute, onFix, onReroute, onSearch, onArrive, onReport } = {}) {
+  constructor(map, el, { onExit, onRoute, onFix, onReroute, onSearch, onArrive, onReport, onShare } = {}) {
     this.#map = map;
     this.#el = el;
     this.#onExit = onExit;
@@ -203,6 +203,7 @@ export class Navigation {
     this.#onSearch = onSearch;
     this.#onArrive = onArrive;
     this.#onReport = onReport;
+    this.#onShare = onShare;
     const on = (sel, fn) => el.querySelector(sel)?.addEventListener('click', fn);
     on('.nav-stop', () => this.stop());
     on('.nav-mute', () => { speech.setMuted(!speech.muted); this.#paintButtons(); });
@@ -210,6 +211,13 @@ export class Navigation {
     on('.nav-overview', () => this.#overview());
     on('.nav-search', () => this.#onSearch?.());
     on('.nav-report', () => this.#onReport?.(this.#pos?.point ?? this.#lastFix?.point));
+    on('.nav-share', () => {
+      const r = this.#route;
+      const along = this.#pos?.along ?? 0;
+      const left = Math.max(0, r.cum[r.cum.length - 1] - along);
+      const secs = r.time * (left / (r.cum[r.cum.length - 1] || 1));
+      this.#onShare?.({ point: this.#pos?.point ?? this.#lastFix?.point, to: r.coords.at(-1), eta: Date.now() + secs * 1000, left, profile: this.#profile });
+    });
     on('.nav-3d', () => { navSettings.threeD = !navSettings.threeD; this.#paintButtons(); this.#plan(); this.resumeFollow(); });
     on('.nav-compass', () => { navSettings.north = !navSettings.north; this.#paintButtons(); this.resumeFollow(); });
     // Wer die Karte selbst verschiebt, will sich umsehen – nicht zurückgerissen werden

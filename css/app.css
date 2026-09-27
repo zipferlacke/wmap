@@ -314,6 +314,11 @@ body {
 }
 .sheet-back:not([hidden]) ~ .view > .sheet-head { padding-left: 3rem; }
 
+/* Beim Öffnen fokussiert der Browser den Griff – statt eines Rahmens um die
+   ganze Leiste färbt sich nur der Griff selbst */
+.sheet-grip:focus, .sheet-grip:focus-visible { outline: none; }
+.sheet-grip:focus-visible::before { background: var(--route) !important; }
+
 .sheet-grip {
     display: block;
     position: sticky;
@@ -894,7 +899,8 @@ body {
         --clr-primary-100: var(--clr-danger-600);
         .msr { color: #fff; }
     }
-    .nav-search { background: var(--surface-2); .msr { color: var(--route); } }
+    .nav-search, .nav-share { background: var(--surface-2); .msr { color: var(--route); } }
+    @media (max-width: 360px) { .button { width: 2.7rem; height: 2.7rem; } }
     .nav-info { flex: 1; display: grid; justify-items: center; gap: .1rem; min-width: 0; }
     .nav-times { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; justify-content: center; }
     .nav-eta { font-size: var(--fs-600); color: var(--clr-success-700); }
@@ -1125,6 +1131,16 @@ body.navigating {
     h2 { display: flex; align-items: center; gap: .4rem; font-size: var(--fs-500); }
     p { color: var(--muted); }
     .confirm-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+    input[type=text] {
+        width: 100%;
+        padding: .6rem .75rem;
+        border: 1px solid var(--line, rgb(0 0 0 / .15));
+        border-radius: .6rem;
+        background: var(--surface-2);
+        color: inherit;
+        font: inherit;
+        text-align: left;
+    }
 }
 
 /* ── Ort: Bild, Kurzbeschreibung, Öffnungszeiten, Links, Preise ───────────── */
@@ -1284,11 +1300,11 @@ body.navigating {
 
 .quest {
     display: grid;
-    gap: .6rem;
-    padding: .75rem;
-    border: 1px solid var(--line, rgb(0 0 0 / .1));
-    border-radius: .9rem;
+    gap: .7rem;
+    padding: .9rem;
+    border-radius: 1rem;
     background: var(--surface);
+    box-shadow: 0 1px 3px rgb(0 0 0 / .08), 0 4px 14px rgb(0 0 0 / .06);
 
     .quest-head {
         display: grid;
@@ -1306,8 +1322,15 @@ body.navigating {
         color: #7b1fa2;
         font-size: 1.3rem;
     }
-    .quest-options { display: flex; flex-wrap: wrap; gap: .4rem; }
-    .quest-options .button { font-size: var(--fs-200); }
+    /* Antworten als gleich breite Knöpfe – auf dem Handy gut zu treffen */
+    .quest-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+        gap: .45rem;
+    }
+    .quest-options .button { justify-content: center; min-height: 2.6rem; font-size: var(--fs-200); }
+    .quest-quick .button { background: var(--surface-2); }
+    .quest-hours { padding: .5rem .75rem; border-radius: .7rem; background: var(--surface-2); }
     .quest-foot {
         display: flex; justify-content: space-between; gap: .5rem;
         font-size: var(--fs-100);
@@ -1317,29 +1340,73 @@ body.navigating {
 
 .hours-editor {
     display: grid;
-    gap: .5rem;
+    gap: .6rem;
     font-size: var(--fs-200);
 
-    table { border-collapse: collapse; width: 100%; }
-    tr + tr { border-top: 1px solid var(--line, rgb(0 0 0 / .08)); }
-    th { text-align: left; font-weight: 500; padding: .3rem .4rem .3rem 0; white-space: nowrap; width: 4.2rem; }
-    th label { display: flex; align-items: center; gap: .3rem; }
-    td { padding: .3rem 0; }
-    .he-times { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; }
+    .he-week { display: grid; gap: .35rem; }
+    .he-day {
+        display: grid;
+        grid-template-columns: 3.2rem 1fr;
+        align-items: center;
+        gap: .5rem;
+        min-height: 2.4rem;
+    }
+    /* Tag als Chip: an = geöffnet (Routenfarbe), aus = grau */
+    .he-chip {
+        display: grid; place-items: center;
+        height: 2.2rem;
+        border-radius: 999px;
+        background: var(--route);
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        user-select: none;
+        input { position: absolute; opacity: 0; pointer-events: none; }
+        &:has(input:focus-visible) { outline: 2px solid var(--route); outline-offset: 2px; }
+    }
+    .he-times {
+        display: grid;
+        grid-template-columns: auto auto;
+        justify-content: start;
+        align-items: center;
+        gap: .35rem .5rem;
+        .he-second { grid-row: 2; grid-column: 1; }
+    }
+    .he-span { display: inline-flex; align-items: center; gap: .25rem; i { color: var(--muted); font-style: normal; } }
     input[type=time] {
-        padding: .15rem .3rem;
+        min-width: 5.6rem;
+        padding: .35rem .45rem;
         border: 1px solid var(--line, rgb(0 0 0 / .15));
-        border-radius: .4rem;
-        background: var(--bg-input, transparent);
+        border-radius: .55rem;
+        background: var(--surface-2, transparent);
         color: inherit;
         font: inherit;
+        font-variant-numeric: tabular-nums;
     }
-    .he-split-label { display: flex; align-items: center; gap: .2rem; color: var(--muted); font-size: var(--fs-100); }
-    .he-second { display: none; align-items: center; gap: .3rem; }
-    tr.split .he-second { display: inline-flex; }
-    tr.closed .he-times { visibility: hidden; }
-    tr.closed th { color: var(--muted); }
-    .he-preview { color: var(--muted); code { color: inherit; word-break: break-word; } }
+    /* Mittagspause: kleiner runder Knopf neben den Zeiten */
+    .he-pause {
+        display: grid; place-items: center;
+        width: 2.2rem; height: 2.2rem;
+        border: 1px dashed var(--line, rgb(0 0 0 / .25));
+        border-radius: 50%;
+        color: var(--muted);
+        cursor: pointer;
+        user-select: none;
+        .msr { font-size: 1.15rem; }
+        .he-pause-label { display: none; }
+        input { position: absolute; opacity: 0; pointer-events: none; }
+        &:has(input:checked) { border-style: solid; border-color: var(--route); color: var(--route); }
+    }
+    .he-second { display: none; }
+    .he-closed { display: none; color: var(--muted); font-style: italic; }
+    .he-day.split .he-second { display: inline-flex; }
+    .he-day.closed {
+        .he-chip { background: var(--surface-2, #eee); color: var(--muted); }
+        .he-times { display: none; }
+        .he-closed { display: block; }
+    }
+    .he-copy { justify-self: start; display: inline-flex; align-items: center; gap: .3rem; color: var(--route); .msr { font-size: 1rem; } }
+    .he-preview { color: var(--muted); line-height: 1.5; .msr { font-size: 1rem; vertical-align: -.2rem; } }
 }
 
 /* ── Einstellungen ────────────────────────────────────────────────────────── */
@@ -1506,4 +1573,25 @@ body.recording #search-here, body.navigating .rec { display: none !important; }
     label { display: grid; gap: .3rem; font-weight: 600; }
     input { font: inherit; text-align: left; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--surface); color: inherit; }
     .rec-save-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+}
+
+/* ── Bild in Bild (Document Picture-in-Picture) ───────────────────────────── */
+
+.pip-body {
+    margin: 0;
+    overflow: hidden;
+    background: var(--route);
+    .pip-nav { position: static; inset: auto; display: grid; grid-template-rows: auto 1fr; min-height: 100vh; pointer-events: auto; }
+    .nav-top { margin: 0; width: auto; justify-items: stretch; }
+    .nav-banner { border-radius: 0; box-shadow: none; }
+    .nav-lanes { margin: 0; border-radius: 0; }
+    .nav-gps { display: none; }
+    .pip-eta {
+        display: flex; justify-content: center; align-items: center; gap: .6rem;
+        padding: .35rem .75rem;
+        font-size: var(--fs-500);
+        color: #fff;
+        .nav-eta { color: #fff; }
+        .nav-offline { display: none; }
+    }
 }

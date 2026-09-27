@@ -6,6 +6,17 @@
     "minVersion": "0.1.0",
     "changelog": [
         {
+            "version": "0.7.0",
+            "date": "2026-09-27",
+            "changes": [
+                "Teilen per Link: Orte, Routen, „Hier bin ich“ und in der Navigation die Ankunftszeit – ohne Server",
+                "Standort anfragen: Link schicken, der andere tippt drauf und sendet seinen Standort zurück",
+                "Bild in Bild: die nächste Anweisung in einem kleinen Fenster über anderen Apps (Chrome, Edge, neue Firefox, Safari)",
+                "Fragen zu Öffnungszeiten: „Gibt es nicht mehr“ und „Rund um die Uhr“ überall, neuer Wochen-Editor mit Tages-Chips",
+                "WMap als Desktop-App (Tauri) für Linux, Windows und macOS"
+            ]
+        },
+        {
             "version": "0.6.0",
             "date": "2026-09-27",
             "changes": [

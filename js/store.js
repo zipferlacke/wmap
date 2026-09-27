@@ -95,21 +95,25 @@ async function pipe(bytes, stream) {
   return new Uint8Array(await out.arrayBuffer());
 }
 
-export async function encodeShare(tour) {
-  const json = JSON.stringify({
-    n: tour.name, d: tour.description || undefined, p: tour.profile,
-    w: encodePolyline(tour.points, 5),
-  });
-  const raw = new TextEncoder().encode(json);
+/** Beliebiges JSON kurz und URL-tauglich packen (deflate + base64url). */
+export async function packJson(obj) {
+  const raw = new TextEncoder().encode(JSON.stringify(obj));
   if (typeof CompressionStream === 'undefined') return `j${b64url(raw)}`;
   return `z${b64url(await pipe(raw, new CompressionStream('deflate-raw')))}`;
 }
 
-export async function decodeShare(code) {
-  const kind = code[0];
+export async function unpackJson(code) {
   let bytes = unb64url(code.slice(1));
-  if (kind === 'z') bytes = await pipe(bytes, new DecompressionStream('deflate-raw'));
-  const o = JSON.parse(new TextDecoder().decode(bytes));
+  if (code[0] === 'z') bytes = await pipe(bytes, new DecompressionStream('deflate-raw'));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+export function encodeShare(tour) {
+  return packJson({ n: tour.name, d: tour.description || undefined, p: tour.profile, w: encodePolyline(tour.points, 5) });
+}
+
+export async function decodeShare(code) {
+  const o = await unpackJson(code);
   return { name: o.n ?? 'Geteilte Tour', description: o.d ?? '', profile: o.p ?? 'hike', points: decodePolyline(o.w, 5) };
 }
 

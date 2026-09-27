@@ -25,6 +25,8 @@ import { Sheet } from './sheet.js';
 import { mountAppNav } from './appnav.js';
 import { recorder, historySetting } from './tracks.js';
 import { setupRecording } from './record-ui.js';
+import { NavPip, pipSupported } from './pip.js';
+import { share, placeUrl, routeUrl, readRoute, requestUrl, myName, clock } from './share.js';
 import { ask } from './ui.js';
 import { quickAsk } from './quick-ask.js';
 import { report, answered, reportsIn, reportsShared, REPORT_KINDS } from './reports.js';
@@ -612,6 +614,7 @@ function paintPlaceActions() {
       ['directions', 'Route', true, () => enterRoute({ to: wp })],
       ['trip_origin', 'Als Start', false, () => enterRoute({ from: wp })],
       ['radar', 'Erreichbar', false, () => openReach({ origin: point, label })],
+      ['share', 'Teilen', false, () => share({ title: label, text: label, url: () => placeUrl(point, label) }, toast)],
     ];
   }
   const box = $('[data-view="place"] .actions');
@@ -1489,6 +1492,18 @@ $('.step-list').addEventListener('click', (e) => {
 });
 
 /** Route als Tour übernehmen und im Tourenplaner öffnen. */
+$('.share-route')?.addEventListener('click', async () => {
+  const r = current();
+  if (!r) return;
+  const names = state.waypoints.map((w) => (w.me ? 'meinem Standort' : w.label?.split(',')[0] || 'Punkt'));
+  const pts = state.points.length === state.waypoints.length ? state.points : state.waypoints.map((w) => w.point);
+  share({
+    title: 'Route',
+    text: `Route von ${names[0]} nach ${names.at(-1)} (${PROFILES[state.profile].label}, ${fmtDuration(r.time)}, ${fmtDistance(r.length)})`,
+    url: () => routeUrl({ profile: state.profile, waypoints: state.waypoints.map((w, i) => ({ ...w, point: w.point ?? pts[i], me: false, label: w.me ? 'Start' : w.label })) }),
+  }, toast);
+});
+
 $('.save-tour')?.addEventListener('click', () => {
   const r = current();
   if (!r) return;
@@ -1760,6 +1775,7 @@ const SIMULATING = new URLSearchParams(location.search).has('sim');
 const nav = new Navigation(map, $('#nav'), {
   onExit({ arrived }) {
     forgetNav();
+    pip.close();
     // Fahrt in „Meine Wege“ merken
     if (recorder.kind === 'nav') {
       recorder.stop().then((t) => {
@@ -1788,9 +1804,27 @@ const nav = new Navigation(map, $('#nav'), {
   },
   onArrive: (point, profile) => { if (profile === 'car') askParking(point); },
   onReport: (point) => reportHere(point),
+  // Ankunft teilen: wohin, wann – und wo man gerade ist
+  onShare: ({ point, to, eta }) => {
+    const where = navDestination ? navDestination.split(',')[0] : 'mein Ziel';
+    share({
+      title: 'Ich bin unterwegs',
+      text: `Ich bin unterwegs nach ${where} – Ankunft ca. ${clock(eta)} Uhr. Hier bin ich gerade:`,
+      url: () => placeUrl(point ?? to, 'Unterwegs', { at: Date.now() }),
+    }, toast);
+  },
   onReroute: (ev) => trips.reroute(ev),
 });
 window.__wmap.nav = nav;
+
+/* Bild in Bild: nächste Anweisung über anderen Apps (Chrome/Edge, Safari) */
+const pip = new NavPip($('#nav'));
+if (pipSupported()) {
+  $('.nav-pip').hidden = false;
+  $('.nav-pip').addEventListener('click', () => pip.toggle().catch((err) => toast(`Bild in Bild ging nicht: ${err.message}`)));
+  // Wo der Browser es kann: beim Wechsel in eine andere App von selbst
+  try { navigator.mediaSession?.setActionHandler('enterpictureinpicture', () => { if (nav.active) pip.toggle().catch(() => {}); }); } catch { /* nicht unterstützt */ }
+}
 
 let navDestination = '';
 $('.start-nav').addEventListener('click', async () => {
@@ -2092,6 +2126,17 @@ function keysDialog() {
 const appNav = mountAppNav();
 const recording = setupRecording({ map, toast });
 appNav.addItem('radio_button_checked', 'Aufzeichnen', () => recording.choose());
+appNav.addItem('share_location', 'Standort teilen', async () => {
+  try {
+    const p = await myPosition();
+    share({ title: 'Mein Standort', text: `Hier bin ich gerade (${clock(Date.now())} Uhr):`, url: () => placeUrl(p, 'Mein Standort', { at: Date.now() }) }, toast);
+  } catch (err) { toast(err.message); }
+});
+appNav.addItem('person_pin_circle', 'Standort anfragen', async () => {
+  const name = await myName();
+  if (!name) return;
+  share({ title: 'Wo bist du?', text: `${name} möchte wissen, wo du gerade bist. Tippe auf den Link, um deinen Standort zu senden:`, url: () => requestUrl(name) }, toast);
+});
 appNav.addItem('radar', 'Erreichbarkeit', () => openReach());
 const surveyItem = appNav.addItem('volunteer_activism', 'Mitmachen', () => openSurvey());
 appNav.addItem('keyboard', 'Tastatur', keysDialog);
@@ -2190,6 +2235,9 @@ q.title = `Auch Kategorien: ${CATEGORIES.slice(0, 12).map((c) => c.one).join(', 
    ?reach=lon,lat                         Erreichbarkeit ab einem Punkt
    ?action=route                          Planung öffnen (App-Verknüpfung)
    ?action=record                         Aufzeichnen (Touren-Seite)
+   ?ort=lon,lat&name=…&zeit=…             geteilter Ort / Standort (share.js)
+   ?route=…                               geteilte Route (gepackt)
+   ?anfrage=Name                          Standortanfrage beantworten
    Auch für die Screenshots in tools/takeshots.json.
    ══════════════════════════════════════════════════════════════════════════ */
 
@@ -2223,8 +2271,52 @@ async function fromUrl() {
       enterRoute();
     } else if (p.get('action') === 'record') {
       recording.choose();
+    } else if (p.get('ort')) {
+      openShared(p);
+    } else if (p.get('route')) {
+      const r = await readRoute(p.get('route'));
+      if (PROFILES[r.profile]?.nav) setProfile(r.profile);
+      enterRoute({ waypoints: r.waypoints });
+    } else if (p.get('anfrage')) {
+      answerRequest(p.get('anfrage'));
     }
   } catch (err) { toast(err.message); }
 }
+/** Geteilter Ort oder Standort („?ort=lon,lat&name=…&zeit=…“) */
+function openShared(p) {
+  const [lon, lat] = p.get('ort').split(',').map(Number);
+  if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
+  const name = p.get('name') || 'Geteilter Ort';
+  const f = { type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties: { name, _point: true } };
+  showPlace(f, { fly: true });
+  const mins = Number(p.get('zeit'));
+  const sub = $('[data-view="place"] .place-sub');
+  if (mins) {
+    const ago = Math.round((Date.now() - mins * 60000) / 60000);
+    sub.textContent = `Geteilt ${ago < 1 ? 'gerade eben' : ago < 90 ? `vor ${ago} min` : `am ${new Date(mins * 60000).toLocaleString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}`;
+  }
+  geocode.reverse([lon, lat]).then((r) => {
+    if (state.place !== f || !r) return;
+    const d = geocode.describe(r);
+    sub.textContent = [sub.textContent, `bei ${[d.title, d.subtitle].filter(Boolean).join(', ')}`].filter(Boolean).join(' · ');
+  }).catch(() => {});
+}
+
+/** „Wo bist du?“ – Standort an den Fragenden zurückschicken. */
+async function answerRequest(from) {
+  const name = from.slice(0, 40);
+  const v = await ask({
+    icon: 'person_pin_circle', title: `${name} fragt, wo du bist`,
+    text: 'Dein Standort wird einmalig als Link geteilt – du wählst selbst, an wen. Nichts wird gespeichert.',
+    buttons: [{ value: 'no', label: 'Nicht jetzt' }, { value: 'yes', label: 'Standort senden', icon: 'send', primary: true }],
+  });
+  if (v !== 'yes') return;
+  try {
+    const p = await myPosition();
+    const me = local.get('wmap.myname');
+    share({ title: 'Mein Standort', text: `Hier bin ich gerade (${clock(Date.now())} Uhr):`, url: () => placeUrl(p, me ? `${me}s Standort` : 'Standort', { at: Date.now() }) }, toast);
+  } catch (err) { toast(err.message); }
+}
+
 if (map.loaded()) fromUrl(); else map.once('load', fromUrl);
 if (map.loaded()) resumeNav(); else map.once('load', resumeNav);
