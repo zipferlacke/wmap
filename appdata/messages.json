@@ -6,6 +6,31 @@
     "minVersion": "0.1.0",
     "changelog": [
         {
+            "version": "0.6.0",
+            "date": "2026-09-27",
+            "changes": [
+                "Meine Wege: Aufzeichnen wie bei Komoot, gefahrene Navigationen werden gemerkt – nach Jahren mit Summen, Karte und Liste",
+                "Ein Weg zeigt Tempo als Farbe auf der Linie, Höhenprofil, Zahlen; umbenennen, als GPX speichern, als Tour übernehmen oder teilen",
+                "Alles bleibt auf dem Gerät – kein Konto nötig; mit der Sicherungsdatei auf ein anderes Gerät mitnehmen, GPX importieren",
+                "Spuren: Fahrbahn, Kreuzungsspuren und Pfeile aus einem Guss, weiche Übergänge; oben immer die Spuren der nächsten Kreuzung mit allen Pfeilen",
+                "Navigation: Pfeil im unteren Drittel, stärker geneigt und etwas weiter weg – man sieht mehr von der Strecke"
+            ]
+        },
+        {
+            "version": "0.5.0",
+            "date": "2026-09-27",
+            "changes": [
+                "Navigation zeigt stark hereingezoomt die ganze Fahrbahn mit allen Spuren in echter Breite – Mittellinie, Spurtrennung und deine Spur in Blau, vor dem Linksabbiegen links; wird die Straße breiter, gleitet das weich",
+                "Oben alle Spuren mit ihren Pfeilen, die richtigen weiß hinterlegt",
+                "Ansagen nennen immer eine Richtung: Ort, Bundesstraße oder Autobahn – ohne Wegweiser den nächsten Ort bzw. Stadtteil",
+                "Der Pfeil fährt in der Spur und steht auf einer weißen Scheibe, damit er sich von der Route abhebt",
+                "Häuser mit kräftigeren Wänden, Licht aus Südwest und Schatten am Boden – die Höhe ist besser zu erkennen",
+                "Geneigt nur noch Schilder für Autobahnen und Bundesstraßen, keine Stapel mehr am Horizont",
+                "Wegweiser ohne Nummern: „Richtung Nienburg und Minden“ statt „B 217: Nienburg“",
+                "Restaurants zeigen auch Imbisse"
+            ]
+        },
+        {
             "version": "0.4.1",
             "date": "2026-09-27",
             "changes": [

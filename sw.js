@@ -10,7 +10,7 @@
  * Vor einer Navigation lädt die Seite die Kacheln entlang der Route vor
  * (Nachricht „prefetch“), damit Funklöcher unterwegs nicht auffallen.
  */
-const APP = 'wmap-app-v2';
+const APP = 'wmap-app-v3';
 const TILES = 'wmap-tiles-v1';
 const MAX_TILES = 8000;
 
@@ -65,7 +65,13 @@ async function cacheFirst(req) {
   const cache = await caches.open(TILES);
   const hit = await cache.match(req, { ignoreVary: true });
   if (hit) return hit;
-  const res = await fetch(req);
+  let res;
+  try {
+    res = await fetch(req);
+  } catch {
+    // Netz weg oder Aussetzer: sauber als fehlende Kachel melden
+    return new Response(null, { status: 504, statusText: 'Offline' });
+  }
   if (res.ok) {
     await cache.put(req, res.clone()).catch(() => {});
     if (++puts % 250 === 0) trim(cache);

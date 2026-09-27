@@ -109,7 +109,7 @@ export const TANKERKOENIG_KEY = '';
 export const MAX_ROUTES = 5;
 
 /** Steht im Changeset (created_by) – bei neuen Versionen mitziehen. */
-export const APP_VERSION = '0.4.1';
+export const APP_VERSION = '0.6.0';
 
 /**
  * OpenStreetMap-Konto zum Hochladen der Antworten (OAuth 2.0 mit PKCE, ohne

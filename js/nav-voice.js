@@ -22,14 +22,18 @@ function bigRef(m) {
   return refs.length ? tidyRef(refs[0]) : null;
 }
 
-/** Orte auf dem Wegweiser – aus Valhalla oder aus OSM destination. */
+/**
+ * Orte auf dem Wegweiser – aus Valhalla oder aus OSM destination. Nummern
+ * („B 65“) und „B 217: Nienburg“ werden zu Orten: Die Nummer sagt bigRef.
+ */
 function toward(m, extras) {
-  const list = texts(m.sign?.exit_toward_elements);
-  if (!list.length) {
-    const d = destAt(extras, m.at ?? -1e9);
-    if (d) list.push(...d.split(/[,;]/).map((s) => s.replace(/^[AB]\s?\d+\s*/, '').trim()).filter(Boolean));
-  }
-  return [...new Set(list)].slice(0, 2);
+  let list = texts(m.sign?.exit_toward_elements);
+  if (!list.length) list = [destAt(extras, m.at ?? -1e9) ?? ''];
+  const places = list
+    .flatMap((t) => (t.includes(':') ? t.slice(t.indexOf(':') + 1) : t).split(/[,;]/))
+    .map((t) => t.replace(/^[ABEKL]\s?\d+[a-z]?\s*/, '').trim())
+    .filter(Boolean);
+  return [...new Set(places)].slice(0, 2);
 }
 
 /** Welche Seite ist gefragt? Nur wenn eindeutig: alle nutzbaren Spuren links bzw. rechts. */
@@ -70,8 +74,9 @@ const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
  * Sätze zu einem Manöver.
  * → { now, soon(dist), then } – `now` kurz davor, `soon` für die frühe Ansage
  *   („In 500 Metern …“), `then` als Anhängsel für ein direkt folgendes Manöver
+ * @param place  Ort ohne Wegweiser (von der Navigation nachgeschlagen)
  */
-export function phrases(m, { extras = null, next = null } = {}) {
+export function phrases(m, { extras = null, next = null, place = null } = {}) {
   if ([4, 5, 6].includes(m.type)) {
     const side = m.type === 5 ? ' Es liegt rechts.' : m.type === 6 ? ' Es liegt links.' : '';
     return { now: `Sie haben Ihr Ziel erreicht.${side}`, soon: (d) => `In ${d} erreichen Sie Ihr Ziel.`, then: 'dann erreichen Sie Ihr Ziel' };
@@ -82,6 +87,8 @@ export function phrases(m, { extras = null, next = null } = {}) {
 
   const ref = [17, 18, 19, 20, 21, 23, 24, 25, 37, 38, 9, 10, 11, 14, 15, 16, 26].includes(m.type) ? bigRef(m) : null;
   const dirs = toward(m, extras);
+  // Kein Wegweiser und keine Nummer: der Ort, zu dem die Route führt
+  if (!dirs.length && !ref && place) dirs.push(place);
   let what = act;
   if (ref && [17, 18, 19].includes(m.type)) what = `${act.replace(' auf die Auffahrt', '')} auf die ${ref} auffahren`.replace(/^geradeaus /, '');
   else if (ref && m.type !== 26 && m.type !== 20 && m.type !== 21) what = `${act} auf die ${ref}`;

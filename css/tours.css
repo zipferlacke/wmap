@@ -213,3 +213,129 @@ body.readonly {
     .tour-name { pointer-events: none; }
     .tour-desc textarea:placeholder-shown { display: none; }
 }
+
+/* ── Reiter: Geplant / Meine Wege ─────────────────────────────────────────── */
+
+.tours-head {
+    .rec-icon { color: var(--clr-danger-500); font-variation-settings: 'FILL' 1; }
+    @media (max-width: 500px) { .lbl { display: none; } }
+}
+
+.tours-tabs {
+    position: sticky;
+    top: calc(3.9rem + var(--safe-top));
+    z-index: 4;
+    display: flex;
+    gap: .25rem;
+    padding: 0 1rem;
+    background: var(--surface);
+    box-shadow: 0 1px 0 var(--line);
+
+    a {
+        display: inline-flex; align-items: center; gap: .35rem;
+        padding: .65rem .9rem;
+        color: var(--muted);
+        font-weight: 600;
+        text-decoration: none;
+        border-bottom: 3px solid transparent;
+        .msr { font-size: 1.2rem; }
+    }
+    a[aria-selected="true"] { color: var(--route); border-bottom-color: var(--route); }
+}
+
+/* ── Meine Wege ───────────────────────────────────────────────────────────── */
+
+.wege {
+    display: grid;
+    gap: 1rem;
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.wege-years:empty { display: none; }
+.wege-years .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; }
+
+.wege-summary {
+    display: grid;
+    gap: .6rem;
+    .wege-totals {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: .5rem;
+        padding: .9rem .5rem;
+        border-radius: 1rem;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        text-align: center;
+        div { display: grid; }
+        strong { font-size: var(--fs-600); }
+        small { color: var(--muted); font-size: var(--fs-200); }
+    }
+    .wege-groups {
+        display: flex; flex-wrap: wrap; gap: .4rem .8rem; justify-content: center;
+        color: var(--muted); font-size: var(--fs-200);
+        > span { display: inline-flex; align-items: center; gap: .25rem; }
+        .msr { color: var(--c); font-size: 1.15rem; }
+    }
+}
+
+.wege-map-wrap {
+    overflow: hidden;
+    border-radius: 1rem;
+    box-shadow: var(--shadow);
+}
+.wege-map { height: min(45vh, 26rem); }
+
+.wege-list {
+    display: grid;
+    gap: .5rem;
+}
+.wege-month {
+    margin-top: .75rem;
+    font-size: var(--fs-300);
+    color: var(--muted);
+    text-transform: capitalize;
+}
+.weg {
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    gap: .75rem;
+    align-items: center;
+    padding: .5rem;
+    border-radius: .9rem;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    color: inherit;
+    text-decoration: none;
+    transition: transform .15s;
+
+    &:hover, &.hover { transform: translateX(3px); outline: 2px solid color-mix(in srgb, var(--route) 40%, transparent); }
+    .weg-thumb { width: 5.5rem; height: 4.1rem; border-radius: .6rem; background: linear-gradient(135deg, #e7eef5, #eef3e6); }
+    .weg-body { display: grid; gap: .1rem; min-width: 0; }
+    strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    small { color: var(--muted); font-size: var(--fs-200); }
+    .weg-meta { display: inline-flex; align-items: center; gap: .3rem; font-size: var(--fs-200); .msr { font-size: 1.1rem; } }
+}
+
+.wege-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    padding-top: .5rem;
+    border-top: 1px solid var(--line);
+    > .button { flex: 1 1 12rem; justify-content: center; cursor: pointer; }
+    .muted { flex-basis: 100%; color: var(--muted); font-size: var(--fs-200); }
+}
+
+/* ── Ein Weg ──────────────────────────────────────────────────────────────── */
+
+.track-page {
+    .track-when { line-height: 1.5; .msr { vertical-align: -.25rem; } .muted { color: var(--muted); font-size: var(--fs-200); } }
+    .track-legend {
+        display: flex; align-items: center; gap: .5rem;
+        color: var(--muted); font-size: var(--fs-200);
+        i { flex: 0 1 8rem; height: .45rem; border-radius: 999px; background: linear-gradient(90deg, hsl(25 80% 48%), hsl(80 80% 44%), hsl(135 80% 40%)); }
+        .track-top { margin-left: auto; }
+    }
+}

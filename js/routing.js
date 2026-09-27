@@ -196,6 +196,17 @@ function climb(elevation) {
   };
 }
 
+/**
+ * Höhenprofil zu einer beliebigen Linie (aufgezeichnete Wege).
+ * → { elevation: [[km, m], …], ascent, descent, minEle, maxEle }
+ */
+export async function heightsAlong(coords, { signal } = {}) {
+  const line = coords.length > 2000 ? simplifyTo(coords, 2000) : coords;
+  const data = await request({ encoded_polyline: encodePolyline(line), range: true, resample_distance: ELEVATION_STEP }, signal, 'height');
+  const elevation = (data.range_height ?? []).filter(([, h]) => h !== null && h > -500).map(([m, h]) => [m / 1000, h]);
+  return { elevation, ...climb(elevation) };
+}
+
 /* ── Erreichbarkeit ───────────────────────────────────────────────────────── */
 
 /**

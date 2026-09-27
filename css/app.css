@@ -770,15 +770,17 @@ body {
     color: #fff;
 
     .lane {
-        display: inline-flex; flex-direction: column; align-items: center;
-        min-width: 2rem; padding: .05rem .1rem;
-        border-inline: 1px dashed rgb(255 255 255 / .35);
-        opacity: .38;
-        .msr { font-size: 1.5rem; line-height: 1; }
-        .msr + .msr { font-size: 1rem; }
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 2.1rem; height: 2.1rem; padding: 0 .15rem;
+        border-radius: .4rem;
+        opacity: .45;
+        .msr { font-size: 1.45rem; line-height: 1; }
+        .msr + .msr { margin-left: -.35rem; }
     }
-    .lane + .lane { border-left: 0; }
-    .lane.use { opacity: 1; }
+    .lane + .lane { margin-left: .1rem; }
+    /* Die richtige Spur: weiß mit Pfeil in Routenfarbe – wie auf dem Schild */
+    .lane.use { opacity: 1; background: #fff; color: var(--route); }
+    .lane.use .msr.off { opacity: .3; }
     .lane-hint { margin-left: .5rem; font-size: var(--fs-200); font-weight: 600; }
 }
 
@@ -910,10 +912,13 @@ body {
     }
 }
 
+/* Weiße Scheibe unter dem Pfeil – auf der blauen Spur sonst kaum zu sehen */
 .nav-me {
-    color: var(--route);
-    filter: drop-shadow(0 0 2px #fff) drop-shadow(0 1px 3px rgb(0 0 0 / .4));
-    .msr { font-size: 2.6rem; font-variation-settings: 'FILL' 1; }
+    display: grid; place-items: center;
+    width: 3rem; height: 3rem; border-radius: 50%;
+    background: #fff; color: var(--route);
+    box-shadow: 0 0 0 2px rgb(0 0 0 / .08), 0 2px 6px rgb(0 0 0 / .35);
+    .msr { font-size: 2.3rem; font-variation-settings: 'FILL' 1; }
 }
 
 body.navigating {
@@ -1113,7 +1118,8 @@ body.navigating {
 
 .dialog.confirm {
     max-width: min(26rem, 92vw);
-    display: grid;
+    /* nur offen als Raster – sonst stünde der Dialog geschlossen im Bild */
+    &[open] { display: grid; }
     gap: .75rem;
 
     h2 { display: flex; align-items: center; gap: .4rem; font-size: var(--fs-500); }
@@ -1452,3 +1458,52 @@ body.navigating {
 @keyframes qa-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 /* In der Navigation über der unteren Leiste */
 body.navigating .quick-ask { bottom: calc(5.2rem + var(--safe-bottom)); }
+
+/* ── Aufzeichnen ──────────────────────────────────────────────────────────── */
+
+.rec {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 30;
+    display: grid;
+    gap: .6rem;
+    padding: .9rem 1rem calc(.9rem + var(--safe-bottom));
+    border-radius: 1.1rem 1.1rem 0 0;
+    background: var(--surface);
+    box-shadow: 0 -2px 12px rgb(0 0 0 / .18);
+
+    @media (min-width: 701px) { width: 30rem; margin-inline: auto; }
+
+    header { display: flex; align-items: center; justify-content: space-between; }
+    h2 { display: flex; align-items: center; gap: .4rem; font-size: var(--fs-500); }
+    .rec-dot { color: var(--clr-danger-500); font-variation-settings: 'FILL' 1; }
+    .rec-kinds { display: flex; flex-wrap: wrap; gap: .5rem; }
+
+    &.running { grid-template-columns: 1fr auto; align-items: center; }
+    .rec-stats {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem;
+        div { display: grid; justify-items: center; }
+        strong { font-size: var(--fs-600); font-variant-numeric: tabular-nums; }
+        small { color: var(--muted); font-size: var(--fs-200); }
+    }
+    .rec-buttons { display: flex; gap: .5rem; }
+    .rec-buttons .button { width: 3.1rem; height: 3.1rem; .msr { font-size: 1.7rem; } }
+    .rec-stop { background: var(--clr-danger-500); .msr { color: #fff; font-variation-settings: 'FILL' 1; } }
+    &.paused .rec-time { animation: rec-blink 1.2s steps(2) infinite; }
+}
+@keyframes rec-blink { 50% { opacity: .3; } }
+
+body.recording #search-here, body.navigating .rec { display: none !important; }
+
+.rec-me {
+    width: 1.1rem; height: 1.1rem; border-radius: 50%;
+    background: #e8590c; border: 3px solid #fff;
+    box-shadow: 0 0 0 6px rgb(232 89 12 / .25), 0 1px 4px rgb(0 0 0 / .4);
+}
+
+.rec-save {
+    form { display: grid; gap: 1rem; min-width: min(24rem, 86vw); }
+    label { display: grid; gap: .3rem; font-weight: 600; }
+    input { font: inherit; text-align: left; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--surface); color: inherit; }
+    .rec-save-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+}

@@ -1,11 +1,12 @@
 /**
- * Menü oben rechts – auf jeder Seite gleich: Karte, Touren, neue Tour.
+ * Menü oben rechts – auf jeder Seite gleich: Karte, Touren, neue Tour, Wege.
  * Seitenspezifische Einträge hängt die Seite selbst an (`addItem`).
  */
 const PAGES = [
   { href: './index.html', icon: 'map', label: 'Karte', match: /\/(index\.html)?$/ },
   { href: './tours.html', icon: 'route', label: 'Meine Touren', match: /tours\.html$/ },
   { href: './tour.html', icon: 'add_road', label: 'Neue Tour planen', match: /tour\.html$/ },
+  { href: './tours.html#wege', icon: 'timeline', label: 'Meine Wege', match: /track\.html$/ },
 ];
 
 export function mountAppNav() {

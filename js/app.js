@@ -17,12 +17,14 @@ import { CATEGORIES, byId, routeCategories, matchCategory } from './categories.j
 import { getRoutes, maneuverIcon, isochrone } from './routing.js';
 import { ElevationProfile } from './elevation.js';
 import { Navigation, openVoiceDialog, navSettings } from './navigation.js';
-import { describePoi, poiCard, categoryFor } from './poi-info.js';
+import { describePoi, poiCard, categoryFor, inCategory } from './poi-info.js';
 import * as osm from './osm.js';
 import { placeMedia, fuelPrices, fuelKey, isTrainStation, trainDepartures } from './media.js';
 import { local, recent, tours, shapeOf } from './store.js';
 import { Sheet } from './sheet.js';
 import { mountAppNav } from './appnav.js';
+import { recorder, historySetting } from './tracks.js';
+import { setupRecording } from './record-ui.js';
 import { ask } from './ui.js';
 import { quickAsk } from './quick-ask.js';
 import { report, answered, reportsIn, reportsShared, REPORT_KINDS } from './reports.js';
@@ -820,7 +822,7 @@ function tileHit(cat, { id, props, point }) {
   const sub = props.subclass;
   if (!sub) return null;
   const tags = Object.fromEntries(TILE_KEYS.map((k) => [k, sub]));
-  if (categoryFor(tags)?.id !== cat.id) return null;
+  if (!inCategory(cat, tags)) return null;
   const r = osmRef({ id });
   const name = props['name:de'] ?? props.name_de ?? props.name ?? '';
   return {
@@ -1758,6 +1760,12 @@ const SIMULATING = new URLSearchParams(location.search).has('sim');
 const nav = new Navigation(map, $('#nav'), {
   onExit({ arrived }) {
     forgetNav();
+    // Fahrt in „Meine Wege“ merken
+    if (recorder.kind === 'nav') {
+      recorder.stop().then((t) => {
+        if (t) toast(`Fahrt gespeichert (${fmtDistance(t.length)})`, { action: { label: 'Ansehen', run: () => { location.href = `./track.html?id=${encodeURIComponent(t.id)}`; } } });
+      }).catch(() => {});
+    }
     // Mitmachen: Fahrt abschließen und schauen, ob es Fragen gibt
     if (trips.end({ arrived })) askAfterTrip();
     // Nach dem Fortsetzen (neu geladen) gibt es keine geplanten Routen mehr
@@ -1775,12 +1783,14 @@ const nav = new Navigation(map, $('#nav'), {
   // Simulierte Fahrten (?sim) nicht aufzeichnen – dort war niemand
   onFix: (fix) => {
     if (!SIMULATING) trace.add(fix);
+    if (!SIMULATING && recorder.kind === 'nav') recorder.add(fix);
     checkTrafficPassed(fix.point);
   },
   onArrive: (point, profile) => { if (profile === 'car') askParking(point); },
   onReport: (point) => reportHere(point),
   onReroute: (ev) => trips.reroute(ev),
 });
+window.__wmap.nav = nav;
 
 let navDestination = '';
 $('.start-nav').addEventListener('click', async () => {
@@ -1791,6 +1801,9 @@ $('.start-nav').addEventListener('click', async () => {
   suggest.hide();
   closeSheet();
   if (!SIMULATING) trips.start({ profile: state.profile, destination: navDestination });
+  if (!SIMULATING && historySetting.get() && !recorder.active) {
+    recorder.start({ kind: 'nav', profile: state.profile, name: navDestination ? `Nach ${navDestination.split(',')[0]}` : '', from: state.waypoints[0]?.label ?? '', to: navDestination });
+  }
   nav.start(r, { profile: state.profile, highways: state.highways, targets: state.points.slice(1) });
 });
 
@@ -2077,6 +2090,8 @@ function keysDialog() {
 }
 
 const appNav = mountAppNav();
+const recording = setupRecording({ map, toast });
+appNav.addItem('radio_button_checked', 'Aufzeichnen', () => recording.choose());
 appNav.addItem('radar', 'Erreichbarkeit', () => openReach());
 const surveyItem = appNav.addItem('volunteer_activism', 'Mitmachen', () => openSurvey());
 appNav.addItem('keyboard', 'Tastatur', keysDialog);
@@ -2174,6 +2189,7 @@ q.title = `Auch Kategorien: ${CATEGORIES.slice(0, 12).map((c) => c.one).join(', 
    ?from=Göttingen&to=Kassel&profile=bike Route (auch „lon,lat“)
    ?reach=lon,lat                         Erreichbarkeit ab einem Punkt
    ?action=route                          Planung öffnen (App-Verknüpfung)
+   ?action=record                         Aufzeichnen (Touren-Seite)
    Auch für die Screenshots in tools/takeshots.json.
    ══════════════════════════════════════════════════════════════════════════ */
 
@@ -2205,6 +2221,8 @@ async function fromUrl() {
       items?.[0]?.run();
     } else if (p.get('action') === 'route') {
       enterRoute();
+    } else if (p.get('action') === 'record') {
+      recording.choose();
     }
   } catch (err) { toast(err.message); }
 }

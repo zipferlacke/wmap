@@ -5,6 +5,8 @@
  *           einem Stamm beginnt oder sich höchstens um einen Buchstaben
  *           unterscheidet – „Parkplaz“ und „Backerei“ finden trotzdem etwas.
  * `filters` Overpass-Tag-Filter, jeder für sich eine Abfrage (ODER)
+ * `extra`   wird mitgesucht, gehört aber zu einer eigenen Kategorie
+ *           (Restaurants zeigen auch Imbisse, ein Imbiss bleibt ein Imbiss)
  * `kind`    'point' | 'area' | 'line' – wie die Geometrie gezeigt wird
  * `route`   in der Leiste „Entlang der Route“ für diese Profile anbieten
  */
@@ -26,7 +28,7 @@ export const CATEGORIES = [
     filters: ['["shop"="supermarket"]', '["shop"="convenience"]'], kind: 'point', route: ['car', 'bike', 'foot'] },
   { id: 'restaurant', label: 'Restaurants', one: 'Restaurant', icon: 'restaurant', color: '#c2255c',
     terms: ['restaurant', 'essen', 'gaststaette', 'gasthaus', 'gasthof', 'wirtshaus'],
-    filters: ['["amenity"="restaurant"]'], kind: 'point', route: ['car', 'bike', 'foot'] },
+    filters: ['["amenity"="restaurant"]'], extra: ['["amenity"="fast_food"]'], kind: 'point', route: ['car', 'bike', 'foot'] },
   { id: 'fastfood', label: 'Imbisse', one: 'Imbiss', icon: 'fastfood', color: '#e8590c',
     terms: ['imbiss', 'fastfood', 'doener', 'pommes', 'pizza', 'burger'],
     filters: ['["amenity"="fast_food"]'], kind: 'point', route: ['car', 'bike', 'foot'] },
@@ -234,3 +236,6 @@ function originalRest(text, restNormalized) {
   const out = orig.filter((w) => restNormalized.includes(normalize(w)));
   return out.join(' ') || restNormalized.join(' ');
 }
+
+/** Alle Filter, die eine Suche nach der Kategorie abfragt. */
+export const searchFilters = (c) => [...c.filters, ...(c.extra ?? [])];

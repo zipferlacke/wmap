@@ -9,6 +9,7 @@ import { queue, anonNotes } from './survey.js';
 import { OSM_AUTH } from './config.js';
 import { esc } from './geo.js';
 import { navSettings } from './navigation.js';
+import { historySetting } from './tracks.js';
 
 /**
  * @param ctx.dataSaver / setDataSaver   Datensparmodus lesen/schalten
@@ -71,6 +72,10 @@ export function openSettings(ctx) {
 
       <section>
         <h3>Daten</h3>
+        ${toggle('history', 'Fahrten merken',
+          'Navigierte Strecken landen unter „Meine Wege“ – nur auf diesem Gerät, über Jahre. Mit Sicherungsdatei auf ein anderes Gerät.',
+          historySetting.get())}
+        <a class="button settings-row" href="./tours.html#wege"><span class="msr">timeline</span> Meine Wege ansehen</a>
         <button type="button" class="button settings-row" data-act="history"><span class="msr">history</span> Suchverlauf löschen</button>
       </section>`;
   };
@@ -85,6 +90,7 @@ export function openSettings(ctx) {
     if (t.name === 'saver') ctx.setDataSaver(t.checked);
     if (t.name === 'contribute') { contribute.set(t.checked); ctx.onContribute?.(); }
     if (t.name === 'anon') anonNotes.set(t.checked);
+    if (t.name === 'history') historySetting.set(t.checked);
     if (t.dataset.act === 'server') { account.setServer(t.value); render(); }
     if (t.dataset.act === 'client') account.setClientId(t.value);
   });

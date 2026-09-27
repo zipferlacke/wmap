@@ -14,6 +14,12 @@ const EMPTY = { type: 'FeatureCollection', features: [] };
 const fc = (features) => ({ type: 'FeatureCollection', features });
 
 export const ROUTE_COLOR = '#1a73e8';
+/**
+ * Ab hier zeigt die Navigation die Fahrbahn mit Spuren statt der Routenlinie.
+ * Davor wird übergeblendet: Die Spurlinie ist dort genauso breit wie die
+ * Routenlinie und löst sie ab; Asphalt und Markierungen kommen danach dazu.
+ */
+export const ROAD_ZOOM = 16.2;
 
 /** Symbol-Ebenen des Kartenstils mit Geschäften, Parkplätzen, Haltestellen … */
 export const BASE_POI_LAYERS = ['poi_r1', 'poi_r7', 'poi_r20', 'poi_transit'];
@@ -248,7 +254,8 @@ function autoThreeD(map) {
   window.addEventListener('offline', () => { if (autoTerrain) terrain(false); });
   let demErrors = 0;
   map.on('error', (e) => {
-    if (!['terrain', 'hillshade'].includes(e.sourceId) || e.error?.status) return;   // 404 ist kein Funkloch
+    // 404 ist kein Funkloch; 504 schickt der Service Worker, wenn das Netz fehlt
+    if (!['terrain', 'hillshade'].includes(e.sourceId) || (e.error?.status && e.error.status !== 504)) return;
     if (++demErrors < 3 || !map.getTerrain()) return;
     demErrors = 0;
     terrain(false);
@@ -318,17 +325,47 @@ function colorBuildings(map) {
   // Wände: helle, warme Töne mit leichter Streuung je Gebäude, hohe Häuser
   // etwas kühler – eine Stadt, kein Einheitsgrau. Das OSM-Tag „colour“ bleibt
   // außen vor: dort steht oft „red“ oder „magenta“, das leuchtet dann grell.
+  // Die Wände deutlich dunkler als der Boden – sonst verschwimmen Hauskante
+  // und Straße, und man sieht nicht, wie hoch ein Haus ist.
   const wall = ['case',
     ['>=', ['coalesce', ['get', 'render_height'], 0], 40],
-    ['match', ['%', ['to-number', ['id'], 0], 3], 0, '#c9cdd6', 1, '#bfc6d2', '#d3d3d8'],
-    ['match', ['%', ['to-number', ['id'], 0], 4], 0, '#efe6d8', 1, '#e8ddcc', 2, '#f1ece4', '#e4d9cb']];
+    ['match', ['%', ['to-number', ['id'], 0], 3], 0, '#aab1bd', 1, '#9ea7b5', '#b3b6be'],
+    ['match', ['%', ['to-number', ['id'], 0], 4], 0, '#d6c7b1', 1, '#cbbba5', 2, '#dbd0c0', '#c7b8a4']];
   if (map.getLayer('building-3d')) {
     map.setPaintProperty('building-3d', 'fill-extrusion-color', wall);
-    map.setPaintProperty('building-3d', 'fill-extrusion-opacity', 0.95);
+    map.setPaintProperty('building-3d', 'fill-extrusion-opacity', 0.96);
     map.setPaintProperty('building-3d', 'fill-extrusion-vertical-gradient', true);
+    addShadows(map);
     addRoofs(map);
   }
+  // Licht fest aus Südwest statt vom Bildschirm aus: Jede Hausseite bekommt
+  // ihre eigene Helligkeit, Ecken und Höhen werden sichtbar
+  map.setLight({ anchor: 'map', position: [1.3, 225, 50], color: '#ffffff', intensity: 0.55 });
   if (map.getLayer('building')) map.setPaintProperty('building', 'fill-color', wall);
+}
+
+/**
+ * Schatten am Boden: der Grundriss dunkel und leicht nach Nordost versetzt.
+ * Zeigt, wo ein Haus auf dem Boden steht – das Auge liest daraus die Höhe.
+ */
+function addShadows(map) {
+  const base = map.getStyle().layers.find((l) => l.id === 'building-3d');
+  if (!base || map.getLayer('building-shadow')) return;
+  map.addLayer({
+    id: 'building-shadow',
+    type: 'fill',
+    source: base.source,
+    'source-layer': base['source-layer'],
+    minzoom: 15,
+    ...(base.filter ? { filter: base.filter } : {}),
+    paint: {
+      'fill-color': '#5b5046',
+      'fill-opacity': ['interpolate', ['linear'], ['zoom'], 15, 0, 16, 0.22],
+      'fill-translate': ['interpolate', ['exponential', 2], ['zoom'], 15, ['literal', [1, -1]], 19, ['literal', [14, -14]]],
+      'fill-translate-anchor': 'map',
+      'fill-antialias': false,
+    },
+  }, 'building-3d');
 }
 
 /**
@@ -361,7 +398,25 @@ function addRoofs(map) {
  * Straßennamen und Nummernschilder seltener wiederholen. Geneigt stehen sonst
  * alle paar Meter „B 446“ auf derselben Straße.
  */
+let shieldPitch = null;
+
 function calmLabels(map) {
+  // Geneigt stehen am Horizont viele kleine Schilder übereinander – dann nur
+  // Autobahnen und Bundesstraßen (A, B, E) beschildern
+  const shields = map.getStyle().layers.filter((l) => l.type === 'symbol' && /shield/.test(l.id));
+  const plain = new Map(shields.map((l) => [l.id, l.filter ?? true]));
+  const big = ['match', ['slice', ['to-string', ['get', 'ref']], 0, 1], ['A', 'B', 'E'], true, false];
+  let pitched = null;
+  const onPitch = () => {
+    const now = map.getPitch() >= 50;
+    if (now === pitched) return;
+    pitched = now;
+    for (const [id, f] of plain) if (map.getLayer(id)) map.setFilter(id, now ? ['all', f, big] : f);
+  };
+  if (shieldPitch) map.off('pitchend', shieldPitch);
+  shieldPitch = onPitch;
+  map.on('pitchend', onPitch);
+  onPitch();
   for (const layer of map.getStyle().layers) {
     if (layer.type !== 'symbol') continue;
     // Geneigt setzt jede Kachel ihr eigenes Schild – mit Abstand drumherum
@@ -409,7 +464,7 @@ function firstLabelLayer(map) {
 }
 
 function addLayers(map) {
-  for (const id of ['reach', 'highlight-shapes', 'highlight-points', 'routes', 'traffic', 'pois', 'hover', 'nav-arrows', 'nav-signals', 'nav-lanes']) {
+  for (const id of ['reach', 'highlight-shapes', 'highlight-points', 'routes', 'traffic', 'pois', 'hover', 'nav-arrows', 'nav-signals', 'nav-road']) {
     map.addSource(id, { type: 'geojson', data: EMPTY });
   }
   const labels = firstLabelLayer(map);
@@ -447,7 +502,13 @@ function addLayers(map) {
     paint: { 'line-color': ['get', 'color'], 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 2, 16, 4] },
   }, labels);
 
-  /* Routen: Alternativen durchscheinend, gewählte Route kräftig mit Rand */
+  /* Routen: Alternativen durchscheinend, gewählte Route kräftig mit Rand.
+     Wo die Navigation die Fahrbahn mit Spuren zeichnet (covered), tritt
+     die Linie nah dran zurück. */
+  const hideCovered = ['interpolate', ['linear'], ['zoom'], ROAD_ZOOM - 0.3, 1, ROAD_ZOOM, ['case', ['get', 'covered'], 0, 1]];
+  // Einblenden über eine Zoomspanne – nicht über minzoom: Geneigt kommen die
+  // Kacheln weiter hinten aus kleineren Zoomstufen, dort fehlte die Ebene sonst
+  const fade = (z0, z1, o = 1) => ['interpolate', ['linear'], ['zoom'], z0, 0, z1, o];
   map.addLayer({
     id: 'route-alt', type: 'line', source: 'routes',
     filter: ['!', ['get', 'selected']],
@@ -461,40 +522,60 @@ function addLayers(map) {
     id: 'route-casing', type: 'line', source: 'routes',
     filter: ['get', 'selected'],
     layout: { 'line-join': 'round', 'line-cap': 'round' },
-    paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 7, 14, 12] },
+    paint: {
+      'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 7, 14, 12],
+      'line-opacity': hideCovered,
+    },
   }, under);
   map.addLayer({
     id: 'route-main', type: 'line', source: 'routes',
     filter: ['get', 'selected'],
     layout: { 'line-join': 'round', 'line-cap': 'round' },
-    paint: { 'line-color': ROUTE_COLOR, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 4.5, 14, 8] },
+    paint: {
+      'line-color': ROUTE_COLOR, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 4.5, 14, 8],
+      'line-opacity': hideCovered,
+    },
   }, under);
 
   /*
-   * Fahrspuren kurz vor der Kreuzung: Fahrbahn in echter Breite, Trennlinien,
-   * die zu nutzende Spur in Routenfarbe, Pfeile auf dem Asphalt. Breite und
-   * Versatz stehen in Metern (m, off) und k = Pixel je Meter bei Zoom 0 –
-   * exponentiell zur Basis 2 bleibt das auf jeder Zoomstufe maßstabsgetreu.
+   * Fahrbahn entlang der Route (nav-extras roadFeatures): Asphalt in echter
+   * Breite, Ränder, Mittellinie, Spurtrennung, die richtige(n) Spur(en) in
+   * Routenfarbe und Pfeile auf dem Asphalt. Breite und Versatz stehen in
+   * Metern (m, off) und k = Pixel je Meter bei Zoom 0 – exponentiell zur
+   * Basis 2 bleibt das auf jeder Zoomstufe maßstabsgetreu.
    */
-  const meters = (prop, min = 0) => ['interpolate', ['exponential', 2], ['zoom'],
-    10, ['max', min, ['*', ['get', prop], ['*', ['get', 'k'], 1024]]],
-    24, ['max', min, ['*', ['get', prop], ['*', ['get', 'k'], 16777216]]]];
+  const meters = (prop, min = 0, add = 0) => ['interpolate', ['exponential', 2], ['zoom'],
+    10, ['+', add, ['max', min, ['*', ['get', prop], ['*', ['get', 'k'], 1024]]]],
+    24, ['+', add, ['max', min, ['*', ['get', prop], ['*', ['get', 'k'], 16777216]]]]];
   const offset = ['interpolate', ['exponential', 2], ['zoom'],
     10, ['*', ['get', 'off'], ['*', ['get', 'k'], 1024]],
     24, ['*', ['get', 'off'], ['*', ['get', 'k'], 16777216]]];
-  const laneLine = (id, kind, paint) => map.addLayer({
-    id, type: 'line', source: 'nav-lanes', minzoom: 15,
+  const roadLine = (id, kind, paint) => map.addLayer({
+    id, type: 'line', source: 'nav-road',
     filter: ['==', ['get', 'kind'], kind],
     layout: { 'line-join': 'round', 'line-cap': 'butt' },
     paint: { 'line-offset': offset, ...paint },
   }, under);
-  laneLine('nav-lane-road', 'road', { 'line-color': '#6f747c', 'line-width': meters('m', 2), 'line-opacity': 0.96 });
-  laneLine('nav-lane-use', 'use', { 'line-color': ROUTE_COLOR, 'line-width': meters('m', 2) });
-  laneLine('nav-lane-edge', 'edge', { 'line-color': '#ffffff', 'line-width': meters('m', 1) });
-  laneLine('nav-lane-sep', 'sep', { 'line-color': '#ffffff', 'line-width': meters('m', 1), 'line-dasharray': [3, 3] });
+  const Z = ROAD_ZOOM;
+  // Weißer Rand um die Spurlinie, solange noch kein Asphalt darunter liegt
+  roadLine('nav-road-track-casing', 'track', {
+    'line-color': '#ffffff', 'line-width': meters('m', 8, 4),
+    'line-opacity': ['interpolate', ['linear'], ['zoom'], Z - 0.3, 0, Z, 1, Z + 0.1, 1, Z + 0.4, 0],
+  });
   map.addLayer({
-    id: 'nav-lane-arrow', type: 'symbol', source: 'nav-lanes', minzoom: 15,
+    id: 'nav-road-asphalt', type: 'fill', source: 'nav-road',
+    filter: ['==', ['get', 'kind'], 'asphalt'],
+    paint: { 'fill-color': '#7b8089', 'fill-opacity': fade(Z - 0.1, Z + 0.4) },
+  }, under);
+  // So breit wie die Routenlinie (8 px), nah dran so breit wie die Spur
+  roadLine('nav-road-track', 'track', { 'line-color': ROUTE_COLOR, 'line-width': meters('m', 8), 'line-opacity': fade(Z - 0.3, Z) });
+  roadLine('nav-road-edge', 'edge', { 'line-color': '#ffffff', 'line-width': meters('m', 0.6), 'line-opacity': fade(Z + 0.2, Z + 0.6, 0.9) });
+  roadLine('nav-road-mid', 'mid', { 'line-color': '#ffffff', 'line-width': meters('m', 0.6), 'line-opacity': fade(Z + 0.2, Z + 0.6) });
+  roadLine('nav-road-sep', 'sep', { 'line-color': '#ffffff', 'line-width': meters('m', 0.6), 'line-opacity': fade(Z + 0.2, Z + 0.6, 0.9), 'line-dasharray': [4, 5] });
+  map.addLayer({
+    id: 'nav-road-arrow', type: 'symbol', source: 'nav-road',
     filter: ['==', ['get', 'kind'], 'arrow'],
+    paint: { 'icon-opacity': fade(Z + 0.2, Z + 0.6) },
     layout: {
       'icon-image': ['get', 'icon'], 'icon-rotate': ['get', 'rot'],
       'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map',
@@ -686,7 +767,7 @@ export function showRoutes(map, routes, selected) {
     const order = routes.filter((r) => r.id !== selected).concat(routes.filter((r) => r.id === selected));
     src(map, 'routes').setData(fc(order.map((r) => ({
       type: 'Feature',
-      properties: { id: r.id, selected: r.id === selected },
+      properties: { id: r.id, selected: r.id === selected, covered: !!r.covered },
       geometry: { type: 'LineString', coordinates: r.coords },
     }))));
   });
@@ -735,11 +816,6 @@ export function showNavExtras(map, { arrows = [], signals = [] } = {}) {
   });
 }
 
-/** Fahrspuren vor der nächsten Kreuzung (Features aus nav-extras laneFeatures). */
-export function showNavLanes(map, features = []) {
-  whenReady(map, () => src(map, 'nav-lanes').setData(fc(features)));
-}
-
 const bearingOf = (a, b) => {
   const r = Math.PI / 180;
   const y = Math.sin((b[0] - a[0]) * r) * Math.cos(b[1] * r);
@@ -764,6 +840,11 @@ function arrowHead() {
   ctx.fillStyle = '#ffffff';
   ctx.fill();
   return ctx.getImageData(0, 0, S, S);
+}
+
+/** Fahrbahn mit Spuren vor dem Fahrzeug (Features aus nav-extras roadFeatures). */
+export function showNavRoad(map, features = []) {
+  whenReady(map, () => src(map, 'nav-road').setData(fc(features)));
 }
 
 export function showHover(map, lngLat) {

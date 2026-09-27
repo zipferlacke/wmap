@@ -4,10 +4,13 @@
  *
  *   limits   Tempolimits      [[von m, bis m, km/h], …]
  *   signals  Ampeln           [m, …]
- *   lanes    Fahrspuren       [{ at: m, lanes: [{ dirs: ['left'], use: bool }] }]
+ *   lanes    Fahrspuren       [{ at: m, lanes: [{ dirs: ['left'], use: bool, act: 'left' }] }]
+ *            (act = die Richtung, in die es von dieser Spur aus weitergeht)
  *   dests    Wegweiser        [{ at: m, text: 'Kassel, Hann. Münden' }]
  *   twoWay   Gegenverkehr     [[von m, bis m], …] – dort liegen unsere Spuren
  *            rechts der Mittellinie, sonst (Einbahn) mittig
+ *   roads    Fahrbahn         [[von m, bis m, Spuren, Gegenspuren], …] – Spuren
+ *            in unserer Richtung (OSM lanes:forward), Gegenspuren 0 = Einbahn
  *
  * Alles in Metern entlang der Route. Die Daten reisen mit der Route (auch
  * offline gespeichert); fehlen sie, läuft die Navigation ohne.
@@ -20,7 +23,7 @@ import { request, costingOptions } from './routing.js';
 const CHUNK = 3000;
 
 export async function routeExtras(route, profile, { signal } = {}) {
-  const out = { limits: [], signals: [], lanes: [], dests: [], twoWay: [] };
+  const out = { limits: [], signals: [], lanes: [], dests: [], twoWay: [], roads: [] };
   const costing = PROFILES[profile]?.costing ?? 'auto';
   for (let i = 0; i < route.coords.length - 1; i += CHUNK) {
     const part = route.coords.slice(i, i + CHUNK + 1);
@@ -29,7 +32,7 @@ export async function routeExtras(route, profile, { signal } = {}) {
     const [attrs, match] = await Promise.all([
       request({
         ...base,
-        filters: { attributes: ['edge.speed_limit', 'edge.traffic_signal', 'edge.length', 'edge.traversability'], action: 'include' },
+        filters: { attributes: ['edge.speed_limit', 'edge.traffic_signal', 'edge.length', 'edge.traversability', 'edge.lane_count', 'edge.road_class'], action: 'include' },
       }, signal, 'trace_attributes').catch(() => null),
       costing === 'auto' ? request({ ...base, format: 'osrm', language: 'de-DE' }, signal, 'trace_route').catch(() => null) : null,
     ]);
@@ -49,6 +52,13 @@ export async function routeExtras(route, profile, { signal } = {}) {
           const tw = out.twoWay.at(-1);
           if (tw && Math.abs(tw[1] - m) < 1) tw[1] = m + len; else out.twoWay.push([m, m + len]);
         }
+        // Gegenspuren kennt Valhalla nur für die eigene Kante: große Straßen
+        // haben meist so viele wie wir (höchstens zwei), kleine eine
+        const n = clampLanes(e.lane_count);
+        const opp = e.traversability !== 'both' ? 0 : BIG_CLASS.has(e.road_class) ? Math.min(n, 2) : 1;
+        const rd = out.roads.at(-1);
+        if (rd && rd[2] === n && rd[3] === opp && Math.abs(rd[1] - m) < 1) rd[1] = m + len;
+        else out.roads.push([m, m + len, n, opp]);
         m += len;
         if (e.traffic_signal) out.signals.push(Math.round(m));
       }
@@ -65,7 +75,7 @@ export async function routeExtras(route, profile, { signal } = {}) {
           if (s.offset > 30) continue;
           out.lanes.push({
             at: Math.round(s.along),       // cum-Werte sind schon Meter ab Routenstart
-            lanes: x.lanes.map((l) => ({ dirs: l.indications ?? [], use: !!l.valid })),
+            lanes: x.lanes.map((l) => ({ dirs: l.indications ?? [], use: !!l.valid, act: l.valid_indication ?? null })),
           });
         }
         if (step.destinations && step.maneuver?.location) {
@@ -77,6 +87,9 @@ export async function routeExtras(route, profile, { signal } = {}) {
   }
   return out;
 }
+
+const BIG_CLASS = new Set(['motorway', 'trunk', 'primary', 'secondary']);
+const clampLanes = (n) => Math.min(8, Math.max(1, Math.round(n) || 1));
 
 /** Tempolimit an der Stelle – oder null, wenn unbekannt. */
 export function limitAt(extras, along) {
@@ -121,48 +134,185 @@ export const LANE_GLYPH = {
 };
 
 /**
- * Die Spuren vor einer Kreuzung als Kartenobjekte: Fahrbahn, Trennlinien,
- * die zu nutzende(n) Spur(en) und je Spur ein Pfeil kurz vor der Haltelinie.
- * Die Breiten und Versätze stehen in Metern (m, off) – die Karte rechnet sie
- * je Zoom in Pixel um.
+ * Die Fahrbahn entlang der Route mit allen Spuren – Asphalt in echter
+ * Breite, Rand, Mittellinie, gestrichelte Spurtrennung, die Spur(en), in
+ * denen wir fahren sollen, und vor Kreuzungen die Pfeile auf dem Asphalt.
+ * Die Karte selbst kennt nur eine Linie je Straße.
  *
- * @param at     Meter entlang der Route, an denen die Kreuzung liegt
- * @param lanes  [{ dirs, use }] von links nach rechts
+ * Alles kommt aus einem Modell (sectionsFor): Abschnitte mit Spurzahl,
+ * Gegenspuren und den markierten Spuren. Vor einer Kreuzung mit
+ * Spurangaben gilt deren Zahl – so passt die Fahrbahn zu den Pfeilen.
+ * Ändert sich etwas, gleitet es über 50 m: Die Linien stehen quer versetzt
+ * in der Geometrie, der Asphalt ist eine Fläche aus kleinen Vierecken.
+ *
+ * @param from, to  Meter entlang der Route
+ * @param left      [[von, bis], …] – dort links fahren (vor dem Linksabbiegen),
+ *                  sonst rechts (Rechtsfahrgebot)
  */
-export function laneFeatures(route, at, lanes, { twoWay = false, length = 140 } = {}) {
-  const n = lanes.length;
+export function roadFeatures(route, extras, from, to, { left = [] } = {}) {
+  const sections = sectionsFor(extras, left);
+  const end = route.cum[route.cum.length - 1];
+  from = Math.max(0, from);
+  to = Math.min(to, end);
+  if (!sections.length || to - from < 5) return [];
   const w = LANE_WIDTH;
-  const from = Math.max(0, at - length);
-  const to = Math.max(from + 5, at - 3);
-  // Stück der Route vor der Kreuzung
-  const line = [];
-  for (let d = from; d <= to; d += 5) line.push(pointAt(route.coords, route.cum, d));
-  line.push(pointAt(route.coords, route.cum, to));
-  // Mitte von Spur i (0 = ganz links), positiv = rechts der Linie
-  const center = (i) => (twoWay ? (i + 0.5) * w : (i - (n - 1) / 2) * w);
-  const left = center(0) - w / 2;
-  const right = center(n - 1) + w / 2;
-  const lat = line[0][1];
-  // Pixel je Meter bei Zoom 0 (512er-Kacheln)
-  const k = 512 / (40075016.686 * Math.cos((lat * Math.PI) / 180));
-  const f = (kind, off, m, extra = {}) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: line }, properties: { kind, off, m, k, ...extra } });
+  const at = (d) => pointAt(route.coords, route.cum, Math.min(end, Math.max(0, d)));
+  const k = 512 / (40075016.686 * Math.cos((at(from)[1] * Math.PI) / 180));
+  const whole = (v) => Math.abs(v - Math.round(v)) < 0.02;
+  const dirAt = (d) => bearing(at(d - 8), at(d + 8));
 
-  const feats = [f('road', (left + right) / 2, right - left + 0.8)];
-  feats.push(f('edge', left, 0.2), f('edge', right, 0.2));
-  for (let i = 1; i < n; i += 1) feats.push(f('sep', center(i) - w / 2, 0.16));
-  lanes.forEach((l, i) => { if (l.use) feats.push(f('use', center(i), w * 0.62)); });
+  const feats = [];
+  const runs = new Map();                        // Schlüssel → { kind, m, coords }
+  const quads = [];                              // Asphalt: je Schritt ein Viereck
+  let prev = null;
+  const closeLine = (key) => {
+    const r = runs.get(key);
+    runs.delete(key);
+    if (r.coords.length >= 2) feats.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: r.coords }, properties: { kind: r.kind, off: 0, m: r.m, k } });
+  };
 
-  // Pfeile 12 m vor der Haltelinie, quer zur Fahrtrichtung versetzt
-  const a = pointAt(route.coords, route.cum, Math.max(from, to - 14));
-  const b = pointAt(route.coords, route.cum, Math.max(from, to - 8));
-  const dir = bearing(a, b);
-  lanes.forEach((l, i) => {
-    const glyph = LANE_GLYPH[l.dirs.find((d) => LANE_GLYPH[d]) ?? 'straight'] ?? 'straight';
-    feats.push({
-      type: 'Feature',
-      geometry: { type: 'Point', coordinates: destination(b, dir + 90, center(i)) },
-      properties: { kind: 'arrow', icon: `lane-${l.use ? 'on' : 'off'}-${glyph}`, rot: dir, k },
-    });
-  });
+  for (let d = from; d <= to + 0.01; d += STEP) {
+    const L = layoutAt(sections, d);
+    if (!L) { [...runs.keys()].forEach(closeLine); prev = null; continue; }
+    const p = at(d);
+    // Richtung über ±8 m gemittelt – sonst zittern die Ränder in Kurven
+    const dir = dirAt(d) + 90;
+    const shift = (off) => (Math.abs(off) < 0.01 ? p : destination(p, dir, off));
+    const { n, opp, l0, r0, first, track, trackW } = L;
+    const want = [['edge:l', 'edge', l0, 0.18], ['edge:r', 'edge', r0, 0.18], ['track', 'track', track, trackW]];
+    if (opp > 0.05) want.push(['mid', 'mid', 0, 0.14]);
+    // Trennlinien nur, wo die Spurzahl feststeht – im Übergang wanderten sie
+    if (whole(n) && whole(opp)) {
+      for (let i = 1; i < Math.round(opp); i += 1) want.push([`sep:o${i}`, 'sep', -i * w, 0.13]);
+      for (let i = 1; i < Math.round(n); i += 1) want.push([`sep:${i}`, 'sep', first + i * w, 0.13]);
+    }
+    const keys = new Set(want.map(([key]) => key));
+    for (const key of [...runs.keys()]) if (!keys.has(key)) closeLine(key);
+    for (const [key, kind, off, m] of want) {
+      // Breite der Spurmarkierung wechselt? Neue Linie (Breite ist je Linie fest)
+      const r = runs.get(key);
+      if (r && Math.abs(r.m - m) > 0.05) {
+        const last = r.coords.at(-1);
+        closeLine(key);
+        runs.set(key, { kind, m: +m.toFixed(2), coords: [last] });
+      }
+      if (!runs.has(key)) runs.set(key, { kind, m: +m.toFixed(2), coords: [] });
+      runs.get(key).coords.push(shift(off));
+    }
+    // Kleine Vierecke statt einer langen Fläche: In engen Kurven schneidet
+    // sich deren Innenrand, und die Karte ließe Teile der Fläche weg
+    const cur = [shift(l0 - 0.3), shift(r0 + 0.3)];
+    if (prev) quads.push([[prev[0], cur[0], cur[1], prev[1], prev[0]]]);
+    prev = cur;
+  }
+  [...runs.keys()].forEach(closeLine);
+  if (quads.length) feats.unshift({ type: 'Feature', geometry: { type: 'MultiPolygon', coordinates: quads }, properties: { kind: 'asphalt' } });
+
+  // Pfeile auf dem Asphalt: je Spur zwei Stück vor jeder Kreuzung mit Spurangaben
+  for (const x of extras?.lanes ?? []) {
+    for (const back of [14, 50]) {
+      const d = x.at - back;
+      if (d < from || d > to) continue;
+      const L = layoutAt(sections, d);
+      if (!L || Math.abs(L.n - x.lanes.length) > 0.02) continue;
+      const p = at(d);
+      const dir = dirAt(d);
+      x.lanes.forEach((l, i) => {
+        const turn = l.use && l.act ? l.act : l.dirs.find((t) => LANE_GLYPH[t]);
+        const glyph = LANE_GLYPH[turn ?? 'straight'] ?? 'straight';
+        feats.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: destination(p, dir + 90, L.first + (i + 0.5) * w) },
+          properties: { kind: 'arrow', icon: `lane-${l.use ? 'on' : 'off'}-${glyph}`, rot: dir, k },
+        });
+      });
+    }
+  }
   return feats;
+}
+
+const STEP = 2.5;
+const EASE = 50;                              // Meter für einen Übergang
+const LANE_ZONE = 150;                        // so weit vor der Kreuzung gelten ihre Spuren
+
+const smooth = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+const lerpNum = (x, y, t) => x + (y - x) * t;
+
+/**
+ * Abschnitte [von, bis, Spuren, Gegenspuren, erste markierte, letzte markierte]
+ * aus Straßendaten, Kreuzungsspuren und „links fahren“. Einmal je Route
+ * berechnet und gemerkt.
+ */
+const cache = new WeakMap();
+function sectionsFor(extras, left) {
+  const roads = extras?.roads ?? [];
+  if (!roads.length) return [];
+  const hit = cache.get(extras);
+  if (hit && hit.left === left) return hit.out;
+  const zones = (extras.lanes ?? []).filter((x) => x.lanes.length >= 1).map((x) => [x.at - LANE_ZONE, x.at, x.lanes]);
+  const cuts = new Set();
+  for (const [a, b] of [...roads, ...zones, ...left]) { cuts.add(a); cuts.add(b); }
+  const xs = [...cuts].sort((a, b) => a - b);
+  const out = [];
+  for (let i = 0; i + 1 < xs.length; i += 1) {
+    const a = xs[i], b = xs[i + 1];
+    if (b - a < 0.5) continue;
+    const mid = (a + b) / 2;
+    const r = roads.find(([x0, x1]) => mid >= x0 && mid < x1);
+    if (!r) continue;
+    let n = r[2], u0, u1;
+    // Die nächste Kreuzung voraus bestimmt die Spuren
+    const z = zones.find(([x0, x1]) => mid >= x0 && mid < x1);
+    if (z) {
+      n = z[2].length;
+      const use = z[2].map((l, j) => (l.use ? j : -1)).filter((j) => j >= 0);
+      [u0, u1] = use.length ? [use[0], use.at(-1)] : [n - 1, n - 1];
+    } else {
+      const keepLeft = left.some(([x0, x1]) => mid >= x0 && mid <= x1);
+      u0 = u1 = keepLeft ? 0 : n - 1;
+    }
+    const last = out.at(-1);
+    const row = [a, b, n, r[3], u0, u1];
+    if (last && Math.abs(last[1] - a) < 0.5 && last.slice(2).every((v, j) => v === row[2 + j])) last[1] = b;
+    else out.push(row);
+  }
+  cache.set(extras, { left, out });
+  return out;
+}
+
+/** Wert an der Stelle d, weich zwischen den Abschnitten übergeblendet. */
+function eased(sections, d, value) {
+  let i = sections.findIndex(([a, b]) => d >= a && d < b);
+  if (i < 0) i = d < sections[0][0] ? 0 : sections.length - 1;
+  let v = value(sections[i]);
+  const [a, b] = sections[i];
+  // Übergang je zur Hälfte vor und nach der Grenze – nur zu direkt anschließenden
+  if (i > 0 && d - a < EASE / 2 && sections[i - 1][1] >= a - 1) v = lerpNum(value(sections[i - 1]), v, smooth(0.5 + (d - a) / EASE));
+  if (i + 1 < sections.length && b - d < EASE / 2 && sections[i + 1][0] <= b + 1) v = lerpNum(v, value(sections[i + 1]), smooth(0.5 - (b - d) / EASE));
+  return v;
+}
+
+/** Form der Fahrbahn an der Stelle d – oder null ohne Daten. */
+function layoutAt(sections, d) {
+  if (!sections.length || d < sections[0][0] - 1 || d > sections[sections.length - 1][1] + 1) return null;
+  const w = LANE_WIDTH;
+  const n = eased(sections, d, (r) => r[2]);
+  const opp = eased(sections, d, (r) => r[3]);
+  // Einbahn: mittig; mit Gegenverkehr: Linie in der Mitte, wir rechts davon.
+  // Weich zwischen beidem: der Anteil „Gegenverkehr“ verschiebt die Mitte.
+  const two = Math.min(1, opp);
+  const l0 = lerpNum(-n * w / 2, -opp * w, two);
+  const r0 = lerpNum(n * w / 2, n * w, two);
+  const first = lerpNum(-n * w / 2, 0, two);          // linker Rand unserer Spuren
+  // Markierte Spuren: von der Mitte der ersten bis zur Mitte der letzten
+  const u0 = eased(sections, d, (r) => r[4]);
+  const u1 = eased(sections, d, (r) => r[5]);
+  const track = first + ((u0 + u1) / 2 + 0.5) * w;
+  const trackW = (u1 - u0) * w + w * 0.6;
+  return { n, opp, l0, r0, first, track, trackW };
+}
+
+/** Wie weit rechts der Linie fahren wir? (Meter, negativ = links) */
+export function laneShiftAt(extras, at, left = []) {
+  return layoutAt(sectionsFor(extras, left), at)?.track ?? 0;
 }

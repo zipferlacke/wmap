@@ -4,7 +4,7 @@
  * Je Art gibt es feste Felder. Pflichtfelder erscheinen immer, notfalls mit
  * „unbekannt“ – so sieht man auch, was OSM (noch) nicht weiß.
  */
-import { CATEGORIES } from './categories.js';
+import { CATEGORIES, searchFilters } from './categories.js';
 import { esc } from './geo.js';
 
 /* ── Welche Kategorie passt zu den Tags? ──────────────────────────────────── */
@@ -13,19 +13,23 @@ import { esc } from './geo.js';
 function parseFilter(f) {
   return [...f.matchAll(/\["([^"]+)"(=|~|!=)"([^"]*)"\]/g)].map(([, key, op, value]) => ({ key, op, value }));
 }
-const PARSED = CATEGORIES.map((c) => ({ c, filters: c.filters.map(parseFilter) }));
+const PARSED = CATEGORIES.map((c) => ({ c, filters: c.filters.map(parseFilter), all: searchFilters(c).map(parseFilter) }));
+
+const fits = (filters, tags) => filters.some((conds) => conds.every(({ key, op, value }) => {
+  const v = tags[key];
+  if (op === '=') return v === value;
+  if (op === '!=') return v !== value;
+  return v !== undefined && new RegExp(value).test(v);
+}));
 
 export function categoryFor(tags = {}) {
-  for (const { c, filters } of PARSED) {
-    const hit = filters.some((conds) => conds.every(({ key, op, value }) => {
-      const v = tags[key];
-      if (op === '=') return v === value;
-      if (op === '!=') return v !== value;
-      return v !== undefined && new RegExp(value).test(v);
-    }));
-    if (hit) return c;
-  }
-  return null;
+  return PARSED.find(({ filters }) => fits(filters, tags))?.c ?? null;
+}
+
+/** Findet eine Suche nach `cat` diesen Ort? (auch über `extra`) */
+export function inCategory(cat, tags = {}) {
+  const p = PARSED.find((x) => x.c.id === cat.id);
+  return !!p && fits(p.all, tags);
 }
 
 /* ── Werte übersetzen ─────────────────────────────────────────────────────── */

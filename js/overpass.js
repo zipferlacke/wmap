@@ -4,6 +4,7 @@
  * auf der Karte hervorgehoben werden kann.
  */
 import { API } from './config.js';
+import { searchFilters } from './categories.js';
 
 // Abfragen dürfen serverseitig 25 s laufen, dazu kommt die Warteschlange
 const SERVER_TIMEOUT_MS = 45000;
@@ -92,7 +93,7 @@ export async function inBbox(category, bounds, { limit = 400, signal } = {}) {
   // Punkte (Tankstelle, Café …) brauchen keine Umrisse – nur Mittelpunkt und
   // Tags; das ist viel weniger Arbeit für den Server
   const out = category.kind === 'point' ? 'center tags' : `geom(${b})`;
-  const q = `[out:json][timeout:25];(${category.filters.map((f) => `nwr${f}(${b});`).join('')});`
+  const q = `[out:json][timeout:25];(${searchFilters(category).map((f) => `nwr${f}(${b});`).join('')});`
     + `out ${out} ${limit};`;
   return toGeoJSON(await run(q, signal), category);
 }
@@ -103,7 +104,7 @@ export async function inBbox(category, bounds, { limit = 400, signal } = {}) {
  */
 export async function alongLine(category, line, radius, { limit = 300, signal } = {}) {
   const pts = line.map(([lon, lat]) => `${lat.toFixed(5)},${lon.toFixed(5)}`).join(',');
-  const q = `[out:json][timeout:30];(${category.filters.map((f) => `nwr${f}(around:${radius},${pts});`).join('')});`
+  const q = `[out:json][timeout:30];(${searchFilters(category).map((f) => `nwr${f}(around:${radius},${pts});`).join('')});`
     + `out center tags ${limit};`;
   return toGeoJSON(await run(q, signal), category);
 }
@@ -111,7 +112,7 @@ export async function alongLine(category, line, radius, { limit = 300, signal } 
 /** Alles einer Kategorie innerhalb einer Fläche (Ring aus [lon, lat], vereinfacht). */
 export async function inPolygon(category, ring, { limit = 300, signal } = {}) {
   const poly = ring.map(([lon, lat]) => `${lat.toFixed(5)} ${lon.toFixed(5)}`).join(' ');
-  const q = `[out:json][timeout:30];(${category.filters.map((f) => `nwr${f}(poly:"${poly}");`).join('')});`
+  const q = `[out:json][timeout:30];(${searchFilters(category).map((f) => `nwr${f}(poly:"${poly}");`).join('')});`
     + `out center tags ${limit};`;
   return toGeoJSON(await run(q, signal), category);
 }

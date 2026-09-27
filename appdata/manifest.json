@@ -153,6 +153,17 @@
             ]
         },
         {
+            "name": "Aufzeichnen",
+            "short_name": "Aufzeichnen",
+            "url": "../index.html?action=record",
+            "icons": [
+                {
+                    "src": "./wmap-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
             "name": "Meine Touren",
             "short_name": "Touren",
             "url": "../tours.html",

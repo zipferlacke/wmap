@@ -1,32 +1,32 @@
 /**
- * Meine Touren: Liste mit Vorschau, Name, Zahlen und Beschreibung.
- * Neue Touren entstehen in der Routenplanung über „Als Tour speichern“.
+ * Meine Touren – zwei Reiter:
+ *   Geplant     Liste mit Vorschau, Name, Zahlen und Beschreibung. Neue
+ *               Touren entstehen im Planer oder über „Als Tour speichern“.
+ *   Meine Wege  was aufgezeichnet wurde, nach Jahren (wege.js)
  */
 import { PROFILES } from './config.js';
 import { tours, coordsOf, encodeShare, toGpx, download } from './store.js';
 import { mountAppNav } from './appnav.js';
 import { fmtDistance, fmtDuration, esc } from './geo.js';
+import { svgPreview } from './preview.js';
+import { mountWege } from './wege.js';
 
 const list = document.getElementById('touren');
 const nav = mountAppNav();
 document.querySelector('.tours-head').append(nav.el);
 
-/** Linie als SVG, wenn es (noch) kein Vorschaubild gibt. */
-function svgPreview(shape) {
-  const c = coordsOf(shape);
-  if (c.length < 2) return '<div class="tour-thumb empty"><span class="msr">route</span></div>';
-  const lat0 = c[0][1] * Math.PI / 180;
-  const pts = c.map(([x, y]) => [x * Math.cos(lat0), -y]);
-  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
-  const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-  const W = 480, H = 300, pad = 24;
-  const s = Math.min((W - 2 * pad) / (maxX - minX || 1e-9), (H - 2 * pad) / (maxY - minY || 1e-9));
-  const ox = (W - (maxX - minX) * s) / 2, oy = (H - (maxY - minY) * s) / 2;
-  const d = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${((x - minX) * s + ox).toFixed(1)},${((y - minY) * s + oy).toFixed(1)}`).join('');
-  return `<svg class="tour-thumb" viewBox="0 0 ${W} ${H}" aria-hidden="true">
-    <path d="${d}" fill="none" stroke="#fff" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="${d}" fill="none" stroke="#1a73e8" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+/* Reiter: #wege oder geplant – der Link merkt sich, wo man war */
+let wege = null;
+function showTab() {
+  const tab = location.hash === '#wege' ? 'wege' : 'geplant';
+  for (const el of document.querySelectorAll('[data-tab]')) {
+    if (el.matches('[role="tab"]')) el.setAttribute('aria-selected', String(el.dataset.tab === tab));
+    else el.hidden = el.dataset.tab !== tab;
+  }
+  document.title = `${tab === 'wege' ? 'Meine Wege' : 'Meine Touren'} – WMap`;
+  if (tab === 'wege') (wege ??= mountWege(document.getElementById('wege'))).show();
 }
+addEventListener('hashchange', showTab);
 
 function render() {
   const all = tours.all();
@@ -34,8 +34,8 @@ function render() {
     list.innerHTML = `<div class="tour-empty">
       <span class="msr">route</span>
       <p>Noch keine Touren gespeichert.</p>
-      <p class="muted">Plane eine Route und tippe unten auf <span class="msr">bookmark_add</span> „Als Tour speichern“.</p>
-      <a class="button primary" href="./index.html"><span class="msr">directions</span> Route planen</a></div>`;
+      <p class="muted">Plane eine Tour Punkt für Punkt – oder plane eine Route und tippe auf <span class="msr">bookmark_add</span> „Als Tour speichern“.</p>
+      <a class="button primary" href="./tour.html"><span class="msr">add_road</span> Tour planen</a></div>`;
     return;
   }
   list.innerHTML = all.map((t) => {
@@ -43,7 +43,7 @@ function render() {
     const st = t.stats;
     return `<article class="tour-card" data-id="${esc(t.id)}">
       <a class="tour-open" href="./tour.html?id=${encodeURIComponent(t.id)}" aria-label="${esc(t.name)} öffnen">
-        ${t.preview ? `<img class="tour-thumb" src="${t.preview}" alt="">` : svgPreview(t.shape)}
+        ${t.preview ? `<img class="tour-thumb" src="${t.preview}" alt="">` : svgPreview(coordsOf(t.shape))}
       </a>
       <div class="tour-body">
         <h2><a href="./tour.html?id=${encodeURIComponent(t.id)}">${esc(t.name)}</a></h2>
@@ -80,3 +80,4 @@ list.addEventListener('click', async (e) => {
 });
 
 render();
+showTab();

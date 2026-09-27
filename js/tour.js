@@ -77,6 +77,7 @@ const { map } = createMap('map', {
 
 const sheet = $('#sheet');
 sheet.show();
+document.activeElement?.blur();                // kein Fokusrahmen um den Griff
 new Sheet(sheet, { onResize: () => fitRoute(), topLimit: () => $('.tour-head').getBoundingClientRect().bottom });
 
 function viewPadding() {

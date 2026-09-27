@@ -13,9 +13,9 @@
 import { PROFILES } from './config.js';
 import { nearestOnLine, pointAt, bearing, destination, distance, fmtDistance, fmtDuration, fmtClock, speakDistance, esc } from './geo.js';
 import { reroute as fetchReroute, maneuverIcon } from './routing.js';
-import { showRoutes, showHover, showNavExtras, showNavLanes } from './map.js';
-import { routeExtras, limitAt, lanesAt, laneFeatures, twoWayAt } from './nav-extras.js';
-import { phrases } from './nav-voice.js';
+import { showRoutes, showHover, showNavExtras, showNavRoad, ROAD_ZOOM } from './map.js';
+import { routeExtras, limitAt, lanesAt, roadFeatures, laneShiftAt } from './nav-extras.js';
+import { phrases, laneHint } from './nav-voice.js';
 import { reverse } from './geocode.js';
 
 const OFF_ROUTE_M = 40;
@@ -147,6 +147,17 @@ function approachAngle(cur, target, dt, tau, maxRate = 140) {
   return (cur + step + 360) % 360;
 }
 
+/** Manöver, die ohne Richtung schwer zu verstehen sind (Abbiegen, Auffahrten, Kreisel). */
+const NEEDS_DIRECTION = new Set([9, 10, 11, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25, 26, 37, 38]);
+
+/** Stück der Route zwischen zwei Metermarken. */
+function slice(r, a, b) {
+  const out = [pointAt(r.coords, r.cum, a)];
+  for (let i = 0; i < r.coords.length; i += 1) if (r.cum[i] > a && r.cum[i] < b) out.push(r.coords[i]);
+  out.push(pointAt(r.coords, r.cum, b));
+  return out;
+}
+
 const FRAME_MS = 1000 / 30;           // 30 Bilder je Sekunde reichen und sparen Strom
 
 /** Spurpfeile: OSRM-Angaben → Symbol */
@@ -161,7 +172,8 @@ const LANE_ICON = {
 export class Navigation {
   #map; #el; #onExit; #onRoute; #onFix; #onReroute; #onSearch; #onArrive; #onReport;
   #route = null; #profile = 'car'; #highways = true; #targets = []; #extras = null;
-  #watch = null; #sim = null; #wakeLock = null; #marker = null; #targetMarkers = []; #lanesFor = null;
+  #watch = null; #sim = null; #wakeLock = null; #marker = null; #targetMarkers = [];
+  #roadFor = null; #cover = null; #shift = 0; #lefts = null; #towards = new Map();
   // Fortschritt auf der Route
   #index = 0; #current = -1; #said = new Map(); #off = 0; #lastReroute = 0; #rerouting = false;
   #arrived = false; #lastFix = null; #prev = null; #travel = null; #offlineSaid = 0; #rejected = 0;
@@ -262,9 +274,9 @@ export class Navigation {
     this.#marker = new maplibregl.Marker({ element: arrow, rotationAlignment: 'map', pitchAlignment: 'map' })
       .setLngLat(route.coords[0]).addTo(this.#map);
 
-    // Eigener Punkt im unteren Drittel – man sieht mehr vom Weg voraus
+    // Eigener Punkt im unteren Drittel (~70 %) – man sieht mehr vom Weg voraus
     const h = this.#map.getContainer().clientHeight;
-    this.#map.setPadding({ top: h * 0.42, bottom: 90, left: 0, right: 0 });
+    this.#map.setPadding({ top: h * 0.52, bottom: 80, left: 0, right: 0 });
     Object.assign(this.#cam, { center: null, bearing: this.#map.getBearing(), zoom: this.#map.getZoom(), pitch: this.#map.getPitch(), tau: 0.5 });
 
     // Die erste Ansage kommt direkt aus dem Klick – iOS spricht sonst gar nicht
@@ -355,8 +367,7 @@ export class Navigation {
     document.body.classList.remove('navigating');
     showHover(this.#map, null);
     showNavExtras(this.#map, {});
-    showNavLanes(this.#map, []);
-    this.#lanesFor = null;
+    this.#clearRoad();
     this.#map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
     this.#map.easeTo({ pitch: 0, bearing: 0, duration: 600 });
     this.#onExit?.({ arrived: this.#arrived });
@@ -364,8 +375,7 @@ export class Navigation {
 
   #reset() {
     this.#index = 0;
-    this.#lanesFor = null;
-    showNavLanes(this.#map, []);
+    this.#clearRoad();
     this.#lastAlong = null;
     this.#current = -1;
     this.#said = new Map();
@@ -463,7 +473,17 @@ export class Navigation {
     // Bereits gefahrenen Teil ausblenden (etwas hinter dem Pfeil, der gleitet ja noch)
     const cut = Math.max(0, along - 25);
     const start = nearestOnLine(r.coords, r.cum, pointAt(r.coords, r.cum, cut), Math.max(0, snap.index - 60), snap.index + 2);
-    showRoutes(this.#map, [{ id: r.id, coords: [start.point, ...r.coords.slice(start.index + 1)] }], r.id);
+    this.#paintRoad(along);
+    const end = r.cum[r.cum.length - 1];
+    const cover = this.#cover;
+    if (cover && cover[1] > cut) {
+      // Wo die Fahrbahn mit Spuren liegt, übernimmt sie die Route
+      const parts = [{ id: r.id, coords: slice(r, cut, Math.min(cover[1], end)), covered: true }];
+      if (cover[1] < end) parts.push({ id: r.id, coords: slice(r, cover[1], end) });
+      showRoutes(this.#map, parts, r.id);
+    } else {
+      showRoutes(this.#map, [{ id: r.id, coords: [start.point, ...r.coords.slice(start.index + 1)] }], r.id);
+    }
 
     this.#passVias(along);
     const arrived = along >= r.cum[r.cum.length - 1] - 20;
@@ -516,7 +536,13 @@ export class Navigation {
       dir = this.#travel ?? this.#heading ?? 0;
     }
     this.#heading = this.#heading === null ? dir : approachAngle(this.#heading, dir, dt, 0.25, 180);
-    this.#marker?.setLngLat(pos.point).setRotation(this.#heading);
+    // Mit Gegenverkehr fahren wir rechts der Straßenmitte – in unserer Spur
+    // Nur so weit, wie die Fahrbahn schon zu sehen ist – beim Zoomen gleitend
+    const seen = clamp((this.#map.getZoom() - (ROAD_ZOOM - 0.3)) / 0.6, 0, 1);
+    const shift = pos.onRoute && this.#cover && seen > 0 ? laneShiftAt(this.#extras, pos.along, this.#leftStretches()) * seen : 0;
+    this.#shift += (shift - this.#shift) * (1 - Math.exp(-dt / 0.8));
+    const shown = Math.abs(this.#shift) > 0.05 ? destination(pos.point, this.#heading + 90, this.#shift) : pos.point;
+    this.#marker?.setLngLat(shown).setRotation(this.#heading);
 
     if (!this.#following) { this.#paintCompass(this.#map.getBearing()); return; }
     const c = this.#cam;
@@ -538,9 +564,9 @@ export class Navigation {
   /**
    * Wie nah und wie steil? Feste Stufen je Umgebung statt ständigem
    * Nachregeln – das wirkte unruhig:
-   *   Stadt 17,2 · Land 16,2 · Autobahn 15,3; 30 s vor dem Abbiegen je eine
-   *   Stufe näher; an verzwickten Stellen (viele Spuren, Kreisel, Manöver
-   *   dicht hintereinander) fast aus Fahrersicht.
+   *   Stadt 16,8 · Land 15,9 · Autobahn 15,0, stark geneigt (62°), damit man
+   *   weit voraus sieht; 30 s vor dem Abbiegen näher; an verzwickten Stellen
+   *   (viele Spuren, Kreisel, Manöver dicht hintereinander) noch näher.
    */
   #plan(along = this.#pos?.along ?? 0) {
     const foot = this.#profile === 'foot';
@@ -561,10 +587,10 @@ export class Navigation {
     const near = m && ![4, 5, 6].includes(m.type) && (tt < 30 || dist < (foot ? 40 : 150));
     let zoom, pitch;
     if (foot) [zoom, pitch] = near ? [18.7, 50] : [18.1, 45];
-    else if (ctx === 'fast') [zoom, pitch] = near ? [16.6, 58] : [15.3, 55];
-    else if (ctx === 'rural') [zoom, pitch] = near ? [17.5, 60] : [16.2, 55];
-    else [zoom, pitch] = near ? [18.1, 62] : [17.2, 58];
-    if (near && !foot && this.#complex(m)) [zoom, pitch] = [18.7, 70];
+    else if (ctx === 'fast') [zoom, pitch] = near ? [16.5, 62] : [15.0, 62];
+    else if (ctx === 'rural') [zoom, pitch] = near ? [17.0, 64] : [15.9, 62];
+    else [zoom, pitch] = near ? [17.6, 64] : [16.8, 62];
+    if (near && !foot && this.#complex(m)) [zoom, pitch] = [18.0, 66];
     zoom += { near: 0.7, far: -0.9 }[navSettings.zoom] ?? 0;
     if (!navSettings.threeD) pitch = 0;
     this.#target = { zoom, pitch };
@@ -624,7 +650,8 @@ export class Navigation {
     // Schnell unterwegs: früher ansagen (20 s bzw. 6 s vorher)
     const farM = Math.max(far, this.#speed * 20);
     const nearM = Math.max(near, this.#speed * 6);
-    const p = phrases(m, { extras: this.#extras, next });
+    const p = phrases(m, { extras: this.#extras, next, place: this.#towardPlace(k) });
+    this.#towardPlace(k + 1);                     // schon mal nachschlagen
 
     // Gerade ein Manöver hinter uns gelassen und bis zum nächsten ist es weit
     if (k !== this.#current) {
@@ -659,19 +686,20 @@ export class Navigation {
     toward.textContent = p.toward?.length ? `Richtung ${p.toward.join(', ')}` : '';
 
     // Fahrspuren bis 1,5 km vorher, dazu „links einordnen“
-    const lanes = dist < 1500 ? lanesAt(this.#extras, m.at) : null;
-    // Auf der Karte: die letzten 140 m vor der Kreuzung, mit der richtigen Spur
-    const drawLanes = lanes && lanes.length >= 2 && dist < 350 ? `${k}:${this.#route.id}` : null;
-    if (drawLanes !== this.#lanesFor) {
-      this.#lanesFor = drawLanes;
-      showNavLanes(this.#map, drawLanes ? laneFeatures(this.#route, m.at, lanes, { twoWay: twoWayAt(this.#extras, m.at - 30) }) : []);
-    }
+    // Spuren wie bei Google: die der nächsten Kreuzung voraus, auch wenn dort
+    // nur geradeaus geht – mit allen Pfeilen, die richtigen hervorgehoben
+    const ahead = (this.#extras?.lanes ?? []).find((x) => x.at > along + 5 && x.at < along + 700 && x.at <= m.at + 40 && x.lanes.length >= 2);
+    const lanes = ahead?.lanes ?? (dist < 1500 ? lanesAt(this.#extras, m.at) : null);
     const lanesEl = $('.nav-lanes');
     lanesEl.hidden = !lanes;
     if (lanes) {
-      lanesEl.innerHTML = lanes.map((l) => `<span class="lane${l.use ? ' use' : ''}">${
-        (l.dirs.length ? l.dirs : ['straight']).slice(0, 2).map((d) => `<span class="msr">${LANE_ICON[d] ?? 'straight'}</span>`).join('')}</span>`).join('')
-        + (p.hint ? `<span class="lane-hint">${p.hint === 'links' ? 'Links' : 'Rechts'} einordnen</span>` : '');
+      // Alle Spuren mit ihren Pfeilen; die richtigen weiß hinterlegt, in
+      // ihnen der Pfeil, der gilt, kräftig
+      lanesEl.innerHTML = lanes.map((l) => {
+        const dirs = l.dirs.length ? l.dirs : ['straight'];
+        return `<span class="lane${l.use ? ' use' : ''}">${dirs.slice(0, 3).map((d) =>
+          `<span class="msr${l.use && l.act && d !== l.act ? ' off' : ''}">${LANE_ICON[d] ?? 'straight'}</span>`).join('')}</span>`;
+      }).join('') + (p.hint && dist < 1500 ? `<span class="lane-hint">${p.hint === 'links' ? 'Links' : 'Rechts'} einordnen</span>` : '');
     }
 
     // „Dann …“ nur, wenn das übernächste Manöver dicht folgt
@@ -679,6 +707,34 @@ export class Navigation {
     then.hidden = !next || next.at - m.at > 250;
     if (!then.hidden) then.innerHTML = `Dann <span class="msr">${esc(maneuverIcon(next))}</span>`;
     return dist;
+  }
+
+  /**
+   * Ohne Wegweiser und Nummer: Wohin führt die Route nach dem Manöver? Der
+   * Ort 3 km weiter – im selben Ort der Stadtteil. Einmal je Manöver
+   * nachgeschlagen; bis die Antwort da ist, geht es ohne.
+   */
+  #towardPlace(k) {
+    const r = this.#route;
+    const key = `${r.id}:${k}`;
+    if (this.#towards.has(key)) return this.#towards.get(key);
+    this.#towards.set(key, null);
+    const m = r.maneuvers[k];
+    if (!m || !navigator.onLine || !NEEDS_DIRECTION.has(m.type)) return null;
+    const probe = phrases(m, { extras: this.#extras });
+    if (probe.toward?.length || probe.ref) return null;
+    const ahead = Math.min(m.at + 3000, r.cum[r.cum.length - 1]);
+    if (ahead - m.at < 400) return null;          // Ziel gleich hinter der Kurve
+    Promise.all([reverse(pointAt(r.coords, r.cum, m.at)), reverse(pointAt(r.coords, r.cum, ahead))])
+      .then(([here, there]) => {
+        const a = here?.properties ?? {}, b = there?.properties ?? {};
+        const town = (p) => p.city ?? p.town ?? p.village ?? null;
+        const name = town(b) && town(b) !== town(a) ? town(b)
+          : b.district && b.district !== a.district ? b.district : null;
+        this.#towards.set(key, name);
+      })
+      .catch(() => {});
+    return null;
   }
 
   #remaining(along) {
@@ -760,6 +816,47 @@ export class Navigation {
     return (this.#extras?.signals ?? []).map((m) => pointAt(r.coords, r.cum, m));
   }
 
+  /**
+   * Die Fahrbahn vor uns mit allen Spuren (nur Auto, braucht die Zusatzdaten).
+   * Neu gezeichnet alle 150 m, nicht bei jeder Meldung.
+   */
+  #paintRoad(along) {
+    const x = this.#extras;
+    if (this.#profile !== 'car' || !x?.roads?.length) { this.#clearRoad(); return; }
+    const step = Math.floor(along / 150);
+    const key = `${this.#route.id}:${step}`;
+    if (key === this.#roadFor) return;
+    this.#roadFor = key;
+    const from = Math.max(0, step * 150 - 100);
+    const to = step * 150 + 1000;
+    // Nur übernehmen, wo die Daten lückenlos sind – sonst fehlte die Route
+    const known = x.roads.reduce((sum, [a, b]) => sum + Math.max(0, Math.min(b, to) - Math.max(a, from)), 0);
+    const end = Math.min(to, this.#route.cum[this.#route.cum.length - 1]);
+    if (known < (end - from) * 0.97) { this.#clearRoad(); return; }
+    this.#cover = [from, to];
+    showNavRoad(this.#map, roadFeatures(this.#route, x, from, to, { left: this.#leftStretches() }));
+  }
+
+  /** Wo links fahren: 500 m vor dem Linksabbiegen oder wenn die Spuren es sagen. */
+  #leftStretches() {
+    const r = this.#route;
+    if (this.#lefts?.route === r && this.#lefts.extras === this.#extras) return this.#lefts.list;
+    const list = [];
+    for (const m of r.maneuvers ?? []) {
+      const hint = laneHint(lanesAt(this.#extras, m.at));
+      if (hint === 'links' || (!hint && [14, 15, 16, 19, 21, 24, 38].includes(m.type))) list.push([m.at - 500, m.at]);
+    }
+    this.#lefts = { route: r, extras: this.#extras, list };
+    return list;
+  }
+
+  #clearRoad() {
+    if (!this.#roadFor && !this.#cover) return;
+    this.#roadFor = null;
+    this.#cover = null;
+    showNavRoad(this.#map, []);
+  }
+
   #paintExtras() {
     if (this.#route) this.#paintArrows(Math.max(this.#current, 1));
   }
@@ -805,7 +902,7 @@ export class Navigation {
     // Nach dem Überblick wieder mit Rand oben folgen
     this.#map.once('moveend', () => {
       const h = this.#map.getContainer().clientHeight;
-      if (this.#route) this.#map.setPadding({ top: h * 0.42, bottom: 90, left: 0, right: 0 });
+      if (this.#route) this.#map.setPadding({ top: h * 0.52, bottom: 80, left: 0, right: 0 });
     });
   }
 
@@ -866,7 +963,10 @@ export class Navigation {
    * echtes GPS (± 8 m, ab und zu ein Ausreißer).
    */
   #simulate() {
-    const mode = new URLSearchParams(location.search).get('sim');
+    const q = new URLSearchParams(location.search);
+    const mode = q.get('sim');
+    // ?tempo=4 – Zeitraffer zum Testen
+    const tempo = Math.min(10, Math.max(1, Number(q.get('tempo')) || 1));
     const base = { foot: 1.5, bike: 5 }[this.#profile];
     let astray = mode === 'verfahren';
     let route = null, m = 0, straight = null, n = 0;
@@ -900,6 +1000,6 @@ export class Navigation {
       const ahead = pointAt(r.coords, r.cum, m + 5);
       this.#update({ point: noise(p), heading: mode === 'rauschen' ? null : bearing(p, ahead), speed: mode === 'rauschen' ? null : speed, accuracy: mode === 'rauschen' ? 10 : 5 });
       if (m > r.cum[r.cum.length - 1]) clearInterval(this.#sim);
-    }, 1000);
+    }, 1000 / tempo);
   }
 }
