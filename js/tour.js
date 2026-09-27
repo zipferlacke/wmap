@@ -10,13 +10,15 @@
  */
 import { PROFILES } from './config.js';
 import { createMap, showRoutes, showHover } from './map.js';
-import { segment, joinSegments, wayInfo } from './routing.js';
+import { segment, joinSegments, wayInfo, heightsAlong, hikingTime } from './routing.js';
 import { ElevationProfile } from './elevation.js';
-import { tours, shapeOf, encodeShare, decodeShare, toGpx, download, local } from './store.js';
+import { tours, shapeOf, coordsOf, encodeShare, decodeShare, toGpx, download, local } from './store.js';
 import { Sheet } from './sheet.js';
 import { mountAppNav } from './appnav.js';
+import { ask } from './ui.js';
 import * as geocode from './geocode.js';
-import { nearestOnLine, pointAt, simplifyTo, bbox, fmtDistance, fmtDuration, esc } from './geo.js';
+import { nearestOnLine, pointAt, simplifyTo, bbox, cumulative, fmtDistance, fmtDuration, esc } from './geo.js';
+import './folder.js';   // gespeicherte Touren landen auch im verbundenen Ordner
 
 const $ = (s, root = document) => root.querySelector(s);
 
@@ -82,7 +84,7 @@ new Sheet(sheet, { onResize: () => fitRoute(), topLimit: () => $('.tour-head').g
 
 function viewPadding() {
   const h = map.getContainer().clientHeight;
-  const top = $('.tour-profiles').getBoundingClientRect().bottom + 16;
+  const top = $('.tour-head').getBoundingClientRect().bottom + 16;
   let bottom = sheet.getBoundingClientRect().height + 24;
   if (top + bottom > h - 100) bottom = Math.max(24, h - 100 - top);
   return { top, bottom, left: 24, right: 64 };
@@ -108,6 +110,13 @@ paintTitle();
 
 const nav = mountAppNav();
 $('.tour-head').append(nav.el);
+nav.addItem('share', 'Tour teilen', () => shareTour());
+nav.addItem('download', 'Als GPX speichern', () => exportGpx());
+nav.addItem('public', 'Veröffentlichen', () => publishTour());
+nav.addItem('delete', 'Tour löschen', () => deleteTour());
+
+/* Anleitung aufgeklappt, solange es noch keine Strecke gibt */
+$('.tour-help').open = tour.points.length < 2;
 
 /* Profile als Chips */
 function paintProfiles() {
@@ -134,9 +143,13 @@ $('.tour-profiles').addEventListener('click', (e) => {
 const undoStack = [];
 
 function change(fn) {
-  undoStack.push(tour.points.map((p) => p.slice()));
+  const prev = tour.points.map((p) => p.slice());
+  prev.fixed = !!tour.fixed;
+  undoStack.push(prev);
   if (undoStack.length > 50) undoStack.shift();
   fn();
+  // Wer Punkte ändert, plant selbst – der feste Verlauf wird neu gerechnet
+  if (tour.fixed) { tour.fixed = false; toast('Eigene Änderung – die Strecke wird jetzt neu berechnet'); }
   recompute();
 }
 
@@ -144,6 +157,7 @@ $('#undo').addEventListener('click', () => {
   const prev = undoStack.pop();
   if (!prev) return;
   tour.points = prev;
+  tour.fixed = prev.fixed && !!tour.shape;
   recompute();
 });
 $('#reverse').addEventListener('click', () => change(() => tour.points.reverse()));
@@ -157,6 +171,7 @@ $('#clear').addEventListener('click', () => {
 });
 
 let markers = [];
+let helpClosed = false;
 let popup = null;
 
 function markerEl(i, n) {
@@ -183,6 +198,7 @@ function renderMarkers() {
     return m;
   });
   $('#undo').disabled = !undoStack.length;
+  if (n >= 2 && !helpClosed) { $('.tour-help').open = false; helpClosed = true; }
   const hint = $('.tour-hint');
   hint.hidden = readOnly || n >= 2;
   hint.textContent = n === 0 ? 'Tippe in die Karte, um den Start zu setzen' : 'Und jetzt das nächste Ziel antippen';
@@ -217,6 +233,39 @@ map.on('click', (e) => {
     return;
   }
   change(() => tour.points.push(p));
+});
+
+/* Ort suchen und als nächsten Punkt anhängen */
+const searchInput = $('#tour-search');
+const results = $('.tour-search-results');
+let searchCtl = null;
+const runSearch = debounce(async () => {
+  const q = searchInput.value.trim();
+  searchCtl?.abort();
+  if (q.length < 3) { results.hidden = true; return; }
+  searchCtl = new AbortController();
+  try {
+    const found = await geocode.search(q, { center: map.getCenter().toArray(), zoom: map.getZoom(), limit: 5, signal: searchCtl.signal });
+    results.innerHTML = found.map((f, i) => {
+      const d = geocode.describe(f);
+      return `<li><button type="button" class="button" data-i="${i}"><span class="msr">add_location_alt</span>
+        <span><strong>${esc(d.title)}</strong>${d.subtitle ? `<small>${esc(d.subtitle)}</small>` : ''}</span></button></li>`;
+    }).join('') || '<li class="muted">Nichts gefunden</li>';
+    results.hidden = false;
+    results._found = found;
+  } catch { /* abgebrochen */ }
+}, 300);
+searchInput.addEventListener('input', runSearch);
+$('.tour-search').addEventListener('submit', (e) => { e.preventDefault(); results.querySelector('button')?.click(); });
+results.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-i]');
+  if (!b) return;
+  const f = results._found[+b.dataset.i];
+  change(() => tour.points.push(f.geometry.coordinates.slice(0, 2)));
+  searchInput.value = '';
+  results.hidden = true;
+  toast(`„${geocode.describe(f).title}“ als ${tour.points.length === 1 ? 'Start' : `Punkt ${tour.points.length}`} gesetzt`);
+  if (tour.points.length === 1) map.flyTo({ center: tour.points[0], zoom: Math.max(map.getZoom(), 12) });
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -262,6 +311,7 @@ async function recompute({ fit = false } = {}) {
     scheduleSave();
     return;
   }
+  if (tour.fixed && tour.shape) { await fixedRoute(my); return; }
   status('Route wird berechnet …');
   try {
     const pairs = tour.points.slice(1).map((b, i) => [tour.points[i], b]);
@@ -281,6 +331,34 @@ async function recompute({ fit = false } = {}) {
   } catch (err) {
     if (my === seq) status(err.message, true);
   }
+}
+
+/**
+ * Fester Verlauf (bekannter Weg, GPX): die Linie so, wie sie ist – nur
+ * Höhen und Zeit dazu. Neu gerechnet wird erst, wenn man Punkte ändert.
+ */
+async function fixedRoute(my) {
+  const coords = coordsOf(tour.shape);
+  const cum = cumulative(coords);
+  const length = cum[cum.length - 1];
+  route = { id: 0, coords, cum, length, bounds: bbox(coords), elevation: [], ascent: 0, descent: 0, minEle: null, maxEle: null, maneuvers: [] };
+  // Wo die Punkte auf der Linie liegen – für „auf die Linie tippen = Punkt einfügen“
+  route.stops = tour.points.map((p) => nearestOnLine(coords, cum, p).along);
+  const pace = { hike: null, walk: null, road: 7, tour: 4.5, gravel: 5, mtb: 4, drive: 16 }[tour.profile];
+  route.time = pace ? length / pace : hikingTime(length, 0, 0);
+  showRoutes(map, [route], 0);
+  paintStats();
+  status('Originalverlauf – ändern, indem du Punkte verschiebst oder hinzufügst', false);
+  scheduleSave();
+  try {
+    const h = await heightsAlong(coords);
+    if (my !== seq) return;
+    Object.assign(route, h);
+    if (!pace) route.time = hikingTime(length, h.ascent, h.descent);
+    elevation.show({ ...route, length });
+    paintStats();
+  } catch { /* ohne Höhen */ }
+  loadWays(my);
 }
 
 function paintStats() {
@@ -345,19 +423,33 @@ function snapshotTour(preview) {
   };
 }
 
-function markSaved(text = 'Gespeichert') {
-  const el = $('.tour-saved');
-  el.textContent = text;
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), 2000);
+/**
+ * Zustand des Speichern-Knopfs – man sieht immer, ob alles gesichert ist:
+ *   new     noch keine Strecke      „Speichern“ (grau)
+ *   dirty   geändert                „Speichert …“ (gleich automatisch)
+ *   saved   gesichert               „✓ Gespeichert“ (grün)
+ */
+function saveState(state) {
+  const b = $('#save');
+  if (readOnly) return;
+  b.dataset.state = state;
+  b.querySelector('.msr').textContent = state === 'saved' ? 'check_circle' : state === 'dirty' ? 'sync' : 'save';
+  $('.save-label').textContent = state === 'saved' ? 'Gespeichert' : state === 'dirty' ? 'Speichert …' : 'Speichern';
+  b.title = state === 'saved' ? 'Alles gespeichert – findest du unter „Meine Touren“' : 'Tour speichern';
 }
+saveState(tour.id ? 'saved' : 'new');
 
 /** Automatisch speichern, sobald es eine Strecke gibt – nichts geht verloren. */
-const scheduleSave = debounce(async () => {
+const autoSave = debounce(async () => {
   if (readOnly || tour.points.length < 2) return;
   await save();
 }, 900);
+function scheduleSave() {
+  if (readOnly) return;
+  if (tour.points.length < 2) { saveState(tour.id ? 'dirty' : 'new'); if (!tour.id) return; }
+  else saveState('dirty');
+  autoSave();
+}
 
 async function save(preview) {
   if (!tour.name) {
@@ -373,7 +465,7 @@ async function save(preview) {
     tour.created = saved.created;
   } catch (err) { toast(err.message); return; }
   if (isNew) history.replaceState(null, '', `./tour.html?id=${encodeURIComponent(tour.id)}`);
-  markSaved();
+  saveState('saved');
 }
 
 /** Vorschaubild: Route einpassen, Karte zeichnen lassen, Bild verkleinern. */
@@ -402,8 +494,8 @@ $('#save').addEventListener('click', async () => {
     readOnly = false;
     document.body.classList.remove('readonly');
     nameInput.readOnly = descInput.readOnly = false;
-    $('.save-label').textContent = 'Speichern';
     tour.id = null;
+    saveState('new');
     history.replaceState(null, '', './tour.html');
     renderMarkers();
   }
@@ -424,7 +516,7 @@ descInput.addEventListener('input', () => {
 
 /* Teilen: Link trägt die Tour selbst */
 const shareDialog = $('#share-dialog');
-$('#share').addEventListener('click', async () => {
+async function shareTour() {
   if (tour.points.length < 2) { toast('Erst eine Strecke planen'); return; }
   const code = await encodeShare({ ...tour, name: tour.name || nameInput.value || 'Tour' });
   const url = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}tour.html#t=${code}`;
@@ -434,7 +526,7 @@ $('#share').addEventListener('click', async () => {
   $('#share-link').value = url;
   shareDialog.showModal();
   $('#share-link').select();
-});
+}
 shareDialog.addEventListener('click', async (e) => {
   const b = e.target.closest('button[value]');
   if (!b) return;
@@ -449,7 +541,7 @@ shareDialog.addEventListener('click', async (e) => {
 });
 
 /* GPX mit Höhen */
-$('#export').addEventListener('click', () => {
+function exportGpx() {
   if (!route) { toast('Erst eine Strecke planen'); return; }
   const total = route.cum[route.cum.length - 1] || 1;
   const ele = route.elevation;
@@ -464,14 +556,37 @@ $('#export').addEventListener('click', () => {
   const name = tour.name || 'tour';
   const file = `${name.toLowerCase().replace(/[^a-z0-9äöüß]+/gi, '-').replace(/^-|-$/g, '') || 'tour'}.gpx`;
   download(file, toGpx({ ...tour, name }, route.coords, eleAt));
-});
+}
 
-$('#delete').addEventListener('click', () => {
-  if (!tour.id) { location.href = './tours.html'; return; }
+/** Tour für alle auf WMap teilen (Entdecken → Von anderen) – sofort sichtbar */
+async function publishTour() {
+  if (!route) { toast('Erst eine Strecke planen'); return; }
+  const { ensureLogin } = await import('./konto.js');
+  const { api } = await import('./api.js');
+  const v = await ask({
+    icon: 'public', title: 'Tour veröffentlichen',
+    text: 'Andere sehen sie sofort unter „Entdecken → Von anderen“ und können sie bewerten. Dein Name steht dabei.',
+    buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Veröffentlichen', primary: true }],
+  });
+  if (v !== 'yes' || !await ensureLogin('Zum Veröffentlichen')) return;
+  if (!tour.name) { tour.name = await defaultName(); nameInput.value = tour.name; }
+  try {
+    const r = await api(['tours', 'save'], {
+      id: tour.serverId ?? undefined, name: tour.name, description: tour.description ?? '', profile: tour.profile,
+      shape: shapeOf(simplifyTo(route.coords, 1500)), length: route.length, ascent: route.ascent ?? 0, bbox: route.bounds, publish: true,
+    });
+    tour.serverId = r.id;
+    scheduleSave();
+    toast('Veröffentlicht – unter „Entdecken“ zu sehen');
+  } catch (err) { toast(err.message); }
+}
+
+function deleteTour() {
+  if (!tour.id) { location.href = './wege.html?tab=geplant'; return; }
   if (!confirm(`„${tour.name}“ wirklich löschen?`)) return;
   tours.remove(tour.id);
-  location.href = './tours.html';
-});
+  location.href = './wege.html?tab=geplant';
+}
 
 /* Beim Verlassen das Vorschaubild nachziehen, falls es noch keins gibt */
 document.addEventListener('visibilitychange', async () => {

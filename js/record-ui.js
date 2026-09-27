@@ -7,6 +7,7 @@
  * nicht auf. Darum bleibt der Bildschirm an (Wake Lock).
  */
 import { recorder, defaultName } from './tracks.js';
+import { geo } from './native.js';
 import { PROFILES } from './config.js';
 import { distance, fmtDistance, esc } from './geo.js';
 
@@ -106,7 +107,7 @@ class RecordUi {
     try {
       const t = await recorder.stop({ name });
       if (!t) { this.#toast('Zu kurz zum Speichern'); return; }
-      this.#toast(`„${t.name}“ gespeichert`, { action: { label: 'Ansehen', run: () => { location.href = `./track.html?id=${encodeURIComponent(t.id)}`; } } });
+      this.#toast(`„${t.name}“ gespeichert`, { action: { label: 'Ansehen', run: () => { location.href = `./wege.html?id=${encodeURIComponent(t.id)}`; } } });
     } catch (err) {
       this.#toast(`Speichern ging nicht: ${err.message}`);
     }
@@ -165,8 +166,8 @@ class RecordUi {
   }
 
   #startGps() {
-    if (this.#watch !== null || !navigator.geolocation) return;
-    this.#watch = navigator.geolocation.watchPosition(
+    if (this.#watch !== null || !geo.available()) return;
+    this.#watch = geo.watch(
       (p) => recorder.add({ point: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy }),
       (err) => { if (err.code === 1) this.#toast('Standort ist gesperrt – ohne ihn keine Aufzeichnung'); },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 },
@@ -174,7 +175,7 @@ class RecordUi {
   }
 
   #stopGps() {
-    if (this.#watch !== null) navigator.geolocation.clearWatch(this.#watch);
+    if (this.#watch !== null) geo.clear(this.#watch);
     this.#watch = null;
     this.#lock?.release?.().catch(() => {});
     this.#lock = null;

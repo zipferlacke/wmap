@@ -6,17 +6,17 @@
  *
  * Weg: { id, kind: 'nav'|'rec'|'gpx', profile, name, start, end (ms),
  *        length (m), moving (s), top (m/s), shape (Polyline5),
- *        times [s ab Start je Punkt], bbox, from, to }
+ *        times [s ab Start je Punkt], hr [Puls je Punkt] (aus GPX, falls da),
+ *        bbox, from, to }
  *
  * Aufgezeichnet wird während der Navigation (abschaltbar) und über
  * „Aufzeichnen“ – beides mit dem Recorder unten, der nach einem Absturz
  * oder Neuladen weitermacht.
  */
-import { local, tours } from './store.js';
+import { local, tours, changed } from './store.js';
+import { store } from './db.js';
 import { encodePolyline, decodePolyline, simplify, distance, bbox } from './geo.js';
 
-const DB = 'wmap';
-const STORE = 'tracks';
 const SETTING = 'wmap.history';
 
 /** Fahrten und Aufzeichnungen merken? Standard: ja. */
@@ -25,45 +25,23 @@ export const historySetting = {
   set: (on) => local.set(SETTING, !!on),
 };
 
-/* ── IndexedDB ────────────────────────────────────────────────────────────── */
+/* ── Speicher ─────────────────────────────────────────────────────────────── */
 
-let dbp = null;
-function db() {
-  dbp ??= new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1);
-    req.onupgradeneeded = () => {
-      const s = req.result.createObjectStore(STORE, { keyPath: 'id' });
-      s.createIndex('start', 'start');
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-  return dbp;
-}
-
-async function tx(mode, fn) {
-  const d = await db();
-  return new Promise((resolve, reject) => {
-    const t = d.transaction(STORE, mode);
-    const out = fn(t.objectStore(STORE));
-    t.oncomplete = () => resolve(out?.result ?? out);
-    t.onerror = () => reject(t.error);
-    t.onabort = () => reject(t.error ?? new Error('Speichern abgebrochen'));
-  });
-}
+const db = store('tracks');
 
 export const tracks = {
   /** Alle Wege, neueste zuerst. */
   async all() {
-    const list = await tx('readonly', (s) => s.getAll());
-    return list.sort((a, b) => b.start - a.start);
+    return (await db.all()).sort((a, b) => b.start - a.start);
   },
-  get: (id) => tx('readonly', (s) => s.get(id)),
-  put: (track) => tx('readwrite', (s) => s.put(track)),
-  remove: (id) => tx('readwrite', (s) => s.delete(id)),
+  get: (id) => db.get(id),
+  async put(track) { await db.put(track); changed({ kind: 'track', id: track.id }); },
+  /** Speichern ohne Meldung – für den Abgleich */
+  putQuiet: (track) => db.put(track),
+  async remove(id) { await db.remove(id); changed({ kind: 'track', id, removed: true }); },
   async rename(id, name) {
     const t = await this.get(id);
-    if (t) await this.put({ ...t, name });
+    if (t) await this.put({ ...t, name, updated: Date.now() });
   },
 };
 
@@ -101,6 +79,8 @@ export function buildTrack(points, { kind, profile, name, from = '', to = '' }) 
     length: Math.round(length), moving: Math.round(moving), top: Math.round(top * 10) / 10,
     shape: encodePolyline(kept.map(([x, y]) => [x, y]), 5),
     times: kept.map((p) => Math.round((p[2] - t0) / 1000)),
+    // Puls (GPX-Erweiterung) – nur, wenn es welchen gibt
+    ...(kept.some((p) => p[3] > 0) ? { hr: kept.map((p) => (p[3] > 0 ? Math.round(p[3]) : null)) } : {}),
     bbox: bbox(kept).map((v) => +v.toFixed(5)),
   };
 }
@@ -196,8 +176,9 @@ export function defaultName(profile, when = Date.now()) {
 
 /* ── GPX ──────────────────────────────────────────────────────────────────── */
 
-/** GPX-Datei → Wege (Tracks mit Zeit; Routen ohne Zeit gehen auch). */
-export function parseGpx(text, profile = 'foot') {
+/** GPX-Datei → Wege (Tracks mit Zeit; Routen ohne Zeit gehen auch). Ohne `profile` gilt der
+ *  Typ aus der Datei (<type>) – oder er wird am Tempo erkannt. */
+export function parseGpx(text, profile = null) {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
   if (doc.querySelector('parsererror')) throw new Error('Keine gültige GPX-Datei');
   const out = [];
@@ -209,11 +190,14 @@ export function parseGpx(text, profile = 'foot') {
     const points = pts.map((p) => {
       const t = Date.parse(p.querySelector('time')?.textContent ?? '');
       fake += 1000;
-      return [+p.getAttribute('lon'), +p.getAttribute('lat'), Number.isFinite(t) ? t : fake];
+      // Puls aus Garmin-/Strava-Erweiterungen (gpxtpx:hr, ns3:hr …)
+      const hr = [...p.getElementsByTagName('*')].find((e) => e.localName === 'hr')?.textContent;
+      return [+p.getAttribute('lon'), +p.getAttribute('lat'), Number.isFinite(t) ? t : fake, hr ? Number(hr) : 0];
     }).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
     const name = trk.querySelector(':scope > name')?.textContent?.trim() || fileName || 'Importierter Weg';
-    const t = buildTrack(points, { kind: 'gpx', profile, name });
-    if (t) out.push(t);
+    const type = trk.querySelector(':scope > type')?.textContent?.trim();
+    const t = buildTrack(points, { kind: 'gpx', profile: profile ?? (PROFILE_GROUP[type] ? type : 'foot'), name });
+    if (t) out.push(profile || PROFILE_GROUP[type] ? t : guessProfile(t));
   }
   return out;
 }
@@ -221,12 +205,14 @@ export function parseGpx(text, profile = 'foot') {
 export function trackGpx(t) {
   const coords = trackCoords(t);
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const pts = coords.map(([lon, lat], i) => `      <trkpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}"><time>${new Date(t.start + (t.times?.[i] ?? 0) * 1000).toISOString()}</time></trkpt>`).join('\n');
+  const hr = (i) => (t.hr?.[i] > 0 ? `<extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>${t.hr[i]}</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>` : '');
+  const pts = coords.map(([lon, lat], i) => `      <trkpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}"><time>${new Date(t.start + (t.times?.[i] ?? 0) * 1000).toISOString()}</time>${hr(i)}</trkpt>`).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="WMap" xmlns="http://www.topografix.com/GPX/1/1">
-  <metadata><name>${esc(t.name)}</name><time>${new Date(t.start).toISOString()}</time></metadata>
+<gpx version="1.1" creator="WMap" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
+  <metadata><name>${esc(t.name)}</name><time>${new Date(t.start).toISOString()}</time><keywords>wmap:${esc(t.id)}</keywords></metadata>
   <trk>
     <name>${esc(t.name)}</name>
+    <type>${esc(t.profile)}</type>
     <trkseg>
 ${pts}
     </trkseg>
@@ -252,6 +238,15 @@ export async function restore(text) {
 }
 
 /* ── Auswertung ───────────────────────────────────────────────────────────── */
+
+/** Importierte Wege ohne Angabe: am Tempo erkennen, womit man unterwegs war. */
+export function guessProfile(t) {
+  const v = t.moving ? t.length / t.moving : 0;
+  return { ...t, profile: v > 9 ? 'car' : v > 3.2 ? 'bike' : 'foot' };
+}
+
+/** Derselbe Weg schon da? (gleicher Start, fast gleiche Länge) – gegen doppelte Importe */
+export const sameTrack = (a, b) => Math.abs(a.start - b.start) < 5000 && Math.abs(a.length - b.length) <= Math.max(50, a.length * 0.02);
 
 export const PROFILE_GROUP = { car: 'car', drive: 'car', bike: 'bike', road: 'bike', tour: 'bike', gravel: 'bike', mtb: 'bike', foot: 'foot', walk: 'foot', hike: 'foot' };
 

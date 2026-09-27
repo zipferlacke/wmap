@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Übersicht – WMap</title>
+    <link rel="manifest" href="./appdata/manifest.json">
+    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#1a73e8">
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/tours.css">
+    <link rel="stylesheet" href="./css/dashboard.css">
+</head>
+
+<!--
+  Übersicht (Dashboard): der zweite Hauptbildschirm neben der Karte. Kacheln
+  zu allen Ansichten mit Zahlen, darunter was auf dem Gerät gespeichert ist
+  (Offline-Karten, letzte Routen, Verlauf) und der Dank an die Anbieter.
+-->
+<body class="dash-page">
+    <header class="dash-head">
+        <h1>Übersicht</h1>
+    </header>
+
+    <main class="dash">
+        <section class="dash-tiles" aria-label="Ansichten"></section>
+
+        <section class="dash-store">
+            <h2><span class="msr">storage</span> Gespeichert auf diesem Gerät</h2>
+            <div class="dash-rows"></div>
+        </section>
+
+        <section class="dash-thanks">
+            <span class="msr dash-thanks-icon">volunteer_activism</span>
+            <div>
+                <h2>Danke!</h2>
+                <p>WMap gibt es nur, weil viele Menschen ihre Daten und Dienste offen teilen:</p>
+                <ul class="dash-credits"></ul>
+            </div>
+        </section>
+    </main>
+
+    <script type="module" src="./js/dashboard.js"></script>
+</body>
+
+</html>

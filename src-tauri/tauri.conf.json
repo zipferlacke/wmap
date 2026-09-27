@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "WMap",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "identifier": "de.wuefl.wmap",
   "build": {
-    "frontendDist": "../dist",
+    "frontendDist": "web",
     "devUrl": "http://localhost:8080/web/wuefl_products/wmap/",
-    "beforeBuildCommand": "sh tools/tauri-dist.sh"
+    "beforeBuildCommand": "sh src-tauri/web-kopieren.sh"
   },
   "app": {
     "windows": [
@@ -23,7 +23,8 @@
     ],
     "security": {
       "csp": null
-    }
+    },
+    "withGlobalTauri": true
   },
   "bundle": {
     "active": true,

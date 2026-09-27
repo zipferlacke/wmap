@@ -62,73 +62,73 @@
     ],
     "screenshots": [
         {
-            "src": "./screenshot-narrow-1.png",
+            "src": "./images/screenshot-narrow-1.png",
             "type": "image/png",
             "sizes": "412x915",
             "form_factor": "narrow"
         },
         {
-            "src": "./screenshot-narrow-2.png",
+            "src": "./images/screenshot-narrow-2.png",
             "type": "image/png",
             "sizes": "412x915",
             "form_factor": "narrow"
         },
         {
-            "src": "./screenshot-narrow-3.png",
+            "src": "./images/screenshot-narrow-3.png",
             "type": "image/png",
             "sizes": "412x915",
             "form_factor": "narrow"
         },
         {
-            "src": "./screenshot-narrow-4.png",
+            "src": "./images/screenshot-narrow-4.png",
             "type": "image/png",
             "sizes": "412x915",
             "form_factor": "narrow"
         },
         {
-            "src": "./screenshot-narrow-5.png",
+            "src": "./images/screenshot-narrow-5.png",
             "type": "image/png",
             "sizes": "412x915",
             "form_factor": "narrow"
         },
         {
-            "src": "./screenshot-narrow-6.png",
+            "src": "./images/screenshot-narrow-6.png",
             "type": "image/png",
             "sizes": "412x915",
             "form_factor": "narrow"
         },
         {
-            "src": "./screenshot-wide-1.png",
+            "src": "./images/screenshot-wide-1.png",
             "type": "image/png",
             "sizes": "1366x1024",
             "form_factor": "wide"
         },
         {
-            "src": "./screenshot-wide-2.png",
+            "src": "./images/screenshot-wide-2.png",
             "type": "image/png",
             "sizes": "1366x1024",
             "form_factor": "wide"
         },
         {
-            "src": "./screenshot-wide-3.png",
+            "src": "./images/screenshot-wide-3.png",
             "type": "image/png",
             "sizes": "1366x1024",
             "form_factor": "wide"
         },
         {
-            "src": "./screenshot-wide-4.png",
+            "src": "./images/screenshot-wide-4.png",
             "type": "image/png",
             "sizes": "1366x1024",
             "form_factor": "wide"
         },
         {
-            "src": "./screenshot-wide-5.png",
+            "src": "./images/screenshot-wide-5.png",
             "type": "image/png",
             "sizes": "1366x1024",
             "form_factor": "wide"
         },
         {
-            "src": "./screenshot-wide-6.png",
+            "src": "./images/screenshot-wide-6.png",
             "type": "image/png",
             "sizes": "1366x1024",
             "form_factor": "wide"

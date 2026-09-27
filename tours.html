@@ -1,35 +1,10 @@
 <!DOCTYPE html>
 <html lang="de">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Meine Touren – WMap</title>
-    <link rel="manifest" href="./appdata/manifest.json">
-    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
-    <meta name="theme-color" content="#1a73e8">
-    <link rel="stylesheet" href="./css/index.css">
-    <link rel="stylesheet" href="./css/tours.css">
-    <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+    <!-- Geplante Touren liegen jetzt mit den aufgezeichneten Wegen auf einer Seite -->
+    <script>location.replace('./wege.html?tab=geplant');</script>
 </head>
-
-<body class="tours-page">
-    <header class="tours-head">
-        <h1>Meine Touren</h1>
-        <a class="button" href="./index.html?action=record" title="Unterwegs aufzeichnen"><span class="msr rec-icon">radio_button_checked</span> <span class="lbl">Aufzeichnen</span></a>
-        <a class="button primary" href="./tour.html" title="Neue Tour planen"><span class="msr">add_road</span> <span class="lbl">Planen</span></a>
-    </header>
-    <nav class="tours-tabs" role="tablist">
-        <a role="tab" href="#geplant" data-tab="geplant" aria-selected="true"><span class="msr">route</span> Geplant</a>
-        <a role="tab" href="#wege" data-tab="wege" aria-selected="false"><span class="msr">timeline</span> Meine Wege</a>
-    </nav>
-
-    <main id="touren" class="tour-list" data-tab="geplant"></main>
-
-    <!-- Aufgezeichnet: Jahre, Summen, Karte mit allen Wegen, Liste nach Monaten -->
-    <main id="wege" class="wege" data-tab="wege" hidden></main>
-
-    <script type="module" src="./js/tours.js"></script>
-</body>
-
+<body><a href="./wege.html?tab=geplant">Zu meinen Touren</a></body>
 </html>

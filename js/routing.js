@@ -237,7 +237,37 @@ const segmentCache = new Map();
  * Route zwischen zwei Punkten, zwischengespeichert. Beim Verschieben eines
  * Punkts werden so nur die zwei angrenzenden Abschnitte neu gerechnet.
  */
+/*
+ * Valhalla (FOSSGIS) rechnet höchstens so weit Luftlinie am Stück – zu Fuß
+ * 100 km, mit dem Rad 150 km. Längere Abschnitte teilt segment() selbst.
+ */
+const MAX_STRAIGHT = { pedestrian: 90000, bicycle: 135000 };
+
+/**
+ * Ein Abschnitt a → b. Zu lang für den Server? Dann in gleich lange Stücke
+ * teilen und wieder zusammensetzen – so gehen auch Fernwanderwege und
+ * mehrtägige Radtouren mit wenigen gesetzten Punkten.
+ */
 export async function segment(a, b, profile, { signal } = {}) {
+  const max = MAX_STRAIGHT[PROFILES[profile]?.costing];
+  const d = straight(a, b);
+  if (max && d > max) {
+    const n = Math.ceil(d / max);
+    const pts = Array.from({ length: n + 1 }, (_, i) => [a[0] + ((b[0] - a[0]) * i) / n, a[1] + ((b[1] - a[1]) * i) / n]);
+    const parts = await Promise.all(pts.slice(1).map((p, i) => piece(pts[i], p, profile, signal)));
+    return withCum(joinSegments(parts, profile));
+  }
+  return piece(a, b, profile, signal);
+}
+
+const withCum = (r) => ({ ...r, cum: cumulative(r.coords) });
+
+function straight([x1, y1], [x2, y2]) {
+  const k = Math.cos(((y1 + y2) / 2) * Math.PI / 180);
+  return Math.hypot((x2 - x1) * k, y2 - y1) * 111320;
+}
+
+async function piece(a, b, profile, signal) {
   const key = `${profile}|${a.map((v) => v.toFixed(6))}|${b.map((v) => v.toFixed(6))}`;
   if (!segmentCache.has(key)) {
     const job = request(body([a, b], profile), signal).then(([trip]) => parseTrip(trip));

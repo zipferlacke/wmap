@@ -11,6 +11,7 @@
  * simulierter Standort die Route ab.
  */
 import { PROFILES } from './config.js';
+import { geo } from './native.js';
 import { nearestOnLine, pointAt, bearing, destination, distance, fmtDistance, fmtDuration, fmtClock, speakDistance, esc } from './geo.js';
 import { reroute as fetchReroute, maneuverIcon } from './routing.js';
 import { showRoutes, showHover, showNavExtras, showNavRoad, ROAD_ZOOM } from './map.js';
@@ -207,7 +208,13 @@ export class Navigation {
     const on = (sel, fn) => el.querySelector(sel)?.addEventListener('click', fn);
     on('.nav-stop', () => this.stop());
     on('.nav-mute', () => { speech.setMuted(!speech.muted); this.#paintButtons(); });
-    on('.nav-recenter', () => this.resumeFollow());
+    // Ein Knopf für beides: folgt die Karte schon, wechselt er zwischen
+    // geneigt und flach; sonst holt er die Karte zurück zu dir
+    on('.nav-recenter', () => {
+      if (this.#following) { navSettings.threeD = !navSettings.threeD; this.#plan(); }
+      this.resumeFollow();
+      this.#paintButtons();
+    });
     on('.nav-overview', () => this.#overview());
     on('.nav-search', () => this.#onSearch?.());
     on('.nav-report', () => this.#onReport?.(this.#pos?.point ?? this.#lastFix?.point));
@@ -218,7 +225,6 @@ export class Navigation {
       const secs = r.time * (left / (r.cum[r.cum.length - 1] || 1));
       this.#onShare?.({ point: this.#pos?.point ?? this.#lastFix?.point, to: r.coords.at(-1), eta: Date.now() + secs * 1000, left, profile: this.#profile });
     });
-    on('.nav-3d', () => { navSettings.threeD = !navSettings.threeD; this.#paintButtons(); this.#plan(); this.resumeFollow(); });
     on('.nav-compass', () => { navSettings.north = !navSettings.north; this.#paintButtons(); this.resumeFollow(); });
     // Wer die Karte selbst verschiebt, will sich umsehen – nicht zurückgerissen werden
     for (const ev of ['dragstart', 'rotatestart', 'pitchstart', 'zoomstart']) {
@@ -295,7 +301,7 @@ export class Navigation {
     this.#raf = requestAnimationFrame(this.#frame);
 
     if (new URLSearchParams(location.search).has('sim')) this.#simulate();
-    else if ('geolocation' in navigator) {
+    else if (geo.available()) {
       this.#startGps();
       // Wächter: Manche Browser liefern nach einer Weile einfach nichts mehr,
       // obwohl der Bildschirm an ist – dann die Standortabfrage neu starten
@@ -308,9 +314,9 @@ export class Navigation {
   /* ── GPS ─────────────────────────────────────────────────────────────────── */
 
   #startGps() {
-    if (this.#watch !== null) navigator.geolocation.clearWatch(this.#watch);
+    if (this.#watch !== null) geo.clear(this.#watch);
     this.#rawAt = Date.now();
-    this.#watch = navigator.geolocation.watchPosition(
+    this.#watch = geo.watch(
       (pos) => {
         this.#rawAt = Date.now();
         const acc = pos.coords.accuracy;
@@ -356,7 +362,7 @@ export class Navigation {
   }
 
   stop() {
-    if (this.#watch !== null) navigator.geolocation.clearWatch(this.#watch);
+    if (this.#watch !== null) geo.clear(this.#watch);
     clearInterval(this.#sim);
     clearInterval(this.#watchdog);
     this.#watchdog = null;
@@ -462,19 +468,24 @@ export class Navigation {
 
     const offRoute = snap.offset > Math.max(OFF_ROUTE_M, (accuracy ?? 0) * 1.5);
     this.#off = offRoute ? this.#off + 1 : 0;
-    if (this.#off >= OFF_ROUTE_FIXES) this.#reroute(point, this.#travel);
+    // Der Pfeil bleibt auf der Straße, bis mehrere Meldungen hintereinander
+    // daneben liegen – ein einzelner GPS-Ausreißer lässt ihn nicht springen
+    const left = this.#off >= OFF_ROUTE_FIXES;
+    if (left) this.#reroute(point, this.#travel);
     if (!offRoute) this.#index = snap.index;
 
     // Nicht rückwärts zappeln: kleine Rücksprünge des GPS ignorieren
     const cur = this.#currentPos(now);
     let along = snap.along;
     if (!offRoute && cur?.onRoute && along < cur.along && along > cur.along - 40) along = cur.along;
+    // Einzelner Ausreißer: auf der Route weiterrollen, wo wir waren
+    if (offRoute && !left && cur?.onRoute) along = cur.along + (this.#speed || 0) * (prev ? (now - prev.t) / 1000 : 0);
 
     // Neues Ziel für die Bewegung: in der Zeit bis zur nächsten Meldung dorthin gleiten
     const dur = prev ? clamp(now - prev.t, 400, 2500) : 0;
     this.#anim = {
-      from: cur ?? { along, point: offRoute ? point : snap.point, onRoute: !offRoute },
-      to: { along, point: offRoute ? point : pointAt(r.coords, r.cum, along), onRoute: !offRoute },
+      from: cur ?? { along, point: left ? point : snap.point, onRoute: !left },
+      to: { along, point: left ? point : pointAt(r.coords, r.cum, along), onRoute: !left },
       t0: now, dur, speed: this.#speed,
     };
 
@@ -594,11 +605,14 @@ export class Navigation {
     const tt = dist / Math.max(v, foot ? 1.2 : 5);
     const near = m && ![4, 5, 6].includes(m.type) && (tt < 30 || dist < (foot ? 40 : 150));
     let zoom, pitch;
-    if (foot) [zoom, pitch] = near ? [18.7, 50] : [18.1, 45];
-    else if (ctx === 'fast') [zoom, pitch] = near ? [16.5, 62] : [15.0, 62];
-    else if (ctx === 'rural') [zoom, pitch] = near ? [17.0, 64] : [15.9, 62];
-    else [zoom, pitch] = near ? [17.6, 64] : [16.8, 62];
-    if (near && !foot && this.#complex(m)) [zoom, pitch] = [18.0, 66];
+    // Eher von schräg oben als aus Fahrersicht: flach geneigt verdecken Häuser
+    // in der Stadt Straße und Abzweig. Dafür näher heran – man sieht die
+    // nächste Kreuzung groß, nicht die halbe Stadt bis zum Horizont.
+    if (foot) [zoom, pitch] = near ? [18.7, 45] : [18.1, 40];
+    else if (ctx === 'fast') [zoom, pitch] = near ? [16.9, 52] : [15.6, 52];
+    else if (ctx === 'rural') [zoom, pitch] = near ? [17.5, 50] : [16.6, 50];
+    else [zoom, pitch] = near ? [18.1, 45] : [17.5, 45];
+    if (near && !foot && this.#complex(m)) [zoom, pitch] = [18.4, 40];
     zoom += { near: 0.7, far: -0.9 }[navSettings.zoom] ?? 0;
     if (!navSettings.threeD) pitch = 0;
     this.#target = { zoom, pitch };
@@ -874,8 +888,9 @@ export class Navigation {
   #setFollowing(on) {
     this.#following = on;
     const btn = this.#el.querySelector('.nav-recenter');
-    btn.classList.toggle('attention', !on);
+    btn.classList.toggle('following', on);
     btn.setAttribute('aria-pressed', String(on));
+    this.#paintButtons();
   }
 
   #paintButtons() {
@@ -883,9 +898,10 @@ export class Navigation {
     const mute = $('.nav-mute');
     mute.querySelector('.msr').textContent = speech.muted ? 'volume_off' : 'volume_up';
     mute.title = speech.muted ? 'Ansagen einschalten' : 'Ansagen stummschalten';
-    const d3 = $('.nav-3d');
-    d3.querySelector('.msr').textContent = navSettings.threeD ? 'view_in_ar' : 'map';
-    d3.title = navSettings.threeD ? 'Flache Ansicht' : '3D-Ansicht';
+    const follow = $('.nav-recenter');
+    follow.querySelector('.msr').textContent = !this.#following ? 'my_location' : navSettings.threeD ? 'navigation' : 'explore';
+    follow.title = !this.#following ? 'Zurück zu meinem Standort'
+      : navSettings.threeD ? 'Folgt dir – antippen: flache Ansicht' : 'Folgt dir – antippen: geneigte Ansicht';
     $('.nav-compass').classList.toggle('north', navSettings.north);
     $('.nav-compass').title = navSettings.north ? 'In Fahrtrichtung drehen' : 'Norden oben';
   }

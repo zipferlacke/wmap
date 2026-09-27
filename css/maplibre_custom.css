@@ -4,11 +4,50 @@
   position: fixed;
   inset: 0;
 }
-#map {
-  position: fixed;
-  inset: 0;
 
-  & .maplibregl-ctrl-group {
-    border-radius: 8px;
-  }
+/* Größer als die 29 px von MapLibre – mit dem Finger gut zu treffen, und so
+   groß wie der Menüknopf darüber (app.css, .appnav-btn) */
+.maplibregl-ctrl-group {
+  border-radius: var(--ctrl-radius);
+  box-shadow: var(--shadow);
+
+  & button { width: var(--ctrl-size); height: var(--ctrl-size); }
+  & button:first-child { border-radius: var(--ctrl-radius) var(--ctrl-radius) 0 0; }
+  & button:last-child { border-radius: 0 0 var(--ctrl-radius) var(--ctrl-radius); }
+  & button:only-child { border-radius: var(--ctrl-radius); }
 }
+
+/*
+ * Knöpfe, Popups und Quellenangabe folgen dem hellen bzw. dunklen Modus
+ * (System oder Einstellungen → Darstellung, js/theme.js). MapLibre zeichnet
+ * sie sonst immer weiß – im dunklen Modus stand dann helle Schrift auf Weiß.
+ * Die Symbole von MapLibre sind Bilder: im Dunkeln umgekehrt, der Farbton
+ * (blau beim Standort) bleibt dabei erhalten.
+ */
+.maplibregl-ctrl-group {
+  background: var(--surface);
+  color: var(--clr-neutral-900);
+
+  & button + button { border-top-color: var(--line); }
+  & button .msr { color: inherit; }
+}
+.dark :is(.maplibregl-ctrl-icon, .maplibregl-ctrl-attrib-button) {
+  filter: invert(1) hue-rotate(180deg);
+}
+.maplibregl-ctrl.maplibregl-ctrl-attrib {
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  color: var(--clr-neutral-900);
+  & a { color: inherit; }
+}
+.maplibregl-ctrl-attrib.maplibregl-compact { background: var(--surface); }
+
+.maplibregl-popup-content { background: var(--surface); }
+.maplibregl-popup-close-button { color: inherit; }
+.maplibregl-popup-anchor-top, .maplibregl-popup-anchor-top-left, .maplibregl-popup-anchor-top-right {
+  & .maplibregl-popup-tip { border-bottom-color: var(--surface); }
+}
+.maplibregl-popup-anchor-bottom, .maplibregl-popup-anchor-bottom-left, .maplibregl-popup-anchor-bottom-right {
+  & .maplibregl-popup-tip { border-top-color: var(--surface); }
+}
+.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--surface); }
+.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--surface); }

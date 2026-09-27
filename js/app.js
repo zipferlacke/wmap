@@ -4,6 +4,7 @@
  * Ablauf der Oberfläche.
  */
 import { PROFILES } from './config.js';
+import { geo } from './native.js';
 import {
   createMap, showRoutes, showHighlight, showPois, showHover, showReach, ROUTE_COLOR, BASE_POI_LAYERS, osmRef,
   dataSaver, setDataSaver, showTraffic,
@@ -26,6 +27,9 @@ import { mountAppNav } from './appnav.js';
 import { recorder, historySetting } from './tracks.js';
 import { setupRecording } from './record-ui.js';
 import { NavPip, pipSupported } from './pip.js';
+import { mapLayerIds, propertyTable } from './layers.js';
+import { mountLayerMenu } from './layer-menu.js';
+import { runExtensions } from './extensions.js';
 import { share, placeUrl, routeUrl, readRoute, requestUrl, myName, clock } from './share.js';
 import { ask } from './ui.js';
 import { quickAsk } from './quick-ask.js';
@@ -113,8 +117,8 @@ geolocate.on('geolocate', (pos) => { state.position = [pos.coords.longitude, pos
 
 function myPosition() {
   return new Promise((resolve, reject) => {
-    if (!('geolocation' in navigator)) { reject(new Error('Standort wird nicht unterstützt')); return; }
-    navigator.geolocation.getCurrentPosition(
+    if (!geo.available()) { reject(new Error('Standort wird nicht unterstützt')); return; }
+    geo.once(
       (p) => { state.position = [p.coords.longitude, p.coords.latitude]; resolve(state.position); },
       (err) => (state.position ? resolve(state.position)
         : reject(new Error(err.code === 1 ? 'Standortfreigabe verweigert' : 'Standort nicht verfügbar'))),
@@ -1729,7 +1733,23 @@ function showTrafficItem(t) {
   placeMarker = new maplibregl.Marker({ element: markerEl('place', icon), anchor: 'bottom' }).setLngLat(t.point).addTo(map);
 }
 
+/* Ebenen-Menü: Satellit, Wandern & Rad, Wanderwege, eigene Ebenen und Plugins */
+const layerMenu = mountLayerMenu(map, { toast });
+
 map.on('click', (e) => {
+  // Beim Fliegen sperrt ein Klick nur die Maus (keys.js) – nichts öffnen
+  if (fly.active) return;
+  // Eigene Ebene getroffen? Dann ihre Werte zeigen
+  const mainLayers = layerMenu.shown();
+  const own = mainLayers.flatMap((l) => mapLayerIds(l.id)).filter((id) => map.getLayer(id));
+  const ownHit = own.length && !nav.active ? map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: own })[0] : null;
+  if (ownHit) {
+    const l = mainLayers.find((x) => ownHit.layer.id.startsWith(`own-${x.id}-`));
+    const p = ownHit.properties;
+    ask({ icon: 'layers', title: String(p.name ?? p.Name ?? p.title ?? l?.name ?? 'Objekt'), html: `<p class="muted">Ebene „${esc(l?.name ?? '')}“</p>${propertyTable(p)}`,
+      buttons: [{ value: 'ok', label: 'Schließen', primary: true }] });
+    return;
+  }
   // In der Navigation: Orte antippen ja, Routen wechseln nein
   const layers = CLICKABLE.filter((id) => map.getLayer(id) && !(nav.active && id === 'route-alt'));
   const hit = layers.length ? map.queryRenderedFeatures(e.point, { layers })[0] : null;
@@ -1779,15 +1799,15 @@ const nav = new Navigation(map, $('#nav'), {
     // Fahrt in „Meine Wege“ merken
     if (recorder.kind === 'nav') {
       recorder.stop().then((t) => {
-        if (t) toast(`Fahrt gespeichert (${fmtDistance(t.length)})`, { action: { label: 'Ansehen', run: () => { location.href = `./track.html?id=${encodeURIComponent(t.id)}`; } } });
+        if (t) toast(`Fahrt gespeichert (${fmtDistance(t.length)})`, { action: { label: 'Ansehen', run: () => { location.href = `./wege.html?id=${encodeURIComponent(t.id)}`; } } });
       }).catch(() => {});
     }
     // Mitmachen: Fahrt abschließen und schauen, ob es Fragen gibt
     if (trips.end({ arrived })) askAfterTrip();
-    // Nach dem Fortsetzen (neu geladen) gibt es keine geplanten Routen mehr
-    if (!current()) return;
-    openSheet('route');
-    selectRoute(state.selected, { fit: true });
+    // Fertig ist fertig: Route, Planung und Blatt weg – zurück zur Karte
+    leaveRouteMode();
+    clearRoutes();
+    closeSheet();
   },
   onRoute(route, { again, ...opts }) {
     rememberNav({ route, ...opts, destination: navDestination });
@@ -2103,7 +2123,7 @@ map.on('moveend', debounce(() => {
   });
 }, 400));
 
-keyboardControl(map, {
+const { fly } = keyboardControl(map, {
   onManual: () => nav.pauseFollow(),
   onEscape: () => { if (!nav.active) return false; nav.resumeFollow(); return true; },
 });
@@ -2113,7 +2133,8 @@ function keysDialog() {
   dlg.className = 'dialog confirm';
   const rows = [['W / S', 'vor / zurück'], ['A / D', 'nach links / rechts'], ['Q / E', 'drehen'],
     ['R / F', 'nach oben / unten schauen'], ['Leertaste', 'höher'], ['Shift', 'tiefer'],
-    ['Esc', 'normale Ansicht – in der Navigation: zum eigenen Standort']];
+    ['Esc', 'normale Ansicht – in der Navigation: zum eigenen Standort'],
+    ['Fliegen', 'Menü → Fliegen: die Maus schaut, W fliegt zur Bildmitte, Esc beendet']];
   dlg.innerHTML = `<h2><span class="msr">keyboard</span> Tastatur</h2>
     <table class="keys-table">${rows.map(([k, v]) => `<tr><th><kbd>${k}</kbd></th><td>${v}</td></tr>`).join('')}</table>
     <div class="confirm-actions"><button type="button" class="button primary" value="ok">Verstanden</button></div>`;
@@ -2124,6 +2145,10 @@ function keysDialog() {
 }
 
 const appNav = mountAppNav();
+// Erweiterungen (JavaScript-Plugins), die man auf der Plugin-Seite aktiviert hat
+runExtensions({ map, toast, appNav }).catch(() => {});
+// „Fliegen“ im Menü: hier auf der Karte ohne Neuladen starten
+appNav.el.querySelector('a[href*="action=fly"]')?.addEventListener('click', (e) => { e.preventDefault(); fly.start(); });
 const recording = setupRecording({ map, toast });
 appNav.addItem('radio_button_checked', 'Aufzeichnen', () => recording.choose());
 appNav.addItem('share_location', 'Standort teilen', async () => {
@@ -2137,10 +2162,11 @@ appNav.addItem('person_pin_circle', 'Standort anfragen', async () => {
   if (!name) return;
   share({ title: 'Wo bist du?', text: `${name} möchte wissen, wo du gerade bist. Tippe auf den Link, um deinen Standort zu senden:`, url: () => requestUrl(name) }, toast);
 });
-appNav.addItem('radar', 'Erreichbarkeit', () => openReach());
 const surveyItem = appNav.addItem('volunteer_activism', 'Mitmachen', () => openSurvey());
 appNav.addItem('keyboard', 'Tastatur', keysDialog);
-appNav.addItem('settings', 'Einstellungen', () => openSettings({
+appNav.addItem('settings', 'Einstellungen', () => showSettings());
+function showSettings() {
+  openSettings({
   toast,
   dataSaver,
   setDataSaver: (on) => {
@@ -2157,7 +2183,8 @@ appNav.addItem('settings', 'Einstellungen', () => openSettings({
   },
   onClearHistory: () => { recent.clear(); toast('Verlauf gelöscht'); },
   onContribute: () => { paintSurveyCount(survey.count); if (sheet.dataset.current === 'survey') survey.render(); },
-}));
+  });
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    Mitmachen bei OpenStreetMap
@@ -2235,6 +2262,7 @@ q.title = `Auch Kategorien: ${CATEGORIES.slice(0, 12).map((c) => c.one).join(', 
    ?reach=lon,lat                         Erreichbarkeit ab einem Punkt
    ?action=route                          Planung öffnen (App-Verknüpfung)
    ?action=record                         Aufzeichnen (Touren-Seite)
+   ?action=fly|settings|reach|survey      Fliegen, Einstellungen, Erreichbarkeit, Mitmachen (Übersicht)
    ?ort=lon,lat&name=…&zeit=…             geteilter Ort / Standort (share.js)
    ?route=…                               geteilte Route (gepackt)
    ?anfrage=Name                          Standortanfrage beantworten
@@ -2271,6 +2299,14 @@ async function fromUrl() {
       enterRoute();
     } else if (p.get('action') === 'record') {
       recording.choose();
+    } else if (p.get('action') === 'fly') {
+      map.once('idle', () => fly.start());
+    } else if (p.get('action') === 'settings') {
+      showSettings();
+    } else if (p.get('action') === 'reach') {
+      openReach();
+    } else if (p.get('action') === 'survey') {
+      openSurvey();
     } else if (p.get('ort')) {
       openShared(p);
     } else if (p.get('route')) {

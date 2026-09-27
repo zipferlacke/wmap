@@ -1,62 +1,10 @@
 <!DOCTYPE html>
 <html lang="de">
-
+<!-- Alte Adresse: ein Weg ist jetzt Teil von „Meine Wege“ -->
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Weg – WMap</title>
-    <link rel="manifest" href="./appdata/manifest.json">
-    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
-    <meta name="theme-color" content="#1a73e8">
-    <link rel="stylesheet" href="./css/index.css">
-    <link rel="stylesheet" href="./css/tours.css">
-    <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+    <script>location.replace(`./wege.html${location.search}`);</script>
 </head>
-
-<body class="tour-page track-page">
-    <!-- Kopf: Name und was man mit dem Weg machen kann -->
-    <header class="tour-head panel">
-        <a class="button" data-shape="round no-background" href="./tours.html#wege" title="Zu meinen Wegen">
-            <span class="msr">arrow_back</span>
-        </a>
-        <input id="tour-name" class="tour-name" type="text" placeholder="Name" aria-label="Name des Wegs">
-        <span class="tour-saved" aria-live="polite"></span>
-        <div class="tour-tools">
-            <button type="button" id="share" class="button" data-shape="round no-background" title="Als Tour teilen">
-                <span class="msr">share</span>
-            </button>
-            <button type="button" id="export" class="button" data-shape="round no-background" title="Als GPX exportieren">
-                <span class="msr">download</span>
-            </button>
-            <button type="button" id="delete" class="button" data-shape="round no-background" title="Weg löschen">
-                <span class="msr">delete</span>
-            </button>
-            <button type="button" id="as-tour" class="button primary"><span class="msr">bookmark_add</span> <span class="save-label">Als Tour</span></button>
-        </div>
-    </header>
-
-    <main>
-        <section id="map"></section>
-
-        <dialog id="sheet" class="dialog sheet tour-panel" aria-label="Wegdaten">
-            <button type="button" class="sheet-grip" aria-label="Höhe ändern: ziehen, doppelt tippen für ganz auf oder zu"></button>
-            <section class="view">
-                <header class="sheet-head tour-stats">
-                    <div><strong class="st-length">–</strong><small>Strecke</small></div>
-                    <div><strong class="st-time">–</strong><small>in Bewegung</small></div>
-                    <div><strong class="st-speed">–</strong><small>Ø km/h</small></div>
-                    <div><strong class="st-up">–</strong><small>Anstieg</small></div>
-                </header>
-                <p class="track-when"></p>
-                <div class="track-legend" hidden>
-                    <span>langsam</span><i></i><span>schnell</span><span class="track-top"></span>
-                </div>
-                <div class="elevation"></div>
-            </section>
-        </dialog>
-    </main>
-
-    <script type="module" src="./js/track.js"></script>
-</body>
-
+<body><a href="./wege.html">Zu meinen Wegen</a></body>
 </html>

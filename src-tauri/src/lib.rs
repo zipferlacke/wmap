@@ -4,7 +4,11 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  tauri::Builder::default()
+  let builder = tauri::Builder::default();
+  // Handy: GPS über das Gerät (js/native.js nutzt es, sobald es da ist)
+  #[cfg(mobile)]
+  let builder = builder.plugin(tauri_plugin_geolocation::init());
+  builder
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

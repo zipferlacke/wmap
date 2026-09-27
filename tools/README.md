@@ -3,19 +3,18 @@
 ## Screenshots für Manifest und Store
 
 Aufgenommen wird mit [takeShots](../../takeShots/README.md) (WebKitGTK ohne
-Fenster). Die Ansichten steuert die App über Link-Parameter an (`?view=`,
-`?q=`, `?from=&to=`, `?reach=`, `?sim` – siehe `js/app.js`, „Aufruf per Link“),
-es muss also nichts geklickt werden außer „Starten“ und einer Kategorie.
+Fenster) über das zentrale Skript `takeshots` (`~/wuefl_profiles/shell_scripts`,
+neben `git-release`). Die Config liegt in `appdata/takeshots.json`; in den
+Adressen steht `{base}`. Die Ansichten steuert die App über Link-Parameter an
+(`?view=`, `?q=`, `?from=&to=`, `?reach=`, `?sim` – siehe `js/app.js`,
+„Aufruf per Link“).
 
 ```bash
-# 1. im wmap-Ordner einen Server starten (eigenes Terminal)
-python3 -m http.server 8765 --bind 127.0.0.1
-
-# 2. Screenshots aufnehmen – hell und dunkel, Handy und Laptop
-gjs ../takeShots/takeShots.js shots tools/takeshots.json
+takeshots wmap                    # Docker-Server (Port 8080) muss laufen
+takeshots wmap --eigener-server   # startet selbst einen Server auf 8765
 ```
 
-Ergebnis in `appdata/`: `screenshot-{narrow,wide}-{1..6}{,_light}.png`,
+Ergebnis in `appdata/images/`: `screenshot-{narrow,wide}-{1..8}{,_light}.png`,
 passend zu den Einträgen in `appdata/manifest.json`.
 
 | Nr. | Ansicht |
@@ -26,6 +25,8 @@ passend zu den Einträgen in `appdata/manifest.json`.
 | 4 | Radroute mit Höhenprofil |
 | 5 | Navigation (simuliert) |
 | 6 | Erreichbarkeit mit Bäckereien |
+| 7 | Entdecken: Wege im Harz |
+| 8 | Übersicht |
 
 Hinweise:
 

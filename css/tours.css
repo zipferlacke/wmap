@@ -87,7 +87,7 @@ body.tours-page {
 .tour-page .tour-head {
     display: flex;
     align-items: center;
-    gap: .25rem;
+    gap: .35rem;
     right: .5rem;
     padding: .3rem .4rem;
     overflow: visible;
@@ -100,44 +100,31 @@ body.tours-page {
         font-weight: 600;
         font-size: var(--fs-400);
     }
-    .tour-tools { display: flex; align-items: center; gap: .1rem; }
-    .tour-tools .button[data-shape~="round"] { width: 2.4rem; height: 2.4rem; }
-    #save { height: 2.4rem; }
-    .appnav { position: static; margin-left: .25rem; }
+    .appnav { position: static; }
     .appnav-btn { box-shadow: none; }
+}
 
-    /* Schmal: Werkzeuge in eine zweite Zeile */
-    @media (max-width: 700px) {
-        flex-wrap: wrap;
-        .tour-tools { order: 3; }
-        .tour-tools.edit-only { flex: 1; }
-        .save-label { display: none; }
+/* Speichern mit Zustand: grau = noch nichts, blau dreht = speichert, grün = gesichert */
+.save-state {
+    height: 2.4rem;
+    flex-shrink: 0;
+    transition: background .2s, color .2s;
+    &[data-state="new"] { background: var(--surface-2); }
+    &[data-state="dirty"] { background: var(--route); color: #fff; .msr { animation: spin 1.2s linear infinite; } }
+    &[data-state="saved"] {
+        background: color-mix(in srgb, var(--clr-success-500, #2f9e44) 14%, transparent);
+        color: var(--clr-success-700, #2b8a3e);
+        .msr { font-variation-settings: 'FILL' 1; }
     }
+    @media (max-width: 380px) { .save-label { display: none; } }
 }
-
-.tour-saved {
-    color: var(--clr-success-700);
-    font-size: var(--fs-100);
-    opacity: 0;
-    transition: opacity .3s;
-    &.show { opacity: 1; }
-}
-
-.tour-profiles {
-    position: fixed;
-    z-index: 9;
-    top: calc(var(--panel-h, 3.5rem) + .5rem);
-    left: .5rem;
-    right: .5rem;
-    .chip { background: var(--surface); box-shadow: 0 1px 4px rgb(0 0 0 / .15); }
-    .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); --chip: var(--route); }
-}
+body.readonly .save-state { background: var(--route); color: #fff; }
 
 .tour-hint {
     position: fixed;
     z-index: 9;
     left: 50%;
-    top: calc(var(--panel-h, 3.5rem) + 3.5rem);
+    top: calc(var(--panel-h, 3.5rem) + .75rem);
     transform: translateX(-50%);
     padding: .45rem 1rem;
     border-radius: 999px;
@@ -145,6 +132,49 @@ body.tours-page {
     color: var(--clr-neutral-50);
     font-size: var(--fs-200);
     pointer-events: none;
+    white-space: nowrap;
+}
+
+/* Kartenknöpfe unter den Kopf */
+.tour-page .maplibregl-ctrl-top-right, .track-page .maplibregl-ctrl-top-right { top: calc(var(--panel-h, 4rem) + .5rem); }
+
+.tour-help {
+    border-radius: .8rem;
+    background: color-mix(in srgb, var(--route) 8%, var(--surface));
+    summary {
+        display: flex; align-items: center; gap: .4rem;
+        padding: .6rem .8rem;
+        font-weight: 600;
+        cursor: pointer;
+        .msr { color: var(--route); }
+    }
+    ol { display: grid; gap: .45rem; margin: 0; padding: 0 1rem .8rem 2.2rem; font-size: var(--fs-200); line-height: 1.45; }
+}
+
+.tour-block { display: grid; gap: .45rem; }
+.tour-profiles .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; --chip: var(--route); }
+
+.tour-search {
+    display: flex; align-items: center; gap: .4rem;
+    padding: 0 .75rem;
+    border-radius: 999px;
+    background: var(--surface-2);
+    .msr { color: var(--muted); }
+    input { flex: 1; min-width: 0; padding: .6rem 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; outline: none; }
+}
+.tour-search-results {
+    display: grid; gap: .2rem; margin: 0; padding: 0; list-style: none;
+    .button { width: 100%; justify-content: flex-start; text-align: left; background: none; }
+    .button > span:last-child { display: grid; }
+    small { color: var(--muted); font-size: var(--fs-100); }
+    .muted { color: var(--muted); padding: .4rem .75rem; font-size: var(--fs-200); }
+}
+
+/* Werkzeuge mit Beschriftung – niemand muss Symbole raten */
+.tour-tools {
+    display: flex; flex-wrap: wrap; gap: .4rem;
+    .button { font-size: var(--fs-200); background: var(--surface-2); }
+    .button:disabled { opacity: .45; }
 }
 
 .tour-panel .tour-stats {
@@ -286,6 +316,17 @@ body.readonly {
     box-shadow: var(--shadow);
 }
 .wege-map { height: min(45vh, 26rem); }
+.wege-map-bar {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem .8rem;
+    padding: .5rem .75rem;
+    background: var(--surface);
+    font-size: var(--fs-200);
+    .wege-color { display: inline-flex; align-items: center; gap: .35rem; color: var(--muted); }
+    .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; }
+    .wege-legend { display: flex; flex-wrap: wrap; gap: .2rem .7rem; color: var(--muted); }
+    .wege-legend span { display: inline-flex; align-items: center; gap: .3rem; }
+    .wege-legend i { width: 1rem; height: .3rem; border-radius: 999px; display: inline-block; }
+}
 
 .wege-list {
     display: grid;
@@ -339,3 +380,215 @@ body.readonly {
         .track-top { margin-left: auto; }
     }
 }
+
+.tour-saved {
+    color: var(--clr-success-700);
+    font-size: var(--fs-100);
+    opacity: 0;
+    transition: opacity .3s;
+    &.show { opacity: 1; }
+}
+
+/* ── Geplant: Leiste, bekannte Touren ─────────────────────────────────────── */
+
+.tour-bar {
+    display: flex; flex-wrap: wrap; gap: .5rem;
+    max-width: 72rem; margin: 0 auto; padding: 1rem 1rem 0;
+    .button { background: var(--surface); box-shadow: var(--shadow); cursor: pointer; }
+}
+
+.known {
+    display: grid; gap: .6rem;
+    max-width: 60rem; margin: 1rem auto 0; padding: 1rem;
+    border-radius: 1rem;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    @media (min-width: 62rem) { margin-inline: auto; }
+    .known-head { display: flex; align-items: center; justify-content: space-between; }
+    h2 { display: flex; align-items: center; gap: .4rem; font-size: var(--fs-500); .msr { color: var(--route); } }
+    .muted { color: var(--muted); font-size: var(--fs-200); }
+    .known-kinds .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; }
+    .known-status .spin { animation: spin 1s linear infinite; vertical-align: -.25rem; }
+    .known-list { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+    .known-item {
+        display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .7rem;
+        width: 100%; padding: .55rem .6rem;
+        border: 0; border-radius: .7rem;
+        background: var(--surface-2);
+        color: inherit; font: inherit; text-align: left; cursor: pointer;
+        > .msr:first-child { color: var(--route); }
+        &:hover { background: color-mix(in srgb, var(--route) 10%, var(--surface-2)); }
+        &.loading .known-go { animation: spin 1s linear infinite; }
+    }
+    .known-text { display: grid; min-width: 0; strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } small { color: var(--muted); font-size: var(--fs-100); } }
+}
+
+/* ── Eigene Ebenen ────────────────────────────────────────────────────────── */
+
+.ebenen-page .tour-head h1.tour-name { font-size: var(--fs-500); margin: 0; }
+.ebenen-bar { padding: 0; margin: 0; }
+.ebenen-intro { color: var(--muted); font-size: var(--fs-200); }
+.layer-list { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }
+.layer-empty { padding: .5rem 0; }
+.layer {
+    display: grid; gap: .5rem;
+    padding: .7rem;
+    border-radius: .9rem;
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgb(0 0 0 / .08), 0 4px 14px rgb(0 0 0 / .06);
+    .layer-head { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: .5rem; }
+    .layer-color input { width: 2rem; height: 2rem; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; }
+    .layer-name { display: grid; min-width: 0; strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } small { color: var(--muted); font-size: var(--fs-100); } }
+    .layer-opts {
+        display: flex; flex-wrap: wrap; align-items: center; gap: .4rem 1rem;
+        font-size: var(--fs-200);
+        select { font: inherit; padding: .25rem .4rem; border-radius: .5rem; border: 1px solid var(--line); background: var(--surface-2); color: inherit; }
+        label { display: inline-flex; align-items: center; gap: .35rem; }
+        .link-button { display: inline-flex; align-items: center; gap: .2rem; color: var(--muted); margin-left: auto; .msr { font-size: 1rem; } }
+    }
+    .layer-legend {
+        display: flex; align-items: center; gap: .5rem; font-size: var(--fs-100); color: var(--muted);
+        i { flex: 1; height: .5rem; border-radius: 999px; }
+    }
+}
+.feature-info {
+    padding: .7rem;
+    border-radius: .9rem;
+    background: color-mix(in srgb, var(--route) 7%, var(--surface));
+    header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+}
+/* Datei-Knopf ist ein <label> – braucht den Hauptknopf-Stil ausdrücklich */
+label.button.primary { background: var(--route); color: #fff; cursor: pointer; .msr { color: #fff; } }
+
+/* ── Meine Wege (wege.html): Karte + Panel (Rechner links, Handy unten) ──── */
+
+body.wege-page { overflow: hidden; }
+.wege-page #map { position: fixed; inset: 0; }
+
+.wege-panel {
+    padding: .5rem .75rem 1rem;
+    /* Spalte: Kopf, ggf. Reiter, Inhalt – nur der Inhalt wächst und scrollt */
+    &[open] { display: flex; flex-direction: column; }
+    @media (max-width: 700px) { --uD-height: 58dvh; --uD-max-height: 100dvh; }
+    .wege-bar {
+        display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .5rem;
+        padding-bottom: .4rem; font-size: var(--fs-500); font-weight: 700;
+        .uD-bar-btn { width: 2.5rem; height: 2.5rem; .msr { font-size: 1.5rem; } }
+    }
+    .wege-bar .uD-title { text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .wege-bar [hidden] { visibility: hidden; display: inline-grid !important; }
+    .wege-content { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: .75rem; padding: 0 .25rem .5rem; }
+    .muted { color: var(--muted); font-size: var(--fs-200); }
+}
+
+.wege-search { position: sticky; top: 0; z-index: 2; box-shadow: 0 0 0 .4rem var(--surface); }
+
+.wege-year {
+    summary {
+        display: flex; align-items: center; gap: .5rem;
+        padding: .45rem .25rem;
+        cursor: pointer;
+        list-style: none;
+        i { width: .8rem; height: .8rem; border-radius: 50%; flex-shrink: 0; }
+        small { color: var(--muted); font-size: var(--fs-100); margin-left: auto; }
+    }
+    summary::-webkit-details-marker { display: none; }
+}
+
+/* Tabelle: Art · Name/Datum · Strecke/Zeit */
+.wege-table {
+    width: 100%;
+    border-collapse: collapse;
+    tr { cursor: pointer; }
+    tr + tr { border-top: 1px solid var(--line, rgb(0 0 0 / .08)); }
+    tr:hover, tr.hover, tr:focus-visible { background: color-mix(in srgb, var(--route) 8%, transparent); outline: none; }
+    td { padding: .45rem .3rem; vertical-align: middle; }
+    .w-icon { width: 2rem; .msr { font-size: 1.3rem; } }
+    .w-name { display: grid; strong { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 16rem; } }
+    .w-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    small { display: block; color: var(--muted); font-size: var(--fs-100); }
+}
+
+.weg-name {
+    display: flex; align-items: center; gap: .4rem;
+    padding: 0 .6rem; border-radius: .6rem; background: var(--surface-2);
+    .msr { color: var(--muted); font-size: 1.1rem; }
+    input { flex: 1; min-width: 0; padding: .5rem 0; border: 0; background: none; font: inherit; font-weight: 600; color: inherit; text-align: left; outline: none; }
+}
+.weg-when { line-height: 1.5; .msr { vertical-align: -.25rem; } .muted { font-size: var(--fs-200); } }
+.weg-stats {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); gap: .5rem;
+    div { display: grid; padding: .5rem; border-radius: .6rem; background: var(--surface-2); text-align: center; }
+    strong { font-size: var(--fs-500); }
+    small { color: var(--muted); font-size: var(--fs-100); }
+}
+.weg-actions { display: flex; flex-wrap: wrap; gap: .5rem; .button { background: var(--surface-2); } .button.primary { background: var(--route); color: #fff; } }
+.wege-page .track-legend {
+    display: flex; align-items: center; gap: .5rem; color: var(--muted); font-size: var(--fs-200);
+    i { flex: 0 1 8rem; height: .45rem; border-radius: 999px; background: linear-gradient(90deg, hsl(25 80% 48%), hsl(80 80% 44%), hsl(135 80% 40%)); }
+    &[hidden] { display: none; }
+}
+
+.wege-panel .ent-tabs small { color: var(--muted); font-size: var(--fs-100); font-weight: 400; margin-left: .15rem; }
+.wege-panel .tab-hint { margin-top: -.25rem; }
+.wege-panel .tour-text { white-space: pre-line; }
+
+/* ── Entdecken ────────────────────────────────────────────────────────────── */
+
+.ent-tabs { position: static; padding: 0; margin: 0 -.25rem .5rem; box-shadow: 0 1px 0 var(--line); background: none; a { padding: .5rem .6rem; font-size: var(--fs-200); } }
+.ent-tabs[hidden], .ent-tabs a[hidden] { display: none; }
+.ent-row { display: flex; flex-wrap: wrap; gap: .5rem; .button { background: var(--surface-2); } }
+.ent-facts {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .4rem 1rem; color: var(--muted); font-size: var(--fs-200);
+    > span { display: inline-flex; align-items: center; gap: .25rem; }
+    .msr { font-size: 1.1rem; color: var(--route); }
+}
+.ent-stars { color: #f59f00; letter-spacing: .05em; white-space: nowrap; font-size: 1rem; }
+.known-item .ent-stars { font-size: .85rem; }
+.ent-rate {
+    display: grid; gap: .5rem; padding: .75rem; border-radius: .8rem; background: var(--surface-2);
+    textarea { width: 100%; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--surface); color: inherit; font: inherit; text-align: left; }
+    .button { justify-self: start; }
+}
+.ent-rate-stars button { border: 0; background: none; color: #f59f00; font-size: 1.8rem; line-height: 1; padding: 0 .1rem; cursor: pointer; }
+.ent-comments {
+    display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none;
+    li { padding-bottom: .5rem; border-bottom: 1px solid var(--line, rgb(0 0 0 / .08)); }
+    small { color: var(--muted); margin-left: .4rem; }
+    p { margin: .2rem 0 0; }
+}
+.plugin-list { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }
+.plugin {
+    display: grid; gap: .4rem; padding: .75rem; border-radius: .8rem; background: var(--surface-2);
+    > div:first-child { display: grid; strong { display: flex; align-items: center; gap: .3rem; } small { color: var(--muted); font-size: var(--fs-100); } }
+    p { margin: 0; font-size: var(--fs-200); }
+    .weg-actions .button:not(.primary) { background: var(--surface); }
+}
+.plugin-form {
+    display: grid; gap: .5rem; max-height: 55dvh; overflow: auto; padding-right: .25rem;
+    label { display: grid; gap: .2rem; font-size: var(--fs-200); font-weight: 600; }
+    input:not([type=checkbox]), select, textarea { padding: .45rem .6rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--surface-2); color: inherit; font: inherit; font-weight: 400; text-align: left; }
+    .plugin-public { display: flex; align-items: center; gap: .4rem; font-weight: 400; }
+}
+
+.ent-konto {
+    display: flex; align-items: center; gap: .5rem;
+    margin-top: .5rem; padding: .6rem .75rem; border-radius: .75rem;
+    background: var(--surface-2); font-size: var(--fs-200);
+    > .msr { color: var(--route); flex-shrink: 0; }
+    .button { margin-left: auto; flex-shrink: 0; background: var(--surface); }
+}
+.ent-whole { margin: 0 0 .25rem .3rem; display: inline-flex; align-items: center; gap: .3rem; }
+.ent-h { font-size: var(--fs-300); margin: .5rem 0 0; }
+.ent-groups { display: grid; gap: .25rem; }
+.wege-page .known-kinds .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; }
+.wege-page .known-status .spin, .wege-page .spin { animation: spin 1s linear infinite; vertical-align: -.25rem; }
+.wege-page .known-status .msr { vertical-align: -.25rem; }
+.wege-table .ent-stars { font-size: .8rem; }
+.wege-panel:focus, .wege-panel:focus-visible { outline: none; }
+/* In der Panel-Liste nichts zusammendrücken – als Spalte im Scroll-Bereich
+   stauchte WebKit (GNOME Web, Safari) sonst Leerhinweis und Knöpfe */
+.wege-content > * { flex: none; }
+.wege-content > .chip-row { overflow: visible; flex-wrap: wrap; }
+.ent-groups .wege-year summary { flex-wrap: wrap; row-gap: 0; small { margin-left: 1.75rem; flex-basis: 100%; } }
+.ent-groups .w-name strong, .ent-andere .w-name strong { white-space: normal; max-width: none; }

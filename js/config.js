@@ -109,14 +109,14 @@ export const TANKERKOENIG_KEY = '';
 export const MAX_ROUTES = 5;
 
 /** Steht im Changeset (created_by) – bei neuen Versionen mitziehen. */
-export const APP_VERSION = '0.7.0';
+export const APP_VERSION = '0.8.0';
 
 /**
  * Öffentliche Adresse der Web-App (mit / am Ende). Geteilte Links zeigen im
  * Browser auf die aktuelle Seite; in der Desktop-App (tauri://…) auf diese
  * Adresse – leer: dort wird das Teilen abgelehnt.
  */
-export const PUBLIC_URL = '';
+export const PUBLIC_URL = 'https://app.wuefl.de/wmap/';
 
 /**
  * OpenStreetMap-Konto zum Hochladen der Antworten (OAuth 2.0 mit PKCE, ohne

@@ -1,24 +1,28 @@
 /**
- * Menü oben rechts – auf jeder Seite gleich: Karte, Touren, neue Tour, Wege.
- * Seitenspezifische Einträge hängt die Seite selbst an (`addItem`).
+ * Menü oben rechts – auf jeder Seite gleich: Übersicht (Dashboard) und die
+ * Schnellwege zu den wichtigsten Ansichten. Seitenspezifische Einträge hängt
+ * die Seite selbst an (`addItem`), abgesetzt durch einen Strich.
  */
 const PAGES = [
+  { href: './dashboard.html', icon: 'dashboard', label: 'Übersicht', match: /dashboard\.html$/ },
   { href: './index.html', icon: 'map', label: 'Karte', match: /\/(index\.html)?$/ },
-  { href: './tours.html', icon: 'route', label: 'Meine Touren', match: /tours\.html$/ },
-  { href: './tour.html', icon: 'add_road', label: 'Neue Tour planen', match: /tour\.html$/ },
-  { href: './tours.html#wege', icon: 'timeline', label: 'Meine Wege', match: /track\.html$/ },
+  { href: './wege.html?tab=geplant', icon: 'route', label: 'Meine Touren', match: /wege\.html$/ },
+  { href: './tour.html', icon: 'add_road', label: 'Tour planen', match: /tour\.html$/ },
+  { href: './entdecken.html', icon: 'explore', label: 'Entdecken', match: /entdecken\.html$/ },
+  { href: './plugins.html', icon: 'extension', label: 'Plugins', match: /plugins\.html$/ },
+  { href: './index.html?action=fly', icon: 'flight', label: 'Fliegen', match: null },
 ];
 
 export function mountAppNav() {
   const nav = document.createElement('nav');
   nav.className = 'appnav';
   nav.innerHTML = `
-    <button type="button" class="button appnav-btn" data-shape="round" aria-haspopup="menu" aria-expanded="false" title="Menü">
+    <button type="button" class="button appnav-btn" aria-haspopup="menu" aria-expanded="false" title="Menü">
       <span class="msr">apps</span>
     </button>
     <div class="appnav-menu" role="menu" hidden>
       ${PAGES.map((p) => `<a role="menuitem" href="${p.href}"
-        ${p.match.test(location.pathname) && !(p.href.includes('tour.html') && new URLSearchParams(location.search).has('id')) ? 'aria-current="page"' : ''}>
+        ${p.match?.test(location.pathname) && !(p.href.includes('tour.html') && new URLSearchParams(location.search).has('id')) ? 'aria-current="page"' : ''}>
         <span class="msr">${p.icon}</span>${p.label}</a>`).join('')}
     </div>`;
   document.body.append(nav);
@@ -34,6 +38,7 @@ export function mountAppNav() {
   return {
     el: nav,
     addItem(icon, label, onClick) {
+      if (!menu.querySelector('hr')) menu.append(document.createElement('hr'));
       const b = document.createElement('button');
       b.type = 'button';
       b.setAttribute('role', 'menuitem');

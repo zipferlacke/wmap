@@ -1,0 +1,10 @@
+# Token-Kopf (Authorization) an PHP weiterreichen – bei PHP-FPM/CGI nötig
+CGIPassAuth On
+
+# Nur api.php ist von außen erreichbar – die Teile und die Datenbank nicht
+<FilesMatch "\.(php)$">
+    Require all denied
+</FilesMatch>
+<Files "api.php">
+    Require all granted
+</Files>

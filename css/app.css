@@ -28,6 +28,9 @@
     --muted: var(--clr-neutral-600);
     --shadow: 0 2px 12px rgb(0 0 0 / .18);
     --gap: .5rem;
+    /* Kartenknöpfe (+, −, Kompass, Standort, Ebenen …) und das Menü */
+    --ctrl-size: 40px;
+    --ctrl-radius: 12px;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -616,9 +619,8 @@ body {
 }
 
 .maplibregl-popup {
-    /* Popups sitzen auf der hellen Karte – immer hell, auch im dunklen Modus */
-    color-scheme: light;
-    color: #1c1c1c;
+    /* Popups folgen wie die Karte dem hellen bzw. dunklen Modus */
+    color: var(--clr-neutral-900);
 }
 
 .popup {
@@ -628,12 +630,12 @@ body {
     line-height: 1.35;
 
     strong { font-size: var(--fs-300); padding-right: 1rem; }
-    small { color: #5f6368; }
+    small { color: var(--muted); }
     dl {
         display: grid;
         grid-template-columns: auto 1fr;
         gap: .1rem .6rem;
-        dt { color: #5f6368; }
+        dt { color: var(--muted); }
     }
     a { color: var(--route); }
 
@@ -657,7 +659,7 @@ body {
             cursor: pointer;
             text-align: left;
             border-radius: .4rem;
-            &:hover { background: #f1f3f4; }
+            &:hover { background: var(--surface-2); }
             .msr { color: var(--route); font-size: 1.15rem; }
         }
     }
@@ -868,12 +870,12 @@ body {
     }
     .nav-compass svg { width: 1.6rem; height: 1.6rem; transition: transform .1s linear; }
     .nav-compass.north { outline: 2px solid var(--route); }
-    .nav-recenter .msr { color: var(--route); }
-    /* Nicht mehr auf dem eigenen Standort: Knopf hebt sich ab */
-    .nav-recenter.attention {
+    /* Folgen-Knopf: blau = Karte folgt dir, farblos = selbst verschoben */
+    .nav-recenter .msr { color: var(--muted); }
+    .nav-recenter.following {
         background: var(--route);
         --clr-primary-100: var(--route-dark);
-        .msr { color: #fff; }
+        .msr { color: #fff; font-variation-settings: 'FILL' 1; }
     }
 }
 
@@ -928,10 +930,10 @@ body {
 }
 
 body.navigating {
+    /* Quellen stehen in den Einstellungen – in der Navigation stört das (i) nur */
+    .maplibregl-ctrl-bottom-left { display: none !important; }
     #search, #search-here, .alt-label, .wp-marker:not(.nav-target), .maplibregl-ctrl-top-right,
     .maplibregl-user-location-dot, .maplibregl-user-location-accuracy-circle { display: none !important; }
-    /* (i) der Kartenquellen über der Leiste, das Tempo darüber */
-    .maplibregl-ctrl-bottom-left { bottom: calc(4.4rem + var(--safe-bottom)); }
     .appnav { display: none !important; }
     /* Sheet (Suche entlang der Route, Ort) legt sich über die untere Leiste */
     #sheet.dialog.sheet { z-index: 35; }
@@ -943,14 +945,17 @@ body.navigating {
     position: fixed;
     z-index: 25;
     top: calc(.5rem + var(--safe-top));
-    right: .5rem;
+    right: 10px;
 
-    @media (min-width: 701px) { top: .75rem; right: .75rem; }
+    @media (min-width: 701px) { top: .75rem; }
 
+    /* Gleiche Form wie die Kartenknöpfe darunter: eckig mit runden Ecken */
     .appnav-btn {
         position: relative;
-        width: 2.75rem;
-        height: 2.75rem;
+        width: var(--ctrl-size);
+        height: var(--ctrl-size);
+        padding: 0;
+        border-radius: var(--ctrl-radius);
         background: var(--surface);
         box-shadow: var(--shadow);
         --clr-primary-100: var(--surface-2);
@@ -1089,15 +1094,15 @@ body.navigating {
     right: .3rem;
     top: .3rem;
 }
-.popup .poi-card .poi-facts > div { background: #f1f3f4; }
-.popup .poi-card :is(small, dt, .unknown dd) { color: #5f6368; }
+.popup .poi-card .poi-facts > div { background: var(--surface-2); }
+.popup .poi-card :is(small, dt, .unknown dd) { color: var(--muted); }
 .popup .popup-actions {
     display: flex;
     flex-wrap: wrap;
     gap: .4rem;
     margin-top: .6rem;
     .button { height: 2.2rem; font-size: var(--fs-200); padding-inline: .85rem; }
-    .button:not(.primary) { background: #f1f3f4; color: #1c1c1c; --clr-primary-100: #e3e5e8; }
+    .button:not(.primary) { background: var(--surface-2); color: var(--clr-neutral-900); --clr-primary-100: var(--clr-neutral-200); }
 }
 
 /* ── Erreichbarkeit ───────────────────────────────────────────────────────── */
@@ -1123,14 +1128,19 @@ body.navigating {
 /* ── Rückfrage (Dialog aus wuefl-libs) ────────────────────────────────────── */
 
 .dialog.confirm {
+    /* Feste Breite statt „max-content“ aus wuefl-libs: WebKit (GNOME Web,
+       Safari) rechnete die Höhe sonst mit ganz schmalem Text aus – der
+       Dialog wurde riesig, die Knöpfe zu Ovalen gestreckt */
+    width: min(26rem, 92vw);
     max-width: min(26rem, 92vw);
+    height: auto;
     /* nur offen als Raster – sonst stünde der Dialog geschlossen im Bild */
-    &[open] { display: grid; }
+    &[open] { display: grid; align-content: start; }
     gap: .75rem;
 
     h2 { display: flex; align-items: center; gap: .4rem; font-size: var(--fs-500); }
     p { color: var(--muted); }
-    .confirm-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+    .confirm-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: .5rem; }
     input[type=text] {
         width: 100%;
         padding: .6rem .75rem;
@@ -1411,6 +1421,12 @@ body.navigating {
 
 /* ── Einstellungen ────────────────────────────────────────────────────────── */
 
+.settings-about {
+    font-size: var(--fs-200);
+    ul { display: grid; gap: .25rem; margin: 0; padding-left: 1.1rem; color: var(--muted); }
+    a { color: var(--route); }
+}
+
 .dialog.settings {
     width: min(30rem, 94vw);
     max-height: 88dvh;
@@ -1443,6 +1459,7 @@ body.navigating {
         background: var(--surface-2);
         font-size: var(--fs-200);
         p { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; }
+        .settings-error { flex-wrap: nowrap; align-items: flex-start; color: var(--muted); .msr { flex-shrink: 0; } }
     }
     .settings-dev {
         font-size: var(--fs-200);
@@ -1569,6 +1586,7 @@ body.recording #search-here, body.navigating .rec { display: none !important; }
 }
 
 .rec-save {
+    width: min(26rem, 92vw);
     form { display: grid; gap: 1rem; min-width: min(24rem, 86vw); }
     label { display: grid; gap: .3rem; font-weight: 600; }
     input { font: inherit; text-align: left; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--surface); color: inherit; }
@@ -1595,3 +1613,92 @@ body.recording #search-here, body.navigating .rec { display: none !important; }
         .nav-offline { display: none; }
     }
 }
+
+/* Eigenschaften eines Objekts (eigene Ebenen) */
+.prop-table {
+    width: 100%; border-collapse: collapse; font-size: var(--fs-200);
+    th { text-align: left; font-weight: 500; color: var(--muted); padding: .25rem .6rem .25rem 0; vertical-align: top; white-space: nowrap; }
+    td { padding: .25rem 0; word-break: break-word; }
+    tr + tr { border-top: 1px solid var(--line, rgb(0 0 0 / .08)); }
+}
+
+/* ── Ordner verbinden (folder.js): Einstellungen, Meine Wege, Touren ──────── */
+
+.folder-box {
+    display: grid;
+    gap: .5rem;
+    padding: .6rem .75rem;
+    border-radius: .75rem;
+    background: var(--surface-2);
+    font-size: var(--fs-200);
+    .folder-line { display: flex; align-items: flex-start; gap: .4rem; > .msr { flex-shrink: 0; color: var(--primary, #1a73e8); } }
+    .folder-actions { display: flex; flex-wrap: wrap; gap: .4rem; .button { cursor: pointer; } }
+    .folder-note { color: var(--muted); }
+}
+.wege-tools .wege-folder { flex-basis: 100%; }
+.tours-folder { margin: 0 0 .75rem; }
+.appnav-menu hr { border: 0; border-top: 1px solid var(--line); margin: .3rem .4rem; }
+.appnav-menu { max-height: calc(100dvh - 5rem); overflow-y: auto; }
+
+/* ── Fliegen (keys.js): die Maus schaut, Hinweis unten ─────────────────────── */
+.fly-hud {
+    position: fixed; z-index: 30;
+    left: 50%; bottom: calc(1.25rem + var(--safe-bottom)); translate: -50% 0;
+    display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; justify-content: center;
+    max-width: calc(100vw - 2rem);
+    padding: .55rem 1rem; border-radius: 999px;
+    background: rgb(20 24 30 / .78); color: #fff;
+    font-size: var(--fs-200); backdrop-filter: blur(6px);
+    b { font-weight: 700; }
+    .msr { font-size: 1.1rem; }
+}
+body.flying :is(#search, #sheet, .appnav, .maplibregl-ctrl-top-right, .maplibregl-ctrl-bottom-left) {
+    opacity: .25; transition: opacity .3s;
+    &:hover { opacity: 1; }
+}
+
+/* ── Ebenen-Menü (layer-menu.js) ──────────────────────────────────────────── */
+.layer-ctrl button .msr { font-size: 1.4rem; line-height: var(--ctrl-size); }
+.layer-menu {
+    position: fixed; z-index: 25;
+    top: calc(.75rem + var(--safe-top)); right: 3.4rem;
+    width: min(22rem, calc(100vw - 4.5rem));
+    max-height: calc(100dvh - 1.5rem - var(--safe-top));
+    overflow-y: auto;
+    padding: .6rem .8rem .8rem;
+    border-radius: 1rem;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    display: grid; gap: .35rem;
+    font-size: var(--fs-200);
+    header { display: flex; align-items: center; justify-content: space-between; strong { font-size: var(--fs-400, 1.1rem); } }
+    h4 { margin: .5rem 0 0; font-size: var(--fs-100); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    .muted { color: var(--muted); }
+    @media (max-width: 700px) {
+        top: auto; right: 0; left: 0; bottom: 0; width: auto;
+        max-height: 75dvh; border-radius: 1.25rem 1.25rem 0 0;
+        padding-bottom: calc(1rem + var(--safe-bottom));
+    }
+}
+.layer-bases {
+    display: grid; grid-template-columns: 1fr 1fr; gap: .5rem;
+    button {
+        display: grid; gap: .3rem; justify-items: center;
+        padding: .35rem; border: 2px solid transparent; border-radius: .8rem;
+        background: var(--surface-2); color: inherit; font: inherit; font-weight: 600; cursor: pointer;
+        &[aria-pressed="true"] { border-color: var(--route); color: var(--route); }
+    }
+    .layer-thumb { width: 100%; height: 3.6rem; border-radius: .55rem; }
+    .thumb-map { background: linear-gradient(135deg, #f2efe9 0 45%, #fff 45% 52%, #cfe3c1 52% 70%, #aad3df 70%); }
+    .thumb-sat { background: linear-gradient(135deg, #4b5d3a 0 30%, #7a8a5a 30% 48%, #d9d4c4 48% 52%, #2f4d2a 52% 75%, #3c5f78 75%); }
+}
+.layer-row {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .35rem .2rem; cursor: pointer;
+    > .msr { color: var(--muted); }
+    > span:nth-child(2) { flex: 1; display: grid; min-width: 0; }
+    strong { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    small { color: var(--muted); font-size: var(--fs-100); }
+    input { flex-shrink: 0; }
+}
+.layer-actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .3rem; .button { background: var(--surface-2); font-size: var(--fs-200); } }

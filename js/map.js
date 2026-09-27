@@ -9,6 +9,7 @@
 import { STYLE_URL, TERRAIN_TILES } from './config.js';
 import { local } from './store.js';
 import { byId } from './categories.js';
+import { theme } from './theme.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const fc = (features) => ({ type: 'FeatureCollection', features });
@@ -38,12 +39,29 @@ export function osmRef(feature) {
 /**
  * @param opts.snapshot  Bild der Karte auslesbar halten (Vorschaubilder von Touren)
  */
+/** Grundkarten: bunt für unterwegs, hell und ruhig für eigene Daten */
+export const BASE_STYLES = {
+  standard: STYLE_URL,
+  hell: 'https://tiles.openfreemap.org/styles/positron',
+};
+
+/**
+ * Zugangsdaten für private Quellen (Ebenen-Menü → Eigene Quelle): Adress-
+ * Anfang → Wert für „Authorization“. Nur im Speicher; die Ebene selbst
+ * liegt im Browser (IndexedDB) und trägt sie mit (layers.js).
+ */
+export const AUTH = new Map();
+
 export function createMap(container, {
-  center = [9.93, 51.53], zoom = 1.5, pitch = 0, bearing = 0, auto3d = true, snapshot = false,
+  center = [9.93, 51.53], zoom = 1.5, pitch = 0, bearing = 0, auto3d = true, snapshot = false, style = STYLE_URL,
 } = {}) {
   const map = new maplibregl.Map({
     container,
-    style: STYLE_URL,
+    transformRequest: (url) => {
+      for (const [prefix, auth] of AUTH) if (url.startsWith(prefix)) return { url, headers: { Authorization: auth } };
+      return undefined;
+    },
+    style,
     center,
     zoom,
     pitch,
@@ -65,7 +83,7 @@ export function createMap(container, {
    */
   let demRepaint = null;
   map.on('sourcedata', (e) => {
-    if (e.sourceId !== 'terrain' || !e.tile) return;
+    if (!e.sourceId?.startsWith('terrain') || !e.tile) return;
     clearTimeout(demRepaint);
     demRepaint = setTimeout(() => map.triggerRepaint(), 150);
   });
@@ -75,7 +93,10 @@ export function createMap(container, {
     germanLabels(map);
     calmLabels(map);
     colorBuildings(map);
+    rememberColors(map);
+    paintTheme(map);
   });
+  addEventListener('wmap:theme', () => paintTheme(map));
 
   map.addControl(new maplibregl.AttributionControl({
     compact: true,
@@ -101,29 +122,30 @@ export function createMap(container, {
     // ohne Obergrenze fragt MapLibre bis Zoom 18 nach (Fehler, Daten, Strom).
     // Die Kacheladresse direkt statt TileJSON spart außerdem eine Anfrage beim Start.
     map.addSource('terrain', { ...DEM_SOURCE });
+    // In der Navigation reicht gröberes Gelände (Zoom 13, ≈ 6 m): weniger Daten,
+    // und die Straße liegt ruhiger – feine Höhenfehler lassen sie sonst wellen
+    map.addSource('terrain-lo', { ...DEM_SOURCE, maxzoom: 13 });
     // Eigene Quelle für die Schummerung – MapLibre rät davon ab, Gelände und
     // Schummerung aus derselben Quelle zu speisen
     map.addSource('hillshade', { ...DEM_SOURCE });
     map.addLayer({
       id: 'hillshade', type: 'hillshade', source: 'hillshade',
       paint: {
-        // Nah heran ausblenden: Mapterhorn nutzt in Städten teils Oberflächen-
+        // Nah heran schwächer: Mapterhorn nutzt in Städten teils Oberflächen-
         // modelle, dort erscheinen Häuser als Hügel – „Berge“ um die Gebäude
-        'hillshade-exaggeration': ['interpolate', ['linear'], ['zoom'], 12, 0.5, 14.5, 0.25, 16, 0],
-        'hillshade-shadow-color': 'rgba(60, 45, 20, 0.55)',
-        'hillshade-highlight-color': 'rgba(255, 255, 255, 0.35)',
-        'hillshade-accent-color': 'rgba(60, 45, 20, 0.25)',
+        // Kräftig genug, dass man Berge und Täler auch flach von oben sieht
+        'hillshade-exaggeration': ['interpolate', ['linear'], ['zoom'], 5, 0.6, 12, 0.55, 14.5, 0.4, 16, 0.25, 17.5, 0.1],
+        ...HILLSHADE.light,
       },
     }, firstRoadLayer(map));
-    map.setSky({
-      'sky-color': '#8fb8e8', 'horizon-color': '#dce9f7', 'fog-color': '#eef2f6',
-      'sky-horizon-blend': 0.5, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.35,
-      'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 9, 1, 12, 0],
-    });
+    map.setSky(SKY.light);
     // Weiches Licht von schräg oben – Wände heben sich ab, ohne hart zu wirken
     map.setLight({ anchor: 'viewport', color: '#ffffff', intensity: 0.32, position: [1.4, 200, 35] });
     map.addControl(new maplibregl.TerrainControl({ source: 'terrain', exaggeration: TERRAIN_EXAGGERATION }), 'top-right');
     addLayers(map);
+    // Eigene Beschriftungen (Treffer, Punkte) haben weiße Ränder – im Dunkeln mit
+    rememberColors(map, (l) => l.type === 'symbol');
+    paintTheme(map);
     if (auto3d) autoThreeD(map);
 
     for (const id of BASE_POI_LAYERS) {
@@ -137,6 +159,11 @@ export function createMap(container, {
 }
 
 const TERRAIN_EXAGGERATION = 1.5;
+/*
+ * Höhen: Mapterhorn liefert in Deutschland bis Zoom 16 – bei 512er Kacheln
+ * ≈ 0,75 m je Pixel, aus den amtlichen 1-m-Geländemodellen der Länder. Die
+ * normale Karte nutzt das volle Maß, die Navigation 'terrain-lo'.
+ */
 const DEM_SOURCE = {
   type: 'raster-dem', tiles: [TERRAIN_TILES], tileSize: 512, maxzoom: 16, encoding: 'terrarium',
 };
@@ -233,12 +260,20 @@ function autoThreeD(map) {
    * sich über Höhenfehler des Modells.
    */
   const exaggeration = () => (map.getZoom() >= 14 ? 1 : map.getZoom() >= 12 ? 1.25 : TERRAIN_EXAGGERATION);
+  const source = () => (document.body.classList.contains('navigating') ? 'terrain-lo' : 'terrain');
   const terrain = (on) => {
     if (!!map.getTerrain() === on) return;
     ours = true;
-    map.setTerrain(on ? { source: 'terrain', exaggeration: exaggeration() } : null);
+    map.setTerrain(on ? { source: source(), exaggeration: exaggeration() } : null);
     autoTerrain = on;
   };
+  // Navigation an/aus: Gelände in der passenden Auflösung
+  new MutationObserver(() => {
+    const t = map.getTerrain();
+    if (!t || t.source === source()) return;
+    ours = true;
+    map.setTerrain({ ...t, source: source() });
+  }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   map.on('zoomend', () => {
     const t = map.getTerrain();
     if (!t || Math.abs((t.exaggeration ?? 1) - exaggeration()) < 0.01) return;
@@ -255,7 +290,7 @@ function autoThreeD(map) {
   let demErrors = 0;
   map.on('error', (e) => {
     // 404 ist kein Funkloch; 504 schickt der Service Worker, wenn das Netz fehlt
-    if (!['terrain', 'hillshade'].includes(e.sourceId) || (e.error?.status && e.error.status !== 504)) return;
+    if (!['terrain', 'terrain-lo', 'hillshade'].includes(e.sourceId) || (e.error?.status && e.error.status !== 504)) return;
     if (++demErrors < 3 || !map.getTerrain()) return;
     demErrors = 0;
     terrain(false);
@@ -432,31 +467,166 @@ function calmLabels(map) {
   }
 }
 
-function firstRoadLayer(map) {
+/* ── Hell und dunkel ───────────────────────────────────────────────────────
+ *
+ * Im dunklen Modus (theme.js) wird der helle Kartenstil umgefärbt, statt einen
+ * dunklen zu laden: So bleiben 3D-Gebäude, POIs und alle eigenen Ebenen, und
+ * der Wechsel geht ohne Neuladen. Hell wird dunkel und umgekehrt, der Farbton
+ * bleibt – Wasser bleibt blau, Wald grün, Autobahnen orange.
+ */
+const HILLSHADE = {
+  light: {
+    'hillshade-shadow-color': 'rgba(60, 45, 20, 0.55)',
+    'hillshade-highlight-color': 'rgba(255, 255, 255, 0.35)',
+    'hillshade-accent-color': 'rgba(60, 45, 20, 0.25)',
+  },
+  dark: {
+    'hillshade-shadow-color': 'rgba(0, 0, 0, 0.6)',
+    'hillshade-highlight-color': 'rgba(255, 255, 255, 0.07)',
+    'hillshade-accent-color': 'rgba(0, 0, 0, 0.3)',
+  },
+};
+const SKY_BLEND = {
+  'sky-horizon-blend': 0.5, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.35,
+  'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 9, 1, 12, 0],
+};
+const SKY = {
+  light: { 'sky-color': '#8fb8e8', 'horizon-color': '#dce9f7', 'fog-color': '#eef2f6', ...SKY_BLEND },
+  dark: { 'sky-color': '#0c1522', 'horizon-color': '#243346', 'fog-color': '#161b22', ...SKY_BLEND },
+};
+
+/** Helle Farben je Karte: Ebene → { Eigenschaft: Wert } */
+const lightColors = new WeakMap();
+
+/** Die hellen Farben merken – einmal nach dem Laden des Stils, dann für eigene Ebenen */
+function rememberColors(map, pick = () => true) {
+  const known = lightColors.get(map) ?? new Map();
+  for (const l of map.getStyle().layers) {
+    if (known.has(l.id) || l.id === 'building-shadow' || !pick(l)) continue;
+    const props = {};
+    for (const [k, v] of Object.entries(l.paint ?? {})) if (k.endsWith('-color')) props[k] = v;
+    if (l.type === 'raster') props['raster-brightness-max'] = l.paint?.['raster-brightness-max'] ?? 1;
+    if (Object.keys(props).length) known.set(l.id, { role: colorRole(l), props });
+  }
+  lightColors.set(map, known);
+}
+
+function colorRole(l) {
+  if (l.type === 'line') return 'line';
+  if (l.type === 'fill-extrusion') return 'building';
+  if (l.type === 'symbol') return 'text';
+  return 'area';
+}
+
+/** Welche Karten gerade dunkel gezeichnet sind – hell ab Start braucht nichts */
+const painted = new WeakMap();
+
+function paintTheme(map) {
+  const dark = theme.dark;
+  if (!dark && !painted.get(map)) return;
+  painted.set(map, dark);
+  for (const [id, { role, props }] of lightColors.get(map) ?? []) {
+    if (!map.getLayer(id)) continue;
+    for (const [k, v] of Object.entries(props)) {
+      let value = v;
+      if (dark) {
+        if (k === 'raster-brightness-max') value = 0.5;
+        else value = darkColors(v, /halo/.test(k) ? 'halo' : role === 'text' ? 'text' : role);
+      }
+      map.setPaintProperty(id, k, value);
+    }
+  }
+  if (map.getLayer('hillshade')) {
+    for (const [k, v] of Object.entries(HILLSHADE[dark ? 'dark' : 'light'])) map.setPaintProperty('hillshade', k, v);
+  }
+  if (map.getSource('terrain')) map.setSky(SKY[dark ? 'dark' : 'light']);
+}
+
+/** Alle Farben in einem Wert (auch in Ausdrücken) umfärben */
+function darkColors(value, role) {
+  if (typeof value === 'string') {
+    const c = parseColor(value);
+    return c ? darken(c, role) : value;
+  }
+  if (Array.isArray(value)) return value.map((x) => darkColors(x, role));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, darkColors(v, role)]));
+  }
+  return value;
+}
+
+/**
+ * Helligkeit umkehren, Farbton behalten:
+ *   Flächen  hell → sehr dunkel (Boden ≈ 9 %, Wasser, Wald, Häuser etwas heller;
+ *            Häuser fast ohne Farbe)
+ *   Linien   bleiben in ihrer Reihenfolge, nur dunkler – Straßen heller als der Boden
+ *   Schrift  dunkel → hell, der Rand darum dunkel
+ */
+function darken({ h, s, l, a }, role) {
+  let nl;
+  if (role === 'text') nl = 1 - l * 0.85;
+  else if (role === 'halo') nl = 0.08 + (1 - l) * 0.15;
+  else if (role === 'line') nl = 0.16 + l * 0.3;
+  else nl = 0.08 + (1 - l) * 0.45;
+  // Häuser fast grau – rote Dächer und warme Wände wirkten nachts braun
+  const ns = role === 'text' ? s : role === 'building' ? s * 0.3 : s * 0.75;
+  return `hsla(${Math.round(h)}, ${Math.round(ns * 100)}%, ${Math.round(nl * 100)}%, ${+a.toFixed(3)})`;
+}
+
+/** '#rgb', '#rrggbb(aa)', 'rgb(a)(…)', 'hsl(a)(…)' → { h, s, l, a } (0–360, 0–1) */
+function parseColor(str) {
+  const t = str.trim().toLowerCase();
+  let r, g, b, a = 1;
+  if (t.startsWith('#')) {
+    const hex = t.slice(1);
+    const full = hex.length <= 4 ? [...hex].map((c) => c + c).join('') : hex;
+    if (!/^[0-9a-f]{6}([0-9a-f]{2})?$/.test(full)) return null;
+    [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) / 255);
+    if (full.length === 8) a = parseInt(full.slice(6, 8), 16) / 255;
+  } else {
+    const m = t.match(/^(rgba?|hsla?)\(([^)]*)\)$/);
+    if (!m) return null;
+    // Prozente als Anteil; rgb ohne % in 0–255
+    const parts = m[2].split(/[\s,/]+/).filter(Boolean);
+    const n = parts.map((x) => (x.endsWith('%') ? parseFloat(x) / 100 : parseFloat(x)));
+    if (n.length < 3 || n.some(Number.isNaN)) return null;
+    if (n.length > 3) a = n[3];
+    if (m[1].startsWith('hsl')) return { h: n[0], s: n[1], l: n[2], a };
+    [r, g, b] = n.slice(0, 3).map((x, i) => (parts[i].endsWith('%') ? x : x / 255));
+  }
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  const d = max - min;
+  if (!d) return { h: 0, s: 0, l, a };
+  const s = d / (1 - Math.abs(2 * l - 1));
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return { h: (h * 60 + 360) % 360, s, l, a };
+}
+
+export function firstRoadLayer(map) {
   return map.getStyle().layers.find((l) => /^(tunnel|road|highway|bridge)/.test(l.id))?.id;
 }
 
 /**
- * Attribution beim Start zeigen und nach 5 s auf das (i) einklappen.
+ * Attribution nur als (i) – aufgeklappt wird sie erst, wenn man draufdrückt.
+ * Die Quellen stehen ausführlich in den Einstellungen („Über WMap“); in der
+ * Navigation ist das (i) ganz ausgeblendet (CSS).
  *
- * MapLibre klappt sie bei jeder neuen Quelle wieder auf – auf dem Handy liegt
- * sie dann dauerhaft über der Karte. Nach der Startphase bleibt sie deshalb
- * zu, außer man tippt selbst auf das (i).
+ * MapLibre klappt sie beim Start und bei jeder neuen Quelle von selbst auf –
+ * das wird sofort wieder zurückgenommen, außer man hat selbst getippt.
  */
 function collapseAttribution(container) {
   const el = container.querySelector('.maplibregl-ctrl-attrib');
   if (!el) return;
-  let settled = false;
   let byUser = false;
   const collapse = () => {
     if (el.classList.contains('maplibregl-compact-show')) el.classList.remove('maplibregl-compact-show');
   };
   el.addEventListener('click', () => { byUser = true; }, true);
   new MutationObserver(() => {
-    if (settled && !byUser) collapse();
+    if (!byUser) collapse();
     byUser = false;
   }).observe(el, { attributes: true, attributeFilter: ['class'] });
-  setTimeout(() => { settled = true; collapse(); }, 5000);
+  collapse();
 }
 
 function firstLabelLayer(map) {

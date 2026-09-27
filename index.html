@@ -249,9 +249,6 @@
                 <button type="button" class="button nav-compass" data-shape="round" title="Norden oben">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 16 12h-8z" fill="#e03131"/><path d="M12 22 8 12h8z" fill="#9aa0a6"/></svg>
                 </button>
-                <button type="button" class="button nav-3d" data-shape="round" title="Flache Ansicht">
-                    <span class="msr">view_in_ar</span>
-                </button>
                 <button type="button" class="button nav-report" data-shape="round" title="Melden: Stau, Unfall, Baustelle …">
                     <span class="msr">add_alert</span>
                 </button>
@@ -264,8 +261,9 @@
                 <button type="button" class="button nav-mute" data-shape="round" title="Ansagen stummschalten">
                     <span class="msr">volume_up</span>
                 </button>
-                <button type="button" class="button nav-recenter" data-shape="round" title="Auf meinen Standort zentrieren">
-                    <span class="msr">my_location</span>
+                <!-- Blau: Karte folgt (antippen = geneigt/flach) · farblos: selbst verschoben (antippen = zurück) -->
+                <button type="button" class="button nav-recenter following" data-shape="round" title="Folgt dir – antippen: flache Ansicht">
+                    <span class="msr">navigation</span>
                 </button>
             </div>
 

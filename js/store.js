@@ -39,6 +39,10 @@ export const recent = {
     all.unshift({ ...entry, at: Date.now() });
     local.set(RECENT_KEY, all.slice(0, RECENT_MAX * 3));
   },
+  remove(entry) {
+    const key = recentKey(entry);
+    local.set(RECENT_KEY, local.get(RECENT_KEY, []).filter((e) => recentKey(e) !== key));
+  },
   clear() { local.set(RECENT_KEY, []); },
 };
 
@@ -52,9 +56,13 @@ function recentKey(e) {
 
 const TOURS_KEY = 'wmap.tours';
 
+/** Wege und Touren haben sich geändert – z. B. für den Ordner-Abgleich (folder.js). */
+export const changed = (detail) => dispatchEvent(new CustomEvent('wmap:data', { detail }));
+
 /**
- * Tour: { id, name, description, profile, points: [[lon, lat]], shape (Polyline6),
- *         stats: { length, time, ascent, descent }, preview (Data-URL), created, updated }
+ * Tour: { id, name, description, profile, points: [[lon, lat]], shape (Polyline5),
+ *         stats: { length, time, ascent, descent }, preview (Data-URL), created, updated,
+ *         fixed: true – Verlauf steht fest (bekannter Weg, GPX), nicht neu rechnen }
  */
 export const tours = {
   all() {
@@ -66,13 +74,27 @@ export const tours = {
     const i = list.findIndex((t) => t.id === tour.id);
     const next = { ...tour, updated: Date.now(), created: tour.created ?? Date.now() };
     if (i >= 0) list[i] = next; else list.push(next);
-    if (local.set(TOURS_KEY, list)) return next;
+    const saved = this.put(next, list);
+    changed({ kind: 'tour', id: next.id });
+    return saved;
+  },
+  /** Speichern, wie sie ist (updated bleibt) – für den Abgleich */
+  put(tour, list = null) {
+    if (!list) {
+      list = local.get(TOURS_KEY, []);
+      const i = list.findIndex((t) => t.id === tour.id);
+      if (i >= 0) list[i] = tour; else list.push(tour);
+    }
+    if (local.set(TOURS_KEY, list)) return tour;
     // Voll? Dann ohne Vorschaubild versuchen – das ist der größte Posten
-    const slim = list.map((t) => (t.id === next.id ? { ...t, preview: null } : t));
-    if (local.set(TOURS_KEY, slim)) return { ...next, preview: null };
+    const slim = list.map((t) => (t.id === tour.id ? { ...t, preview: null } : t));
+    if (local.set(TOURS_KEY, slim)) return { ...tour, preview: null };
     throw new Error('Speicher voll – Tour konnte nicht gespeichert werden');
   },
-  remove(id) { local.set(TOURS_KEY, local.get(TOURS_KEY, []).filter((t) => t.id !== id)); },
+  remove(id) {
+    local.set(TOURS_KEY, local.get(TOURS_KEY, []).filter((t) => t.id !== id));
+    changed({ kind: 'tour', id, removed: true });
+  },
   newId() { return `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`; },
 };
 
@@ -108,13 +130,23 @@ export async function unpackJson(code) {
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 
+/**
+ * Tour als Link-Code. Feste Touren (bekannte Wege, GPX) tragen ihren Verlauf
+ * mit (s), sonst reichen die Punkte – der Empfänger rechnet neu.
+ */
 export function encodeShare(tour) {
-  return packJson({ n: tour.name, d: tour.description || undefined, p: tour.profile, w: encodePolyline(tour.points, 5) });
+  return packJson({
+    n: tour.name, d: tour.description || undefined, p: tour.profile, w: encodePolyline(tour.points, 5),
+    s: tour.fixed && tour.shape ? tour.shape : undefined,
+  });
 }
 
 export async function decodeShare(code) {
   const o = await unpackJson(code);
-  return { name: o.n ?? 'Geteilte Tour', description: o.d ?? '', profile: o.p ?? 'hike', points: decodePolyline(o.w, 5) };
+  return {
+    name: o.n ?? 'Geteilte Tour', description: o.d ?? '', profile: o.p ?? 'hike', points: decodePolyline(o.w, 5),
+    ...(o.s ? { fixed: true, shape: o.s } : {}),
+  };
 }
 
 /* ── GPX ──────────────────────────────────────────────────────────────────── */
@@ -125,6 +157,7 @@ const xml = (s) => String(s ?? '').replace(/[&<>"']/g,
 /**
  * GPX 1.1 mit Track (inkl. Höhe, wo bekannt) und den gesetzten Punkten als
  * Wegpunkte. `elevationAt(i)` liefert die Höhe zum i-ten Linienpunkt.
+ * Stichworte „wmap:ID“ (und „wmap-fixed“) erkennen die Datei beim Abgleich wieder.
  */
 export function toGpx(tour, coords, elevationAt = () => null) {
   const pts = coords.map(([lon, lat], i) => {
@@ -135,10 +168,10 @@ export function toGpx(tour, coords, elevationAt = () => null) {
     `  <wpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}"><name>${i === 0 ? 'Start' : i === tour.points.length - 1 ? 'Ziel' : `Punkt ${i}`}</name></wpt>`).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="WMap" xmlns="http://www.topografix.com/GPX/1/1">
-  <metadata><name>${xml(tour.name)}</name>${tour.description ? `<desc>${xml(tour.description)}</desc>` : ''}<time>${new Date().toISOString()}</time></metadata>
+  <metadata><name>${xml(tour.name)}</name>${tour.description ? `<desc>${xml(tour.description)}</desc>` : ''}<time>${new Date(tour.updated ?? Date.now()).toISOString()}</time>${tour.id ? `<keywords>wmap:${xml(tour.id)}${tour.fixed ? ' wmap-fixed' : ''}</keywords>` : ''}</metadata>
 ${wpts}
   <trk>
-    <name>${xml(tour.name)}</name>${tour.description ? `\n    <desc>${xml(tour.description)}</desc>` : ''}
+    <name>${xml(tour.name)}</name>${tour.description ? `\n    <desc>${xml(tour.description)}</desc>` : ''}${tour.profile ? `\n    <type>${xml(tour.profile)}</type>` : ''}
     <trkseg>
 ${pts}
     </trkseg>

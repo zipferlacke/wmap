@@ -1,15 +1,18 @@
 /**
- * Einstellungen: Offline-Karten, Datensparmodus, Mitmachen bei OSM samt
+ * Einstellungen: Hell/dunkel, Offline-Karten, Datensparmodus, Mitmachen bei OSM samt
  * Konto, Stimme, Spritpreise, Verlauf. Alles bleibt in diesem Browser.
  */
 import { offlineSetting } from './offline.js';
 import { contribute, trace } from './trace.js';
 import { account, login } from './osm-api.js';
 import { queue, anonNotes } from './survey.js';
-import { OSM_AUTH } from './config.js';
+import { OSM_AUTH, APP_VERSION } from './config.js';
 import { esc } from './geo.js';
 import { navSettings } from './navigation.js';
 import { historySetting } from './tracks.js';
+import { mountFolder } from './folder.js';
+import { creditList } from './credits.js';
+import { theme } from './theme.js';
 
 /**
  * @param ctx.dataSaver / setDataSaver   Datensparmodus lesen/schalten
@@ -18,6 +21,7 @@ import { historySetting } from './tracks.js';
 export function openSettings(ctx) {
   const dlg = document.createElement('dialog');
   dlg.className = 'dialog settings';
+  let loginError = '';   // im Dialog zeigen – ein Toast läge hinter dem Dialog
   const render = () => {
     const user = account.user();
     dlg.innerHTML = `
@@ -25,6 +29,16 @@ export function openSettings(ctx) {
         <h2><span class="msr">settings</span> Einstellungen</h2>
         <button type="button" class="button" data-shape="round no-background" data-act="close" title="Schließen"><span class="msr">close</span></button>
       </header>
+
+      <section>
+        <h3>Darstellung</h3>
+        <label class="settings-select">
+          <span><strong>Hell oder dunkel</strong><small>Für Karte und App. „Wie das System“ folgt dem Modus deines Geräts, auch wenn er abends wechselt.</small></span>
+          <select name="theme">
+            ${[['system', 'Wie das System'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([v, l]) => `<option value="${v}" ${theme.get() === v ? 'selected' : ''}>${l}</option>`).join('')}
+          </select>
+        </label>
+      </section>
 
       <section>
         <h3>Unterwegs</h3>
@@ -55,10 +69,13 @@ export function openSettings(ctx) {
           ${account.loggedIn()
             ? `<p><span class="msr">account_circle</span> Angemeldet als <strong>${esc(user?.name ?? '?')}</strong></p>
                <button type="button" class="button" data-act="logout">Abmelden</button>`
-            : `<p>Antworten landen bei OpenStreetMap unter deinem Namen. ${queue.size() ? `${queue.size()} warten aufs Hochladen.` : ''}</p>
-               <button type="button" class="button primary" data-act="login"><span class="msr">login</span> Bei OpenStreetMap anmelden</button>`}
+            : account.clientId()
+              ? `<p>Antworten landen bei OpenStreetMap unter deinem Namen. ${queue.size() ? `${queue.size()} warten aufs Hochladen.` : ''}</p>
+                 <button type="button" class="button primary" data-act="login"><span class="msr">login</span> Bei OpenStreetMap anmelden</button>`
+              : `<p class="settings-error"><span class="msr">info</span> Die Anmeldung ist hier noch nicht eingerichtet: WMap braucht eine OAuth-Client-ID von ${esc(account.conf().web.replace(/^https:\/\//, ''))} (siehe „Für Entwickler“). Bis dahin kannst du Antworten anonym als Hinweis senden (Schalter oben).</p>`}
+          ${loginError ? `<p class="settings-error"><span class="msr">error</span> ${esc(loginError)}</p>` : ''}
         </div>
-        <details class="settings-dev">
+        <details class="settings-dev" ${account.clientId() ? '' : 'open'}>
           <summary>Für Entwickler</summary>
           <label>Server
             <select data-act="server">${Object.entries(OSM_AUTH).map(([k, v]) => `<option value="${k}" ${account.server() === k ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select>
@@ -70,14 +87,23 @@ export function openSettings(ctx) {
         </details>
       </section>
 
+      <section class="settings-about">
+        <h3>Über WMap</h3>
+        <p><strong>WMap ${esc(APP_VERSION)}</strong> – Karte und Navigation auf Basis offener Daten.
+          <a href="https://wuefl.de/impressum" target="_blank" rel="noopener">Impressum</a></p>
+        <ul>${creditList()}</ul>
+      </section>
+
       <section>
         <h3>Daten</h3>
         ${toggle('history', 'Fahrten merken',
           'Navigierte Strecken landen unter „Meine Wege“ – nur auf diesem Gerät, über Jahre. Mit Sicherungsdatei auf ein anderes Gerät.',
           historySetting.get())}
-        <a class="button settings-row" href="./tours.html#wege"><span class="msr">timeline</span> Meine Wege ansehen</a>
+        <div class="settings-folder"></div>
+        <a class="button settings-row" href="./wege.html"><span class="msr">timeline</span> Meine Wege ansehen</a>
         <button type="button" class="button settings-row" data-act="history"><span class="msr">history</span> Suchverlauf löschen</button>
       </section>`;
+    mountFolder(dlg.querySelector('.settings-folder'));
   };
   render();
   document.body.append(dlg);
@@ -85,6 +111,7 @@ export function openSettings(ctx) {
   dlg.addEventListener('change', (e) => {
     const t = e.target;
     if (t.name === 'offline') offlineSetting.set(t.checked);
+    if (t.name === 'theme') theme.set(t.value);
     if (t.name === 'navzoom') navSettings.zoom = t.value;
     if (t.name === 'nav3d') navSettings.threeD = t.checked;
     if (t.name === 'saver') ctx.setDataSaver(t.checked);
@@ -92,7 +119,7 @@ export function openSettings(ctx) {
     if (t.name === 'anon') anonNotes.set(t.checked);
     if (t.name === 'history') historySetting.set(t.checked);
     if (t.dataset.act === 'server') { account.setServer(t.value); render(); }
-    if (t.dataset.act === 'client') account.setClientId(t.value);
+    if (t.dataset.act === 'client') { account.setClientId(t.value); loginError = ''; render(); }
   });
   dlg.addEventListener('click', async (e) => {
     const b = e.target.closest('button[data-act]');
@@ -105,11 +132,12 @@ export function openSettings(ctx) {
     if (act === 'clear-trace') { trace.clear(); ctx.toast('Aufzeichnung gelöscht'); }
     if (act === 'logout') { account.logout(); render(); }
     if (act === 'login') {
+      loginError = '';
       try {
         const user = await login();
         ctx.toast(`Angemeldet als ${user.name}`);
         ctx.onContribute?.();
-      } catch (err) { ctx.toast(err.message); }
+      } catch (err) { loginError = err.message; }
       render();
     }
   });

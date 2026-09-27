@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Eigene Ebenen – WMap</title>
+    <link rel="manifest" href="./appdata/manifest.json">
+    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#1a73e8">
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/tours.css">
+    <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+</head>
+
+<body class="tour-page ebenen-page">
+    <header class="tour-head panel">
+        <a class="button" data-shape="round no-background" href="./index.html" title="Zur Karte">
+            <span class="msr">arrow_back</span>
+        </a>
+        <h1 class="tour-name">Eigene Ebenen</h1>
+    </header>
+
+    <main>
+        <section id="map"></section>
+
+        <dialog id="sheet" class="dialog sheet tour-panel" aria-label="Ebenen">
+            <button type="button" class="sheet-grip" aria-label="Höhe ändern: ziehen, doppelt tippen für ganz auf oder zu"></button>
+            <section class="view">
+                <!-- Angetipptes Objekt: alle Werte -->
+                <div class="feature-info" hidden></div>
+
+                <div class="tour-bar ebenen-bar">
+                    <label class="button primary"><span class="msr">upload_file</span> GeoJSON laden<input type="file" accept=".geojson,.json,application/geo+json,application/json" multiple hidden data-act="file"></label>
+                    <button type="button" class="button" data-act="url"><span class="msr">link</span> Von Link laden</button>
+                </div>
+                <p class="muted ebenen-intro">Eigene Daten als Ebene – z. B. geologische Messpunkte oder Messwerte als GeoJSON.
+                    Sie bleiben privat auf diesem Gerät. Zahlenwerte lassen sich als Farbverlauf zeigen.</p>
+                <ul class="layer-list"></ul>
+            </section>
+        </dialog>
+    </main>
+
+    <script type="module" src="./js/ebenen.js"></script>
+</body>
+
+</html>

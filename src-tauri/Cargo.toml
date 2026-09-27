@@ -1,6 +1,6 @@
 [package]
 name = "wmap"
-version = "0.7.0"
+version = "0.8.0"
 description = "WMap – 3D-Karte und Navigation als Desktop-App"
 authors = ["Florian Wüllner"]
 license = ""
@@ -27,3 +27,8 @@ tauri-plugin-log = "2"
 # Linux: Standortabfragen von WebKitGTK erlauben (sonst gibt es kein GPS)
 [target.'cfg(target_os = "linux")'.dependencies]
 webkit2gtk = { version = "2.0", features = ["v2_40"] }
+
+# Handy-Apps: echtes GPS über Tauri (läuft auch bei ausgeschaltetem Bildschirm);
+# die Web-App fragt es über js/native.js an, im Browser bleibt es beim Web-GPS
+[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+tauri-plugin-geolocation = "2"

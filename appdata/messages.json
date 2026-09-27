@@ -6,6 +6,29 @@
     "minVersion": "0.1.0",
     "changelog": [
         {
+            "version": "0.8.0",
+            "date": "2026-09-27",
+            "changes": [
+                "Tourplaner verständlich: Anleitung, Ortssuche, beschriftete Werkzeuge, Speichern zeigt „✓ Gespeichert“",
+                "Bekannte Touren: Wander- und Radwege aus OpenStreetMap finden und mit Originalverlauf übernehmen; GPX-Touren importieren",
+                "Lange Touren: Fernwanderungen und mehrtägige Radtouren lassen sich mit wenigen Punkten planen",
+                "Meine Wege nach Jahren eingefärbt – alle übereinander auf einer Karte",
+                "Eigene Ebenen: GeoJSON (z. B. Messwerte) laden, nach Wert einfärben, Werte antippen – auch auf der Hauptkarte",
+                "Navigation: ein Knopf zum Folgen (blau) statt zwei, der Pfeil bleibt auf der Straße, nach dem Beenden ist die Route weg, kein (i) mehr im Weg",
+                "Ordner verbinden: Wege und Touren als GPX in einem Ordner, den Nextcloud, Proton Drive oder Google Drive abgleicht (Chrome, Edge)",
+                "Entdecken: alle Wege im Kartenausschnitt als Tabelle, gruppiert nach dem Gesamtweg mit seinen Etappen; Touren anderer mit Sternen – wer veröffentlicht, ist sofort für alle zu sehen",
+                "Plugins als eigene Seite wie ein App-Store: Kartenebenen, Erweiterungen (JavaScript) und eigene Ebenen aus Datei, Ordner oder Adresse – antippen, groß ansehen, aktivieren",
+                "Neue Übersicht mit Kacheln, Offline-Karten und letzten Routen zum Löschen und einem Dank an alle Anbieter; Seiten ohne Karte haben eine Leiste links (Handy: unten)",
+                "Meine Touren und Entdecken: Seitenleiste zum Ziehen – breiter, schmaler oder ganz eingeklappt; Zurück oben links, Schließen führt zur Karte",
+                "Ebenen-Menü: Satellit (in Niedersachsen, NRW und Bayern amtliche Luftbilder), Schwerpunkt Wandern & Rad, Wanderwege, eigene Quellen auch mit Passwort",
+                "Fliegen: mit der Maus umsehen, mit W dorthin fliegen, wohin die Bildmitte zeigt; kräftigeres Relief",
+                "Hell oder dunkel: Karte und App folgen dem Modus des Geräts – oder fest in den Einstellungen → Darstellung",
+                "Geologie als fertige Plugins: Geologie und Gesteinsarten Deutschland (BGR, GÜK250) und Geologie weltweit (Macrostrat)",
+                "Navigation mehr von oben und näher dran – Häuser verdecken die Straße nicht mehr",
+                "Kartenknöpfe größer, Menüknopf in derselben Form; Erreichbarkeit nur noch über die Suche"
+            ]
+        },
+        {
             "version": "0.7.0",
             "date": "2026-09-27",
             "changes": [

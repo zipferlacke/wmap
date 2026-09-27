@@ -14,48 +14,22 @@
 </head>
 
 <body class="tour-page">
-    <!-- Kopf: Name bearbeiten und alle Werkzeuge der Tour -->
+    <!-- Kopf: Zurück, Name, Speichern mit Zustand; Teilen/GPX/Löschen im Menü -->
     <header class="tour-head panel">
-        <a class="button" data-shape="round no-background" href="./tours.html" title="Zu meinen Touren">
+        <a class="button" data-shape="round no-background" href="./wege.html?tab=geplant" title="Zu meinen Touren">
             <span class="msr">arrow_back</span>
         </a>
         <input id="tour-name" class="tour-name" type="text" placeholder="Name der Tour" aria-label="Name der Tour">
-        <span class="tour-saved" aria-live="polite"></span>
-        <div class="tour-tools edit-only">
-            <button type="button" id="undo" class="button" data-shape="round no-background" title="Rückgängig" disabled>
-                <span class="msr">undo</span>
-            </button>
-            <button type="button" id="reverse" class="button" data-shape="round no-background" title="Richtung umkehren">
-                <span class="msr">swap_horiz</span>
-            </button>
-            <button type="button" id="roundtrip" class="button" data-shape="round no-background" title="Zurück zum Start">
-                <span class="msr">replay</span>
-            </button>
-            <button type="button" id="clear" class="button" data-shape="round no-background" title="Alle Punkte löschen">
-                <span class="msr">delete_sweep</span>
-            </button>
-        </div>
-        <div class="tour-tools">
-            <button type="button" id="share" class="button" data-shape="round no-background" title="Teilen">
-                <span class="msr">share</span>
-            </button>
-            <button type="button" id="export" class="button" data-shape="round no-background" title="Als GPX exportieren">
-                <span class="msr">download</span>
-            </button>
-            <button type="button" id="delete" class="button edit-only" data-shape="round no-background" title="Tour löschen">
-                <span class="msr">delete</span>
-            </button>
-            <button type="button" id="save" class="button primary"><span class="msr">save</span> <span class="save-label">Speichern</span></button>
-        </div>
+        <button type="button" id="save" class="button save-state" data-state="new" title="Tour speichern">
+            <span class="msr">save</span> <span class="save-label">Speichern</span>
+        </button>
     </header>
 
     <main>
         <section id="map"></section>
-
-        <div class="tour-profiles chip-row edit-only" role="radiogroup" aria-label="Fortbewegung"></div>
         <p class="tour-hint" hidden></p>
 
-        <!-- Unten immer: Zahlen, Höhenprofil, Wege, Beschreibung -->
+        <!-- Unten: Zahlen, Anleitung, Art, Werkzeuge, Höhenprofil, Wege, Beschreibung -->
         <dialog id="sheet" class="dialog sheet tour-panel" aria-label="Tourdaten">
             <button type="button" class="sheet-grip" aria-label="Höhe ändern: ziehen, doppelt tippen für ganz auf oder zu"></button>
             <section class="view">
@@ -65,6 +39,37 @@
                     <div><strong class="st-up">–</strong><small>Anstieg</small></div>
                     <div><strong class="st-down">–</strong><small>Abstieg</small></div>
                 </header>
+
+                <details class="tour-help edit-only">
+                    <summary><span class="msr">help</span> So planst du eine Tour</summary>
+                    <ol>
+                        <li><strong>Start setzen:</strong> in die Karte tippen – oder unten einen Ort suchen.</li>
+                        <li><strong>Weitere Punkte:</strong> antippen. Die Strecke folgt Wegen, die zur gewählten Art passen (Wandern über Pfade, Rennrad über Asphalt …).</li>
+                        <li><strong>Ändern:</strong> Punkte verschieben – ziehen. Punkt antippen – entfernen oder dort starten. Auf die Linie tippen – dort einen Punkt einfügen.</li>
+                        <li><strong>Speichern</strong> passiert automatisch, sobald es eine Strecke gibt. Die Tour findest du dann unter „Meine Touren“.</li>
+                    </ol>
+                </details>
+
+                <div class="tour-block edit-only">
+                    <span class="section-title">Unterwegs als</span>
+                    <div class="tour-profiles chip-row" role="radiogroup" aria-label="Art der Tour"></div>
+                </div>
+
+                <div class="tour-block edit-only">
+                    <span class="section-title">Punkte</span>
+                    <form class="tour-search" autocomplete="off">
+                        <span class="msr">search</span>
+                        <input type="search" id="tour-search" placeholder="Ort suchen und als Punkt anhängen" aria-label="Ort suchen">
+                    </form>
+                    <ul class="tour-search-results" hidden></ul>
+                    <div class="tour-tools">
+                        <button type="button" id="undo" class="button" disabled><span class="msr">undo</span> Rückgängig</button>
+                        <button type="button" id="reverse" class="button"><span class="msr">swap_horiz</span> Umdrehen</button>
+                        <button type="button" id="roundtrip" class="button"><span class="msr">replay</span> Zurück zum Start</button>
+                        <button type="button" id="clear" class="button"><span class="msr">delete_sweep</span> Alle Punkte löschen</button>
+                    </div>
+                </div>
+
                 <p class="tour-status" hidden></p>
                 <div class="elevation"></div>
                 <div class="tour-ways"></div>
