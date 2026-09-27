@@ -138,19 +138,33 @@ export function showLayer(map, layer, { before } = {}) {
     return;
   }
   const [color] = colorExpr(layer);
+  const o = layer.opacity ?? 1;
   map.addSource(src, { type: 'geojson', data: layer.data, promoteId: undefined });
   const geom = (types) => ['in', ['geometry-type'], ['literal', types]];
   map.addLayer({ id: fill, type: 'fill', source: src, filter: geom(['Polygon', 'MultiPolygon']),
-    paint: { 'fill-color': color, 'fill-opacity': 0.35 } }, before);
+    paint: { 'fill-color': color, 'fill-opacity': 0.35 * o } }, before);
   map.addLayer({ id: line, type: 'line', source: src, filter: geom(['LineString', 'MultiLineString', 'Polygon', 'MultiPolygon']),
     layout: { 'line-join': 'round', 'line-cap': 'round' },
-    paint: { 'line-color': color, 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1.5, 16, 4] } }, before);
+    paint: { 'line-color': color, 'line-opacity': o, 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1.5, 16, 4] } }, before);
   map.addLayer({ id: point, type: 'circle', source: src, filter: geom(['Point', 'MultiPoint']),
     paint: {
       'circle-color': color,
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 3.5, 14, 7, 18, 10],
       'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5,
+      'circle-opacity': o, 'circle-stroke-opacity': o,
     } }, before);
+}
+
+/** Deckkraft einer Ebene sofort auf der Karte ändern (Wert steht in layer.opacity) */
+export function applyOpacity(map, layer) {
+  const { fill, line, point, raster } = ids(layer.id);
+  const o = layer.opacity ?? (layer.raster ? 0.7 : 1);
+  const set = (id, prop, v) => { if (map.getLayer(id)) map.setPaintProperty(id, prop, v); };
+  set(raster, 'raster-opacity', o);
+  set(fill, 'fill-opacity', 0.35 * o);
+  set(line, 'line-opacity', o);
+  set(point, 'circle-opacity', o);
+  set(point, 'circle-stroke-opacity', o);
 }
 
 /** Adress-Anfang einer Kachel-Vorlage – bis zum ersten Platzhalter oder Parameter */

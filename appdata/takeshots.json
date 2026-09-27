@@ -1,5 +1,4 @@
 {
-  "serve": ".",
   "themes": {
     "light": "_light",
     "dark": ""
@@ -14,12 +13,27 @@
       1366,
       1024,
       2
+    ],
+    "promo-narrow": [
+      540,
+      960,
+      2
+    ],
+    "promo-wide": [
+      1920,
+      1080,
+      2
+    ],
+    "social": [
+      1200,
+      630,
+      2
     ]
   },
   "offline": false,
   "shots": [
     {
-      "url": "{base}index.html?view=9.9365,51.5343,16.3,55,-25",
+      "url": "http://localhost:8080/web/wuefl_products/wmap/index.html?view=9.9365,51.5343,16.3,55,-25",
       "out": "images/screenshot-{format}-1{theme}.png",
       "steps": [
         [
@@ -29,10 +43,14 @@
         [
           "shot"
         ]
+      ],
+      "formats": [
+        "narrow",
+        "wide"
       ]
     },
     {
-      "url": "{base}index.html?view=9.9365,51.5343,15.4&q=Parkplatz",
+      "url": "http://localhost:8080/web/wuefl_products/wmap/index.html?view=9.9365,51.5343,15.4&q=Parkplatz",
       "out": "images/screenshot-{format}-2{theme}.png",
       "steps": [
         [
@@ -42,10 +60,14 @@
         [
           "shot"
         ]
+      ],
+      "formats": [
+        "narrow",
+        "wide"
       ]
     },
     {
-      "url": "{base}index.html?view=9.9365,51.5343,14&q=Cron%20%26%20Lanz%20G%C3%B6ttingen",
+      "url": "http://localhost:8080/web/wuefl_products/wmap/index.html?ort=10.10363,51.4814&name=Kulturscheune",
       "out": "images/screenshot-{format}-3{theme}.png",
       "steps": [
         [
@@ -55,10 +77,14 @@
         [
           "shot"
         ]
+      ],
+      "formats": [
+        "narrow",
+        "wide"
       ]
     },
     {
-      "url": "{base}index.html?view=9.9365,51.5343,10&from=G%C3%B6ttingen&to=Hann.%20M%C3%BCnden&profile=bike",
+      "url": "http://localhost:8080/web/wuefl_products/wmap/index.html?view=9.9365,51.5343,10&from=G%C3%B6ttingen&to=Hann.%20M%C3%BCnden&profile=bike",
       "out": "images/screenshot-{format}-4{theme}.png",
       "steps": [
         [
@@ -68,10 +94,14 @@
         [
           "shot"
         ]
+      ],
+      "formats": [
+        "narrow",
+        "wide"
       ]
     },
     {
-      "url": "{base}index.html?sim&view=9.9365,51.5343,13&from=G%C3%B6ttingen%20Weender%20Tor&to=Bovenden&profile=car",
+      "url": "http://localhost:8080/web/wuefl_products/wmap/index.html?sim&view=9.9365,51.5343,13&from=G%C3%B6ttingen%20Weender%20Tor&to=Bovenden&profile=car",
       "out": "images/screenshot-{format}-5{theme}.png",
       "steps": [
         [
@@ -89,10 +119,14 @@
         [
           "shot"
         ]
+      ],
+      "formats": [
+        "narrow",
+        "wide"
       ]
     },
     {
-      "url": "{base}index.html?view=9.9365,51.5343,12&reach=9.9365,51.5343",
+      "url": "http://localhost:8080/web/wuefl_products/wmap/index.html?view=9.9365,51.5343,12&reach=9.9365,51.5343",
       "out": "images/screenshot-{format}-6{theme}.png",
       "steps": [
         [
@@ -110,23 +144,31 @@
         [
           "shot"
         ]
+      ],
+      "formats": [
+        "narrow",
+        "wide"
       ]
     },
     {
-      "url": "{base}entdecken.html?view=10.6,51.78,10.3",
+      "url": "http://localhost:8080/web/wuefl_products/wmap/entdecken.html?view=10.6,51.78,10.3",
       "out": "images/screenshot-{format}-7{theme}.png",
       "steps": [
         [
           "wait",
-          22000
+          20000
         ],
         [
           "shot"
         ]
+      ],
+      "formats": [
+        "narrow",
+        "wide"
       ]
     },
     {
-      "url": "{base}dashboard.html",
+      "url": "http://localhost:8080/web/wuefl_products/wmap/dashboard.html",
       "out": "images/screenshot-{format}-8{theme}.png",
       "steps": [
         [
@@ -136,6 +178,759 @@
         [
           "shot"
         ]
+      ],
+      "formats": [
+        "narrow",
+        "wide"
+      ]
+    }
+  ],
+  "brand": {
+    "name": "WMap",
+    "claim": "Karte, Routen, Navigation und Tourenplanung – offen ohne Konto, auf allen Geräten.",
+    "logo": "wmap-512.png",
+    "colors": {
+      "from": "#76cc47",
+      "via": "#1a73e8",
+      "to": "#0b3d91",
+      "text": "#ffffff"
+    }
+  },
+  "compose": [
+    {
+      "out": "werbung/handy-1-titel.png",
+      "formats": [
+        "promo-narrow"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "left": 8,
+          "right": 8,
+          "top": 0,
+          "bottom": 6,
+          "align": "center",
+          "gap": 3.5,
+          "items": [
+            {
+              "type": "logo",
+              "size": 30
+            },
+            {
+              "type": "text",
+              "style": "title",
+              "text": "{name}",
+              "size": 17.5
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "{claim}",
+              "size": 6.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "out": "werbung/handy-2-karte.png",
+      "formats": [
+        "promo-narrow"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "top": 7,
+          "left": 8,
+          "right": 8,
+          "bottom": 66,
+          "valign": "top",
+          "align": "left",
+          "gap": 2,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Karte",
+              "size": 2.6
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "Die Welt in 3D",
+              "size": 7.8
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Gelände, Gebäude und Relief – hell oder dunkel, mit Satellitenbild und Wanderwegen zum Zuschalten.",
+              "size": 3.8
+            }
+          ]
+        },
+        {
+          "type": "phone",
+          "screen": "images/screenshot-narrow-1.png",
+          "width": 78,
+          "bleed": {
+            "bottom": 30
+          }
+        }
+      ]
+    },
+    {
+      "out": "werbung/handy-3-suche.png",
+      "formats": [
+        "promo-narrow"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "top": 7,
+          "left": 8,
+          "right": 8,
+          "bottom": 66,
+          "valign": "top",
+          "align": "left",
+          "gap": 2,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Suche",
+              "size": 2.6
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "Finden, was in der Nähe ist",
+              "size": 7.8
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Parkplätze, Bäckereien, Ladesäulen: alles aus OpenStreetMap, mit Öffnungszeiten und direkt auf der Karte.",
+              "size": 3.8
+            }
+          ]
+        },
+        {
+          "type": "phone",
+          "screen": "images/screenshot-narrow-2_light.png",
+          "width": 78,
+          "bleed": {
+            "bottom": 30
+          }
+        }
+      ]
+    },
+    {
+      "out": "werbung/handy-4-route.png",
+      "formats": [
+        "promo-narrow"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "top": 7,
+          "left": 8,
+          "right": 8,
+          "bottom": 66,
+          "valign": "top",
+          "align": "left",
+          "gap": 2,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Route",
+              "size": 2.6
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "Zu Fuß, mit Rad oder Auto",
+              "size": 7.8
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Routen mit Höhenprofil und Alternativen – für jedes Verkehrsmittel die passende Strecke.",
+              "size": 3.8
+            }
+          ]
+        },
+        {
+          "type": "phone",
+          "screen": "images/screenshot-narrow-4_light.png",
+          "width": 78,
+          "bleed": {
+            "bottom": 30
+          }
+        }
+      ]
+    },
+    {
+      "out": "werbung/handy-5-navigation.png",
+      "formats": [
+        "promo-narrow"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "top": 7,
+          "left": 8,
+          "right": 8,
+          "bottom": 66,
+          "valign": "top",
+          "align": "left",
+          "gap": 2,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Navigation",
+              "size": 2.6
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "Ansage für Ansage ans Ziel",
+              "size": 7.8
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Mit Sprachansagen, Fahrspuren und Karten, die auch offline bleiben.",
+              "size": 3.8
+            }
+          ]
+        },
+        {
+          "type": "phone",
+          "screen": "images/screenshot-narrow-5.png",
+          "width": 78,
+          "bleed": {
+            "bottom": 30
+          }
+        }
+      ]
+    },
+    {
+      "out": "werbung/handy-6-entdecken.png",
+      "formats": [
+        "promo-narrow"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "top": 7,
+          "left": 8,
+          "right": 8,
+          "bottom": 66,
+          "valign": "top",
+          "align": "left",
+          "gap": 2,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Entdecken",
+              "size": 2.6
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "Wanderwege und Radfernwege",
+              "size": 7.8
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Markierte Touren in der Umgebung finden, in Tagesetappen teilen und nachplanen.",
+              "size": 3.8
+            }
+          ]
+        },
+        {
+          "type": "phone",
+          "screen": "images/screenshot-narrow-7_light.png",
+          "width": 78,
+          "bleed": {
+            "bottom": 30
+          }
+        }
+      ]
+    },
+    {
+      "out": "werbung/handy-7-erreichbar.png",
+      "formats": [
+        "promo-narrow"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "top": 7,
+          "left": 8,
+          "right": 8,
+          "bottom": 66,
+          "valign": "top",
+          "align": "left",
+          "gap": 2,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Erreichbar",
+              "size": 2.6
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "Was schaffe ich in 15 Minuten?",
+              "size": 7.8
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Zeigt, wie weit du zu Fuß, mit Rad oder Auto kommst – und was es dort gibt.",
+              "size": 3.8
+            }
+          ]
+        },
+        {
+          "type": "phone",
+          "screen": "images/screenshot-narrow-6_light.png",
+          "width": 78,
+          "bleed": {
+            "bottom": 30
+          }
+        }
+      ]
+    },
+    {
+      "out": "werbung/handy-8-geraete.png",
+      "formats": [
+        "promo-narrow"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "top": 7,
+          "left": 8,
+          "right": 8,
+          "bottom": 66,
+          "valign": "top",
+          "align": "left",
+          "gap": 2,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Auf allen Geräten",
+              "size": 2.6
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "Handy, Tablet, Rechner",
+              "size": 7.8
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Als Web-App, für Android und Linux – deine Touren liegen bei dir, auf Wunsch in deinem Ordner abgeglichen.",
+              "size": 3.8
+            }
+          ]
+        },
+        {
+          "type": "tablet",
+          "screen": "images/screenshot-wide-8.png",
+          "left": 5,
+          "top": 36,
+          "width": 128
+        },
+        {
+          "type": "phone",
+          "screen": "images/screenshot-narrow-1_light.png",
+          "right": 6,
+          "top": 39,
+          "width": 50
+        }
+      ]
+    },
+    {
+      "out": "werbung/breit-1-titel.png",
+      "formats": [
+        "promo-wide"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "left": 10,
+          "right": 10,
+          "top": 0,
+          "bottom": 4,
+          "align": "center",
+          "gap": 2.4,
+          "items": [
+            {
+              "type": "logo",
+              "size": 26
+            },
+            {
+              "type": "text",
+              "style": "title",
+              "text": "{name}",
+              "size": 19
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "{claim}",
+              "size": 4,
+              "width": 70
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "out": "werbung/breit-2-karte.png",
+      "formats": [
+        "promo-wide"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "left": 6,
+          "right": 66,
+          "top": 0,
+          "bottom": 0,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Karte"
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "Die Welt in 3D"
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Gelände, Gebäude und Relief – hell oder dunkel, mit Satellitenbild und Wanderwegen zum Zuschalten.",
+              "size": 2.8
+            }
+          ]
+        },
+        {
+          "type": "tablet",
+          "screen": "images/screenshot-wide-1.png",
+          "left": 38,
+          "right": 4,
+          "top": 10,
+          "bottom": 10
+        }
+      ]
+    },
+    {
+      "out": "werbung/breit-3-suche.png",
+      "formats": [
+        "promo-wide"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "left": 66,
+          "right": 6,
+          "top": 0,
+          "bottom": 0,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Suche"
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "Finden, was in der Nähe ist"
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Parkplätze, Bäckereien, Ladesäulen: alles aus OpenStreetMap, mit Öffnungszeiten und direkt auf der Karte.",
+              "size": 2.8
+            }
+          ]
+        },
+        {
+          "type": "tablet",
+          "screen": "images/screenshot-wide-2_light.png",
+          "left": 4,
+          "right": 38,
+          "top": 10,
+          "bottom": 10
+        }
+      ]
+    },
+    {
+      "out": "werbung/breit-4-route.png",
+      "formats": [
+        "promo-wide"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "left": 6,
+          "right": 66,
+          "top": 0,
+          "bottom": 0,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Route"
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "Zu Fuß, mit Rad oder Auto"
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Routen mit Höhenprofil und Alternativen – für jedes Verkehrsmittel die passende Strecke.",
+              "size": 2.8
+            }
+          ]
+        },
+        {
+          "type": "tablet",
+          "screen": "images/screenshot-wide-4_light.png",
+          "left": 38,
+          "right": 4,
+          "top": 10,
+          "bottom": 10
+        }
+      ]
+    },
+    {
+      "out": "werbung/breit-5-navigation.png",
+      "formats": [
+        "promo-wide"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "left": 66,
+          "right": 6,
+          "top": 0,
+          "bottom": 0,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Navigation"
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "Ansage für Ansage ans Ziel"
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Mit Sprachansagen, Fahrspuren und Karten, die auch offline bleiben.",
+              "size": 2.8
+            }
+          ]
+        },
+        {
+          "type": "tablet",
+          "screen": "images/screenshot-wide-5.png",
+          "left": 4,
+          "right": 38,
+          "top": 10,
+          "bottom": 10
+        }
+      ]
+    },
+    {
+      "out": "werbung/breit-6-entdecken.png",
+      "formats": [
+        "promo-wide"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "left": 6,
+          "right": 66,
+          "top": 0,
+          "bottom": 0,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Entdecken"
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "Wanderwege und Radfernwege"
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Markierte Touren in der Umgebung finden, in Tagesetappen teilen und nachplanen.",
+              "size": 2.8
+            }
+          ]
+        },
+        {
+          "type": "tablet",
+          "screen": "images/screenshot-wide-7_light.png",
+          "left": 38,
+          "right": 4,
+          "top": 10,
+          "bottom": 10
+        }
+      ]
+    },
+    {
+      "out": "werbung/breit-7-erreichbar.png",
+      "formats": [
+        "promo-wide"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "left": 66,
+          "right": 6,
+          "top": 0,
+          "bottom": 0,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Erreichbar"
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "Was schaffe ich in 15 Minuten?"
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Zeigt, wie weit du zu Fuß, mit Rad oder Auto kommst – und was es dort gibt.",
+              "size": 2.8
+            }
+          ]
+        },
+        {
+          "type": "tablet",
+          "screen": "images/screenshot-wide-6_light.png",
+          "left": 4,
+          "right": 38,
+          "top": 10,
+          "bottom": 10
+        }
+      ]
+    },
+    {
+      "out": "werbung/breit-8-geraete.png",
+      "formats": [
+        "promo-wide"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "left": 6,
+          "right": 66,
+          "top": 0,
+          "bottom": 0,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Auf allen Geräten"
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "Handy, Tablet, Rechner"
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Als Web-App, für Android und Linux – deine Touren liegen bei dir, auf Wunsch in deinem Ordner abgeglichen.",
+              "size": 2.8
+            }
+          ]
+        },
+        {
+          "type": "tablet",
+          "screen": "images/screenshot-wide-8.png",
+          "left": 55,
+          "right": 3,
+          "top": 14,
+          "bottom": 14
+        },
+        {
+          "type": "phone",
+          "screen": "images/screenshot-narrow-5.png",
+          "left": 33,
+          "top": 6,
+          "height": 76
+        },
+        {
+          "type": "phone",
+          "screen": "images/screenshot-narrow-1_light.png",
+          "left": 42,
+          "top": 18,
+          "height": 76
+        }
+      ]
+    },
+    {
+      "out": "werbung/social.png",
+      "formats": [
+        "social"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "left": 10,
+          "right": 10,
+          "top": 0,
+          "bottom": 4,
+          "align": "center",
+          "gap": 2.4,
+          "items": [
+            {
+              "type": "logo",
+              "size": 26
+            },
+            {
+              "type": "text",
+              "style": "title",
+              "text": "{name}",
+              "size": 19
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "{claim}",
+              "size": 4,
+              "width": 70
+            }
+          ]
+        }
       ]
     }
   ]

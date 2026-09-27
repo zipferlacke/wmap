@@ -4,9 +4,10 @@
  *   Wege         Wander-, Rad- und MTB-Routen aus OpenStreetMap. Die Karte
  *                zeigt das Wegenetz (Waymarked Trails), das Panel die Wege im
  *                Kartenausschnitt als Tabelle – gruppiert nach dem Gesamtweg,
- *                zu dem Etappen gehören – mit Filter. Suche nach Namen in
- *                ganz Deutschland („Karstwanderweg“). Antippen in der Karte:
- *                die Wege an dieser Stelle.
+ *                zu dem Etappen gehören – mit Filter. Suche nach Namen
+ *                („Karstwanderweg“): erst was im Ausschnitt passt, dann
+ *                Waymarked Trails (~1 s), sonst Overpass. Antippen in der
+ *                Karte: die Wege an dieser Stelle.
  *   Von anderen  Touren, die WMap-Nutzer geteilt haben – mit Sternen und
  *                Kommentaren; bewerten braucht ein Konto (Passkey)
  *
@@ -15,7 +16,7 @@
 import { createMap } from './map.js';
 import { api } from './api.js';
 import { konto, ensureLogin } from './konto.js';
-import { KINDS, toursInBox, findTours, searchTours, tourLine, tourLink } from './known-tours.js';
+import { KINDS, toursInBox, findTours, toursAt, searchTours, tourLine, tourLink } from './known-tours.js';
 import { encodeShare, local, coordsOf } from './store.js';
 import { ask } from './ui.js';
 import { mapPage } from './mappage.js';
@@ -105,16 +106,55 @@ async function overlay(on = true) {
   map.addLayer({ id: 'wmt', type: 'raster', source: 'wmt', paint: { 'raster-opacity': 0.85 } }, map.getLayer('detail-casing') ? 'detail-casing' : undefined);
 }
 
+/*
+ * Hervorhebung: der gewählte Weg kräftig mit hellem Rand, das übrige
+ * Wegenetz tritt zurück. „preview“ ist die dünnere Vorschau beim Überfahren
+ * einer Zeile in der Liste.
+ */
+const WIDTH = {
+  detail: { casing: [6, 7, 14, 15], line: [6, 4, 14, 8] },
+  preview: { casing: [6, 5, 14, 10], line: [6, 3, 14, 5.5] },
+};
 async function lines(id, features, color) {
   await ready;
   const data = { type: 'FeatureCollection', features };
   if (map.getSource(id)) { map.getSource(id).setData(data); return; }
+  const w = WIDTH[id] ?? WIDTH.preview;
   map.addSource(id, { type: 'geojson', data });
-  map.addLayer({ id: `${id}-casing`, type: 'line', source: id, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#fff', 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 4, 14, 9] } });
-  map.addLayer({ id, type: 'line', source: id, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'color'], color], 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 2.5, 14, 5.5] } });
+  map.addLayer({ id: `${id}-casing`, type: 'line', source: id, layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': '#fff', 'line-opacity': 0.9, 'line-width': ['interpolate', ['linear'], ['zoom'], ...w.casing] } });
+  map.addLayer({ id, type: 'line', source: id, layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': ['coalesce', ['get', 'color'], color], 'line-width': ['interpolate', ['linear'], ['zoom'], ...w.line] } });
 }
 
-function clearDetail() { lines('detail', [], '#e8590c'); }
+/** Übriges Wegenetz blass, solange ein Weg hervorgehoben ist */
+function dimNet(on) {
+  if (map.getLayer('wmt')) map.setPaintProperty('wmt', 'raster-opacity', on ? 0.3 : 0.85);
+}
+
+function clearDetail() { lines('detail', [], '#e8590c'); dimNet(false); }
+
+/* Vorschau beim Überfahren einer Zeile (Rechner) – Verlauf kommt von Waymarked Trails, ~0,2 s */
+let previewId = null;
+let previewTimer = null;
+function preview(id) {
+  clearTimeout(previewTimer);
+  previewId = id;
+  if (!id) { lines('preview', [], '#e8590c'); return; }
+  previewTimer = setTimeout(async () => {
+    try {
+      const { sections } = await tourLine(id, { kind });
+      if (previewId !== id || page.detail) return;
+      lines('preview', sections.map((c) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: c } })), '#e8590c');
+    } catch { /* ohne Vorschau */ }
+  }, 180);
+}
+content.addEventListener('mouseover', (e) => {
+  const r = e.target.closest('tr[data-route]');
+  const id = r && !page.detail ? +r.dataset.route : null;
+  if (id !== previewId) preview(id);
+});
+content.addEventListener('mouseleave', () => preview(null));
 
 function fitTo(coords) {
   const b = bboxOf(coords);
@@ -137,7 +177,7 @@ function showWege() {
       `<button type="button" class="chip" data-kind="${k}" aria-pressed="${k === kind}"><span class="msr">${x.icon}</span>${x.label}</button>`).join('')}</div>
     <form class="tour-search ent-search" autocomplete="off">
       <span class="msr">search</span>
-      <input type="search" placeholder="Filtern – oder Enter: in ganz Deutschland suchen" aria-label="Wege filtern oder suchen" value="${esc(filter)}">
+      <input type="search" placeholder="Filtern – oder Enter: überall suchen" aria-label="Wege filtern oder suchen" value="${esc(filter)}">
     </form>
     <p class="known-status muted"></p>
     <div class="ent-groups"></div>
@@ -187,11 +227,12 @@ function paintWege() {
   const order = [...groups.keys()].sort((a, b) => (a === 'rest') - (b === 'rest') || (byParent.get(a)?.rank ?? 9) - (byParent.get(b)?.rank ?? 9));
   const icon = KINDS[kind].icon;
   const row = (r) => `<tr data-route="${r.id}" tabindex="0">
-      <td class="w-icon"><span class="msr">${icon}</span></td>
+      <td class="w-icon">${r.symbol ? `<img class="wmt-symbol" src="${esc(r.symbol)}" alt="" title="${esc(r.symbolText ?? '')}" loading="lazy">` : `<span class="msr">${icon}</span>`}</td>
       <td class="w-name"><strong>${esc(r.name)}</strong><small>${esc([r.network, r.ref, r.round ? 'Rundweg' : ''].filter(Boolean).join(' · '))}</small></td>
       <td class="w-num">${r.length ? fmtDistance(r.length) : ''}</td></tr>`;
   box.innerHTML = order.map((key) => {
-    const list = groups.get(key).sort((a, b) => a.name.localeCompare(b.name, 'de', { numeric: true }));
+    // Suchtreffer in ihrer Reihenfolge (Ausschnitt zuerst), sonst nach Namen
+    const list = mode === 'search' ? groups.get(key) : groups.get(key).sort((a, b) => a.name.localeCompare(b.name, 'de', { numeric: true }));
     if (key === 'rest') {
       return `<details class="wege-year" open><summary><span class="msr">${icon}</span><strong>${found.parents.length ? 'Weitere Wege' : 'Wege'}</strong><small>${list.length}</small></summary>
         <table class="wege-table"><tbody>${list.map(row).join('')}</tbody></table></details>`;
@@ -217,13 +258,24 @@ content.addEventListener('submit', async (e) => {
   if (!e.target.matches('.ent-search')) return;
   e.preventDefault();
   const q = $('.ent-search input', content).value.trim();
-  if (q.length < 3) { toast('Für die Suche in ganz Deutschland bitte mindestens drei Buchstaben'); return; }
+  if (q.length < 3) { toast('Für die Suche bitte mindestens drei Buchstaben'); return; }
   ctl?.abort();
   ctl = new AbortController();
   mode = 'search';
-  $('.known-status', content).innerHTML = `<span class="msr spin">progress_activity</span> Suche „${esc(q)}“ in ganz Deutschland … (dauert ein paar Sekunden)`;
+  // Was schon im Ausschnitt geladen ist und passt, steht sofort da – und oben
+  const low = q.toLowerCase();
+  const here = (found?.routes ?? []).filter((r) => `${r.name} ${r.ref}`.toLowerCase().includes(low)).map((r) => ({ ...r, parent: undefined }));
+  if (here.length) {
+    found = { routes: here, parents: [] };
+    filter = '';
+    modeTitle = `${here.length} im Ausschnitt – suche weiter …`;
+    paintWege();
+  }
+  $('.known-status', content).innerHTML = `<span class="msr spin">progress_activity</span> ${here.length ? `${here.length} im Ausschnitt · ` : ''}Suche „${esc(q)}“ überall …`;
   try {
-    const routes = await searchTours(q, kind, { center: map.getCenter().toArray(), signal: ctl.signal });
+    const more = await searchTours(q, kind, { center: map.getCenter().toArray(), signal: ctl.signal });
+    const seen = new Set(here.map((r) => r.id));
+    const routes = [...here, ...more.filter((r) => !seen.has(r.id))];
     found = { routes, parents: [] };
     filter = '';
     $('.ent-search input', content).value = '';
@@ -235,7 +287,8 @@ content.addEventListener('submit', async (e) => {
 });
 
 map.on('click', async (e) => {
-  if (tab !== 'wege' || page.detail) return;
+  // Auch in der Ansicht eines Wegs: Antippen einer anderen Linie öffnet diese
+  if (tab !== 'wege') return;
   const p = e.lngLat.toArray();
   page.open();
   ctl?.abort();
@@ -243,9 +296,20 @@ map.on('click', async (e) => {
   mode = 'here';
   $('.known-status', content).innerHTML = '<span class="msr spin">progress_activity</span> Welche Wege verlaufen hier …';
   try {
-    const routes = await findTours(p, kind, { radius: Math.max(30, 400 / 2 ** (map.getZoom() - 10)), signal: ctl.signal });
+    // Genau auf der farbigen Linie: ein paar Pixel Spielraum (schnell, Waymarked Trails);
+    // antwortet die nicht, sucht Overpass im Umkreis
+    const mpp = (40075016 * Math.cos((p[1] * Math.PI) / 180)) / (512 * 2 ** map.getZoom());
+    let routes;
+    try {
+      routes = await toursAt(p, kind, { meters: Math.max(8, 12 * mpp), signal: ctl.signal });
+    } catch (err) {
+      if (err.name === 'AbortError') throw err;
+      routes = await findTours(p, kind, { radius: Math.max(30, 400 / 2 ** (map.getZoom() - 10)), signal: ctl.signal });
+    }
     found = { routes, parents: [] };
-    modeTitle = routes.length ? `${routes.length} Wege an dieser Stelle` : 'Hier verläuft kein markierter Weg – näher heranzoomen und genau auf die Linie tippen';
+    // Nur ein Weg an der Stelle: gleich öffnen
+    if (routes.length === 1) { showKnown(routes[0]); return; }
+    modeTitle = routes.length ? `${routes.length} Wege an dieser Stelle – welcher?` : 'Hier verläuft kein markierter Weg – näher heranzoomen und genau auf die Linie tippen';
     paintWege();
   } catch (err) {
     if (err.name !== 'AbortError') $('.known-status', content).textContent = `Gerade nicht abrufbar (${err.message})`;
@@ -266,22 +330,28 @@ async function showKnown(t) {
   content.innerHTML = '<p class="muted"><span class="msr spin">progress_activity</span> Verlauf wird geladen …</p>';
   const stages = found.routes.filter((r) => r.parent === t.id);
   try {
-    const { line, tags } = await tourLine(t.id);
+    const { line, sections, tags, info } = await tourLine(t.id, { kind });
     if (!page.detail) return;
-    lines('detail', [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } }], '#e8590c');
+    preview(null);
+    lines('detail', sections.map((c) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: c } })), '#e8590c');
+    dimNet(true);
     fitTo(line);
     let len = 0;
-    for (let i = 1; i < line.length; i += 1) len += haversine(line[i - 1], line[i]);
+    for (const c of sections) for (let i = 1; i < c.length; i += 1) len += haversine(c[i - 1], c[i]);
+    const inf = info ?? {};
+    const website = inf.url || tags.website;
+    const round = t.round || inf.round;
     content.innerHTML = `
       <div class="ent-facts">
-        <span><span class="msr">${KINDS[kind].icon}</span>${esc(t.network)}</span>
+        <span><span class="msr">${KINDS[kind].icon}</span>${esc(inf.network ?? t.network)}</span>
         ${t.ref ? `<span><span class="msr">signpost</span>${esc(t.ref)}</span>` : ''}
-        <span><span class="msr">straighten</span>${fmtDistance(t.length ?? len)}</span>
-        ${t.round ? '<span><span class="msr">all_inclusive</span>Rundweg</span>' : ''}
+        <span><span class="msr">straighten</span>${fmtDistance(inf.length ?? t.length ?? len)}</span>
+        ${round ? '<span><span class="msr">all_inclusive</span>Rundweg</span>' : ''}
       </div>
-      ${tags.symbol ? `<p><strong>Markierung:</strong> ${esc(tags.symbol)}</p>` : ''}
-      ${t.description ? `<p>${esc(t.description)}</p>` : ''}
-      ${tags.website ? `<p><a href="${esc(tags.website)}" target="_blank" rel="noopener">${esc(tags.website.replace(/^https?:\/\//, ''))}</a></p>` : ''}
+      ${inf.from && inf.to && inf.from !== inf.to && !round ? `<p class="ent-itinerary"><span class="msr">trip_origin</span> ${esc(inf.via.join(' → '))}</p>` : ''}
+      ${tags.symbol || inf.symbol ? `<p class="ent-mark">${inf.symbol ? `<img class="wmt-symbol" src="${esc(inf.symbol)}" alt="">` : ''}<span><strong>Markierung:</strong> ${esc(tags.symbol ?? t.symbolText ?? '')}</span></p>` : ''}
+      ${inf.description || t.description ? `<p>${esc(inf.description || t.description)}</p>` : ''}
+      ${website ? `<p><a href="${esc(website)}" target="_blank" rel="noopener">${esc(website.replace(/^https?:\/\//, ''))}</a></p>` : ''}
       <div class="weg-actions">
         <button type="button" class="button primary" data-open-known><span class="msr">edit_road</span> Im Planer öffnen</button>
         <a class="button" href="https://www.openstreetmap.org/relation/${t.id}" target="_blank" rel="noopener"><span class="msr">open_in_new</span> Bei OpenStreetMap</a>
@@ -290,7 +360,16 @@ async function showKnown(t) {
         <table class="wege-table"><tbody>${stages.map((r) => `<tr data-route="${r.id}" tabindex="0"><td class="w-icon"><span class="msr">flag</span></td>
           <td class="w-name"><strong>${esc(r.name)}</strong><small>${esc(r.ref ?? '')}</small></td><td class="w-num">${r.length ? fmtDistance(r.length) : ''}</td></tr>`).join('')}</tbody></table>` : ''}
       <p class="muted">Im Planer siehst du Höhenprofil und Wegtypen und kannst die Tour speichern, ändern oder teilen.</p>`;
-    $('[data-open-known]', content).addEventListener('click', async () => { location.href = await tourLink(t, kind); });
+    $('[data-open-known]', content).addEventListener('click', async (e) => {
+      const b = e.currentTarget;
+      b.disabled = true;
+      b.innerHTML = '<span class="msr spin">progress_activity</span> Wird geöffnet …';
+      try { location.href = await tourLink(t, kind); } catch (err) {
+        toast(`Ließ sich nicht öffnen: ${err.message}`);
+        b.disabled = false;
+        b.innerHTML = '<span class="msr">edit_road</span> Im Planer öffnen';
+      }
+    });
   } catch (err) {
     content.innerHTML = `<p class="muted">Der Verlauf ließ sich nicht laden: ${esc(err.message)}</p>`;
   }

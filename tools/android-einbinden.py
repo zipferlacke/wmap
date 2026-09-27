@@ -8,8 +8,11 @@ aufgerufen von `tauri-android wmap` (wuefl_products/tools) vor jedem Bauen:
   appdata/icons/android/   → app/src/main/res/ (App-Symbol)
   Standort-Berechtigungen  → vor <application> (tauri-plugin-geolocation
                              fragt nur nach, was im Manifest steht)
+  tools/android/MainActivity.kt → Bild in Bild während der Navigation
+                             (beim Rauswischen von selbst, siehe js/pip.js)
+  supportsPictureInPicture → an die <activity>
 
-Mehrfach aufrufbar: Berechtigungen werden nur einmal eingetragen.
+Mehrfach aufrufbar: alles wird nur einmal eingetragen.
 """
 
 import shutil
@@ -42,8 +45,16 @@ def main() -> int:
     if fehlend:
         zeilen = "".join(f"    {b}\n" for b in fehlend)
         text = text.replace("    <application", zeilen + "\n    <application", 1)
-        datei.write_text(text, encoding="utf-8")
-    print("==> WMap-Teile eingesetzt (Symbol, Standort)")
+    if "supportsPictureInPicture" not in text:
+        text = text.replace('android:name=".MainActivity"',
+                            'android:name=".MainActivity"\n            android:supportsPictureInPicture="true"', 1)
+    datei.write_text(text, encoding="utf-8")
+
+    # Eigene Activity (Bild in Bild) über die erzeugte legen
+    ziel = next((APP / "src/main/java").rglob("MainActivity.kt"), None)
+    if ziel:
+        shutil.copyfile(PROJEKT / "tools/android/MainActivity.kt", ziel)
+    print("==> WMap-Teile eingesetzt (Symbol, Standort, Bild in Bild)")
     return 0
 
 

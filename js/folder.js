@@ -4,8 +4,12 @@
  * Google Drive, Syncthing … WMap braucht dafür kein Konto und keinen Server,
  * es liest und schreibt nur Dateien.
  *
- *   Wege/2026/2026-09-27 Radtour am Samstagnachmittag.gpx    aufgezeichnet
- *   Touren/Harzer Hexenstieg.gpx                              geplant
+ *   WMap/Geplant/Harzer Hexenstieg.gpx                                  geplant
+ *   WMap/Abgeschlossen/2026/2026-09-27 Radtour am Samstagnachmittag.gpx  gefahren/gelaufen
+ *
+ * Heißt der verbundene Ordner selbst „WMap“, entfällt die Ebene. Dateien der
+ * früheren Ordnung (Touren/, Wege/<Jahr>/) zieht der nächste Abgleich um.
+ * Dieselbe Ordnung hat die Sicherung als ZIP (zipBackup).
  *
  * GPX-Dateien von woanders (Garmin, Komoot-Export …) dürfen irgendwo im
  * Ordner liegen: mit Zeiten werden sie ein Weg, sonst eine Tour.
@@ -21,7 +25,8 @@
  * Android). Ohne sie bleiben GPX-Import und Teilen (siehe wege-page.js).
  */
 import { store } from './db.js';
-import { tracks, trackGpx, parseGpx, sameTrack } from './tracks.js';
+import { tracks, trackGpx, parseGpx, sameTrack, backup, restore } from './tracks.js';
+import { makeZip, readZip } from './zip.js';
 import { tours, toGpx, coordsOf, shapeOf, local } from './store.js';
 import { simplifyTo, distance } from './geo.js';
 
@@ -104,6 +109,7 @@ async function run(interactive) {
   if (await permission(c.handle, interactive) !== 'granted') return { needsPermission: true };
 
   const files = await listGpx(c.handle);
+  const base = baseOf(c.handle);
   const locals = new Map();
   for (const t of await tracks.all()) locals.set(t.id, { kind: 'track', item: t });
   for (const t of tours.all()) locals.set(t.id, { kind: 'tour', item: t });
@@ -132,6 +138,14 @@ async function run(interactive) {
       continue;
     }
     seen.add(id);
+    // Frühere Ordnung (Touren/, Wege/<Jahr>/): an den neuen Platz umziehen
+    if (OLD_LAYOUT.test(f.path)) {
+      const path = freePath(pathOf(mine.kind, mine.item, base), new Set(Object.keys(next)), files);
+      next[path] = { id, at: await writeFile(c.handle, path, gpxOf(mine)), rev: rev(mine.item) };
+      await removeFile(c.handle, f.path);
+      out.moved = (out.moved ?? 0) + 1;
+      continue;
+    }
     // Geändert heißt: seit dem letzten Abgleich – Datei an ihrer Zeit, WMap an „updated“.
     // So stören abweichende Uhren (Handy ↔ Rechner) nicht; nur wenn beide geändert sind, zählt die Zeit.
     const known = index[f.path]?.id === id ? index[f.path] : null;
@@ -159,12 +173,13 @@ async function run(interactive) {
       out.removed += 1;
       continue;
     }
-    const path = freePath(pathOf(kind, item), used, files);
+    const path = freePath(pathOf(kind, item, base), used, files);
     used.add(path);
     next[path] = { id, at: await writeFile(c.handle, path, gpxOf({ kind, item })), rev: rev(item) };
     out.written += 1;
   }
 
+  if (out.moved) await dropEmptyOld(c.handle);
   c.index = next;
   c.last = Date.now();
   c.result = out;
@@ -219,6 +234,17 @@ async function writeFile(root, path, text) {
   return (await fh.getFile()).lastModified;
 }
 
+/** Leere Ordner der früheren Ordnung wegräumen (volle bleiben – removeEntry scheitert dann) */
+async function dropEmptyOld(root) {
+  for (const top of ['Wege', 'Touren']) {
+    try {
+      const dir = await root.getDirectoryHandle(top);
+      for await (const [name, h] of dir.entries()) if (h.kind === 'directory') await dir.removeEntry(name).catch(() => {});
+      await root.removeEntry(top);
+    } catch { /* nicht da oder nicht leer */ }
+  }
+}
+
 async function removeFile(root, path) {
   try {
     const [dir, name] = await dirOf(root, path, false);
@@ -231,9 +257,16 @@ async function removeFile(root, path) {
 const clean = (s) => String(s || '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 80) || 'ohne Namen';
 const day = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
-function pathOf(kind, item) {
-  if (kind === 'track') return `Wege/${new Date(item.start).getFullYear()}/${day(item.start)} ${clean(item.name || 'Weg')}.gpx`;
-  return `Touren/${clean(item.name || 'Tour')}.gpx`;
+const OLD_LAYOUT = /^(Wege|Touren)\//;
+const TOUR_DIR = /(^|\/)(Geplant|Touren)\//;
+const TRACK_DIR = /(^|\/)(Abgeschlossen|Wege)\//;
+
+/** Ordner „WMap“ im verbundenen Ordner – außer er heißt schon so */
+const baseOf = (handle) => (/^wmap$/i.test(handle?.name ?? '') ? '' : 'WMap/');
+
+function pathOf(kind, item, base = 'WMap/') {
+  if (kind === 'track') return `${base}Abgeschlossen/${new Date(item.start).getFullYear()}/${day(item.start)} ${clean(item.name || 'Weg')}.gpx`;
+  return `${base}Geplant/${clean(item.name || 'Tour')}.gpx`;
 }
 
 /** Gleicher Name schon vergeben? → „… (2).gpx“ */
@@ -257,7 +290,7 @@ function gpxOf({ kind, item }) {
  * sonst: mit Zeitstempeln ein Weg. → { id, rev } oder null
  */
 async function importFile(f, id, before = null) {
-  const isTour = before ? !('start' in before) : f.path.startsWith('Touren/') ? true : f.path.startsWith('Wege/') ? false : !/<trkpt[^>]*>(?:(?!<\/trkpt>)[\s\S])*<time>/.test(f.text);
+  const isTour = before ? !('start' in before) : TOUR_DIR.test(f.path) ? true : TRACK_DIR.test(f.path) ? false : !/<trkpt[^>]*>(?:(?!<\/trkpt>)[\s\S])*<time>/.test(f.text);
   try {
     if (isTour) {
       const t = tourFromGpx(f.text, f.path);
@@ -341,13 +374,50 @@ export async function importLoose(fileList) {
     const wmapId = text.match(/<keywords>[^<]*\bwmap:([\w-]+)/)?.[1] ?? null;
     if (wmapId && known.has(wmapId)) { out.skipped += 1; continue; }
     const path = (file.webkitRelativePath || file.name).split('/').slice(file.webkitRelativePath ? 1 : 0).join('/');
-    const probe = /<trkpt[^>]*>(?:(?!<\/trkpt>)[\s\S])*<time>/.test(text) && !path.startsWith('Touren/') ? parseGpx(text)[0] : null;
+    const probe = /<trkpt[^>]*>(?:(?!<\/trkpt>)[\s\S])*<time>/.test(text) && !TOUR_DIR.test(path) ? parseGpx(text)[0] : null;
     if (probe && all.some((t) => sameTrack(t, probe))) { out.skipped += 1; continue; }
     const got = await importFile({ path, text, lastModified: file.lastModified }, wmapId);
     if (got) { known.add(got.id); out.imported += 1; if (probe) all.push(probe); }
   }
   if (out.imported) dispatchEvent(new CustomEvent('wmap:folder', { detail: out }));
   return out;
+}
+
+/* ── Sicherung als ZIP: dieselbe Ordnung wie im verbundenen Ordner ────────── */
+
+/**
+ * WMap/Geplant/*.gpx, WMap/Abgeschlossen/<Jahr>/*.gpx und die vollständige
+ * Sicherung (WMap/wmap-sicherung.json – mit allem, was GPX nicht fasst).
+ * → Blob
+ */
+export async function zipBackup() {
+  const used = new Set();
+  const entry = (kind, item) => {
+    const path = freePath(pathOf(kind, item), used, []);
+    used.add(path);
+    return { path, data: gpxOf({ kind, item }), date: new Date(item.updated ?? item.created ?? item.start ?? Date.now()) };
+  };
+  const files = [
+    ...tours.all().map((t) => entry('tour', t)),
+    ...(await tracks.all()).map((t) => entry('track', t)),
+    { path: 'WMap/wmap-sicherung.json', data: await backup(), date: new Date() },
+  ];
+  return makeZip(files);
+}
+
+/**
+ * ZIP einspielen: mit wmap-sicherung.json alles daraus, sonst die GPX-Dateien
+ * (auch ein gezippter Ordner von woanders). → Anzahl übernommen
+ */
+export async function restoreZip(file) {
+  const entries = await readZip(file);
+  const json = entries.find((e) => /(^|\/)wmap-sicherung[^/]*\.json$/i.test(e.path));
+  if (json) return restore(await json.text());
+  const gpx = await Promise.all(entries.filter((e) => /\.gpx$/i.test(e.path)).map(async (e) => {
+    const text = await e.text();
+    return { name: e.path.split('/').pop(), webkitRelativePath: e.path.includes('/') ? e.path : '', lastModified: Date.now(), text: async () => text };
+  }));
+  return (await importLoose(gpx)).imported;
 }
 
 /** Alle Wege und Touren als GPX-Dateien teilen – am Handy z. B. „In Proton Drive speichern“. */
@@ -371,7 +441,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 
 function summary(r) {
   if (!r) return '';
-  const parts = [r.imported && `${r.imported} übernommen`, r.written && `${r.written} gespeichert`, r.removed && `${r.removed} gelöscht`].filter(Boolean);
+  const parts = [r.imported && `${r.imported} übernommen`, r.written && `${r.written} gespeichert`, r.moved && `${r.moved} in den Ordner „WMap“ umgezogen`, r.removed && `${r.removed} gelöscht`].filter(Boolean);
   return parts.length ? parts.join(', ') : 'alles aktuell';
 }
 

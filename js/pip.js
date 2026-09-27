@@ -1,10 +1,13 @@
 /**
- * Bild in Bild: die nächste Anweisung in einem kleinen Fenster, das über
- * anderen Apps und Tabs liegen bleibt – wie bei Google Maps.
+ * Bild in Bild: die Navigation in einem kleinen Fenster, das über anderen
+ * Apps und Tabs liegen bleibt – wie bei Google Maps.
  *
- *   Chrome, Edge,  Document Picture-in-Picture: ein echtes Mini-Fenster mit
- *   neue Firefox   dem Banner (gleiches HTML und CSS wie in der App)
- *   Safari         das Banner auf ein Canvas gemalt und als Video ins
+ *   Android-App    die ganze App (Karte samt Anweisung) – beim Rauswischen
+ *                  während der Navigation von selbst, sonst per Knopf
+ *                  (MainActivity.kt, Schnittstelle window.WMapAndroid)
+ *   Chrome, Edge,  Document Picture-in-Picture: die Karte selbst wandert ins
+ *   neue Firefox   Mini-Fenster, darüber die Anweisung (gleiches HTML und CSS)
+ *   Safari         nur die Anweisung, auf ein Canvas gemalt und als Video ins
  *                  Bild-in-Bild geschickt
  *   sonst          keine Schnittstelle – der Knopf bleibt weg
  *
@@ -12,20 +15,42 @@
  * ein MutationObserver hält das Fenster aktuell, die Navigation selbst weiß
  * davon nichts.
  */
+const ANDROID = () => typeof window.WMapAndroid?.enterPip === 'function';
 const DOC_PIP = 'documentPictureInPicture' in window;
 const VIDEO_PIP = !DOC_PIP && document.pictureInPictureEnabled && 'captureStream' in HTMLCanvasElement.prototype;
 
-export const pipSupported = () => DOC_PIP || VIDEO_PIP;
+export const pipSupported = () => ANDROID() || DOC_PIP || VIDEO_PIP;
+
+/**
+ * Android-App: während der Navigation beim Verlassen von selbst ins Bild in
+ * Bild. Folgt der Klasse „navigating“ am body (setzt die Navigation).
+ */
+export function autoPip() {
+  if (!ANDROID()) return;
+  let on = null;
+  const sync = () => {
+    const now = document.body.classList.contains('navigating');
+    if (now === on) return;
+    on = now;
+    try { window.WMapAndroid.setPip(now); } catch { /* ältere App */ }
+  };
+  new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  sync();
+}
 
 export class NavPip {
-  #nav; #win = null; #video = null; #canvas = null; #observer = null; #frame = 0;
+  #nav; #map; #win = null; #box = null; #home = null; #video = null; #canvas = null; #observer = null; #frame = 0;
 
-  /** @param nav  die Navigationsansicht (#nav) */
-  constructor(nav) { this.#nav = nav; }
+  /**
+   * @param nav  die Navigationsansicht (#nav)
+   * @param map  die Karte – wandert im Mini-Fenster mit
+   */
+  constructor(nav, { map = null } = {}) { this.#nav = nav; this.#map = map; }
 
   get open() { return !!this.#win || !!document.pictureInPictureElement; }
 
   async toggle() {
+    if (ANDROID()) { window.WMapAndroid.enterPip(); return; }
     if (this.open) { this.close(); return; }
     if (DOC_PIP) await this.#openDocument();
     else if (VIDEO_PIP) await this.#openVideo();
@@ -50,12 +75,34 @@ export class NavPip {
   /* ── Chrome/Edge: echtes Mini-Fenster ──────────────────────────────────── */
 
   async #openDocument() {
-    const win = await window.documentPictureInPicture.requestWindow({ width: 340, height: 190 });
+    const mapEl = this.#map?.getContainer();
+    const win = await window.documentPictureInPicture.requestWindow(mapEl ? { width: 360, height: 520 } : { width: 340, height: 190 });
     // Stile der App mitnehmen – so sieht das Banner genauso aus
     for (const el of document.querySelectorAll('link[rel="stylesheet"], style')) win.document.head.append(el.cloneNode(true));
     win.document.documentElement.lang = 'de';
-    win.document.body.className = 'pip-body';
-    win.addEventListener('pagehide', () => { this.#win = null; this.#observer?.disconnect(); this.#observer = null; });
+    win.document.documentElement.className = document.documentElement.className;
+    win.document.body.className = mapEl ? 'pip-body pip-map' : 'pip-body';
+    this.#box = win.document.createElement('div');
+    this.#box.className = 'nav pip-nav';
+    // Die Karte selbst ins Fenster – beim Schließen zurück an ihren Platz
+    if (mapEl) {
+      this.#home = { parent: mapEl.parentNode, next: mapEl.nextSibling };
+      win.document.body.append(mapEl);
+      win.addEventListener('resize', () => this.#map.resize());
+      requestAnimationFrame(() => this.#map.resize());
+    }
+    win.document.body.append(this.#box);
+    win.addEventListener('pagehide', () => {
+      if (this.#home) {
+        this.#home.parent.insertBefore(mapEl, this.#home.next);
+        this.#home = null;
+        this.#map.resize();
+      }
+      this.#win = null;
+      this.#box = null;
+      this.#observer?.disconnect();
+      this.#observer = null;
+    });
     this.#win = win;
   }
 
@@ -75,11 +122,8 @@ export class NavPip {
     if (this.#win) {
       const top = this.#nav.querySelector('.nav-top').cloneNode(true);
       const eta = this.#nav.querySelector('.nav-times')?.cloneNode(true);
-      const box = this.#win.document.createElement('div');
-      box.className = 'nav pip-nav';
-      box.append(top);
-      if (eta) { eta.classList.add('pip-eta'); box.append(eta); }
-      this.#win.document.body.replaceChildren(box);
+      if (eta) eta.classList.add('pip-eta');
+      this.#box.replaceChildren(...[top, eta].filter(Boolean));
     } else if (this.#canvas) {
       this.#drawCanvas();
     }

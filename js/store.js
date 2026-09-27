@@ -138,6 +138,8 @@ export function encodeShare(tour) {
   return packJson({
     n: tour.name, d: tour.description || undefined, p: tour.profile, w: encodePolyline(tour.points, 5),
     s: tour.fixed && tour.shape ? tour.shape : undefined,
+    // Vorlage: bekannter Weg aus OSM, den der Planer im Hintergrund zeigt
+    o: tour.original ? [tour.original.id, tour.original.kind, tour.original.name] : undefined,
   });
 }
 
@@ -146,6 +148,7 @@ export async function decodeShare(code) {
   return {
     name: o.n ?? 'Geteilte Tour', description: o.d ?? '', profile: o.p ?? 'hike', points: decodePolyline(o.w, 5),
     ...(o.s ? { fixed: true, shape: o.s } : {}),
+    ...(o.o ? { original: { id: o.o[0], kind: o.o[1], name: o.o[2] ?? '' } } : {}),
   };
 }
 

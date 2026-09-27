@@ -7,6 +7,12 @@
  * Aufruf:  tour.html            neue Tour
  *          tour.html?id=…       gespeicherte Tour bearbeiten
  *          tour.html#t=…        geteilte Tour ansehen (nur lesen, übernehmbar)
+ *
+ * Übernommene bekannte Wege (Entdecken) tragen tour.original: Der Weg liegt
+ * so, wie er in OSM erfasst ist, als Vorlage im Hintergrund. Man plant
+ * selbst – Punkte nah an der Vorlage rasten auf ihr ein, und liegen zwei
+ * Punkte nacheinander auf ihr, folgt die Strecke dazwischen genau der
+ * Vorlage statt dem Routing – oder übernimmt mit „So übernehmen“ den Verlauf.
  */
 import { PROFILES } from './config.js';
 import { createMap, showRoutes, showHover } from './map.js';
@@ -18,6 +24,8 @@ import { mountAppNav } from './appnav.js';
 import { ask } from './ui.js';
 import * as geocode from './geocode.js';
 import { nearestOnLine, pointAt, simplifyTo, bbox, cumulative, fmtDistance, fmtDuration, esc } from './geo.js';
+import { setupStages } from './tour-stages.js';
+import { tourLine, originalRoute } from './known-tours.js';
 import './folder.js';   // gespeicherte Touren landen auch im verbundenen Ordner
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -52,7 +60,8 @@ let readOnly = false;
 if (shareCode) {
   try {
     tour = { ...(await decodeShare(shareCode)), id: null };
-    readOnly = true;
+    // Nur eine Vorlage (aus Entdecken): gleich selbst planen
+    readOnly = !(tour.original && !tour.points.length);
   } catch { toast('Der Link ist unvollständig oder beschädigt'); }
 } else if (idParam) {
   tour = tours.get(idParam);
@@ -77,12 +86,18 @@ const { map } = createMap('map', {
   auto3d: false,
 });
 
+window.__wmap = { map };                         // für Konsole und Tests
+
 const sheet = $('#sheet');
 sheet.show();
 document.activeElement?.blur();                // kein Fokusrahmen um den Griff
 new Sheet(sheet, { onResize: () => fitRoute(), topLimit: () => $('.tour-head').getBoundingClientRect().bottom });
 
+/** Rechner: Panel als Seitenleiste links, sonst unten */
+const side = () => matchMedia('(min-width: 900px)').matches;
+
 function viewPadding() {
+  if (side()) return { top: 24, bottom: 24, left: sheet.getBoundingClientRect().right + 24, right: 64 };
   const h = map.getContainer().clientHeight;
   const top = $('.tour-head').getBoundingClientRect().bottom + 16;
   let bottom = sheet.getBoundingClientRect().height + 24;
@@ -115,8 +130,15 @@ nav.addItem('download', 'Als GPX speichern', () => exportGpx());
 nav.addItem('public', 'Veröffentlichen', () => publishTour());
 nav.addItem('delete', 'Tour löschen', () => deleteTour());
 
-/* Anleitung aufgeklappt, solange es noch keine Strecke gibt */
-$('.tour-help').open = tour.points.length < 2;
+/* Anleitung als Notiz am i-Knopf: auf dem Rechner darunter, auf dem Handy volle Breite */
+const help = $('#tour-help');
+help.addEventListener('toggle', (e) => {
+  if (e.newState !== 'open') return;
+  const b = $('.tour-help-btn').getBoundingClientRect();
+  const wide = matchMedia('(min-width: 701px)').matches;
+  help.style.top = `${Math.round(b.bottom + 8)}px`;
+  help.style.left = wide ? `${Math.round(Math.min(b.left, innerWidth - help.offsetWidth - 12))}px` : '';
+});
 
 /* Profile als Chips */
 function paintProfiles() {
@@ -171,7 +193,6 @@ $('#clear').addEventListener('click', () => {
 });
 
 let markers = [];
-let helpClosed = false;
 let popup = null;
 
 function markerEl(i, n) {
@@ -189,7 +210,7 @@ function renderMarkers() {
   markers = tour.points.map((p, i) => {
     const el = markerEl(i, n);
     const m = new maplibregl.Marker({ element: el, draggable: !readOnly }).setLngLat(p).addTo(map);
-    m.on('dragend', () => change(() => { tour.points[i] = m.getLngLat().toArray(); }));
+    m.on('dragend', () => change(() => { tour.points[i] = snapPoint(m.getLngLat().toArray()) ?? m.getLngLat().toArray(); }));
     el.addEventListener('click', (e) => {
       e.stopPropagation();
       if (readOnly) return;
@@ -198,7 +219,6 @@ function renderMarkers() {
     return m;
   });
   $('#undo').disabled = !undoStack.length;
-  if (n >= 2 && !helpClosed) { $('.tour-help').open = false; helpClosed = true; }
   const hint = $('.tour-hint');
   hint.hidden = readOnly || n >= 2;
   hint.textContent = n === 0 ? 'Tippe in die Karte, um den Start zu setzen' : 'Und jetzt das nächste Ziel antippen';
@@ -221,8 +241,11 @@ function pointPopup(i) {
 }
 
 map.on('click', (e) => {
+  // Etappen-Modus: Tippen auf die Linie setzt ein Tagesende (auch bei geteilten Touren)
+  if (stages.click(e)) return;
   if (readOnly || e.originalEvent?.target?.closest?.('.wp-marker')) return;
-  const p = e.lngLat.toArray();
+  // Nah an der Vorlage getippt: genau auf den Originalweg
+  const p = snapPoint(e.lngLat.toArray(), e.point) ?? e.lngLat.toArray();
   // Auf die Linie getippt: dort einen Punkt einfügen statt hinten anhängen
   const onLine = route && map.getLayer('route-main')
     && map.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: ['route-main'] }).length;
@@ -275,6 +298,169 @@ results.addEventListener('click', (e) => {
 let route = null;
 let seq = 0;
 
+/* Fahr- bzw. Gehzeit: Wandern nach Höhenmetern, sonst mit festem Tempo (m/s) */
+const PACE = { hike: null, walk: null, road: 7, tour: 4.5, gravel: 5, mtb: 4, drive: 16 };
+const timeFor = (m, up, down) => (PACE[tour.profile] ? m / PACE[tour.profile] : hikingTime(m, up, down));
+
+const stages = setupStages({
+  map, box: $('.tour-stages'), button: $('#stages'),
+  getRoute: () => route, getTour: () => tour, timeFor, toast, onChange: () => scheduleSave(),
+});
+function routeChanged() {
+  $('#stages').hidden = !route || route.length < 5000;
+  stages.refresh();
+  if (tour.original) paintOriginal();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Vorlage: der bekannte Weg, unverändert aus OSM, im Hintergrund
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const ORIG = 'original';
+const ORIG_COLOR = '#be4bdb';
+let originalSecs = [];
+let originalCum = [];
+let originalOn = true;
+
+async function loadOriginal() {
+  if (!tour.original) return;
+  paintOriginal();
+  try {
+    // Genau die Stücke, wie sie in OSM stehen – nichts verbunden, nichts gedreht
+    originalSecs = (await tourLine(tour.original.id, { kind: tour.original.kind })).sections;
+    originalCum = originalSecs.map((c) => cumulative(c));
+    drawOriginal();
+    if (!tour.points.length) fitOriginal();
+    // Schon gesetzte Punkte folgen jetzt der Vorlage
+    else if (!tour.fixed && tour.points.length > 1) recompute();
+  } catch (err) { toast(`Vorlage gerade nicht abrufbar (${err.message})`); }
+  paintOriginal();
+}
+
+function fitOriginal() {
+  const b = bbox(originalSecs.flat());
+  map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 60, duration: 0, maxZoom: 14 });
+}
+
+function drawOriginal() {
+  const data = { type: 'FeatureCollection', features: originalSecs.map((c, i) => ({ type: 'Feature', properties: { i }, geometry: { type: 'LineString', coordinates: c } })) };
+  if (map.getSource(ORIG)) map.getSource(ORIG).setData(data);
+  else {
+    map.addSource(ORIG, { type: 'geojson', data });
+    map.addLayer({
+      id: ORIG, type: 'line', source: ORIG, layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': ORIG_COLOR, 'line-opacity': 0.5, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 6, 14, 13] },
+    }, map.getLayer('route-alt') ? 'route-alt' : undefined);
+  }
+  map.setLayoutProperty(ORIG, 'visibility', originalOn ? 'visible' : 'none');
+}
+
+function paintOriginal() {
+  const box = $('.tour-original');
+  box.hidden = !tour.original;
+  if (!tour.original) return;
+  const empty = !tour.points.length;
+  const hint = !originalSecs.length ? 'Wird geladen …'
+    : empty ? 'Setze deine Punkte selbst – auf der Vorlage folgt die Strecke genau dem Weg, daneben wird geroutet. Oder übernimm den ganzen Verlauf.'
+      : `So, wie der Weg in OpenStreetMap erfasst ist${originalSecs.length > 1 ? ` – ${originalSecs.length} Stücke, die Lücken sind echt` : ''}. Zwischen zwei Punkten auf der Vorlage folgt die Strecke genau dem Weg.`;
+  box.innerHTML = `
+    <p><i style="background:${ORIG_COLOR}"></i><span><strong>Vorlage: ${esc(tour.original.name || 'bekannter Weg')}</strong>
+      <small>${hint}</small></span></p>
+    <div class="tour-tools">
+      ${tour.fixed ? '' : `<button type="button" class="button${empty ? ' primary' : ''}" data-o="restore"><span class="msr">done_all</span> So übernehmen</button>`}
+      ${empty ? '' : '<button type="button" class="button" data-o="fresh"><span class="msr">edit_road</span> Neu planen</button>'}
+      <button type="button" class="button" data-o="toggle"><span class="msr">${originalOn ? 'visibility_off' : 'visibility'}</span> ${originalOn ? 'Ausblenden' : 'Einblenden'}</button>
+    </div>`;
+}
+
+/* ── Punkte und Strecke auf der Vorlage ─────────────────────────────────── */
+
+const ON_TEMPLATE = 15;                 // Meter: so nah gilt ein Punkt als „auf der Vorlage“
+
+/** Wo auf der Vorlage liegt der Punkt? → { i (Stück), along } oder null */
+function onTemplate(p) {
+  let best = null;
+  originalSecs.forEach((c, i) => {
+    const s = nearestOnLine(c, originalCum[i], p);
+    if (s.offset <= ON_TEMPLATE && (!best || s.offset < best.offset)) best = { i, along: s.along, offset: s.offset };
+  });
+  return best;
+}
+
+/**
+ * Punkt nah an der Vorlage → genau auf die Vorlage. Nah heißt: 10 Pixel
+ * auf dem Bildschirm (beim Tippen) bzw. aus der gezogenen Stelle berechnet.
+ */
+function snapPoint(p, screen = map.project(p)) {
+  if (!originalOn || !map.getLayer(ORIG)) return null;
+  const hit = map.queryRenderedFeatures([[screen.x - 10, screen.y - 10], [screen.x + 10, screen.y + 10]], { layers: [ORIG] })[0];
+  const i = hit?.properties.i;
+  return originalSecs[i] ? nearestOnLine(originalSecs[i], originalCum[i], p).point : null;
+}
+
+const heightCache = new Map();
+
+/**
+ * Liegen beide Punkte auf demselben Stück der Vorlage, ist die Strecke
+ * dazwischen genau dieses Stück – im Format von segment(). Sonst null.
+ */
+async function templatePart(a, b) {
+  if (!originalSecs.length) return null;
+  const A = onTemplate(a), B = onTemplate(b);
+  if (!A || !B || A.i !== B.i || Math.abs(A.along - B.along) < 5) return null;
+  const c = originalSecs[A.i], cum = originalCum[A.i];
+  const [lo, hi] = A.along < B.along ? [A.along, B.along] : [B.along, A.along];
+  const coords = [pointAt(c, cum, lo)];
+  for (let k = 0; k < c.length; k += 1) if (cum[k] > lo && cum[k] < hi) coords.push(c[k]);
+  coords.push(pointAt(c, cum, hi));
+  if (A.along > B.along) coords.reverse();
+  const length = hi - lo;
+  const key = `${A.i}|${Math.round(A.along)}|${Math.round(B.along)}`;
+  if (!heightCache.has(key)) heightCache.set(key, heightsAlong(coords).catch(() => ({ elevation: [] })));
+  const { elevation } = await heightCache.get(key);
+  return { coords, cum: cumulative(coords), length, time: length / (PACE[tour.profile] ?? 1.1), elevation, maneuvers: [], template: true };
+}
+
+$('.tour-original').addEventListener('click', async (e) => {
+  const act = e.target.closest('[data-o]')?.dataset.o;
+  if (act === 'toggle') {
+    originalOn = !originalOn;
+    if (map.getLayer(ORIG)) map.setLayoutProperty(ORIG, 'visibility', originalOn ? 'visible' : 'none');
+  }
+  if (act === 'fresh') {
+    if (readOnly) adopt();
+    // Von vorn: die Vorlage bleibt, die eigene Strecke entsteht Punkt für Punkt
+    tour.fixed = false;
+    tour.stages = [];
+    change(() => { tour.points = []; });
+    originalOn = true;
+    if (map.getLayer(ORIG)) map.setLayoutProperty(ORIG, 'visibility', 'visible');
+    toast('Setze deine Punkte – die Vorlage bleibt im Hintergrund');
+  }
+  if (act === 'restore') {
+    // Den ganzen Weg übernehmen: Stücke der Reihe nach, Lücken über Wege verbunden
+    const b = e.target.closest('button');
+    b.disabled = true;
+    b.innerHTML = '<span class="msr spin">progress_activity</span> Verlauf wird zusammengesetzt …';
+    try {
+      if (readOnly) adopt();
+      const { line, bridged } = await originalRoute(tour.original.id, tour.original.kind);
+      const prev = tour.points.map((p) => p.slice());
+      prev.fixed = !!tour.fixed;
+      undoStack.push(prev);
+      tour.points = simplifyTo(line, 20);
+      tour.shape = shapeOf(line.length > 1500 ? simplifyTo(line, 1500) : line);
+      tour.fixed = true;
+      tour.stages = [];
+      await recompute({ fit: true });
+      if (bridged) toast(`${bridged} ${bridged === 1 ? 'Lücke' : 'Lücken'} der Vorlage über Wege verbunden`);
+    } catch (err) { toast(`Vorlage gerade nicht abrufbar (${err.message})`); }
+  }
+  paintOriginal();
+});
+
+if (map.loaded()) loadOriginal(); else map.once('load', loadOriginal);
+
 const elevation = new ElevationProfile($('.elevation', sheet), {
   onHover(km) {
     if (!route || km === null) { showHover(map, null); return; }
@@ -306,6 +492,7 @@ async function recompute({ fit = false } = {}) {
     showRoutes(map, [], -1);
     elevation.show(null);
     paintStats();
+    routeChanged();
     $('.tour-ways').innerHTML = '';
     status(null);
     scheduleSave();
@@ -315,7 +502,8 @@ async function recompute({ fit = false } = {}) {
   status('Route wird berechnet …');
   try {
     const pairs = tour.points.slice(1).map((b, i) => [tour.points[i], b]);
-    const parts = await Promise.all(pairs.map(([a, b]) => segment(a, b, tour.profile)));
+    // Auf der Vorlage genau ihr folgen, sonst routen
+    const parts = await Promise.all(pairs.map(async ([a, b]) => (await templatePart(a, b)) ?? segment(a, b, tour.profile)));
     if (my !== seq) return;
     route = { ...joinSegments(parts, tour.profile), id: 0 };
     // Wo entlang der Linie die gesetzten Punkte liegen – für „Punkt einfügen“
@@ -324,6 +512,7 @@ async function recompute({ fit = false } = {}) {
     showRoutes(map, [route], 0);
     elevation.show(route);
     paintStats();
+    routeChanged();
     status(null);
     if (fit) fitRoute();
     loadWays(my);
@@ -348,6 +537,7 @@ async function fixedRoute(my) {
   route.time = pace ? length / pace : hikingTime(length, 0, 0);
   showRoutes(map, [route], 0);
   paintStats();
+  routeChanged();
   status('Originalverlauf – ändern, indem du Punkte verschiebst oder hinzufügst', false);
   scheduleSave();
   try {
@@ -357,6 +547,7 @@ async function fixedRoute(my) {
     if (!pace) route.time = hikingTime(length, h.ascent, h.descent);
     elevation.show({ ...route, length });
     paintStats();
+    routeChanged();
   } catch { /* ohne Höhen */ }
   loadWays(my);
 }
@@ -488,17 +679,19 @@ async function capturePreview() {
   }
 }
 
+/** Geteilte Tour als eigene übernehmen – ab jetzt bearbeitbar */
+function adopt() {
+  readOnly = false;
+  document.body.classList.remove('readonly');
+  nameInput.readOnly = descInput.readOnly = false;
+  tour.id = null;
+  saveState('new');
+  history.replaceState(null, '', './tour.html');
+  renderMarkers();
+}
+
 $('#save').addEventListener('click', async () => {
-  if (readOnly) {
-    // Geteilte Tour als eigene übernehmen
-    readOnly = false;
-    document.body.classList.remove('readonly');
-    nameInput.readOnly = descInput.readOnly = false;
-    tour.id = null;
-    saveState('new');
-    history.replaceState(null, '', './tour.html');
-    renderMarkers();
-  }
+  if (readOnly) adopt();
   if (tour.points.length < 2) { toast('Setze mindestens zwei Punkte'); return; }
   await save(await capturePreview());
   toast('Tour gespeichert');

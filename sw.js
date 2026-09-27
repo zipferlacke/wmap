@@ -8,11 +8,18 @@
  *   Suche, Routing, Overpass …       nur Netz
  *
  * Vor einer Navigation lädt die Seite die Kacheln entlang der Route vor
- * (Nachricht „prefetch“), damit Funklöcher unterwegs nicht auffallen.
+ * (Nachricht „prefetch“), damit Funklöcher unterwegs nicht auffallen. Jede
+ * Navigation bekommt einen eigenen Cache „wmap-nav-<Zeit>“:
+ *   - nach 10 Tagen wird er gelöscht
+ *   - reicht der Platz nicht, weicht zuerst die älteste Navigation
  */
 const APP = 'wmap-app-v3';
 const TILES = 'wmap-tiles-v1';
 const MAX_TILES = 8000;
+const NAV = 'wmap-nav-';
+const NAV_MAX_AGE = 10 * 24 * 3600 * 1000;
+// Grob je Kachel samt Cache-Verwaltung – nur um vorher Platz zu schaffen
+const TILE_BYTES = 60 * 1024;
 
 const TILE_HOSTS = ['tiles.openfreemap.org', 'tiles.mapterhorn.com'];
 const APP_HOSTS = ['unpkg.com'];
@@ -20,7 +27,8 @@ const APP_HOSTS = ['unpkg.com'];
 self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', (e) => e.waitUntil((async () => {
-  for (const k of await caches.keys()) if (![APP, TILES].includes(k)) await caches.delete(k);
+  for (const k of await caches.keys()) if (![APP, TILES].includes(k) && !k.startsWith(NAV)) await caches.delete(k);
+  await dropOldNavs();
   await self.clients.claim();
 })()));
 
@@ -63,7 +71,8 @@ let puts = 0;
 
 async function cacheFirst(req) {
   const cache = await caches.open(TILES);
-  const hit = await cache.match(req, { ignoreVary: true });
+  // Auch in den Caches der vorgeladenen Navigationen suchen
+  const hit = await caches.match(req, { ignoreVary: true });
   if (hit) return hit;
   let res;
   try {
@@ -111,18 +120,68 @@ async function storeApp(urls) {
   }));
 }
 
+/* ── Vorgeladene Navigationen ──────────────────────────────────────────────── */
+
+/** Caches der Navigationen, älteste zuerst → [{ name, at }] */
+async function navCaches() {
+  return (await caches.keys()).filter((k) => k.startsWith(NAV))
+    .map((name) => ({ name, at: +name.slice(NAV.length) || 0 })).sort((a, b) => a.at - b.at);
+}
+
+/** Älter als 10 Tage: weg */
+async function dropOldNavs() {
+  for (const n of await navCaches()) if (Date.now() - n.at > NAV_MAX_AGE) await caches.delete(n.name);
+}
+
+/** Älteste Navigation löschen (nie die gerade laufende) → ob etwas gelöscht wurde */
+async function dropOldestNav(keep) {
+  const oldest = (await navCaches()).find((n) => n.name !== keep);
+  if (!oldest) return false;
+  await caches.delete(oldest.name);
+  return true;
+}
+
+/** Vorher Platz schaffen: so lange die ältesten Navigationen löschen, bis es reicht */
+async function makeRoom(bytes, keep) {
+  const est = await self.navigator.storage?.estimate?.().catch(() => null);
+  if (!est?.quota) return;
+  let free = est.quota - est.usage;
+  while (free < bytes) {
+    const before = (await self.navigator.storage.estimate()).usage;
+    if (!await dropOldestNav(keep)) return;
+    free += Math.max(0, before - (await self.navigator.storage.estimate()).usage);
+  }
+}
+
+/** Speichern; ist der Platz voll, weicht die älteste Navigation und es geht noch einmal */
+async function putRoom(cache, u, res, keep) {
+  try {
+    await cache.put(u, res.clone());
+  } catch (err) {
+    if (err?.name !== 'QuotaExceededError' || !await dropOldestNav(keep)) throw err;
+    await cache.put(u, res);
+  }
+}
+
 /** Kacheln vorladen, 6 gleichzeitig; meldet den Fortschritt über den Port. */
 async function prefetch(urls, port) {
-  const cache = await caches.open(TILES);
+  await dropOldNavs();
+  const name = `${NAV}${Date.now()}`;
+  await makeRoom(urls.length * TILE_BYTES, name);
+  const cache = await caches.open(name);
   let done = 0, loaded = 0, failed = 0;
   const queue = urls.slice();
   const worker = async () => {
     while (queue.length) {
       const u = queue.shift();
       try {
-        if (!await cache.match(u, { ignoreVary: true })) {
+        // Schon anderswo gespeichert (Karte angesehen, frühere Fahrt): nur übernehmen –
+        // so bleibt diese Navigation vollständig, auch wenn die frühere gelöscht wird
+        const known = await caches.match(u, { ignoreVary: true });
+        if (known) await putRoom(cache, u, known, name);
+        else {
           const res = await fetch(u);
-          if (res.ok) { await cache.put(u, res); loaded += 1; } else if (res.status !== 404) failed += 1;
+          if (res.ok) { await putRoom(cache, u, res, name); loaded += 1; } else if (res.status !== 404) failed += 1;
         }
       } catch { failed += 1; }
       done += 1;
@@ -130,6 +189,5 @@ async function prefetch(urls, port) {
     }
   };
   await Promise.all(Array.from({ length: 6 }, worker));
-  await trim(cache);
   port?.postMessage({ done, total: urls.length, loaded, failed, finished: true });
 }

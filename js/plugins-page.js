@@ -23,6 +23,7 @@ import { extensions } from './extensions.js';
 import { addOwnSource, addOwnFiles } from './own-source.js';
 import { ask } from './ui.js';
 import { esc } from './geo.js';
+import { PRESETS, legendHtml } from './presets.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 mountAppBar();
@@ -51,36 +52,6 @@ const BUILTIN = [
   { key: 'hiking', icon: 'hiking', name: 'Wanderwege', text: 'Alle markierten Wanderwege – vom Rundweg bis zum Europäischen Fernwanderweg, mit ihren Zeichen.' },
   { key: 'cycling', icon: 'directions_bike', name: 'Radwege', text: 'Markierte Radrouten: Radfernwege, regionale und örtliche Routen.' },
   { key: 'mtb', icon: 'landscape', name: 'Mountainbike', text: 'Ausgeschilderte Mountainbike-Strecken.' },
-];
-
-/*
- * Fertige Kartenebenen offener Anbieter – ein Tipp auf „Aktivieren“ legt sie
- * als Ebene auf die Karte (wie eine Katalog-Ebene, nur ohne WMap-Server).
- */
-const BGR = (layers) => 'https://services.bgr.de/wms/geologie/guek250/?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap'
-  + `&LAYERS=${layers}&STYLES=&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=512&HEIGHT=512&FORMAT=image/png&TRANSPARENT=true`;
-const BGR_ATTR = 'Geologie: GÜK250 (WMS), © <a href="https://www.bgr.bund.de" target="_blank" rel="noopener">BGR</a>, Hannover, 2019';
-// Die BGR liefert nur zwischen 1:546 000 und 1:34 000 – Zoom 9 bis 13
-const BGR_ZOOM = { minzoom: 8.5, maxzoom: 13 };
-const PRESETS = [
-  {
-    id: 'geo-de', icon: 'landslide', name: 'Geologie Deutschland',
-    operator: 'BGR – Bundesanstalt für Geowissenschaften und Rohstoffe',
-    text: 'Geologische Übersichtskarte 1:250 000 (GÜK250): welche Gesteine an der Oberfläche liegen, farbig nach Erdzeitalter, dazu Störungen und Verwerfungen. Zu sehen ab Zoom 9 – vom Landkreis bis zum Ort.',
-    tiles: BGR('7,8,11'), attribution: BGR_ATTR, ...BGR_ZOOM, url: 'https://www.bgr.bund.de/DE/Themen/Sammlungen-Grundlagen/GG_geol_Info/Karten/Deutschland/GUEK250/guek250_node.html',
-  },
-  {
-    id: 'geo-de-rock', icon: 'texture', name: 'Gesteinsarten Deutschland',
-    operator: 'BGR – Bundesanstalt für Geowissenschaften und Rohstoffe',
-    text: 'Dieselbe Übersichtskarte (GÜK250), gefärbt nach Gesteinsart statt Alter: Sand, Ton, Kalk, Granit, Schiefer … Gut für Wanderungen und Boden. Zu sehen ab Zoom 9.',
-    tiles: BGR('4,5'), attribution: BGR_ATTR, ...BGR_ZOOM, url: 'https://www.bgr.bund.de',
-  },
-  {
-    id: 'geo-world', icon: 'public', name: 'Geologie weltweit',
-    operator: 'Macrostrat (University of Wisconsin–Madison)',
-    text: 'Geologische Karten aus aller Welt, zusammengesetzt aus vielen Quellen – grob für ganze Länder, genauer, wo es gute Karten gibt. Farbig nach Erdzeitalter.',
-    tiles: 'https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png', attribution: 'Geologie: <a href="https://macrostrat.org" target="_blank" rel="noopener">Macrostrat</a> (CC BY 4.0)', url: 'https://macrostrat.org',
-  },
 ];
 
 let filter = new URLSearchParams(location.search).get('f') || 'all';
@@ -200,10 +171,38 @@ function showDetail(id, { push = true } = {}) {
     </div>
     ${i.kind === 'extension' ? `<p class="plug-warn"><span class="msr">warning</span> Eine Erweiterung ist Programmcode. Aktiv darf sie alles, was WMap darf – auch deinen Standort sehen. Aktiviere nur, was du kennst und dem Anbieter vertraust.</p>` : ''}
     ${i.description ? `<p class="plug-long">${esc(i.description)}</p>` : ''}
+    ${opacityHtml(i)}
+    ${i.preset ? legendHtml(i.preset) : ''}
     <ul class="plug-facts">${facts.map(([icon, v]) => `<li><span class="msr">${icon}</span>${esc(v)}</li>`).join('')}</ul>
     ${i.url ? `<p class="muted plug-url">Quelle: ${/^https?:/.test(i.url) ? `<a href="${esc(i.url.split('{')[0])}" target="_blank" rel="noopener">${esc(i.url)}</a>` : esc(i.url)}</p>` : ''}`;
   window.scrollTo({ top: 0 });
 }
+
+/* ── Deckkraft einer installierten Ebene ──────────────────────────────────── */
+
+const layerOf = (i) => i.layer ?? (i.kind === 'layer' && i.installed?.id && !i.builtin ? i.installed : null);
+
+function opacityHtml(i) {
+  const l = layerOf(i);
+  if (!l) return '';
+  const v = Math.round((l.opacity ?? (l.raster ? 0.7 : 1)) * 100);
+  return `<label class="plug-opacity"><span class="msr">opacity</span><span>Deckkraft</span>
+      <input type="range" min="10" max="100" step="5" value="${v}" data-act="opacity" aria-label="Deckkraft in Prozent">
+      <output>${v} %</output></label>`;
+}
+
+let opacityTimer = null;
+document.addEventListener('input', (e) => {
+  if (!e.target.matches('[data-act="opacity"]')) return;
+  const id = new URLSearchParams(location.search).get('id');
+  const l = layerOf(items.find((x) => x.id === id) ?? {});
+  if (!l) return;
+  l.opacity = Number(e.target.value) / 100;
+  e.target.nextElementSibling.textContent = `${e.target.value} %`;
+  // Gespeichert wird kurz nach dem Loslassen; die Karte nimmt es beim nächsten Öffnen
+  clearTimeout(opacityTimer);
+  opacityTimer = setTimeout(() => layers.put(l).catch((err) => toast(err.message)), 300);
+});
 
 function showList({ push = true } = {}) {
   if (push) history.pushState(null, '', filter === 'all' ? './plugins.html' : `?f=${filter}`);

@@ -23,6 +23,9 @@ body.dash-page { height: auto; overflow: visible; overflow-x: clip; }
     margin: 0 auto;
     padding: 1rem 1rem calc(2rem + var(--safe-bottom));
     display: grid;
+    /* Eine Spalte, die nie breiter als der Bildschirm wird – sonst drückt
+       breiter Inhalt (Legendenbild, lange Adressen) die ganze Seite auf */
+    grid-template-columns: minmax(0, 1fr);
     gap: 1.5rem;
 }
 
@@ -78,6 +81,7 @@ body.dash-page { height: auto; overflow: visible; overflow-x: clip; }
     li a { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; }
     li .button { width: 2rem; height: 2rem; .msr { font-size: 1.1rem; } }
 }
+.dash-about { color: var(--muted); font-size: var(--fs-200); text-align: center; a { color: var(--route); } }
 .dash-store .muted { color: var(--muted); font-size: var(--fs-200); }
 
 /* Danke-Banner: grün, Hand mit Herz */

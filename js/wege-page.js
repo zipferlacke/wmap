@@ -16,12 +16,12 @@
 import { createMap, showHover } from './map.js';
 import { heightsAlong } from './routing.js';
 import { ElevationProfile } from './elevation.js';
-import { tracks, trackCoords, trackGpx, parseGpx, sameTrack, backup, restore, PROFILE_GROUP } from './tracks.js';
+import { tracks, trackCoords, trackGpx, parseGpx, sameTrack, restore, PROFILE_GROUP } from './tracks.js';
 import { tours, shapeOf, coordsOf, encodeShare, toGpx, download } from './store.js';
 import { PROFILES } from './config.js';
 import { ask } from './ui.js';
 import { share } from './share.js';
-import { mountFolder, tourFromGpx } from './folder.js';
+import { mountFolder, tourFromGpx, zipBackup, restoreZip } from './folder.js';
 import { mapPage } from './mappage.js';
 import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, esc } from './geo.js';
 
@@ -132,12 +132,11 @@ function showList({ push = false } = {}) {
     <footer class="wege-tools">
       ${isPlan ? `
       <a class="button" href="./tour.html"><span class="msr">add_road</span> Tour planen</a>
-      <a class="button" href="./entdecken.html"><span class="msr">explore</span> Bekannte Wege finden</a>
       <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>` : `
       <a class="button" href="./index.html?action=record"><span class="msr">radio_button_checked</span> Aufzeichnen</a>
       <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx"></label>`}
-      <button type="button" class="button" data-tool="backup"><span class="msr">save</span> Sicherung speichern</button>
-      <label class="button"><span class="msr">settings_backup_restore</span> Sicherung laden<input type="file" accept=".json,application/json" hidden data-file="restore"></label>
+      <button type="button" class="button" data-tool="backup" title="ZIP mit den Ordnern WMap/Geplant und WMap/Abgeschlossen/Jahr – als GPX, dazu alles für die Wiederherstellung"><span class="msr">folder_zip</span> Sicherung speichern (ZIP)</button>
+      <label class="button"><span class="msr">settings_backup_restore</span> Sicherung laden<input type="file" accept=".zip,.json,application/zip,application/json" hidden data-file="restore"></label>
       <div class="wege-folder"></div>
       <p class="muted">Alles bleibt auf diesem Gerät – außer du verbindest einen Ordner, den Nextcloud, Proton Drive o. Ä. abgleicht, oder nimmst es mit der Sicherungsdatei mit.</p>
     </footer>`;
@@ -206,7 +205,10 @@ content.addEventListener('click', (e) => {
   const trow = e.target.closest('tr[data-tour]');
   if (trow) { selectTour(trow.dataset.tour, { push: true }); return; }
   const tool = e.target.closest('[data-tool]')?.dataset.tool;
-  if (tool === 'backup') backup().then((txt) => download(`wmap-sicherung-${new Date().toISOString().slice(0, 10)}.json`, txt, 'application/json'));
+  if (tool === 'backup') {
+    zipBackup().then((blob) => download(`wmap-sicherung-${new Date().toISOString().slice(0, 10)}.zip`, blob, 'application/zip'))
+      .catch((err) => toast(`Sicherung ging nicht: ${err.message}`));
+  }
 });
 content.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
@@ -239,7 +241,8 @@ content.addEventListener('change', async (e) => {
       }
       toast(n ? `${n} ${n === 1 ? 'Tour' : 'Touren'} importiert – mit Originalverlauf` : 'In der Datei war keine Tour');
     } else {
-      n = await restore(await inp.files[0].text());
+      const f = inp.files[0];
+      n = /\.zip$/i.test(f.name) || f.type === 'application/zip' ? await restoreZip(f) : await restore(await f.text());
       toast(`${n} Einträge aus der Sicherung übernommen`);
     }
   } catch (err) { toast(err.message); }

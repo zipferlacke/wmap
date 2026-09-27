@@ -138,21 +138,34 @@ body.readonly .save-state { background: var(--route); color: #fff; }
 /* Kartenknöpfe unter den Kopf */
 .tour-page .maplibregl-ctrl-top-right, .track-page .maplibregl-ctrl-top-right { top: calc(var(--panel-h, 4rem) + .5rem); }
 
+.tour-help-btn {
+    flex-shrink: 0; gap: .3rem; min-height: 2.55rem; background: var(--surface-2);
+    .msr { color: var(--route); font-variation-settings: 'FILL' 1; }
+    .tour-help-label { display: none; }
+    /* Rechner: mit Wort */
+    @media (min-width: 701px) { .tour-help-label { display: inline; } }
+}
+
+/* Anleitung als Notiz am i-Knopf (Popover): Handy volle Breite, Rechner schmal */
 .tour-help {
-    border-radius: .8rem;
-    background: color-mix(in srgb, var(--route) 8%, var(--surface));
-    summary {
-        display: flex; align-items: center; gap: .4rem;
-        padding: .6rem .8rem;
-        font-weight: 600;
-        cursor: pointer;
-        .msr { color: var(--route); }
-    }
-    ol { display: grid; gap: .45rem; margin: 0; padding: 0 1rem .8rem 2.2rem; font-size: var(--fs-200); line-height: 1.45; }
+    position: fixed; inset: auto; margin: 0;
+    left: .5rem; right: .5rem; width: auto;
+    max-height: 70dvh; overflow-y: auto;
+    padding: .9rem 1rem; border: 0; border-radius: 1rem;
+    background: var(--surface); color: inherit;
+    box-shadow: 0 6px 28px rgb(0 0 0 / .28);
+    @media (min-width: 701px) { right: auto; width: 22rem; }
+    &:popover-open { display: grid; gap: .6rem; }
+    h2 { display: flex; align-items: center; gap: .4rem; margin: 0; font-size: var(--fs-400); .msr { color: var(--route); font-variation-settings: 'FILL' 1; } }
+    ol { display: grid; gap: .45rem; margin: 0; padding-left: 1.3rem; font-size: var(--fs-200); line-height: 1.45; }
+    .button { justify-self: end; background: var(--surface-2); }
 }
 
 .tour-block { display: grid; gap: .45rem; }
 .tour-profiles .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; --chip: var(--route); }
+
+.tour-search-row { display: flex; align-items: center; gap: .4rem; .tour-search { flex: 1; min-width: 0; } }
+.tour-top { padding-top: .1rem; }
 
 .tour-search {
     display: flex; align-items: center; gap: .4rem;
@@ -538,6 +551,10 @@ body.wege-page { overflow: hidden; }
 .ent-tabs { position: static; padding: 0; margin: 0 -.25rem .5rem; box-shadow: 0 1px 0 var(--line); background: none; a { padding: .5rem .6rem; font-size: var(--fs-200); } }
 .ent-tabs[hidden], .ent-tabs a[hidden] { display: none; }
 .ent-row { display: flex; flex-wrap: wrap; gap: .5rem; .button { background: var(--surface-2); } }
+/* Wegzeichen von Waymarked Trails (SVG) */
+.wmt-symbol { width: 1.6rem; height: 1.6rem; object-fit: contain; vertical-align: middle; }
+.ent-mark { display: flex; align-items: center; gap: .6rem; .wmt-symbol { width: 2.4rem; height: 2.4rem; flex-shrink: 0; } }
+.ent-itinerary { display: flex; align-items: flex-start; gap: .4rem; color: var(--muted); .msr { font-size: 1.1rem; color: var(--route); } }
 .ent-facts {
     display: flex; flex-wrap: wrap; align-items: center; gap: .4rem 1rem; color: var(--muted); font-size: var(--fs-200);
     > span { display: inline-flex; align-items: center; gap: .25rem; }
@@ -592,3 +609,70 @@ body.wege-page { overflow: hidden; }
 .wege-content > .chip-row { overflow: visible; flex-wrap: wrap; }
 .ent-groups .wege-year summary { flex-wrap: wrap; row-gap: 0; small { margin-left: 1.75rem; flex-basis: 100%; } }
 .ent-groups .w-name strong, .ent-andere .w-name strong { white-space: normal; max-width: none; }
+
+/* ── Etappen im Planer (js/tour-stages.js) ────────────────────────────────── */
+
+.stages-toggle { justify-content: center; width: 100%; background: var(--surface-2); &[aria-pressed="true"] { background: var(--route); color: #fff; .msr { color: #fff; } } }
+.tour-stages {
+    display: grid; gap: .6rem; padding: .75rem; border-radius: .9rem; background: var(--surface-2);
+    &[hidden] { display: none; }
+    h3 { display: flex; align-items: center; gap: .35rem; font-size: var(--fs-300); .msr { color: #e8590c; } }
+    .muted { color: var(--muted); font-size: var(--fs-200); }
+}
+.stage-auto {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+    label { display: flex; align-items: center; gap: .35rem; font-size: var(--fs-200); }
+    input { width: 4.5rem; font: inherit; padding: .3rem .5rem; border-radius: .5rem; border: 1px solid var(--line); background: var(--surface); color: inherit; text-align: right; }
+    .button { background: var(--surface); }
+}
+.stage-list {
+    list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem;
+    li {
+        display: grid; grid-template-columns: auto 1fr; gap: 0 .6rem; align-items: baseline;
+        padding: .4rem .6rem; border-radius: .6rem; background: var(--surface);
+        border-left: .3rem solid var(--c);
+        font-size: var(--fs-200);
+    }
+    strong { font-size: var(--fs-300); }
+    .msr { font-size: 1rem; vertical-align: -.15rem; }
+    small { grid-column: 2; color: var(--muted); }
+}
+.stage-marker {
+    display: flex; align-items: center; gap: .1rem;
+    padding: .15rem .45rem .15rem .25rem; border: 2px solid #fff; border-radius: 999px;
+    background: #e8590c; color: #fff; font: 700 .8rem/1.2 system-ui, sans-serif; cursor: pointer;
+    box-shadow: 0 1px 4px rgb(0 0 0 / .35);
+    .msr { font-size: 1rem; color: #fff; }
+}
+body.stage-mode #map canvas { cursor: crosshair; }
+
+/* ── Vorlage im Planer: übernommener bekannter Weg (js/tour.js) ─────────── */
+
+.tour-original {
+    display: grid; gap: .5rem; padding: .7rem .75rem; border-radius: .9rem; background: var(--surface-2);
+    &[hidden] { display: none; }
+    p { display: flex; align-items: flex-start; gap: .55rem; margin: 0; }
+    p > i { width: 1.4rem; height: .45rem; margin-top: .45rem; border-radius: 999px; flex-shrink: 0; opacity: .7; }
+    p > span { display: grid; gap: .1rem; min-width: 0; }
+    small { color: var(--muted); font-size: var(--fs-200); }
+    .tour-tools .button { background: var(--surface); }
+}
+
+/* ── Rechner: Panel als Seitenleiste links, Kopf darüber gleich breit ─────── */
+
+@media (min-width: 900px) {
+    .tour-page .tour-head { width: 26rem; right: auto; }
+    .tour-page #sheet.dialog.sheet {
+        top: calc(var(--panel-h, 4rem) + .5rem); bottom: .75rem; left: .75rem;
+        transform: none; width: 26rem;
+        height: auto !important; max-height: none !important;
+        padding-bottom: 1rem;
+        border-radius: 1rem;
+        box-shadow: var(--shadow);
+        .sheet-grip { display: none; }
+        .view { padding-top: .8rem; }
+        .sheet-head { top: 0; padding-top: .5rem; }
+    }
+    /* Hinweis mittig über der freien Karte */
+    .tour-page .tour-hint { left: calc(50% + 13.4rem); top: 1rem; }
+}

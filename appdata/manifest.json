@@ -18,7 +18,7 @@
     "theme_color": "#1a73e8",
     "icons": [
         {
-            "src": "./wmap-144.png",
+            "src": "./wmap-maskable-144.png",
             "sizes": "144x144",
             "type": "image/png",
             "purpose": "maskable"
@@ -30,7 +30,7 @@
             "purpose": "any"
         },
         {
-            "src": "./wmap-192.png",
+            "src": "./wmap-maskable-192.png",
             "sizes": "192x192",
             "type": "image/png",
             "purpose": "maskable"
@@ -42,7 +42,7 @@
             "purpose": "any"
         },
         {
-            "src": "./wmap-512.png",
+            "src": "./wmap-maskable-512.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "maskable"

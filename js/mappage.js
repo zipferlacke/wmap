@@ -25,6 +25,9 @@ export function mapPage(panel, { map, onFit = () => {}, key = 'wmap.panel' } = {
   const back = bar.querySelector('[data-act="back"]');
   let backTo = null;                 // Detail: wohin ← führt; null: Liste
 
+  // Für die Konsole und Tests, wie auf der Hauptkarte
+  window.__wmap = { map };
+
   // Nach dem Ziehen den Kartenausschnitt an den freien Platz anpassen
   let fitTimer = null;
   const side = sheet(panel, {

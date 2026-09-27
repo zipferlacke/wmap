@@ -7,7 +7,7 @@ import { PROFILES } from './config.js';
 import { geo } from './native.js';
 import {
   createMap, showRoutes, showHighlight, showPois, showHover, showReach, ROUTE_COLOR, BASE_POI_LAYERS, osmRef,
-  dataSaver, setDataSaver, showTraffic,
+  dataSaver, showTraffic,
 } from './map.js';
 import { trafficAlong, avoidRing } from './traffic.js';
 import { poisInBounds, poisAlong } from './tile-pois.js';
@@ -17,7 +17,7 @@ import * as overpass from './overpass.js';
 import { CATEGORIES, byId, routeCategories, matchCategory } from './categories.js';
 import { getRoutes, maneuverIcon, isochrone } from './routing.js';
 import { ElevationProfile } from './elevation.js';
-import { Navigation, openVoiceDialog, navSettings } from './navigation.js';
+import { Navigation, navSettings } from './navigation.js';
 import { describePoi, poiCard, categoryFor, inCategory } from './poi-info.js';
 import * as osm from './osm.js';
 import { placeMedia, fuelPrices, fuelKey, isTrainStation, trainDepartures } from './media.js';
@@ -26,9 +26,11 @@ import { Sheet } from './sheet.js';
 import { mountAppNav } from './appnav.js';
 import { recorder, historySetting } from './tracks.js';
 import { setupRecording } from './record-ui.js';
-import { NavPip, pipSupported } from './pip.js';
+import { NavPip, pipSupported, autoPip } from './pip.js';
 import { mapLayerIds, propertyTable } from './layers.js';
 import { mountLayerMenu } from './layer-menu.js';
+import { presetOf, layerInfoAt, layerInfoHtml } from './presets.js';
+import { isStop, linesAt, transitHtml, mountTransitLine, lineStopsHtml } from './transit.js';
 import { runExtensions } from './extensions.js';
 import { share, placeUrl, routeUrl, readRoute, requestUrl, myName, clock } from './share.js';
 import { ask } from './ui.js';
@@ -37,7 +39,6 @@ import { report, answered, reportsIn, reportsShared, REPORT_KINDS } from './repo
 import { answerParking, anonNotes } from './survey.js';
 import { account } from './osm-api.js';
 import { SurveyView } from './survey-ui.js';
-import { openSettings } from './settings.js';
 import { contribute, trace, trips } from './trace.js';
 import { finishLogin } from './osm-api.js';
 import {
@@ -473,6 +474,9 @@ $('#to-route').addEventListener('click', () => {
 
 let placeMarker = null;
 let placeCtl = null;
+// Haltestelle → Linien; eine davon komplett auf der Karte
+const transitLine = mountTransitLine(map);
+let stopLines = [];
 
 const NEARBY = ['parking', 'fuel', 'charging', 'restaurant', 'cafe', 'bakery', 'supermarket', 'toilets', 'bus', 'hotel'];
 
@@ -489,6 +493,7 @@ const overContext = () => nav.active || state.mode === 'route' || !!state.catego
 /** Darübergelegten Ort schließen, die Hervorhebung darunter zurückholen. */
 function closeOver() {
   if (!overState) return;
+  transitLine.clear();
   placeMarker?.remove();
   placeMarker = null;
   placeCtl?.abort();
@@ -534,6 +539,8 @@ async function showPlace(f, { push = true, fly = true, over = false } = {}) {
   paintPlaceActions();
   const facts = $('.place-facts', view);
   facts.innerHTML = '';
+  $('.place-layers', view).innerHTML = '';
+  $('.place-transit', view).innerHTML = '';
   openSheet('place');
 
   placeMarker?.remove();
@@ -587,6 +594,7 @@ async function showPlace(f, { push = true, fly = true, over = false } = {}) {
     f.properties._tags = tags;
     show(tags);
     facts.classList.remove('loading');
+    if (isStop(tags)) showStopLines(p, tags.name ?? d.title, signal);
     await enrich(tags, p, media, signal);
   } catch { /* Details sind Zugabe */ } finally {
     facts.classList.remove('loading');
@@ -637,6 +645,7 @@ function showPoint(point) {
   const f = { type: 'Feature', geometry: { type: 'Point', coordinates: point }, properties: { name: 'Punkt auf der Karte', _point: true } };
   showPlace(f, { over: overContext(), fly: false });
   $('[data-view="place"] .place-sub').textContent = `${point[1].toFixed(5)}, ${point[0].toFixed(5)}`;
+  showLayerInfo(point, $('[data-view="place"] .place-layers'));
   geocode.reverse(point).then((r) => {
     if (state.place !== f || !r) return;
     const d = geocode.describe(r);
@@ -689,6 +698,7 @@ async function enrich(tags, point, box, signal) {
 }
 
 function clearPlace() {
+  transitLine.clear();
   state.place = null;
   placeMarker?.remove();
   placeMarker = null;
@@ -1679,6 +1689,48 @@ async function runAlong(cat) {
    auf der Karte bleibt nur die Markierung
    ══════════════════════════════════════════════════════════════════════════ */
 
+/* ── Haltestellen: welche Linien halten hier, eine davon auf der Karte ───── */
+
+async function showStopLines(point, name, signal) {
+  const box = $('[data-view="place"] .place-transit');
+  box.innerHTML = '<h3 class="section-title">Linien hier</h3><p class="muted"><span class="msr spin">progress_activity</span> Welche Linien hier halten …</p>';
+  try {
+    stopLines = await linesAt(point, name, { signal });
+    if (signal.aborted) return;
+    box.innerHTML = stopLines.length ? transitHtml(stopLines, { active: transitLine.shown }) : '';
+  } catch (err) {
+    if (err.name !== 'AbortError') box.innerHTML = `<h3 class="section-title">Linien hier</h3><p class="muted">Gerade nicht abrufbar (${esc(err.message)})</p>`;
+  }
+}
+
+$('[data-view="place"] .place-transit').addEventListener('click', async (e) => {
+  const box = e.currentTarget;
+  if (e.target.closest('[data-transit="all"]')) { box.innerHTML = transitHtml(stopLines, { active: transitLine.shown, all: true }); return; }
+  const btn = e.target.closest('[data-line]');
+  if (!btn) return;
+  const id = Number(btn.dataset.line);
+  const all = !box.querySelector('.transit-more');
+  box.querySelector('.transit-stops')?.remove();
+  if (transitLine.shown === id) {
+    transitLine.clear();
+    box.innerHTML = transitHtml(stopLines, { all });
+    return;
+  }
+  btn.classList.add('loading');
+  $('.msr', btn).textContent = 'progress_activity';
+  $('.msr', btn).classList.add('spin');
+  try {
+    const line = await transitLine.show(id);
+    box.innerHTML = transitHtml(stopLines, { active: id, all });
+    box.querySelector(`[data-line="${id}"]`)?.insertAdjacentHTML('afterend', lineStopsHtml(line));
+    if (line.bounds) afterLayout(() => fitTo(line.bounds.flat(), 16));
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    toast(`Linie gerade nicht abrufbar (${err.message})`);
+    box.innerHTML = transitHtml(stopLines, { active: transitLine.shown, all });
+  }
+});
+
 /** Klick auf ein Symbol der Karte selbst (Parkplatz, Laden, Haltestelle …). */
 function openBasePoi(feat) {
   const ref = osmRef(feat);
@@ -1774,6 +1826,23 @@ map.on('click', (e) => {
   }
 });
 
+/**
+ * Ebenen mit Auskunft (Gestein, Erdzeitalter …): bei langem Drücken stehen
+ * sie in „Punkt auf der Karte“ – ein einfacher Klick bleibt frei für Orte.
+ */
+let infoCtl = null;
+function showLayerInfo(point, box) {
+  const zoom = map.getZoom();
+  const withInfo = layerMenu.shown().filter((l) => presetOf(l)?.info && zoom >= (l.raster?.minzoom ?? 0));
+  infoCtl?.abort();
+  if (!withInfo.length) return;
+  infoCtl = new AbortController();
+  box.innerHTML = '<p class="muted"><span class="msr spin">progress_activity</span> Was die Ebenen hier wissen …</p>';
+  layerInfoAt(withInfo, point, zoom, { signal: infoCtl.signal }).then((res) => {
+    box.innerHTML = res.length ? layerInfoHtml(res) : '';
+  }).catch((err) => { if (err.name !== 'AbortError') box.innerHTML = `<p class="muted">Ebenen gerade nicht abrufbar (${esc(err.message)})</p>`; });
+}
+
 /* Maus über der Route → Stelle im Höhenprofil */
 map.on('mousemove', 'route-main', (e) => {
   const r = current();
@@ -1837,8 +1906,9 @@ const nav = new Navigation(map, $('#nav'), {
 });
 window.__wmap.nav = nav;
 
-/* Bild in Bild: nächste Anweisung über anderen Apps (Chrome/Edge, Safari) */
-const pip = new NavPip($('#nav'));
+/* Bild in Bild: Karte und nächste Anweisung über anderen Apps (Android-App, Chrome/Edge, Safari) */
+const pip = new NavPip($('#nav'), { map });
+autoPip();
 if (pipSupported()) {
   $('.nav-pip').hidden = false;
   $('.nav-pip').addEventListener('click', () => pip.toggle().catch((err) => toast(`Bild in Bild ging nicht: ${err.message}`)));
@@ -2164,27 +2234,7 @@ appNav.addItem('person_pin_circle', 'Standort anfragen', async () => {
 });
 const surveyItem = appNav.addItem('volunteer_activism', 'Mitmachen', () => openSurvey());
 appNav.addItem('keyboard', 'Tastatur', keysDialog);
-appNav.addItem('settings', 'Einstellungen', () => showSettings());
-function showSettings() {
-  openSettings({
-  toast,
-  dataSaver,
-  setDataSaver: (on) => {
-    setDataSaver(map, on);
-    toast(on ? 'Datensparmodus an – keine 3D-Höhendaten' : 'Datensparmodus aus');
-  },
-  onVoice: openVoiceDialog,
-  onFuelKey: () => {
-    const key = prompt('Tankerkönig-API-Schlüssel (kostenlos unter creativecommons.tankerkoenig.de).\n'
-      + 'Er bleibt nur in diesem Browser gespeichert. Leer lassen zum Entfernen.', fuelKey());
-    if (key === null) return;
-    local.set('wmap.tankerkoenig', key.trim());
-    toast(key.trim() ? 'Spritpreise eingerichtet' : 'Spritpreise ausgeschaltet');
-  },
-  onClearHistory: () => { recent.clear(); toast('Verlauf gelöscht'); },
-  onContribute: () => { paintSurveyCount(survey.count); if (sheet.dataset.current === 'survey') survey.render(); },
-  });
-}
+appNav.addItem('settings', 'Einstellungen', () => { location.href = './settings.html'; });
 
 /* ══════════════════════════════════════════════════════════════════════════
    Mitmachen bei OpenStreetMap
@@ -2302,7 +2352,8 @@ async function fromUrl() {
     } else if (p.get('action') === 'fly') {
       map.once('idle', () => fly.start());
     } else if (p.get('action') === 'settings') {
-      showSettings();
+      // Alte Links: Einstellungen sind jetzt eine eigene Seite
+      location.replace('./settings.html');
     } else if (p.get('action') === 'reach') {
       openReach();
     } else if (p.get('action') === 'survey') {

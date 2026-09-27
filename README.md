@@ -57,7 +57,7 @@ Man startet immer mit der Karte.
   Karte, Meine Touren, Tour planen, Entdecken, Plugins, Fliegen –, nach einem
   Strich die Einträge der Seite (auf der Karte z. B. Aufzeichnen, Standort
   teilen/anfragen, Mitmachen, Tastatur, Einstellungen).
-- **Seiten ohne Karte** (Übersicht, Plugins) zeichnen keine Karte, sondern
+- **Seiten ohne Karte** (Übersicht, Plugins, Einstellungen) zeichnen keine Karte, sondern
   haben eine **Navigationsleiste** – am Rechner links, am Handy unten:
   Übersicht · Karte · Touren · Entdecken · Plugins.
 
@@ -99,12 +99,20 @@ Man startet immer mit der Karte.
   eigener Standort, **Ebenen** (siehe [6](#6-ebenen-satellit-wandern--rad-plugins)),
   Gelände an/aus.
 - **Quellenangabe:** nur ein kleines (i) unten links, das erst beim Antippen
-  aufgeht. Ausführlich stehen die Quellen in Einstellungen → Über WMap und im
-  Danke-Banner der Übersicht. In der Navigation gibt es kein (i).
+  aufgeht. Ausführlich stehen die Quellen, Version und Impressum unten auf
+  der Übersicht (Danke-Banner).
+  In der Navigation gibt es kein (i).
 - **Letzter Ausschnitt:** Die Karte merkt sich Mitte, Zoom, Neigung und
   Richtung (`wmap.view`) und startet dort wieder.
 - **Antippen:** ein Ort der Karte (Laden, Haltestelle …) öffnet seine Karte
   unten; ein Treffer einer eigenen Ebene zeigt alle Werte des Objekts.
+- **Haltestellen und Bahnhöfe** (die Symbole der Grundkarte): unter dem Ort
+  „Linien hier“ – je Linie Nummer in Linienfarbe, beide Richtungen und
+  Betreiber (Overpass: alle Steige gleichen Namens im Umkreis von 150 m).
+  Eine Richtung antippen zeigt **genau diese Linie komplett** in ihrer Farbe
+  mit allen Halten und Namen; die Karte passt sich an, die Halte stehen
+  aufklappbar darunter. Nochmal antippen oder den Ort schließen nimmt sie
+  weg. Ein eigenes Liniennetz wird nie gezeichnet.
 
 ## 3. Suchen und Orte
 
@@ -214,13 +222,9 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
   das Relief wird kräftiger.
 - **Ebenen:** Relief (Schummerung), Wanderwege, Radwege, Mountainbike.
 - **Eigene Ebenen & Plugins:** jede eigene Ebene und jedes geholte Plugin mit
-  Schalter „auf der Karte“.
-  - **Plugins holen** → Plugin-Seite (der Katalog).
-  - **Eigene Quelle:** Kartenkacheln (`{z}/{x}/{y}`), WMS-Dienst oder
-    GeoJSON-Datei – auf Wunsch mit **Benutzer und Passwort** (HTTP Basic).
-    Die Zugangsdaten bleiben nur auf diesem Gerät. Der Server muss Abrufe aus
-    dem Browser erlauben (CORS).
-  - **Verwalten** → Plugin-Seite, Filter „Eigene“.
+  Schalter „auf der Karte“. Darunter nur ein Knopf **Verwalten** → Plugin-
+  Seite: Plugins holen, eigene Quelle (Kacheln, WMS, GeoJSON – auf Wunsch mit
+  Benutzer und Passwort), Deckkraft.
 
 ## 7. 3D, Gelände und Höhen
 
@@ -288,11 +292,14 @@ Zweiter Hauptbildschirm (`dashboard.html`), ohne Karte, mit Navigationsleiste.
   (Anzahl aktiv), Mitmachen, Einstellungen. Tour planen, Aufzeichnen,
   Fliegen und Erreichbarkeit gibt es in Karte bzw. Touren.
 - **Gespeichert auf diesem Gerät:**
-  - Karten für die Navigation (offline gespeicherte Kacheln) – löschen
+  - Karten für die Navigation: jede vorgeladene Navigation mit Datum, Anzahl
+    Kacheln und wie viele Tage sie noch bleibt; dazu Kacheln angesehener
+    Gegenden – alles löschen
   - Letzte Routen – einzeln (✕) oder alle löschen; antippen öffnet sie
   - Suchverlauf – löschen
   - Speicher insgesamt, Ordner verbinden
-- **Danke-Banner** (grün, Hand mit Herz) mit allen Anbietern.
+- **Danke-Banner** (grün, Hand mit Herz) mit allen Anbietern, darunter
+  Version und Impressum.
 
 ## 10. Meine Touren: Geplant und Aufgezeichnet
 
@@ -315,13 +322,20 @@ Eine Seite, zwei Reiter (`wege.html`; `tours.html` leitet hierher):
     Knöpfe: Als Tour speichern, Als Tour teilen, GPX, Löschen.
   - Geplant: Profil, Strecke, Dauer, Anstieg/Abstieg, Beschreibung,
     Höhenprofil. Knöpfe: Im Planer öffnen, Teilen, GPX, Löschen.
-- **Unten:** Tour planen / Bekannte Wege finden bzw. Aufzeichnen, GPX
+- **Unten:** Tour planen bzw. Aufzeichnen, GPX
   importieren (doppelte Wege werden erkannt), Sicherung speichern/laden,
   Ordner verbinden.
 
 ## 11. Tour planen
 
 `tour.html` – Punkte in die Karte setzen, dazwischen wird nach Profil geroutet.
+
+- **Aufbau:** Auf dem Handy liegt das Panel unten (Höhe per Griff), auf dem
+  Rechner (ab 900 px) als Seitenleiste links unter dem Kopf – die Karte hat
+  die ganze restliche Fläche. Ganz oben: Ort suchen, daneben das blaue
+  **i** (am Rechner „Anleitung“) – öffnet die Anleitung als Notiz, auf dem
+  Handy in voller Breite. Darunter die Werkzeuge, dann Zahlen, Art, Höhen-
+  profil, Wege, Beschreibung.
 
 - **Profile:** Wandern, Spazieren, Rennrad (Asphalt), Tourenrad, Gravel
   (Schotter), Mountainbike, Ausfahrt (Auto).
@@ -331,6 +345,28 @@ Eine Seite, zwei Reiter (`wege.html`; `tours.html` leitet hierher):
   Punkten: große Abstände werden automatisch in Stücke geteilt.
 - **Fester Verlauf:** Übernommene bekannte Wege und GPX-Importe behalten ihren
   Originalverlauf; erst wenn man Punkte verschiebt, wird neu gerechnet.
+- **Vorlage** (bekannte Wege aus Entdecken → „Im Planer öffnen“): Der Weg
+  liegt violett im Hintergrund – genau so, wie er in OpenStreetMap erfasst
+  ist, Stück für Stück, Lücken bleiben Lücken. Eine eigene Strecke gibt es
+  zunächst nicht:
+  - **Selbst planen:** Punkte nah an der Vorlage rasten auf ihr ein (auch
+    beim Ziehen). Liegen zwei Punkte nacheinander auf demselben Stück der
+    Vorlage, folgt die Strecke dazwischen **genau der Vorlage**, ohne
+    Routing. Liegt ein Punkt daneben, wird dorthin normal geroutet.
+  - **So übernehmen:** der ganze Weg auf einen Klick (Stücke der Reihe nach,
+    Lücken über Wege verbunden) als fester Verlauf. Wer danach Punkte ändert,
+    bleibt zwischen Punkten auf der Vorlage weiter genau auf ihr.
+  - **Neu planen** leert die eigenen Punkte, **Ausblenden/Einblenden**. Die
+    Vorlage wird mit der Tour gespeichert und geteilt.
+- **Touren entdecken** (bei den Werkzeugen) → Entdecken.
+- **Etappen – in Tagestouren teilen** (ab 5 km): „Etappen“ an, dann setzt ein
+  Tipp auf die Linie ein Tagesende (Fähnchen mit Nummer, antippen entfernt
+  es) – oder „Alle X km“ → Automatisch teilen. Die Tage erscheinen abwechselnd
+  orange/violett auf der Karte und als Liste mit Länge, Höhenmetern, Zeit und
+  Ort am Tagesende. „Als N Tagestouren speichern“ legt jede Etappe als eigene
+  Tour mit dem Originalverlauf an („Karstwanderweg – Tag 3“). Geht auch bei
+  geteilten, nur lesbaren Touren (z. B. aus Entdecken); die Tagesenden werden
+  mit der Tour gespeichert.
 - **Speichern:** Der Knopf zeigt den Zustand – neu, geändert, „✓ Gespeichert“.
 - **Menü:** Teilen (Link, ohne Server), Als GPX speichern, Veröffentlichen
   (sofort für alle unter Entdecken → Von anderen; braucht ein Konto), Löschen.
@@ -362,10 +398,23 @@ leitet dorthin).
   Stieg · 3 Etappen hier · 97 km“, mit „Ganzen Weg ansehen“. Gehört eine
   Etappe zu mehreren (E6 und nationaler Weg), zählt der bedeutendere.
 - **Filtern:** Tippen filtert die Tabelle sofort (Name, Nummer, Gesamtweg).
-  **Enter** sucht den Namen in ganz Deutschland („Karstwanderweg“).
-- **In die Karte tippen:** die Wege an genau dieser Stelle.
-- **Detail:** Verlauf auf der Karte, Netz, Nummer, Länge, Markierung,
-  Webseite, Etappen im Ausschnitt; „Im Planer öffnen“ übernimmt den
+  **Enter** sucht den Namen überall („Karstwanderweg“): was im Ausschnitt
+  passt, steht sofort oben, dazu kommen die Treffer aus dem Suchindex von
+  Waymarked Trails (rund 1 s; fällt der aus, Overpass über ganz Deutschland).
+- **Auf eine farbige Linie tippen:** Waymarked Trails nennt die Wege an genau
+  dieser Stelle (unter 1 s). Ist es einer, öffnet er sich gleich; liegen
+  mehrere übereinander (Fernweg und örtlicher Weg), kommt eine kurze Auswahl
+  mit den Wegzeichen. Geht auch aus der Detailansicht heraus.
+- **Hervorheben:** Fährt man mit der Maus über eine Zeile, erscheint der Weg
+  als Vorschau. Geöffnet steht er kräftig mit hellem Rand auf der Karte, das
+  übrige Wegenetz tritt zurück.
+- **Detail:** Verlauf auf der Karte (von Waymarked Trails, ~0,2 s; sonst
+  Overpass), Netz, Nummer, Länge, von → nach, Wegzeichen mit Beschreibung,
+  Webseite, Etappen im Ausschnitt; „Im Planer öffnen“ setzt den Verlauf
+  zusammen: Ist der Weg in OSM lückenhaft erfasst (Karstwanderweg: sieben
+  Stücke), werden die Stücke der Lage nach aneinandergereiht, winzige
+  Bruchstücke abseits weggelassen und Lücken über echte Wege geroutet statt
+  als gerade Linie gezogen; „Im Planer öffnen“ übernimmt den
   Originalverlauf. Gesamtwege mit bis zu 60 Etappen werden zusammengesetzt.
 
 **Von anderen:** Touren, die WMap-Nutzer veröffentlicht haben, im
@@ -384,9 +433,19 @@ Unten in „Von anderen“: Konto-Zeile (Anmelden/Abmelden).
 - **Antippen** zeigt es groß: Beschreibung, Art, Anbieter, Stand der Daten,
   Namensnennung, Kontakt, Quelle – und **Aktivieren/Deaktivieren**.
 - **Kartenebenen:** aus dem Katalog (WMap-Server) und eingebaut (Wander-,
-  Rad-, MTB-Wege von Waymarked Trails; Geologie und Gesteinsarten Deutschland
-  der BGR, GÜK250, zu sehen ab Zoom 9; Geologie weltweit von Macrostrat). Aktivieren legt sie auf die Hauptkarte
+  Rad-, MTB-Wege von Waymarked Trails;
+  Geologie und Gesteinsarten Deutschland der BGR, GÜK250, zu sehen ab Zoom 9;
+  Geologie weltweit von Macrostrat). Aktivieren legt sie auf die Hauptkarte
   (im Ebenen-Menü an/aus), Deaktivieren nimmt sie wieder weg.
+- **Was ist hier? (langes Drücken / Rechtsklick):** Mit einer Geologie-Ebene
+  an steht unter „Punkt auf der Karte“, was dort ist – Gesteinsart
+  („Schluff, schwach tonig …“) bzw. Erdzeitalter, bei Macrostrat Einheit,
+  Alter in Millionen Jahren und Gestein. Ein einfacher Klick bleibt für Orte.
+- **Deckkraft:** im Plugin-Detail (gilt beim nächsten Öffnen der Karte).
+  Kartenkacheln starten bei 70 %, Daten bei 100 %.
+- **Legende:** im Plugin-Detail und im Info-Dialog aufklappbar – bei der BGR
+  das Legendenbild in Originalgröße (scrollbar), bei Macrostrat ein Satz zu
+  den Farben der Zeitskala.
 - **Erweiterungen:** JavaScript, das die App verändert – ein ES-Modul unter
   einer https-Adresse mit `export function activate(wmap)`; `wmap` bietet
   `map`, `maplibregl`, `onMapReady`, `toast`, `addMenuItem`, `storage`.
@@ -416,9 +475,12 @@ Cloud abgleicht – **Nextcloud, Proton Drive, Google Drive, Syncthing**. WMap
 braucht dafür kein Konto, es liest und schreibt nur Dateien.
 
 ```
-Wege/2026/2026-09-20 Radtour am Samstagnachmittag.gpx
-Touren/Harzer Hexenstieg.gpx
+WMap/Geplant/Harzer Hexenstieg.gpx
+WMap/Abgeschlossen/2026/2026-09-20 Radtour am Samstagnachmittag.gpx
 ```
+
+Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene. Dateien der
+früheren Ordnung (`Touren/`, `Wege/<Jahr>/`) zieht der nächste Abgleich um.
 
 - Zu finden in Einstellungen → Daten, Meine Touren (unten) und Übersicht.
 - **Abgleich** beim Öffnen einer Seite, nach jeder Aufzeichnung und nach dem
@@ -433,6 +495,11 @@ Touren/Harzer Hexenstieg.gpx
   Ordner in der Drive-App aus – ob Proton Drive dort Ordner anbietet, hängt
   von der Proton-App ab. Der Browser fragt nach einem Neustart ggf. erneut
   nach dem Zugriff („Erlauben und abgleichen“).
+- **Sicherung als ZIP** (Meine Touren unten): dieselbe Ordnung
+  (`WMap/Geplant/…`, `WMap/Abgeschlossen/<Jahr>/…`) als GPX, dazu
+  `WMap/wmap-sicherung.json` mit allem für die Wiederherstellung. „Sicherung
+  laden“ nimmt das ZIP (oder eine alte `.json`); ein ZIP ohne JSON, etwa ein
+  gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
 - **Ohne Ordner-Zugriff** (Firefox, Safari, App): „Ordner einlesen“ holt alle
   GPX eines Ordners herein; „Alles teilen“ schickt alle GPX an das
   Teilen-Menü (z. B. „In Proton Drive speichern“).
@@ -444,8 +511,16 @@ Touren/Harzer Hexenstieg.gpx
   Tour (`tour.html#t=…`), in der Navigation die Ankunftszeit.
 - **Standort anfragen:** Link schicken; wer ihn öffnet, schickt seinen
   Standort zurück.
-- **Bild in Bild:** die nächste Anweisung in einem kleinen Fenster über
-  anderen Apps (Chrome, Edge, neue Firefox; Safari über ein Video).
+- **Bild in Bild** während der Navigation:
+  - **Android-App:** Wischt man die App weg (oder drückt Home), geht sie von
+    selbst ins Mini-Fenster – die ganze App, also Karte und Anweisung; Knöpfe,
+    Suche und Leisten verschwinden darin. Der Knopf in der Navigation geht
+    sofort hinein. Ab Android 12 schaltet das System selbst, bei 8–11 WMap
+    beim Verlassen. Die Karte läuft im Mini-Fenster weiter.
+  - **Chrome, Edge, neue Firefox:** der Knopf schiebt die Karte samt
+    Anweisung in ein Mini-Fenster über anderen Apps und Tabs; schließt man es,
+    kehrt die Karte zurück.
+  - **Safari:** nur die Anweisung, als Video.
 
 ## 17. Mitmachen bei OpenStreetMap, Meldungen
 
@@ -472,21 +547,29 @@ Touren/Harzer Hexenstieg.gpx
 
 ## 19. Einstellungen
 
+`settings.html` – eigene Seite ohne Karte (Menü der Karte → Einstellungen,
+Kachel in der Übersicht; `index.html?action=settings` leitet dorthin).
+Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
+
 - **Darstellung:** hell oder dunkel – wie das System (Standard), Hell, Dunkel.
 - **Unterwegs:** Karte für die Navigation offline speichern, Zoom in der
   Navigation (Automatisch/Näher/Mehr Überblick), 3D in der Navigation,
   Datensparmodus, Stimme, Spritpreise.
 - **Mitmachen:** Weg aufzeichnen und danach fragen, anonym als Hinweis,
   OSM-Konto.
-- **Über WMap:** Version, Impressum, alle Quellen.
-- **Daten:** Fahrten merken, Ordner verbinden, Meine Wege, Suchverlauf löschen.
+- **Daten:** Fahrten merken, Ordner verbinden, aufgezeichnete Wege,
+  Suchverlauf löschen.
 
 ## 20. Offline und Datenverbrauch
 
 - Der Service Worker hält die App offline bereit (erst Netz, sonst Cache).
-- Kacheln, Schriften und Symbole bleiben im Cache (bis 8000 Kacheln).
-- Vor der Navigation werden bis zu 2500 Kacheln entlang der Route geladen.
-  Höhendaten nicht – ohne Netz bleibt die Karte darum flach.
+- Kacheln, Schriften und Symbole angesehener Gegenden bleiben im Cache
+  `wmap-tiles-v1` (bis 8000 Kacheln, älteste zuerst raus).
+- Vor der Navigation werden bis zu 2500 Kacheln entlang der Route geladen –
+  jede Navigation in einen eigenen Cache `wmap-nav-<Zeit>`. Nach **10 Tagen**
+  wird er gelöscht; reicht der Platz vorher nicht, weicht zuerst die
+  **älteste** Navigation. Schon vorhandene Kacheln werden übernommen statt
+  neu geladen. Höhendaten nicht – ohne Netz bleibt die Karte darum flach.
 - Suche, Routing und Overpass gehen nur mit Netz.
 
 ## 21. Was wo gespeichert wird

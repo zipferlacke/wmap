@@ -12,6 +12,7 @@ import { creditList } from './credits.js';
 import { mountFolder } from './folder.js';
 import { ask } from './ui.js';
 import { esc } from './geo.js';
+import { APP_VERSION } from './config.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 mountAppBar();
@@ -44,7 +45,7 @@ async function paintTiles() {
     { href: './entdecken.html', icon: 'explore', title: 'Entdecken', text: 'Wander- und Radwege, Touren von anderen' },
     { href: './plugins.html', icon: 'extension', title: 'Plugins', text: 'Luftbilder, Geologie, eigene Daten, Erweiterungen', count: active ? `${active} aktiv` : '' },
     { href: './index.html?action=survey', icon: 'edit_location_alt', title: 'Mitmachen', text: 'Kurze Fragen, die OpenStreetMap verbessern' },
-    { href: './index.html?action=settings', icon: 'settings', title: 'Einstellungen', text: 'Hell/dunkel, Navigation, Offline, Konto' },
+    { href: './settings.html', icon: 'settings', title: 'Einstellungen', text: 'Hell/dunkel, Navigation, Offline, Konto' },
   ];
 
   $('.dash-tiles').innerHTML = tiles.map((t) => `
@@ -59,25 +60,43 @@ async function paintTiles() {
 
 /* ── Gespeichert: Offline-Karten, letzte Routen, Verlauf, Ordner ──────────── */
 
-const TILES = 'wmap-tiles-v1';          // Name wie in sw.js
+const TILES = 'wmap-tiles-v1';          // Namen wie in sw.js
+const NAV = 'wmap-nav-';
+const NAV_DAYS = 10;
 
-async function tileCount() {
-  try { return caches && (await caches.has(TILES)) ? (await (await caches.open(TILES)).keys()).length : 0; } catch { return 0; }
+/** Kacheln angesehener Gegenden und die vorgeladenen Navigationen */
+async function offlineInfo() {
+  try {
+    if (!self.caches) return { tiles: 0, navs: [] };
+    const keys = await caches.keys();
+    const count = async (name) => (await (await caches.open(name)).keys()).length;
+    const tiles = keys.includes(TILES) ? await count(TILES) : 0;
+    const navs = await Promise.all(keys.filter((k) => k.startsWith(NAV))
+      .map(async (name) => ({ name, at: +name.slice(NAV.length) || 0, tiles: await count(name) })));
+    return { tiles, navs: navs.sort((a, b) => b.at - a.at) };
+  } catch { return { tiles: 0, navs: [] }; }
 }
+
+const DAY = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short' });
+/** Noch so viele Tage, dann löscht der Service Worker die Navigation */
+const daysLeft = (at) => Math.max(0, Math.ceil(NAV_DAYS - (Date.now() - at) / 864e5));
 
 function mb(bytes) { return `${(bytes / 1048576).toLocaleString('de-DE', { maximumFractionDigits: bytes > 1e8 ? 0 : 1 })} MB`; }
 
 async function paintStore() {
   const routes = recent.list('route');
   const others = recent.list().filter((e) => e.kind !== 'route');
-  const tiles = await tileCount();
+  const { tiles, navs } = await offlineInfo();
+  const any = tiles || navs.length;
   const est = await navigator.storage?.estimate?.().catch(() => null);
   $('.dash-rows').innerHTML = `
     <div class="dash-row">
       <span class="msr">offline_pin</span>
       <div><strong>Karten für die Navigation</strong>
-        <small>${tiles ? `${n(tiles, 'Kachel', 'Kacheln')} entlang gefahrener Routen und angesehener Gegenden – damit Funklöcher nicht auffallen` : 'Nichts gespeichert'}</small></div>
-      ${tiles ? '<button type="button" class="button" data-do="tiles"><span class="msr">delete</span> Löschen</button>' : ''}
+        <small>${navs.length ? `${n(navs.length, 'Navigation', 'Navigationen')} vorgeladen – damit Funklöcher nicht auffallen. Jede bleibt ${NAV_DAYS} Tage; wird der Platz knapp, weicht die älteste.` : 'Keine Navigation vorgeladen'}</small>
+        ${navs.length ? `<ul>${navs.map((x) => `<li>${DAY.format(x.at)} · ${n(x.tiles, 'Kachel', 'Kacheln')} · noch ${n(daysLeft(x.at), 'Tag', 'Tage')}</li>`).join('')}</ul>` : ''}
+        ${tiles ? `<small>Dazu ${n(tiles, 'Kachel', 'Kacheln')} angesehener Gegenden.</small>` : ''}</div>
+      ${any ? '<button type="button" class="button" data-do="tiles"><span class="msr">delete</span> Löschen</button>' : ''}
     </div>
     <div class="dash-row dash-routes">
       <span class="msr">directions</span>
@@ -122,6 +141,7 @@ document.addEventListener('click', async (e) => {
       buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Löschen', primary: true }] });
     if (v !== 'yes') return;
     await caches.delete(TILES);
+    for (const k of await caches.keys()) if (k.startsWith(NAV)) await caches.delete(k);
     toast('Offline-Karten gelöscht');
   }
   if (act === 'routes') { for (const r of recent.list('route')) recent.remove(r); toast('Letzte Routen gelöscht'); }
@@ -130,6 +150,7 @@ document.addEventListener('click', async (e) => {
 });
 
 $('.dash-credits').innerHTML = creditList();
+$('.dash-version').textContent = APP_VERSION;
 paintTiles();
 paintStore();
 addEventListener('wmap:folder', paintTiles);

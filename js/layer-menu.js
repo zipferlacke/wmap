@@ -8,15 +8,15 @@
  *                Relief treten hervor
  *   Ebenen       Relief, Wander-, Rad- und MTB-Wege (Waymarked Trails)
  *   Eigene       eigene Ebenen und Plugins (IndexedDB, layers.js) an/aus –
- *                „Plugins holen“ führt in den Katalog, „Eigene Quelle“ nimmt
- *                eine private Adresse, auf Wunsch mit Benutzer und Passwort
+ *                alles Weitere (holen, eigene Quelle, Deckkraft) unter
+ *                „Verwalten“ auf der Plugins-Seite
  *
  * Die Wahl bleibt gespeichert (localStorage „wmap.layers“).
  */
 import { local } from './store.js';
 import { firstRoadLayer } from './map.js';
 import { layers as ownLayers, showLayer, hideLayer } from './layers.js';
-import { addOwnSource, wms } from './own-source.js';
+import { wms } from './own-source.js';
 import { esc } from './geo.js';
 
 const KEY = 'wmap.layers';
@@ -156,12 +156,8 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
       <h4>Eigene Ebenen & Plugins</h4>
       ${own.length ? own.map((l) => check(`own:${l.id}`, l.onMain && l.visible, l.raster ? 'grid_on' : 'scatter_plot', esc(l.name),
         esc(l.source?.kind === 'plugin' ? `Plugin von ${l.source.operator ?? '?'}` : l.raster?.auth ? 'private Quelle' : l.raster ? 'Kartenkacheln' : `${l.count ?? ''} Objekte`))).join('')
-        : '<p class="muted">Noch keine – hol dir welche aus dem Katalog oder trag eine eigene Quelle ein.</p>'}
-      <div class="layer-actions">
-        <a class="button" href="./plugins.html"><span class="msr">extension</span> Plugins holen</a>
-        <button type="button" class="button" data-l="own-source"><span class="msr">add_link</span> Eigene Quelle</button>
-        <a class="button" href="./plugins.html?f=own"><span class="msr">tune</span> Verwalten</a>
-      </div>`;
+        : '<p class="muted">Noch keine – unter „Verwalten“ gibt es Geologie, Luftbilder und mehr.</p>'}
+      <a class="button layer-manage" href="./plugins.html${own.length ? '?f=own' : ''}"><span class="msr">tune</span> Verwalten</a>`;
   }
 
   box.addEventListener('click', async (e) => {
@@ -169,7 +165,6 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
     if (base) { state.base = base; save(); applyBase(); paint(); return; }
     const act = e.target.closest('[data-l]')?.dataset.l;
     if (act === 'close') toggle(false);
-    if (act === 'own-source') addSource();
   });
   box.addEventListener('change', async (e) => {
     const t = e.target;
@@ -188,13 +183,6 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
     applyAll();
     paint();
   });
-
-  async function addSource() {
-    const l = await addOwnSource({ toast, index: own.length });
-    if (!l) return;
-    await applyOwn();
-    paint();
-  }
 
   const start = () => { applyAll(); applyOwn(); };
   if (map.loaded()) start(); else map.once('load', start);

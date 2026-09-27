@@ -25,7 +25,23 @@
                 "Hell oder dunkel: Karte und App folgen dem Modus des Geräts – oder fest in den Einstellungen → Darstellung",
                 "Geologie als fertige Plugins: Geologie und Gesteinsarten Deutschland (BGR, GÜK250) und Geologie weltweit (Macrostrat)",
                 "Navigation mehr von oben und näher dran – Häuser verdecken die Straße nicht mehr",
-                "Kartenknöpfe größer, Menüknopf in derselben Form; Erreichbarkeit nur noch über die Suche"
+                "Kartenknöpfe größer, Menüknopf in derselben Form; Erreichbarkeit nur noch über die Suche",
+                "Einstellungen als eigene Seite; Version und Impressum stehen jetzt unten in der Übersicht",
+                "Entdecken: farbige Wege direkt antippen – der Weg öffnet sich in unter einer Sekunde, mit Wegzeichen und Start und Ziel",
+                "Vorgeladene Navigationskarten bleiben 10 Tage; wird der Platz knapp, weicht zuerst die älteste",
+                "Seitenleiste: nach dem Größeändern lässt sich die Karte wieder ziehen (GNOME Web, Safari)",
+                "Geologie antippen: Gesteinsart bzw. Erdzeitalter an dieser Stelle, dazu die Legende",
+                "Haltestellen antippen: welche Linien hier halten – eine Linie antippen zeigt sie komplett in ihrer Farbe mit allen Halten",
+                "Bild in Bild: Die Android-App geht in der Navigation beim Rauswischen von selbst ins Mini-Fenster – mit der ganzen Karte; im Browser wandert die Karte mit",
+                "Entdecken: gewählter Weg kräftig hervorgehoben, Vorschau beim Überfahren der Liste; lückenhafte Wege (z. B. Karstwanderweg) öffnen im Planer durchgehend",
+                "Planer: lange Touren in Tagesetappen teilen – von Hand oder alle X km – und als Tagestouren speichern",
+                "Verbundener Ordner: WMap/Geplant und WMap/Abgeschlossen/Jahr; Sicherung als ZIP mit derselben Ordnung",
+                "Ebenen: Deckkraft in den Plugin-Einstellungen; was eine Ebene über einen Ort weiß, steht jetzt beim langen Drücken; im Ebenen-Menü nur noch „Verwalten“",
+                "Planer: Wege aus Entdecken liegen als Vorlage im Hintergrund – genau wie in OpenStreetMap; selbst planen (zwischen Punkten auf der Vorlage folgt die Strecke genau dem Weg) oder mit einem Klick übernehmen",
+                "Plugin-Seite auf dem Handy nicht mehr breiter als der Bildschirm",
+                "Eigenes Logo: eine gefaltete Karte mit dem W als Weg, Start und Ziel",
+                "Planer am Rechner als Seitenleiste links; Suche ganz oben, Anleitung als Notiz am i",
+                "Entdecken: Suche nach Namen in rund einer Sekunde – was im Ausschnitt passt, steht sofort oben"
             ]
         },
         {
