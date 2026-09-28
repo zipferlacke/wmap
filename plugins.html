@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Plugins – WMap</title>
+    <link rel="manifest" href="./appdata/manifest.json">
+    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#1a73e8">
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/tours.css">
+    <link rel="stylesheet" href="./css/dashboard.css">
+    <link rel="stylesheet" href="./css/plugins.css">
+</head>
+
+<!--
+  Plugins: wie ein App-Store, ohne Karte. Kartenebenen (Luftbilder, Geologie,
+  Messnetze, Wanderwege), Erweiterungen (JavaScript, verändern die App) und
+  eigene Ebenen (Datei, Ordner, Adresse). Antippen zeigt ein Plugin groß mit
+  Beschreibung und Aktivieren/Deaktivieren.
+-->
+<body class="dash-page plugins-page">
+    <header class="dash-head">
+        <h1>Plugins</h1>
+        <form class="tour-search plug-search" role="search" onsubmit="return false">
+            <span class="msr">search</span>
+            <input type="search" placeholder="Plugins durchsuchen" aria-label="Plugins durchsuchen">
+        </form>
+    </header>
+
+    <main class="dash plug">
+        <div class="chip-row plug-filter" role="tablist"></div>
+        <section class="plug-grid" aria-live="polite"></section>
+        <section class="plug-detail" hidden></section>
+        <section class="plug-add">
+            <h2><span class="msr">add_circle</span> Hinzufügen</h2>
+            <div class="plug-add-row">
+                <label class="button"><span class="msr">upload_file</span> GeoJSON-Datei<input type="file" accept=".geojson,.json,application/geo+json,application/json" multiple hidden data-add="files"></label>
+                <label class="button"><span class="msr">drive_folder_upload</span> Ordner laden<input type="file" webkitdirectory multiple hidden data-add="folder"></label>
+                <button type="button" class="button" data-add="source"><span class="msr">add_link</span> Adresse (auch mit Passwort)</button>
+                <button type="button" class="button" data-add="script"><span class="msr">bolt</span> Erweiterung per Adresse</button>
+                <button type="button" class="button" data-add="offer"><span class="msr">publish</span> Plugin anbieten</button>
+            </div>
+            <p class="muted">Eigene Ebenen bleiben nur auf diesem Gerät. „Plugin anbieten“ stellt eine Ebene oder Erweiterung in den Katalog – privat (nur für dich, auf allen Geräten) oder öffentlich; das braucht ein WMap-Konto.</p>
+        </section>
+    </main>
+
+    <script type="module" src="./js/pages/plugins.js"></script>
+</body>
+
+</html>

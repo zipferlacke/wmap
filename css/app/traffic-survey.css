@@ -1,0 +1,170 @@
+/* ── Verkehrslage ─────────────────────────────────────────────────────────── */
+
+.traffic {
+    display: grid;
+    gap: .75rem;
+}
+
+.traffic-alert {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .5rem .6rem .5rem .75rem;
+    border-radius: .8rem;
+    background: color-mix(in srgb, var(--clr-danger-500) 12%, transparent);
+    color: var(--clr-danger-600);
+    font-weight: 600;
+    .msr { font-size: 1.3rem; }
+    .button { margin-left: auto; height: 2.1rem; }
+}
+.traffic-text { font-size: var(--fs-200); line-height: 1.4; max-height: 14rem; overflow-y: auto; }
+
+.keys-table {
+    border-collapse: collapse;
+    th { text-align: left; padding: .25rem 1rem .25rem 0; white-space: nowrap; }
+    td { color: var(--muted); padding: .25rem 0; }
+    kbd {
+        display: inline-block;
+        padding: .1rem .45rem;
+        border: 1px solid var(--line);
+        border-bottom-width: 2px;
+        border-radius: .4rem;
+        background: var(--surface-2);
+        font: inherit;
+        font-size: var(--fs-200);
+    }
+}
+
+/* ── Mitmachen bei OpenStreetMap ──────────────────────────────────────────── */
+
+.survey-account {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem;
+    margin-bottom: .75rem;
+    padding: .6rem .75rem;
+    border-radius: .75rem;
+    background: var(--surface-2);
+    font-size: var(--fs-200);
+    p { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; }
+    .msr { font-size: 1.2rem; color: var(--muted); }
+    .survey-result { flex-basis: 100%; color: var(--clr-success-700); }
+    .chip.small { font-size: var(--fs-100); padding: 0 .4rem; }
+}
+
+.survey-list { display: grid; gap: .75rem; list-style: none; margin: 0; padding: 0; }
+
+.survey-empty {
+    display: grid; gap: .75rem; justify-items: start;
+    color: var(--muted);
+    font-size: var(--fs-200);
+}
+
+.quest {
+    display: grid;
+    gap: .7rem;
+    padding: .9rem;
+    border-radius: 1rem;
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgb(0 0 0 / .08), 0 4px 14px rgb(0 0 0 / .06);
+
+    .quest-head {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: start;
+        gap: .6rem;
+        strong { display: block; line-height: 1.3; }
+        small { color: var(--muted); font-size: var(--fs-100); }
+    }
+    .quest-icon {
+        display: grid; place-items: center;
+        width: 2.2rem; height: 2.2rem;
+        border-radius: 50%;
+        background: hsl(283 70% 94%);
+        color: #7b1fa2;
+        font-size: 1.3rem;
+    }
+    /* Antworten als gleich breite Knöpfe – auf dem Handy gut zu treffen */
+    .quest-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+        gap: .45rem;
+    }
+    .quest-options .button { justify-content: center; min-height: 2.6rem; font-size: var(--fs-200); }
+    .quest-quick .button { background: var(--surface-2); }
+    .quest-hours { padding: .5rem .75rem; border-radius: .7rem; background: var(--surface-2); }
+    .quest-foot {
+        display: flex; justify-content: space-between; gap: .5rem;
+        font-size: var(--fs-100);
+        .link-button { color: var(--muted); }
+    }
+}
+
+.hours-editor {
+    display: grid;
+    gap: .6rem;
+    font-size: var(--fs-200);
+
+    .he-week { display: grid; gap: .35rem; }
+    .he-day {
+        display: grid;
+        grid-template-columns: 3.2rem 1fr;
+        align-items: center;
+        gap: .5rem;
+        min-height: 2.4rem;
+    }
+    /* Tag als Chip: an = geöffnet (Routenfarbe), aus = grau */
+    .he-chip {
+        display: grid; place-items: center;
+        height: 2.2rem;
+        border-radius: 999px;
+        background: var(--route);
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        user-select: none;
+        input { position: absolute; opacity: 0; pointer-events: none; }
+        &:has(input:focus-visible) { outline: 2px solid var(--route); outline-offset: 2px; }
+    }
+    .he-times {
+        display: grid;
+        grid-template-columns: auto auto;
+        justify-content: start;
+        align-items: center;
+        gap: .35rem .5rem;
+        .he-second { grid-row: 2; grid-column: 1; }
+    }
+    .he-span { display: inline-flex; align-items: center; gap: .25rem; i { color: var(--muted); font-style: normal; } }
+    input[type=time] {
+        min-width: 5.6rem;
+        padding: .35rem .45rem;
+        border: 1px solid var(--line, rgb(0 0 0 / .15));
+        border-radius: .55rem;
+        background: var(--surface-2, transparent);
+        color: inherit;
+        font: inherit;
+        font-variant-numeric: tabular-nums;
+    }
+    /* Mittagspause: kleiner runder Knopf neben den Zeiten */
+    .he-pause {
+        display: grid; place-items: center;
+        width: 2.2rem; height: 2.2rem;
+        border: 1px dashed var(--line, rgb(0 0 0 / .25));
+        border-radius: 50%;
+        color: var(--muted);
+        cursor: pointer;
+        user-select: none;
+        .msr { font-size: 1.15rem; }
+        .he-pause-label { display: none; }
+        input { position: absolute; opacity: 0; pointer-events: none; }
+        &:has(input:checked) { border-style: solid; border-color: var(--route); color: var(--route); }
+    }
+    .he-second { display: none; }
+    .he-closed { display: none; color: var(--muted); font-style: italic; }
+    .he-day.split .he-second { display: inline-flex; }
+    .he-day.closed {
+        .he-chip { background: var(--surface-2, #eee); color: var(--muted); }
+        .he-times { display: none; }
+        .he-closed { display: block; }
+    }
+    .he-copy { justify-self: start; display: inline-flex; align-items: center; gap: .3rem; color: var(--route); .msr { font-size: 1rem; } }
+    .he-preview { color: var(--muted); line-height: 1.5; .msr { font-size: 1rem; vertical-align: -.2rem; } }
+}

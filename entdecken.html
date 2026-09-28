@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Entdecken – WMap</title>
+    <link rel="manifest" href="./appdata/manifest.json">
+    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#1a73e8">
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./libs/wuefl-libs/userDialog/userDialog.css">
+    <link rel="stylesheet" href="./css/tours.css">
+    <script src="./libs/maplibre-gl/maplibre-gl.js"></script>
+</head>
+
+<!--
+  Entdecken: bekannte Wander- und Radwege (OSM, Waymarked Trails), Touren von
+  anderen mit Bewertungen. Karte + Panel wie bei
+  „Meine Touren“ (Rechner links, Handy unten, ui/map-page.js).
+-->
+<body class="wege-page entdecken-page">
+    <section id="map"></section>
+
+    <dialog class="userDialog wege-panel" data-pos="left" data-pos-mobile="bottom" aria-label="Entdecken">
+        <header class="uD-header wege-bar">
+            <button type="button" class="button uD-bar-btn" data-shape="round no-background" data-act="back" title="Zurück zur Übersicht"><span class="msr">arrow_back</span></button>
+            <span class="uD-title">Entdecken</span>
+            <button type="button" class="button uD-bar-btn" data-shape="round no-background" data-act="close" title="Schließen – zur Karte"><span class="msr">close</span></button>
+        </header>
+        <nav class="tours-tabs ent-tabs" role="tablist">
+            <a role="tab" href="#wege" data-tab="wege" aria-selected="true"><span class="msr">hiking</span> Wege</a>
+            <a role="tab" href="#andere" data-tab="andere" aria-selected="false"><span class="msr">groups</span> Von anderen</a>
+        </nav>
+        <div class="wege-content"></div>
+    </dialog>
+
+    <script type="module" src="./js/pages/entdecken.js"></script>
+</body>
+
+</html>

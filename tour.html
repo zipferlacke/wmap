@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Tour planen – WMap</title>
+    <link rel="manifest" href="./appdata/manifest.json">
+    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#1a73e8">
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./libs/wuefl-libs/userDialog/userDialog.css">
+    <link rel="stylesheet" href="./css/tours.css">
+    <script src="./libs/maplibre-gl/maplibre-gl.js"></script>
+</head>
+
+<body class="wege-page tour-page">
+    <main>
+        <section id="map"></section>
+        <p class="tour-hint" hidden></p>
+
+        <!-- Panel wie bei Meine Touren und Entdecken (userDialog sheet): Rechner
+             links in voller Höhe, Handy unten; ziehen ändert die Größe, ganz
+             einklappen gibt die Karte frei. Kopf: ←, Name, Speichern, ✕ -->
+        <dialog id="sheet" class="userDialog wege-panel tour-panel" data-pos="left" data-pos-mobile="bottom" aria-label="Tour planen">
+            <header class="uD-header wege-bar tour-bar">
+                <a class="button uD-bar-btn" data-shape="round no-background" href="./wege.html?tab=geplant" title="Zu meinen Touren"><span class="msr">arrow_back</span></a>
+                <input id="tour-name" class="tour-name" type="text" placeholder="Name der Tour" aria-label="Name der Tour">
+                <button type="button" id="save" class="button uD-bar-btn save-state" data-shape="round" data-state="new" title="Tour speichern">
+                    <span class="msr">save</span><span class="save-label"></span>
+                </button>
+                <a class="button uD-bar-btn" data-shape="round no-background" href="./index.html" title="Schließen – zur Karte"><span class="msr">close</span></a>
+            </header>
+            <section class="view wege-content">
+                <!-- Oben: Ort suchen, Anleitung (i), Werkzeuge -->
+                <div class="tour-block tour-top edit-only">
+                    <div class="tour-search-row">
+                        <form class="tour-search" autocomplete="off">
+                            <span class="msr">search</span>
+                            <input type="search" id="tour-search" placeholder="Ort suchen und als Punkt anhängen" aria-label="Ort suchen">
+                        </form>
+                        <button type="button" class="button tour-help-btn" data-shape="round" popovertarget="tour-help" title="Anleitung: so planst du eine Tour">
+                            <span class="msr">info</span>
+                        </button>
+                    </div>
+                    <ul class="tour-search-results" hidden></ul>
+                    <div class="tour-tools">
+                        <button type="button" id="undo" class="button" disabled><span class="msr">undo</span> Rückgängig</button>
+                        <button type="button" id="reverse" class="button"><span class="msr">swap_horiz</span> Umdrehen</button>
+                        <button type="button" id="roundtrip" class="button"><span class="msr">replay</span> Zurück zum Start</button>
+                        <button type="button" id="clear" class="button"><span class="msr">delete_sweep</span> Alle Punkte löschen</button>
+                        <a class="button" href="./entdecken.html"><span class="msr">explore</span> Touren entdecken</a>
+                    </div>
+                </div>
+
+                <header class="sheet-head tour-stats">
+                    <div><strong class="st-length">–</strong><small>Strecke</small></div>
+                    <div><strong class="st-time">–</strong><small>Dauer ca.</small></div>
+                    <div><strong class="st-up">–</strong><small>Anstieg</small></div>
+                    <div><strong class="st-down">–</strong><small>Abstieg</small></div>
+                </header>
+
+                <div class="tour-block edit-only">
+                    <span class="section-title">Unterwegs als</span>
+                    <div class="tour-profiles chip-row" role="radiogroup" aria-label="Art der Tour"></div>
+                </div>
+
+                <!-- Übernommener bekannter Weg: die Vorlage aus OSM im Hintergrund -->
+                <div class="tour-original" hidden></div>
+
+                <button type="button" id="stages" class="button stages-toggle" aria-pressed="false" hidden><span class="msr">flag</span> Etappen – in Tagestouren teilen</button>
+                <div class="tour-stages" hidden></div>
+
+                <p class="tour-status" hidden></p>
+                <div class="elevation"></div>
+                <div class="tour-ways"></div>
+                <label class="tour-desc">
+                    <span class="section-title">Beschreibung</span>
+                    <textarea id="tour-desc" rows="3" placeholder="Worum geht es bei dieser Tour? Einkehr, Parken, Tipps …"></textarea>
+                </label>
+                <div class="tour-tools tour-more">
+                    <button type="button" class="button" data-tour="share"><span class="msr">share</span> Teilen</button>
+                    <button type="button" class="button" data-tour="gpx"><span class="msr">download</span> GPX</button>
+                    <button type="button" class="button edit-only" data-tour="publish"><span class="msr">public</span> Veröffentlichen</button>
+                    <button type="button" class="button edit-only" data-tour="delete"><span class="msr">delete</span> Löschen</button>
+                </div>
+            </section>
+        </dialog>
+    </main>
+
+    <!-- Anleitung als Notiz am i-Knopf: Handy volle Breite, Rechner schmal -->
+    <div id="tour-help" class="tour-help" popover>
+        <h2><span class="msr">info</span> So planst du eine Tour</h2>
+        <ol>
+            <li><strong>Start setzen:</strong> in die Karte tippen – oder oben einen Ort suchen.</li>
+            <li><strong>Weitere Punkte:</strong> antippen. Die Strecke folgt Wegen, die zur gewählten Art passen (Wandern über Pfade, Rennrad über Asphalt …).</li>
+            <li><strong>Ändern:</strong> Punkte verschieben – ziehen. Punkt antippen – entfernen oder dort starten. Auf die Linie tippen – dort einen Punkt einfügen.</li>
+            <li><strong>Vorlage</strong> (Wege aus Entdecken): Punkte auf dem violetten Weg rasten ein, dazwischen folgt die Strecke genau dem Weg.</li>
+            <li><strong>Speichern</strong> passiert automatisch, sobald es eine Strecke gibt. Die Tour findest du dann unter „Meine Touren“.</li>
+        </ol>
+        <button type="button" class="button" popovertarget="tour-help" popovertargetaction="hide"><span class="msr">check</span> Verstanden</button>
+    </div>
+
+    <script type="module" src="./js/pages/tour.js"></script>
+</body>
+
+</html>

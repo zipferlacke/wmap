@@ -1,0 +1,41 @@
+[package]
+name = "wmap"
+version = "1.0.0"
+description = "WMap – 3D-Karte und Navigation als Desktop-App"
+authors = ["Florian Wüllner"]
+license = ""
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "wmap_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.11.3", features = [] }
+tauri-plugin-log = "2"
+# Karten-Links „geo:“ anderer Apps öffnen (Android, Linux, macOS, Windows)
+tauri-plugin-deep-link = "2"
+
+# Rechner: ein Klick auf einen geo:-Link bei offener App startet keine zweite,
+# sondern gibt den Link an das offene Fenster
+[target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+
+# Linux: Standortabfragen von WebKitGTK erlauben (sonst gibt es kein GPS)
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = { version = "2.0", features = ["v2_40"] }
+
+# Handy-Apps: echtes GPS über Tauri (läuft auch bei ausgeschaltetem Bildschirm);
+# die Web-App fragt es über js/native.js an, im Browser bleibt es beim Web-GPS
+[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+tauri-plugin-geolocation = "2"

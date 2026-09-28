@@ -1,0 +1,31 @@
+{
+    "welcome": [
+        "<b>WMap</b> ist eine Karte für unterwegs: suchen, Routen planen, navigieren, Touren planen und aufzeichnen – zu Fuß, mit dem Rad, dem Auto und mit Bus &amp; Bahn.",
+        "Alles beruht auf offenen Daten von OpenStreetMap. Du brauchst kein Konto, und deine Wege bleiben auf deinem Gerät.",
+        "Tippe oben einen Ort, eine Adresse oder einfach „Bäckerei“ ein – oder auf <span class=\"msr\">directions</span>, um eine Route zu planen."
+    ],
+    "minVersion": "1.0.0",
+    "messages": [],
+    "changelog": [
+        {
+            "version": "1.0.0",
+            "date": "2026-09-28",
+            "changes": [
+                "Erste Version von WMap – Karte, Navigation und Touren auf Basis offener Daten, ohne Konto und ohne Werbung",
+                "Karte in 3D mit Gelände und Gebäuden, hell oder dunkel, Luftbilder und Wanderwege im Ebenen-Menü",
+                "Suche, die Tippfehler verzeiht – auch nach Kategorien wie „Parkplatz“ oder „Bäckerei“ im Kartenausschnitt",
+                "Routen zu Fuß, mit dem Rad, dem Auto und mit Bus & Bahn – mit Alternativen, Höhenprofil, Verkehrslage und Abfahrten an Haltestellen",
+                "Navigation mit Ansagen, Spurhinweisen, Bild in Bild und vorgeladener Karte gegen Funklöcher",
+                "Offline-Karten: Gebiete als Rechteck oder freie Form aufs Gerät laden – mit Größe vorher, zum Neuladen und Löschen",
+                "Touren planen, in Tagesetappen teilen, aufzeichnen und als GPX in einem eigenen Ordner (Nextcloud, Proton Drive …) ablegen",
+                "Entdecken: Wander- und Radwege aus OpenStreetMap und Touren anderer – übernehmen mit einem Klick",
+                "Plugins: fertige Kartenebenen (z. B. Geologie), eigene GeoJSON-Ebenen und Erweiterungen",
+                "Teilen per Link – Ort, Route, Tour, „Ich bin unterwegs“ oder Standort anfragen; Text mit Link oder nur den Link kopieren",
+                "Karten-Links (geo:) aus anderen Apps öffnen WMap",
+                "Mitmachen bei OpenStreetMap: kurze Fragen zu Orten unterwegs, Orte eintragen und bearbeiten",
+                "WMap-Konto per Passkey nur für Veröffentlichtes – alles andere bleibt auf dem Gerät",
+                "Als Web-App, für Android, Windows, macOS und Linux"
+            ]
+        }
+    ]
+}

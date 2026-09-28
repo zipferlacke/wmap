@@ -1,0 +1,140 @@
+/* ── Karte: Marker, Beschriftungen, Popups ────────────────────────────────── */
+
+.wp-marker {
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgb(0 0 0 / .35);
+    cursor: grab;
+
+    .msr { font-size: 1.1rem; }
+    &.start { color: hsl(142 62% 36%); }
+    &.via {
+        background: #f08c00;
+        border: 2px solid #fff;
+        color: #fff;
+        font-size: .75rem;
+        font-weight: 700;
+    }
+    &.dest, &.place {
+        width: auto;
+        height: auto;
+        background: none;
+        box-shadow: none;
+        color: #e03131;
+        filter: drop-shadow(0 1px 2px rgb(0 0 0 / .4));
+        .msr { font-size: 2.4rem; font-variation-settings: 'FILL' 1; }
+    }
+    &.place { cursor: default; }
+}
+
+.alt-label {
+    display: grid;
+    padding: .15rem .55rem;
+    border: 1px solid color-mix(in srgb, var(--route) 50%, transparent);
+    border-radius: .6rem;
+    background: #fff;
+    color: var(--route-dark);
+    box-shadow: 0 1px 4px rgb(0 0 0 / .25);
+    cursor: pointer;
+    font-size: .8rem;
+    line-height: 1.25;
+    text-align: center;
+    small { color: #5f6368; font-size: .7rem; }
+}
+
+.maplibregl-popup {
+    /* Popups folgen wie die Karte dem hellen bzw. dunklen Modus */
+    color: var(--clr-neutral-900);
+}
+
+.popup {
+    display: grid;
+    gap: .3rem;
+    font-size: var(--fs-200);
+    line-height: 1.35;
+
+    strong { font-size: var(--fs-300); padding-right: 1rem; }
+    small { color: var(--muted); }
+    dl {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: .1rem .6rem;
+        dt { color: var(--muted); }
+    }
+    a { color: var(--route); }
+
+    &.context {
+        gap: 0;
+        button {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .45rem .25rem;
+            border: 0;
+            background: none;
+            cursor: pointer;
+            text-align: left;
+            border-radius: .4rem;
+            &:hover { background: var(--surface-2); }
+            .msr { color: var(--route); font-size: 1.15rem; }
+        }
+    }
+}
+
+/* Controls weichen Suchleiste und Sheet aus */
+.maplibregl-ctrl-top-right {
+    @media (max-width: 700px) { top: calc(var(--panel-h, 4rem) + .25rem); }
+}
+/* Oben rechts sitzt am Laptop das Menü – die Knöpfe darunter */
+.maplibregl-ctrl-top-right {
+    @media (min-width: 701px) { top: 3.4rem; }
+}
+
+.floating-pill {
+    position: fixed;
+    z-index: 9;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    height: 2.4rem;
+    padding-inline: 1rem;
+    font-size: var(--fs-200);
+    .msr { color: var(--route); font-size: 1.15rem; }
+}
+
+#search-here {
+    top: calc(var(--panel-h, 4rem) + .6rem);
+    @media (min-width: 701px) { top: .9rem; }
+}
+
+#toast {
+    position: fixed;
+    z-index: 50;
+    left: 50%;
+    top: calc(var(--panel-h, 4rem) + 3.5rem);
+    transform: translate(-50%, -.5rem);
+    max-width: calc(100vw - 2rem);
+    padding: .5rem 1rem;
+    border-radius: .75rem;
+    /* wie Sheet und Suchleiste: hell im hellen, dunkel im dunklen Modus */
+    background: var(--surface);
+    color: inherit;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    font-size: var(--fs-200);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    &.show { opacity: 1; transform: translate(-50%, 0); }
+    &.has-action.show { pointer-events: auto; display: flex; align-items: center; gap: .75rem; }
+    .toast-action {
+        border: 0; background: none; padding: .2rem .1rem;
+        color: var(--route); font: inherit; font-weight: 600; cursor: pointer;
+    }
+}

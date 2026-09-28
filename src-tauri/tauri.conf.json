@@ -1,0 +1,58 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "WMap",
+  "version": "1.0.0",
+  "identifier": "de.wuefl.wmap",
+  "build": {
+    "frontendDist": "web",
+    "devUrl": "http://localhost:8080/web/wuefl_products/wmap/",
+    "beforeBuildCommand": "sh src-tauri/web-kopieren.sh"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "WMap",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 360,
+        "minHeight": 480,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "withGlobalTauri": true
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": { "schemes": ["geo"] },
+      "mobile": [{ "scheme": ["geo"], "appLink": false }]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "deb",
+      "rpm",
+      "appimage",
+      "nsis",
+      "dmg"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
+    },
+    "category": "Travel",
+    "shortDescription": "3D-Karte und Navigation auf Basis offener Daten",
+    "copyright": "© 2026 Florian Wüllner"
+  }
+}

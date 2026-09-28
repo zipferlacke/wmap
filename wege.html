@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Meine Touren – WMap</title>
+    <link rel="manifest" href="./appdata/manifest.json">
+    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#1a73e8">
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./libs/wuefl-libs/userDialog/userDialog.css">
+    <link rel="stylesheet" href="./css/tours.css">
+    <script src="./libs/maplibre-gl/maplibre-gl.js"></script>
+</head>
+
+<!--
+  Meine Touren: Karte mit allem Eigenen, daneben das Panel (wuefl-libs
+  userDialog: Rechner links, Handy unten). Reiter „Geplant“ und
+  „Aufgezeichnet“, im Panel Liste oder Detail – ← Übersicht/Liste,
+  ✕ zur Karte, Griff zum Einklappen (ui/map-page.js).
+-->
+<body class="wege-page">
+    <section id="map"></section>
+
+    <dialog class="userDialog wege-panel" data-pos="left" data-pos-mobile="bottom" aria-label="Meine Touren">
+        <header class="uD-header wege-bar">
+            <button type="button" class="button uD-bar-btn" data-shape="round no-background" data-act="back" title="Zurück zur Übersicht"><span class="msr">arrow_back</span></button>
+            <span class="uD-title">Meine Touren</span>
+            <button type="button" class="button uD-bar-btn" data-shape="round no-background" data-act="close" title="Schließen – zur Karte"><span class="msr">close</span></button>
+        </header>
+        <div class="wege-content"></div>
+    </dialog>
+
+    <script type="module" src="./js/pages/wege.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,21 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile",
+  "description": "Handy-Apps: Standort über das Gerät – auch für die Webversion, die die App lädt",
+  "platforms": [
+    "android",
+    "iOS"
+  ],
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "geolocation:default"
+  ],
+  "remote": {
+    "urls": [
+      "https://app.wuefl.de/*"
+    ]
+  }
+}

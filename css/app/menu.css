@@ -1,0 +1,65 @@
+/* ── Menü oben rechts ─────────────────────────────────────────────────────── */
+
+.appnav {
+    position: fixed;
+    z-index: 25;
+    top: calc(.5rem + var(--safe-top));
+    right: 10px;
+
+    @media (min-width: 701px) { top: .75rem; }
+
+    /* Gleiche Form wie die Kartenknöpfe darunter: eckig mit runden Ecken */
+    .appnav-btn {
+        position: relative;
+        width: var(--ctrl-size);
+        height: var(--ctrl-size);
+        padding: 0;
+        border-radius: var(--ctrl-radius);
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        --clr-primary-100: var(--surface-2);
+        .msr { color: var(--route); }
+    }
+}
+
+.appnav-menu {
+    position: absolute;
+    top: calc(100% + .4rem);
+    right: 0;
+    min-width: 14rem;
+    padding: .35rem;
+    border-radius: .9rem;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    display: grid;
+
+    a, button {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        padding: .55rem .7rem;
+        border: 0;
+        border-radius: .6rem;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        font: inherit;
+        text-align: left;
+        .msr { color: var(--muted); }
+        &:hover { background: var(--surface-2); }
+        &[aria-current="page"] { color: var(--route); font-weight: 600; .msr { color: var(--route); } }
+    }
+    button { border-top: 1px solid var(--line); border-radius: 0; }
+    button:first-of-type { margin-top: .25rem; }
+}
+
+/* ── Vorschläge: Abschnitte ───────────────────────────────────────────────── */
+
+.suggest .sg-section {
+    padding: .5rem .75rem .15rem;
+    color: var(--muted);
+    font-size: var(--fs-100);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}

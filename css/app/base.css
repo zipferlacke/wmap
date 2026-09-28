@@ -1,0 +1,83 @@
+/* ==========================================================================
+   WMap – Oberfläche über der Karte
+   Farben und Größen aus wuefl-libs; nur Karten-spezifisches ist hier eigen.
+   ========================================================================== */
+
+/* Projekt-Einstellungen für wuefl-libs (siehe dortiges readme, „controll.css“) */
+@layer custom {
+    :root {
+        --clr-primary: hsl(217 82% 51%);
+        --text-size: var(--fs-300);
+        --bg-default: var(--clr-neutral-50);
+        --br-default: 1rem;
+        --fs-input: var(--fs-300);
+        --bg-input: var(--clr-neutral-100);
+        --bg-input-hover: var(--clr-neutral-200);
+        --br-input: 999px;
+        --input-height: 2.25rem;
+    }
+}
+
+:root {
+    --route: #1a73e8;
+    --route-dark: #0b57d0;
+    --elev: light-dark(hsl(142 62% 36%), hsl(142 55% 52%));
+    --surface: var(--clr-neutral-50);
+    --surface-2: var(--clr-neutral-100);
+    --line: var(--clr-neutral-200);
+    --muted: var(--clr-neutral-600);
+    --shadow: 0 2px 12px rgb(0 0 0 / .18);
+    --gap: .5rem;
+    /* Kartenknöpfe (+, −, Kompass, Standort, Ebenen …) und das Menü */
+    --ctrl-size: 40px;
+    --ctrl-radius: 12px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--surface);
+}
+
+body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--clr-neutral-900);
+}
+
+[hidden] { display: none !important; }
+
+.msr { font-size: 1.25rem; }
+
+/* Knöpfe: wuefl-libs .button, dazu Varianten */
+.button {
+    gap: .35rem;
+    white-space: nowrap;
+    color: var(--clr-neutral-900);
+
+    /* Hover-Farbe über die Variable, die der !important-Hover der Lib liest */
+    &.primary {
+        background-color: var(--route);
+        color: #fff;
+        --clr-primary-100: var(--route-dark);
+    }
+    &.danger {
+        background-color: var(--clr-danger-500);
+        color: #fff;
+        --clr-primary-100: var(--clr-danger-600);
+    }
+}
+
+.link-button {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    border: 0;
+    background: none;
+    color: var(--route);
+    cursor: pointer;
+    font-size: var(--fs-200);
+    padding: .25rem .5rem;
+    .msr { font-size: 1.1rem; }
+}

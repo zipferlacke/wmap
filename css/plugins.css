@@ -1,0 +1,86 @@
+/* ── Plugins (plugins.html): wie ein App-Store ─────────────────────────────── */
+
+.plugins-page .dash-head {
+    flex-wrap: wrap;
+    h1 { flex: 0 0 auto; }
+    .plug-search { flex: 1 1 16rem; max-width: 32rem; margin-left: auto; }
+}
+
+.plug-filter {
+    display: flex; flex-wrap: wrap; gap: .4rem;
+    .chip small { color: var(--muted); font-weight: 400; margin-left: .15rem; }
+    .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; small { color: rgb(255 255 255 / .8); } }
+}
+
+.plug-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+    gap: .75rem;
+    .plug-empty { grid-column: 1 / -1; }
+}
+
+.plug-icon {
+    display: grid; place-items: center; flex-shrink: 0;
+    width: 3.2rem; height: 3.2rem; border-radius: .9rem;
+    font-size: 1.7rem; color: #fff; background: var(--route);
+    &.kind-extension { background: #7b1fa2; }
+    &.kind-own { background: #2f9e44; }
+    &.big { width: 5rem; height: 5rem; font-size: 2.8rem; border-radius: 1.3rem; }
+}
+
+.plug-card {
+    position: relative;
+    display: flex; align-items: flex-start; gap: .85rem;
+    padding: .9rem; border: 0; border-radius: 1.1rem;
+    background: var(--surface-2); color: inherit; font: inherit; text-align: left;
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease;
+    &:hover, &:focus-visible { transform: translateY(-2px); box-shadow: var(--shadow); outline: none; }
+    &.active { box-shadow: inset 0 0 0 2px var(--route); }
+    .plug-text { display: grid; gap: .15rem; min-width: 0; }
+    strong { font-size: var(--fs-400, 1.05rem); }
+    small { color: var(--muted); font-size: var(--fs-200); }
+    .plug-desc {
+        color: var(--muted); font-size: var(--fs-200);
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .plug-badge {
+        position: absolute; top: .6rem; right: .7rem;
+        display: inline-flex; align-items: center; gap: .15rem;
+        font-size: var(--fs-100); font-weight: 700; color: var(--route);
+        .msr { font-size: 1rem; }
+    }
+}
+
+.plug-detail {
+    display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; max-width: 46rem; min-width: 0;
+    .plug-back { justify-self: start; background: var(--surface-2); }
+    .plug-hero { display: flex; align-items: center; gap: 1rem; > div { min-width: 0; }
+        h2 { margin: 0; font-size: var(--fs-700, 1.75rem); overflow-wrap: break-word; hyphens: auto; } p { margin: .2rem 0 0; } }
+    .plug-actions { display: flex; flex-wrap: wrap; gap: .5rem; .button { background: var(--surface-2); } .button.primary { background: var(--route); color: #fff; } }
+    .plug-long { font-size: var(--fs-400, 1.05rem); line-height: 1.55; white-space: pre-line; margin: 0; }
+    .plug-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem;
+        li { display: flex; align-items: flex-start; gap: .5rem; } .msr { color: var(--muted); } }
+    .plug-url { word-break: break-all; }
+    .plug-warn {
+        display: flex; gap: .5rem; align-items: flex-start; margin: 0;
+        padding: .75rem 1rem; border-radius: .9rem;
+        background: light-dark(#fff4e5, #3a2a12); color: light-dark(#7a4b00, #ffd699);
+    }
+}
+
+.plug-add {
+    display: grid; gap: .6rem;
+    h2 { display: flex; align-items: center; gap: .4rem; font-size: var(--fs-400, 1.1rem); margin: 0; .msr { color: var(--muted); } }
+    .plug-add-row { display: flex; flex-wrap: wrap; gap: .5rem; > .button { flex: 0 0 auto; width: auto; display: inline-flex; align-items: center; gap: .3rem; background: var(--surface-2); cursor: pointer; } }
+    .muted { color: var(--muted); font-size: var(--fs-200); margin: 0; }
+}
+
+/* Deckkraft einer installierten Ebene */
+.plug-opacity {
+    display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+    padding: .6rem .8rem; border-radius: .8rem; background: var(--surface-2);
+    .msr { color: var(--route); }
+    input { flex: 1; min-width: 8rem; accent-color: var(--route); }
+    output { min-width: 3.2rem; text-align: right; font-variant-numeric: tabular-nums; }
+}

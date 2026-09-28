@@ -1,0 +1,111 @@
+/* ── Übersicht (dashboard.html) ─────────────────────────────────────────────
+ * Kacheln mit großem, blassem Symbol im Hintergrund, Titel, einem Satz und –
+ * wo es passt – einer Zahl. Darunter Gespeichertes und der Dank.
+ */
+
+/* Nur die Seite scrollt, und nur nach unten: vorher waren html und body beide
+   Scroll-Bereiche – am Handy ließ sich die ganze Seite seitlich verschieben */
+html:has(.dash-page) { height: auto; overflow-x: hidden; overflow-y: auto; overscroll-behavior-x: none; }
+body.dash-page { height: auto; overflow: visible; overflow-x: clip; }
+
+.dash-head {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: .5rem;
+    padding: calc(.6rem + var(--safe-top)) 1rem .6rem;
+    background: var(--surface);
+    box-shadow: 0 1px 0 var(--line);
+    h1 { font-size: var(--fs-600, 1.5rem); margin: 0; flex: 1; }
+    .appnav { position: static; }
+}
+
+.dash {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 1rem 1rem calc(2rem + var(--safe-bottom));
+    display: grid;
+    /* Eine Spalte, die nie breiter als der Bildschirm wird – sonst drückt
+       breiter Inhalt (Legendenbild, lange Adressen) die ganze Seite auf */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+}
+
+.dash-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+    gap: .75rem;
+}
+
+.dash-tile {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    align-content: start;
+    gap: .2rem;
+    min-height: 8.5rem;
+    padding: 1rem;
+    border-radius: 1.1rem;
+    background: var(--surface-2);
+    color: inherit;
+    text-decoration: none;
+    transition: transform .15s ease, box-shadow .15s ease;
+    &:hover, &:focus-visible { transform: translateY(-2px); box-shadow: var(--shadow); outline: none; }
+    .dash-bg {
+        position: absolute; right: -.8rem; bottom: -1.2rem;
+        font-size: 7.5rem; line-height: 1;
+        color: var(--route); opacity: .09;
+        pointer-events: none;
+    }
+    .dash-icon { font-size: 1.8rem; color: var(--route); margin-bottom: .3rem; }
+    strong { font-size: var(--fs-400, 1.1rem); }
+    small { color: var(--muted); font-size: var(--fs-200); max-width: 16rem; }
+    em { font-style: normal; font-weight: 600; font-size: var(--fs-200); color: var(--route); margin-top: .3rem; }
+    &.main { background: var(--route); color: #fff; .dash-icon, em { color: #fff; } small { color: rgb(255 255 255 / .85); } .dash-bg { color: #fff; opacity: .16; } }
+}
+@media (min-width: 701px) { .dash-tile.main { grid-column: span 2; } }
+
+.dash-store {
+    display: grid; gap: .5rem;
+    h2 { display: flex; align-items: center; gap: .4rem; font-size: var(--fs-400, 1.1rem); margin: 0; .msr { color: var(--muted); } }
+    .dash-rows { display: grid; gap: .5rem; }
+}
+.dash-row {
+    display: flex; align-items: flex-start; gap: .75rem;
+    padding: .75rem 1rem; border-radius: .9rem;
+    background: var(--surface-2);
+    > .msr { color: var(--route); margin-top: .15rem; }
+    > div { flex: 1; min-width: 0; display: grid; gap: .15rem; }
+    small { color: var(--muted); font-size: var(--fs-200); }
+    > .button { flex-shrink: 0; background: var(--surface); }
+    ul { list-style: none; margin: .2rem 0 0; padding: 0; display: grid; gap: .1rem; }
+    li { display: flex; align-items: center; gap: .3rem; font-size: var(--fs-200); }
+    li a { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; }
+    li .button { width: 2rem; height: 2rem; .msr { font-size: 1.1rem; } }
+}
+.dash-about { color: var(--muted); font-size: var(--fs-200); text-align: center; a { color: var(--route); } }
+.dash-store .muted { color: var(--muted); font-size: var(--fs-200); }
+
+/* Danke-Banner: grün, Hand mit Herz */
+.dash-thanks {
+    display: flex; gap: 1rem; align-items: flex-start;
+    padding: 1.25rem 1.25rem 1rem;
+    border-radius: 1.2rem;
+    background: light-dark(#e8f5e9, #16301b);
+    color: light-dark(#1b5e20, #c8e6c9);
+    .dash-thanks-icon { font-size: 2.6rem; color: light-dark(#2e7d32, #81c784); }
+    h2 { margin: 0 0 .25rem; font-size: var(--fs-500, 1.25rem); }
+    p { margin: 0 0 .5rem; }
+    ul { margin: 0; padding-left: 1.1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: .15rem 1.5rem; font-size: var(--fs-200); }
+    a { color: inherit; font-weight: 600; }
+    .dash-support {
+        display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem;
+        margin: .9rem 0 0; font-size: var(--fs-200);
+        a {
+            display: inline-flex; align-items: center; gap: .35rem;
+            padding: .45rem .9rem; border-radius: 999px; text-decoration: none;
+            background: light-dark(#2e7d32, #81c784); color: light-dark(#fff, #0d1f10);
+            .msr { font-size: 1.1rem; }
+        }
+    }
+}
+
+/* Navigation (appbar.js): steht in css/app/appbar.css – auch die Karte hat sie */

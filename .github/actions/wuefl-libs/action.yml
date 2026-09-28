@@ -1,0 +1,29 @@
+# Holt wuefl-libs von GitHub an die Stelle, an der lokal der Symlink liegt.
+#
+# Lokal ist libs/wuefl-libs nur ein Verweis auf das Nachbarprojekt
+# (../../wuefl-libs/) und steht nicht im Repository. Im Build gibt es ihn
+# nicht, deshalb kommt hier eine echte Kopie hin – der neueste Tag.
+#
+# Feste Fassung stattdessen: TAG unten fest eintragen, z. B. TAG="v2.3.0"
+# (Tags: https://github.com/zipferlacke/wuefl-libs/tags)
+
+name: wuefl-libs holen
+description: Legt wuefl-libs von GitHub nach libs/wuefl-libs
+
+runs:
+  using: composite
+  steps:
+    - name: wuefl-libs holen
+      shell: bash
+      run: |
+        ZIEL="libs/wuefl-libs"
+        rm -rf "$ZIEL"
+        TAG=$(git ls-remote --tags --refs --sort="v:refname" https://github.com/zipferlacke/wuefl-libs.git | tail -n1 | sed 's/.*\///')
+        if [ -z "$TAG" ]; then
+          echo "Kein Tag von wuefl-libs gefunden." >&2
+          exit 1
+        fi
+        echo "Lade neusten Tag: $TAG"
+        git clone --depth 1 --branch "$TAG" https://github.com/zipferlacke/wuefl-libs.git "$ZIEL"
+        echo "wuefl-libs: $(git -C "$ZIEL" describe --tags --always)"
+        rm -rf "$ZIEL/.git"

@@ -1,20 +1,334 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>WMap</title>
+    <meta name="description" content="Karte, Navigation, Bus &amp; Bahn und Tourenplaner auf Basis von OpenStreetMap – ohne Konto, ohne Werbung. Geteilter Ort oder Route öffnet sich direkt auf der Karte.">
+    <!-- Vorschau beim Teilen (WhatsApp, Signal, Telegram, Mastodon …) – ohne og:url,
+         sonst führte die Vorschau bei Facebook & Co. zur Startseite statt zum geteilten Ort -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="WMap">
+    <meta property="og:locale" content="de_DE">
+    <meta property="og:title" content="WMap – Karte, Navigation und Touren">
+    <meta property="og:description" content="Karte, Navigation, Bus &amp; Bahn und Tourenplaner auf Basis von OpenStreetMap – ohne Konto, ohne Werbung. Geteilter Ort oder Route öffnet sich direkt auf der Karte.">
+    <meta property="og:image" content="https://app.wuefl.de/wmap/appdata/social.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="WMap auf Handy und Rechner: Karte mit Route, Bus &amp; Bahn und Luftbild">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="WMap – Karte, Navigation und Touren">
+    <meta name="twitter:description" content="Karte, Navigation, Bus &amp; Bahn und Tourenplaner auf Basis von OpenStreetMap – ohne Konto, ohne Werbung. Geteilter Ort oder Route öffnet sich direkt auf der Karte.">
+    <meta name="twitter:image" content="https://app.wuefl.de/wmap/appdata/social.png">
+    <link rel="manifest" href="./appdata/manifest.json">
+    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="./appdata/wmap-192.png">
+    <meta name="theme-color" content="#1a73e8">
+    <!-- Verbindungen früh aufbauen: Stil, Kacheln, Höhen, Suche -->
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
+    <link rel="preconnect" href="https://tiles.mapterhorn.com" crossorigin>
+    <link rel="preconnect" href="https://photon.komoot.io" crossorigin>
+    <link rel="preload" href="https://tiles.openfreemap.org/styles/liberty" as="fetch" crossorigin>
+    <link rel="stylesheet" href="./css/index.css">
+    <script src="./libs/maplibre-gl/maplibre-gl.js"></script>
 </head>
+
 <body>
     <main>
         <section id="map"></section>
         <section id="layers"></section>
-        <section id="search"></section>
-        <section id="info"></section>
+
+        <!-- Oben: Suche bzw. Routenplanung -->
+        <section id="search" class="panel">
+            <form id="search-form" class="search-row" role="search" autocomplete="off">
+                <span class="msr lead">search</span>
+                <input id="q" type="text" enterkeyhint="search"
+                    placeholder="Ort, Adresse, Parkplatz, Fluss …" aria-label="Suche"
+                    aria-autocomplete="list" aria-controls="suggest">
+                <button type="button" id="q-clear" class="button" data-shape="round no-background" title="Leeren" hidden>
+                    <span class="msr">close</span>
+                </button>
+                <button type="button" id="to-route" class="button" data-shape="round" title="Route planen">
+                    <span class="msr">directions</span>
+                </button>
+            </form>
+
+            <form id="route-form" class="route-form" autocomplete="off" hidden>
+                <!-- Nach der Berechnung: eine Zeile „Start → Ziel“, antippen zum Ändern -->
+                <div class="route-line">
+                    <button type="button" class="button route-line-back" data-shape="round no-background" title="Zurück">
+                        <span class="msr">arrow_back</span>
+                    </button>
+                    <button type="button" class="route-line-text" title="Route ändern">
+                        <span class="msr route-line-profile">directions_car</span>
+                        <span class="route-line-from"></span>
+                        <span class="msr route-line-arrow">arrow_forward</span>
+                        <span class="route-line-to"></span>
+                    </button>
+                    <button type="button" class="button route-prefs-open" data-shape="round no-background" popovertarget="route-prefs" title="Einstellungen: Autobahn, Fähren, Verkehrsmittel …">
+                        <span class="msr">tune</span>
+                    </button>
+                </div>
+                <div class="route-head">
+                    <button type="button" id="route-close" class="button" data-shape="round no-background" title="Zurück">
+                        <span class="msr">arrow_back</span>
+                    </button>
+                    <div class="group-radio profiles" role="radiogroup" aria-label="Fortbewegung">
+                        <label title="Zu Fuß"><input type="radio" name="profile" value="foot"><span class="msr">directions_walk</span></label>
+                        <label title="Fahrrad"><input type="radio" name="profile" value="bike"><span class="msr">directions_bike</span></label>
+                        <label title="Auto"><input type="radio" name="profile" value="car" checked><span class="msr">directions_car</span></label>
+                        <label title="Bus &amp; Bahn"><input type="radio" name="profile" value="transit"><span class="msr">directions_transit</span></label>
+                    </div>
+                </div>
+                <div class="waypoints-wrap">
+                    <ol id="waypoints" class="waypoints"></ol>
+                    <button type="button" id="swap" class="button" data-shape="round no-background" title="Start und Ziel tauschen">
+                        <span class="msr">swap_vert</span>
+                    </button>
+                </div>
+                <!-- Bus & Bahn: wann – Abfahrt ab oder Ankunft bis, leer = jetzt -->
+                <div class="transit-when" hidden>
+                    <span class="msr">schedule</span>
+                    <select id="when-mode" aria-label="Abfahrt oder Ankunft">
+                        <option value="dep">Abfahrt ab</option>
+                        <option value="arr">Ankunft bis</option>
+                    </select>
+                    <input type="datetime-local" id="when-time" aria-label="Zeitpunkt">
+                    <button type="button" id="when-now" class="link-button">Jetzt</button>
+                </div>
+                <div class="route-foot">
+                    <button type="button" id="add-via" class="link-button">
+                        <span class="msr">add</span> Zwischenziel
+                    </button>
+                    <button type="button" id="route-prefs-btn" class="button route-prefs-open" data-shape="round no-background" popovertarget="route-prefs" title="Einstellungen: Autobahn, Fähren, Verkehrsmittel …">
+                        <span class="msr">tune</span>
+                    </button>
+                </div>
+            </form>
+            <div id="route-prefs" class="route-prefs" popover></div>
+
+            <ul id="suggest" class="suggest" role="listbox" hidden></ul>
+        </section>
+
+        <button id="search-here" class="button floating-pill" hidden>
+            <span class="msr">refresh</span> In diesem Bereich suchen
+        </button>
+
+        <!-- Unten: Dialog aus wuefl-libs, nicht modal – die Karte bleibt bedienbar -->
+        <dialog id="sheet" class="dialog sheet" aria-labelledby="sheet-title">
+            <button type="button" class="sheet-grip" aria-label="Höhe ändern: ziehen, doppelt tippen für ganz auf oder zu"></button>
+            <button type="button" class="button sheet-back" data-shape="round no-background" title="Zurück" hidden>
+                <span class="msr">arrow_back</span>
+            </button>
+
+            <!-- Ort -->
+            <section class="view" data-view="place" hidden>
+                <header class="sheet-head">
+                    <div>
+                        <h2 id="sheet-title" class="place-title"></h2>
+                        <p class="place-sub"></p>
+                    </div>
+                    <button type="button" class="button close-sheet" data-shape="round no-background" title="Schließen">
+                        <span class="msr">close</span>
+                    </button>
+                </header>
+                <div class="actions"></div>
+                <!-- Haltestelle: Linien, die hier halten (js/services/transit.js) -->
+                <div class="place-transit"></div>
+                <!-- Langes Drücken: was aktive Ebenen (Geologie …) hier wissen -->
+                <div class="place-layers"></div>
+                <div class="place-media"></div>
+                <div class="place-facts"></div>
+                <div class="nearby-wrap">
+                    <h3 class="section-title">In der Nähe</h3>
+                    <div class="chip-row nearby"></div>
+                </div>
+            </section>
+
+            <!-- Kategorie -->
+            <section class="view" data-view="category" hidden>
+                <header class="sheet-head">
+                    <div>
+                        <h2 class="cat-title"></h2>
+                        <p class="cat-sub"></p>
+                    </div>
+                    <button type="button" class="button close-sheet" data-shape="round no-background" title="Schließen">
+                        <span class="msr">close</span>
+                    </button>
+                </header>
+                <ul class="result-list cat-list"></ul>
+            </section>
+
+            <!-- Erreichbarkeit -->
+            <section class="view" data-view="reach" hidden>
+                <header class="sheet-head">
+                    <div>
+                        <h2><span class="msr">radar</span> Erreichbar</h2>
+                        <p class="reach-sub"></p>
+                    </div>
+                    <button type="button" class="button close-sheet" data-shape="round no-background" title="Schließen">
+                        <span class="msr">close</span>
+                    </button>
+                </header>
+                <div class="reach-controls">
+                    <div class="group-radio reach-profile" role="radiogroup" aria-label="Fortbewegung">
+                        <label title="Zu Fuß"><input type="radio" name="reach-profile" value="foot"><span class="msr">directions_walk</span></label>
+                        <label title="Fahrrad"><input type="radio" name="reach-profile" value="bike" checked><span class="msr">directions_bike</span></label>
+                        <label title="Auto"><input type="radio" name="reach-profile" value="car"><span class="msr">directions_car</span></label>
+                    </div>
+                    <div class="group-radio reach-metric" role="radiogroup" aria-label="Maß">
+                        <label><input type="radio" name="reach-metric" value="time" checked>Zeit</label>
+                        <label><input type="radio" name="reach-metric" value="distance">Strecke</label>
+                    </div>
+                </div>
+                <div class="chip-row reach-values"></div>
+                <p class="reach-legend"></p>
+                <h3 class="section-title">Darin suchen</h3>
+                <div class="chip-row reach-cats"></div>
+                <ul class="result-list reach-list"></ul>
+            </section>
+
+            <!-- Mitmachen bei OpenStreetMap -->
+            <section class="view" data-view="survey" hidden>
+                <header class="sheet-head">
+                    <div>
+                        <h2><span class="msr">volunteer_activism</span> Mitmachen</h2>
+                        <p class="survey-sub"></p>
+                    </div>
+                    <button type="button" class="button close-sheet" data-shape="round no-background" title="Schließen">
+                        <span class="msr">close</span>
+                    </button>
+                </header>
+                <div class="survey-account"></div>
+                <ul class="survey-list"></ul>
+            </section>
+
+            <!-- Navigation: entlang der Route suchen -->
+            <section class="view" data-view="navsearch" hidden>
+                <header class="sheet-head">
+                    <div>
+                        <h2><span class="msr">search</span> Entlang der Route</h2>
+                        <p class="navsearch-sub">Was vor dir an der Strecke liegt</p>
+                    </div>
+                    <button type="button" class="button close-sheet" data-shape="round no-background" title="Schließen">
+                        <span class="msr">close</span>
+                    </button>
+                </header>
+                <div class="chip-row navsearch-cats"></div>
+                <ul class="result-list navsearch-list"></ul>
+            </section>
+
+            <!-- Route -->
+            <section class="view" data-view="route" hidden>
+                <header class="sheet-head">
+                    <div class="route-summary">
+                        <strong class="sum-time"></strong>
+                        <span class="sum-dist"></span>
+                        <span class="sum-tags"></span>
+                    </div>
+                    <button type="button" class="button close-sheet" data-shape="round no-background" title="Planung beenden">
+                        <span class="msr">close</span>
+                    </button>
+                </header>
+                <p class="route-status" hidden></p>
+                <div class="route-options" role="listbox" aria-label="Routen"></div>
+                <div class="elevation"></div>
+                <section class="traffic" hidden>
+                    <h3 class="section-title">Verkehrslage Autobahn</h3>
+                    <p class="traffic-alert" hidden></p>
+                    <ul class="result-list traffic-list"></ul>
+                </section>
+                <h3 class="section-title">Entlang der Route</h3>
+                <div class="chip-row along"></div>
+                <ul class="result-list along-list"></ul>
+                <details class="steps">
+                    <summary>Wegbeschreibung</summary>
+                    <ol class="step-list"></ol>
+                </details>
+                <div class="transit-actions"></div>
+                <div class="sheet-actions">
+                    <button type="button" class="button share-route" data-shape="round" title="Route teilen">
+                        <span class="msr">share</span>
+                    </button>
+                    <button type="button" class="button save-tour" data-shape="round" title="Als Tour speichern">
+                        <span class="msr">bookmark_add</span>
+                    </button>
+                    <button type="button" class="button primary start-nav"><span class="msr">navigation</span> Starten</button>
+                </div>
+            </section>
+        </dialog>
+
+        <!-- Navigation -->
+        <section id="nav" class="nav" hidden>
+            <div class="nav-top">
+                <div class="nav-banner">
+                    <span class="nav-icon-wrap">
+                        <span class="msr nav-icon">straight</span>
+                        <span class="nav-exit" hidden></span>
+                    </span>
+                    <div class="nav-text">
+                        <strong class="nav-dist"></strong>
+                        <span class="nav-instr"></span>
+                        <span class="nav-toward" hidden></span>
+                    </div>
+                </div>
+                <div class="nav-lanes" hidden></div>
+                <div class="nav-gps" hidden></div>
+                <div class="nav-then" hidden></div>
+            </div>
+
+            <!-- Tempo links, Knöpfe rechts am Rand -->
+            <div class="nav-speed" hidden>
+                <span class="nav-limit" hidden></span>
+                <span class="nav-kmh"><strong>0</strong><small>km/h</small></span>
+            </div>
+            <div class="nav-side">
+                <button type="button" class="button nav-compass" data-shape="round" title="Norden oben">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 16 12h-8z" fill="#e03131"/><path d="M12 22 8 12h8z" fill="#9aa0a6"/></svg>
+                </button>
+                <button type="button" class="button nav-report" data-shape="round" title="Melden: Stau, Unfall, Baustelle …">
+                    <span class="msr">add_alert</span>
+                </button>
+                <button type="button" class="button nav-pip" data-shape="round" title="Bild in Bild – Anweisungen über anderen Apps" hidden>
+                    <span class="msr">picture_in_picture_alt</span>
+                </button>
+                <button type="button" class="button nav-overview" data-shape="round" title="Ganze Route zeigen">
+                    <span class="msr">route</span>
+                </button>
+                <button type="button" class="button nav-mute" data-shape="round" title="Ansagen stummschalten">
+                    <span class="msr">volume_up</span>
+                </button>
+                <!-- Blau: Karte folgt (antippen = geneigt/flach) · farblos: selbst verschoben (antippen = zurück) -->
+                <button type="button" class="button nav-recenter following" data-shape="round" title="Folgt dir – antippen: flache Ansicht">
+                    <span class="msr">navigation</span>
+                </button>
+            </div>
+
+            <div class="nav-bar">
+                <button type="button" class="button nav-stop" data-shape="round" title="Navigation beenden">
+                    <span class="msr">close</span>
+                </button>
+                <div class="nav-info">
+                    <div class="nav-times">
+                        <strong class="nav-eta"></strong>
+                        <span class="nav-remaining"></span>
+                        <span class="nav-offline" hidden></span>
+                    </div>
+                    <span class="nav-place"></span>
+                </div>
+                <button type="button" class="button nav-share" data-shape="round" title="Ankunft teilen">
+                    <span class="msr">share_location</span>
+                </button>
+                <button type="button" class="button nav-search" data-shape="round" title="Entlang der Route suchen">
+                    <span class="msr">search</span>
+                </button>
+            </div>
+        </section>
     </main>
-    <footer>
-        &copy; 2026 Florian Wüllner
-        <a href="https://wuefl.de/impressum">impressum</a>
-    </footer>
+
+    <script type="module" src="./js/app.js"></script>
 </body>
+
 </html>

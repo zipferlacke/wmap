@@ -1,0 +1,34 @@
+WMap ist eine Karte für unterwegs: Orte suchen, Routen planen, navigieren, Touren planen und aufzeichnen, Wanderwege entdecken. Alles beruht auf offenen Daten von OpenStreetMap. Sie brauchen kein Konto, es gibt kein Abo und keine Werbung, und Ihre Wege bleiben auf Ihrem Gerät.
+
+Karte
+• Klare Karte mit deutschen Namen, hell oder dunkel passend zum Gerät
+• 3D-Gelände und Gebäude, Höhen bis auf den Meter, ganz herausgezoomt die Erde als Globus
+• Satellit: amtliche Luftbilder in 20–40 cm aus zwölf Bundesländern, weltweit Sentinel-2. Die Gebäude stehen in 3D, mit dem Luftbild auf dem Dach
+• Wander-, Rad- und Mountainbike-Wege von Waymarked Trails, Relief, Ampeln
+
+Suchen und Route
+• Adressen, Orte und Kategorien wie Café, Tankstelle oder Spielplatz, im Ausschnitt oder entlang der Route
+• Routen zu Fuß, mit dem Rad, mit dem Auto sowie mit Bus und Bahn, mit Alternativen und Höhenprofil
+• Haltestellen antippen: Linien in Farbe auf der Karte, nächste Abfahrten nach Fahrplan, wo verfügbar in Echtzeit
+
+Navigation
+• Sprachansagen zum richtigen Zeitpunkt, Fahrspuren und Ankunftszeit
+• Kacheln entlang der Route werden vorab geladen, damit Funklöcher nicht auffallen
+• Bild in Bild: Karte und nächste Anweisung bleiben im Mini-Fenster sichtbar
+
+Touren
+• Tour planen für Wandern, Spazieren, Rennrad, Tourenrad, Gravel, Mountainbike oder Ausfahrt mit dem Auto
+• Bekannte Wege übernehmen und neu planen, dabei liegt das Original im Hintergrund
+• Wege aufzeichnen mit Zeit, Strecke, Tempo und Höhenmetern, dazu Jahresübersicht
+• GPX laden und speichern, Touren per Link teilen oder veröffentlichen
+
+Entdecken
+Markierte Wanderwege, Radfernwege und MTB-Strecken in der Nähe oder nach Namen: Verlauf, Etappen, Länge, Wegzeichen und Beschreibung. Ein Tipp öffnet den Weg im Planer.
+
+Ihre Daten
+Touren und Aufzeichnungen liegen auf Ihrem Gerät. Wenn Sie möchten, verbinden Sie einen Ordner, etwa Nextcloud, Dropbox oder Proton Drive. Dort liegt jede Tour als GPX-Datei, die jede andere App lesen kann. Ein Konto brauchen Sie nur zum Veröffentlichen und für Plugins, die Anmeldung läuft mit Passkey statt Passwort.
+
+Mitmachen
+Fehlende Öffnungszeiten oder neue Orte tragen Sie direkt in OpenStreetMap ein. So wird die Karte für alle besser.
+
+WMap gibt es auch im Browser unter app.wuefl.de/wmap sowie für Linux, Windows und macOS.
