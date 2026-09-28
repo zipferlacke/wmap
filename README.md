@@ -783,6 +783,10 @@ takeshots wmap --eigener-server # ohne Docker
   `removePlaceMarker()`, `resetStop()`, `cancelSuggestions()`).
   Oberste Ebene eines Teils: nur `core.js` benutzen – sonst kann beim Laden
   ein Wert eines anderen Teils noch fehlen.
+- **Stile der Kartenseite** liegen in `css/app/` (Grundlage, Suche, Sheet,
+  Karte, Navigation, Menü, Ort, Verkehr/Mitmachen, Einstellungen, Dialoge,
+  Ebenen, Haltestellen, Leiste, Bus & Bahn). `css/index.css` bindet sie in
+  fester Reihenfolge ein – die Reihenfolge ist die Kaskade, nicht umsortieren.
 - Fremde Bibliotheken liegen fest versioniert in `libs/` und stehen in Git –
   kein CDN, damit Web, App und Offline-Cache dasselbe laden:
   MapLibre GL JS (`libs/maplibre-gl/`) und Apache ECharts für das Höhenprofil

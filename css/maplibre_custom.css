@@ -6,7 +6,7 @@
 }
 
 /* Größer als die 29 px von MapLibre – mit dem Finger gut zu treffen, und so
-   groß wie der Menüknopf darüber (app.css, .appnav-btn) */
+   groß wie der Menüknopf darüber (css/app/menu.css, .appnav-btn) */
 .maplibregl-ctrl-group {
   border-radius: var(--ctrl-radius);
   box-shadow: var(--shadow);

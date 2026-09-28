@@ -1,0 +1,59 @@
+/* ── Einstellungen (settings.html) ────────────────────────────────────────── */
+
+/* Konto löschen (deleteKonto.html): Liste mit Symbolen, roter Knopf */
+.delete-konto {
+    p { margin: 0; line-height: 1.5; }
+    .muted { color: var(--muted); font-size: var(--fs-200); }
+    .delete-list {
+        list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem;
+        li { display: flex; gap: .6rem; align-items: flex-start; line-height: 1.4; }
+        .msr { flex-shrink: 0; color: var(--muted); }
+    }
+    .delete-status { display: grid; gap: .3rem; p { display: flex; gap: .4rem; align-items: flex-start; } .msr { flex-shrink: 0; } }
+    .delete-button { justify-self: start; white-space: normal; }
+    a { color: var(--route); }
+}
+
+.settings {
+    display: grid;
+    gap: 1rem;
+    max-width: 44rem;
+
+    section { display: grid; gap: .6rem; padding: 1rem; border-radius: 1rem; background: var(--surface-2); }
+    .settings-row { background: var(--surface); }
+    h3 { font-size: var(--fs-200); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .settings-toggle {
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        cursor: pointer;
+        span { display: grid; gap: .1rem; }
+        small { color: var(--muted); font-size: var(--fs-100); }
+        input { flex-shrink: 0; }
+    }
+    .settings-row { justify-content: flex-start; width: 100%; }
+    .settings-hint { margin: 0; font-size: var(--fs-200); color: var(--muted); strong { color: var(--text-color, inherit); } }
+    .settings-select {
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        span { display: grid; gap: .1rem; }
+        small { color: var(--muted); font-size: var(--fs-100); }
+        select { flex-shrink: 0; font: inherit; padding: .3rem .5rem; border-radius: .5rem; border: 1px solid var(--line, rgb(0 0 0 / .15)); background: var(--bg-input, transparent); color: inherit; }
+    }
+    .settings-account {
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem;
+        padding: .6rem .75rem;
+        border-radius: .75rem;
+        background: var(--surface);
+        font-size: var(--fs-200);
+        p { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; }
+        .settings-error { flex-wrap: nowrap; align-items: flex-start; color: var(--muted); .msr { flex-shrink: 0; } }
+    }
+    .settings-dev {
+        font-size: var(--fs-200);
+        color: var(--muted);
+        summary { cursor: pointer; }
+        label { display: grid; gap: .2rem; margin-top: .5rem; }
+        select, input { font: inherit; padding: .3rem .5rem; border-radius: .5rem; border: 1px solid var(--line, rgb(0 0 0 / .15)); background: var(--bg-input, transparent); color: var(--text, inherit); }
+        p { margin-top: .5rem; word-break: break-all; }
+    }
+}
+.survey-empty .spin { animation: spin 1s linear infinite; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }

@@ -1,0 +1,63 @@
+/* ── Navigation (appbar.js): Rechner links, Handy unten ─────────────────── */
+.appbar {
+    position: fixed; z-index: 20;
+    display: flex; gap: .25rem;
+    background: var(--surface);
+    a {
+        display: grid; justify-items: center; gap: .15rem;
+        padding: .45rem .25rem; border-radius: .9rem;
+        color: var(--muted); text-decoration: none;
+        font-size: var(--fs-100); font-weight: 600;
+        .msr { font-size: 1.5rem; padding: .15rem .9rem; border-radius: 999px; transition: background .15s; }
+        &:hover .msr { background: var(--surface-2); }
+        &[aria-current="page"] { color: var(--route); .msr { background: color-mix(in srgb, var(--route) 14%, transparent); } }
+    }
+    @media (min-width: 701px) {
+        top: 0; bottom: 0; left: 0; width: 5.5rem;
+        flex-direction: column; justify-content: center;
+        padding: calc(1rem + var(--safe-top)) .35rem 1rem;
+        box-shadow: 1px 0 0 var(--line);
+    }
+    @media (max-width: 700px) {
+        left: 0; right: 0; bottom: 0;
+        justify-content: space-around;
+        padding: .3rem .25rem calc(.3rem + var(--safe-bottom));
+        box-shadow: 0 -1px 0 var(--line);
+        a { flex: 1; .msr { padding: .1rem .7rem; } }
+    }
+}
+@media (min-width: 701px) { body.has-appbar:not(.map-page) { padding-left: 5.5rem; } }
+@media (max-width: 700px) { body.has-appbar:not(.map-page) { padding-bottom: calc(4.2rem + var(--safe-bottom)); } }
+
+/* Kartenseite: die Karte beginnt neben bzw. über der Leiste. Am Handy legen
+   sich Dialoge über die Leiste (ihr ✕ gibt sie wieder frei); beim Navigieren
+   ist sie weg */
+body.map-page.has-appbar:not(.navigating) {
+    @media (min-width: 701px) {
+        --rail: 5.5rem;
+        #map { left: var(--rail); }
+    }
+    @media (max-width: 700px) {
+        .appbar { z-index: 15; }
+        #map { bottom: calc(4.2rem + var(--safe-bottom)); }
+        .quick-ask { bottom: calc(5.2rem + var(--safe-bottom)); }
+    }
+}
+body.map-page.navigating .appbar { display: none; }
+
+/* ── Rechner: Suche und Dialoge links untereinander, die Karte rechts frei ── */
+@media (min-width: 701px) {
+    #search.panel { left: calc(var(--rail, 0px) + .75rem); }
+    #sheet.dialog.sheet {
+        top: calc(var(--panel-h, 4rem) + .5rem); bottom: auto; left: calc(var(--rail, 0px) + .75rem);
+        transform: none; width: 26rem;
+        /* So hoch wie der Inhalt, höchstens bis zum unteren Rand */
+        height: auto !important; max-height: calc(100dvh - var(--panel-h, 4rem) - 1.25rem) !important;
+        border-radius: 1rem;
+        box-shadow: var(--shadow);
+        &.at-min .view > :not(.sheet-head, .sheet-actions) { display: revert !important; }
+        &.at-min { overflow-y: auto; }
+        .sheet-grip { display: none; }
+        .sheet-head { top: 0; padding-top: .75rem; }
+    }
+}

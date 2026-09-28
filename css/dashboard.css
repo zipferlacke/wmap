@@ -108,4 +108,4 @@ body.dash-page { height: auto; overflow: visible; overflow-x: clip; }
     }
 }
 
-/* Navigation (appbar.js): steht in app.css – auch die Karte hat sie */
+/* Navigation (appbar.js): steht in css/app/appbar.css – auch die Karte hat sie */
