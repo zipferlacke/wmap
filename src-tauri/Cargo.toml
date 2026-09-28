@@ -23,6 +23,13 @@ serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.11.3", features = [] }
 tauri-plugin-log = "2"
+# Karten-Links „geo:“ anderer Apps öffnen (Android, Linux, macOS, Windows)
+tauri-plugin-deep-link = "2"
+
+# Rechner: ein Klick auf einen geo:-Link bei offener App startet keine zweite,
+# sondern gibt den Link an das offene Fenster
+[target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 
 # Linux: Standortabfragen von WebKitGTK erlauben (sonst gibt es kein GPS)
 [target.'cfg(target_os = "linux")'.dependencies]

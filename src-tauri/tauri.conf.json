@@ -26,6 +26,12 @@
     },
     "withGlobalTauri": true
   },
+  "plugins": {
+    "deep-link": {
+      "desktop": { "schemes": ["geo"] },
+      "mobile": [{ "scheme": ["geo"], "appLink": false }]
+    }
+  },
   "bundle": {
     "active": true,
     "targets": [

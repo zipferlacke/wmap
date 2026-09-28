@@ -13,11 +13,12 @@ import { setupRecording } from './ui/record.js';
 import { runExtensions } from './map/extensions.js';
 import { share, placeUrl, readRoute, requestUrl, myName, clock } from './ui/share.js';
 import { ask, toast } from './ui/dialogs.js';
+import { parseGeoUri } from './core/geo-uri.js';
 import { $, debounce, freshView, map, myPosition, q, state } from './app/core.js';
 import { fly } from './app/map-clicks.js';
 import { openSurvey } from './app/mitmachen.js';
 import { nav, resumeNav } from './app/nav.js';
-import { placeWaypoint, showPlace } from './app/place.js';
+import { placeWaypoint, showPlace, showPoint } from './app/place.js';
 import { openReach } from './app/reach.js';
 import { enterRoute, setProfile } from './app/route-plan.js';
 import { placeSuggestions } from './app/search.js';
@@ -33,7 +34,7 @@ import './app/report.js';
    ══════════════════════════════════════════════════════════════════════════ */
 
 // Mit Link-Parametern (siehe fromUrl) bestimmt der Link, wohin es geht
-if (!freshView && !/[?&](view|q|from|to|reach)=/.test(location.search)) {
+if (!freshView && !/[?&](view|q|from|to|reach|geo|ort)=/.test(location.search)) {
   myPosition()
     .then((p) => map.flyTo({ center: p, zoom: 14, pitch: 0, duration: 1800 }))
     .catch(() => { /* ohne Standort bleibt die letzte bzw. die Startansicht */ });
@@ -107,6 +108,7 @@ q.title = `Auch Kategorien: ${CATEGORIES.slice(0, 12).map((c) => c.one).join(', 
    ?ort=lon,lat&name=…&zeit=…             geteilter Ort / Standort (ui/share.js)
    ?route=…                               geteilte Route (gepackt)
    ?anfrage=Name                          Standortanfrage beantworten
+   ?geo=geo:51.5,9.9?q=…                  Karten-Link einer anderen App (core/geo-uri.js)
    Auch für die Screenshots in appdata/takeshots.json.
    ══════════════════════════════════════════════════════════════════════════ */
 
@@ -154,6 +156,8 @@ async function fromUrl() {
       enterRoute({ waypoints: r.waypoints });
     } else if (p.get('anfrage')) {
       answerRequest(p.get('anfrage'));
+    } else if (p.get('geo')) {
+      await openGeo(p.get('geo'));
     }
   } catch (err) { toast(err.message); }
 }
@@ -175,6 +179,32 @@ function openShared(p) {
     const d = geocode.describe(r);
     sub.textContent = [sub.textContent, `bei ${[d.title, d.subtitle].filter(Boolean).join(', ')}`].filter(Boolean).join(' · ');
   }).catch(() => {});
+}
+
+/**
+ * Karten-Link aus einer anderen App: Punkt (mit Namen) oder Suche. Kommt aus
+ * der App (Android, Rechner: src-tauri/src/lib.rs), vom Browser (Manifest
+ * „protocol_handlers“) oder aus den Einstellungen („geo:-Links öffnen“).
+ */
+async function openGeo(link) {
+  const g = parseGeoUri(link);
+  if (!g) { toast('Diesen Karten-Link kann WMap nicht lesen'); return; }
+  if (g.point) map.jumpTo({ center: g.point, zoom: g.zoom ?? (g.query ? 14 : 16) });
+  if (g.query && g.point) {
+    // Suche in der Nähe des Punkts – auch Kategorien („Bäckerei“)
+    q.value = g.query;
+    const items = await placeSuggestions(g.query, (f) => showPlace(f));
+    if (items?.[0]) items[0].run(); else toast(`Nichts gefunden zu „${g.query}“`);
+  } else if (g.query) {
+    // Nur eine Adresse: ohne Bezug zum letzten Kartenausschnitt suchen
+    q.value = g.query;
+    const [f] = await geocode.search(g.query, { limit: 1 });
+    if (f) showPlace(f, { fly: true }); else toast(`Nichts gefunden zu „${g.query}“`);
+  } else if (g.label) {
+    showPlace({ type: 'Feature', geometry: { type: 'Point', coordinates: g.point }, properties: { name: g.label, _point: true } }, { fly: false });
+  } else {
+    showPoint(g.point);
+  }
 }
 
 /** „Wo bist du?“ – Standort an den Fragenden zurückschicken. */

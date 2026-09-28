@@ -24,6 +24,9 @@ import { myOsmStats, allOsmStats, statsText } from '../osm/stats.js';
 import { toast } from '../ui/dialogs.js';
 
 const root = document.querySelector('.settings');
+// Browser am Rechner (Firefox, Chrome, Edge): WMap für „geo:“-Links anmelden.
+// Die installierte Web-App meldet sich über das Manifest an, die App selbst über Tauri.
+const geoHandler = 'registerProtocolHandler' in navigator && !window.__TAURI__;
 
 let loginError = '';   // an Ort und Stelle zeigen, nicht nur kurz als Meldung
 let jumped = false;    // #osm: einmal hinscrollen, nicht bei jedem Neuzeichnen
@@ -39,6 +42,7 @@ const render = () => {
           ${[['system', 'Wie das System'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([v, l]) => `<option value="${v}" ${theme.get() === v ? 'selected' : ''}>${l}</option>`).join('')}
         </select>
       </label>
+      ${geoHandler ? `<button type="button" class="button settings-row" data-act="geo"><span class="msr">pin_drop</span> Karten-Links (geo:) mit WMap öffnen</button>` : ''}
     </section>
 
     <section>
@@ -137,6 +141,12 @@ root.addEventListener('click', async (e) => {
   const act = b.dataset.act;
   if (act === 'voice') openVoiceDialog();
   if (act === 'fuel') setFuelKey();
+  if (act === 'geo') {
+    try {
+      navigator.registerProtocolHandler('geo', new URL('./index.html?geo=%s', location.href).href);
+      toast('Der Browser fragt jetzt, ob WMap Karten-Links öffnen darf');
+    } catch (err) { toast(`Geht in diesem Browser nicht (${err.message})`); }
+  }
   if (act === 'history') { recent.clear(); toast('Suchverlauf gelöscht'); }
   if (act === 'clear-trace') { trace.clear(); toast('Aufzeichnung gelöscht'); }
   if (act === 'logout') { account.logout(); render(); }

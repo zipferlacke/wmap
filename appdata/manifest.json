@@ -140,6 +140,9 @@
         "maps",
         "sports"
     ],
+    "protocol_handlers": [
+        { "protocol": "geo", "url": "../index.html?geo=%s" }
+    ],
     "shortcuts": [
         {
             "name": "Route planen",

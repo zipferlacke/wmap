@@ -12,7 +12,7 @@ was Tauri zum Verpacken braucht. Nichts davon wird auf den Server geladen
 | `tauri.conf.json` | Name, Version, Kennung `de.wuefl.wmap`, Fenstergröße, Paketarten |
 | `Cargo.toml`, `Cargo.lock` | Rust-Abhängigkeiten |
 | `src/main.rs` | Startpunkt – ruft nur `wmap_lib::run()` |
-| `src/lib.rs` | App starten; unter Linux Standortabfragen von WebKitGTK erlauben |
+| `src/lib.rs` | App starten; `geo:`-Links an die Kartenseite (`index.html?geo=…`); unter Linux Standortabfragen von WebKitGTK erlauben |
 | `build.rs` | von Tauri vorgegeben |
 | `capabilities/default.json` | Rechte der Web-App im Fenster (nur Standard) – auch für `https://app.wuefl.de/*` |
 | `capabilities/mobile.json` | Handy-Apps: zusätzlich Standort über das Gerät – auch für die Webversion |
@@ -63,3 +63,21 @@ stehen – und die Webseite fragt vorher, ob es sie gibt.
 Achtung: Wer die Webseite ändern kann, darf damit auch alles, was die Rechte
 der App erlauben – die Rechte darum klein halten.
 
+## Karten-Links (`geo:`)
+
+WMap meldet sich für `geo:`-Links an (`plugins.deep-link` in
+`tauri.conf.json`) – so steht WMap unter „Öffnen mit …“ neben der
+Standard-Karten-App:
+
+| System | Wie |
+|---|---|
+| Android | Intent-Filter im Manifest (setzt das Plugin beim Bauen ein) |
+| Windows | Eintrag in der Registry durch den NSIS-Installer |
+| macOS | `CFBundleURLTypes` in der Info.plist der App |
+| Linux (RPM, DEB) | `MimeType=x-scheme-handler/geo` in der .desktop-Datei |
+| Linux (AppImage) | nur mit AppImageLauncher o. Ä. – das AppImage selbst trägt sich nicht ein |
+
+`src/lib.rs` lädt dann `index.html?geo=<Link>` im Fenster; läuft die App
+schon, gibt `tauri-plugin-single-instance` den Link ans offene Fenster
+(Rechner). Selbst zur Standard-App macht sich WMap nicht
+(`register_all()` fehlt mit Absicht) – das entscheidet, wer sie nutzt.

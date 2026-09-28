@@ -713,6 +713,7 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 | `?reach=lon,lat` | Erreichbarkeit |
 | `?action=route\|record\|fly\|reach\|survey` | Ansicht öffnen |
 | `?ort=…`, `?route=…`, `?anfrage=…` | Geteiltes |
+| `?geo=geo:51.53,9.93?q=…` | Karten-Link einer anderen App (`geo:`) – Punkt, Punkt mit Namen oder Suche |
 | `?sim`, `?tempo=4` | Navigation simulieren |
 | `wege.html?tab=geplant`, `?tour=ID`, `?id=ID` | Meine Touren |
 | `entdecken.html#wege\|andere`, `?view=lon,lat,zoom` | Entdecken |
