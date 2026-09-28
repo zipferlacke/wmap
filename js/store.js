@@ -138,8 +138,9 @@ export function encodeShare(tour) {
   return packJson({
     n: tour.name, d: tour.description || undefined, p: tour.profile, w: encodePolyline(tour.points, 5),
     s: tour.fixed && tour.shape ? tour.shape : undefined,
-    // Vorlage: bekannter Weg aus OSM, den der Planer im Hintergrund zeigt
-    o: tour.original ? [tour.original.id, tour.original.kind, tour.original.name] : undefined,
+    // Hintergrund: bekannte Wege aus OSM, die der Planer unter die Tour legt
+    o: tour.backgrounds?.some((b) => b.type === 'way')
+      ? tour.backgrounds.filter((b) => b.type === 'way').map((b) => [b.id, b.kind, b.name]) : undefined,
   });
 }
 
@@ -148,7 +149,8 @@ export async function decodeShare(code) {
   return {
     name: o.n ?? 'Geteilte Tour', description: o.d ?? '', profile: o.p ?? 'hike', points: decodePolyline(o.w, 5),
     ...(o.s ? { fixed: true, shape: o.s } : {}),
-    ...(o.o ? { original: { id: o.o[0], kind: o.o[1], name: o.o[2] ?? '' } } : {}),
+    // Früher ein einzelner Weg [id, kind, name], jetzt eine Liste davon
+    ...(o.o ? { backgrounds: (Array.isArray(o.o[0]) ? o.o : [o.o]).map(([id, kind, name]) => ({ type: 'way', id, kind, name: name ?? '' })) } : {}),
   };
 }
 

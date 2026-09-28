@@ -84,6 +84,14 @@ Man startet immer mit der Karte.
 
 ## 2. Karte
 
+- **Navigation unten bzw. links** (appbar.js): Karte · Übersicht · Touren ·
+  Entdecken · Plugins – am Handy unten (ein offener Dialog legt sich darüber,
+  sein ✕ gibt sie frei), am Rechner als Leiste links; beim Navigieren weg.
+- **Dialoge am Rechner links** unter der Suche, so hoch wie ihr Inhalt – die
+  Karte rechts bleibt frei und passt Routen und Orte daneben ein.
+- **Ampeln** ab Zoom 15 als kleines Symbol – nur wo eine steht, ohne Rot/Grün
+  (OSM `highway=traffic_signals` per Overpass für den Ausschnitt; die
+  Grundkarte kennt keine Ampeln).
 - **Kartenbild:** OpenFreeMap „Liberty“ mit deutschen Namen (`name:de` vor
   `name`; bei nicht-lateinischer Schrift steht der deutsche Name vorn und das
   Original darunter). Gebäude haben Farben nach Nutzung und Schatten am Boden,
@@ -106,13 +114,27 @@ Man startet immer mit der Karte.
   Richtung (`wmap.view`) und startet dort wieder.
 - **Antippen:** ein Ort der Karte (Laden, Haltestelle …) öffnet seine Karte
   unten; ein Treffer einer eigenen Ebene zeigt alle Werte des Objekts.
-- **Haltestellen und Bahnhöfe** (die Symbole der Grundkarte): unter dem Ort
-  „Linien hier“ – je Linie Nummer in Linienfarbe, beide Richtungen und
-  Betreiber (Overpass: alle Steige gleichen Namens im Umkreis von 150 m).
-  Eine Richtung antippen zeigt **genau diese Linie komplett** in ihrer Farbe
-  mit allen Halten und Namen; die Karte passt sich an, die Halte stehen
-  aufklappbar darunter. Nochmal antippen oder den Ort schließen nimmt sie
-  weg. Ein eigenes Liniennetz wird nie gezeichnet.
+- **Haltestellen und Bahnhöfe** (die Symbole der Grundkarte):
+  - **Linien an diesem Steig:** nur die Linien, die genau am angetippten
+    Steig halten – also die Richtung dieser Straßenseite (Steig aus OSM, z. B.
+    „B“). **Alle N Linien der Haltestelle** schaltet auf alle Steige gleichen
+    Namens im Umkreis von 150 m um.
+  - Eine Richtung antippen zeigt **genau diese Linie** in ihrer Farbe mit
+    allen Halten: ab dieser Haltestelle kräftig, der Weg bis hierher blass;
+    die Karte zeigt den Weg ab hier. Darunter „Noch N Halte bis …“ zum
+    Aufklappen. Nochmal antippen oder den Ort schließen nimmt sie weg.
+  - **Abfahrten nach Fahrplan** (EFA der NVBW, ganz Deutschland, mit
+    Echtzeit, wo es sie gibt): Uhrzeit, Verspätung, Linie in Linienfarbe,
+    Ziel, „in N min“, Steig. Über den IFOPT-Schlüssel des OSM-Steigs nur die
+    Abfahrten dieser Seite. Antippen zeigt die Linie auf der Karte.
+  - Ein eigenes Liniennetz wird nie gezeichnet.
+
+- **Bus & Bahn** (Art in der Routenplanung): Verbindungen nach Fahrplan über
+  die EFA der NVBW (ganz Deutschland, ohne Schlüssel, Echtzeit wo es sie
+  gibt) – vier Verbindungen ab jetzt mit Abfahrt–Ankunft, Dauer, Umstiegen
+  und den Linien; darunter die Abschnitte mit Fußwegen, Linie, Steig, Zahl
+  der Halte und Ankunft. Auf der Karte der echte Verlauf. Keine Navigation;
+  Zwischenziele zählen hier nicht.
 
 ## 3. Suchen und Orte
 
@@ -213,10 +235,16 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
 
 - **Grundkarte**
   - **Karte** – das normale Kartenbild.
-  - **Satellit** – weltweit Sentinel-2 cloudless (EOX, 10 m), in
-    **Niedersachsen (20 cm), NRW und Bayern (40 cm)** amtliche Luftbilder ab
-    Zoom 11. Straßen, Namen und Gebäude bleiben obenauf; Gebäude werden halb
-    durchsichtig, damit das Luftbild durchscheint.
+  - **Satellit** – weltweit Sentinel-2 cloudless (EOX, 10 m), darüber ab Zoom
+    11 die amtlichen Luftbilder (20–40 cm) von **Niedersachsen, NRW, Bayern,
+    Hessen, Thüringen, Sachsen, Brandenburg, Berlin, Mecklenburg-Vorpommern,
+    Rheinland-Pfalz, Saarland und Baden-Württemberg** (offen, Abruf aus dem
+    Browser erlaubt; Sachsen-Anhalt sperrt ihn, Hamburg hat keinen passenden
+    Dienst). Straßen (etwas zurückgenommen), Flüsse und Namen liegen obenauf.
+    **Gebäude** (ab Zoom 14,5): graue, deckende Wände, auf dem Dach das
+    Luftbild – eine eigene WebGL-Ebene (sat-buildings.js), weil MapLibre
+    einer 3D-Fläche nur eine Farbe gibt. Sie baut sich neu, sobald Gebäude-
+    oder Geländekacheln nachgeladen sind; weiter hinten bleiben Dächer grau.
 - **Wandern & Rad** (Schwerpunkt): große Straßen (Autobahn bis Kreisstraße)
   treten auf 40 % zurück, die Wanderwege von Waymarked Trails liegen darüber,
   das Relief wird kräftiger.
@@ -330,12 +358,14 @@ Eine Seite, zwei Reiter (`wege.html`; `tours.html` leitet hierher):
 
 `tour.html` – Punkte in die Karte setzen, dazwischen wird nach Profil geroutet.
 
-- **Aufbau:** Auf dem Handy liegt das Panel unten (Höhe per Griff), auf dem
-  Rechner (ab 900 px) als Seitenleiste links unter dem Kopf – die Karte hat
-  die ganze restliche Fläche. Ganz oben: Ort suchen, daneben das blaue
-  **i** (am Rechner „Anleitung“) – öffnet die Anleitung als Notiz, auf dem
-  Handy in voller Breite. Darunter die Werkzeuge, dann Zahlen, Art, Höhen-
-  profil, Wege, Beschreibung.
+- **Aufbau:** Panel wie bei Meine Touren und Entdecken – am Rechner links in
+  voller Höhe (Breite ziehen, ganz einklappen), am Handy unten. Kopf: ← zu
+  Meine Touren, Name, Speichern als Symbol (grüner Haken = gesichert), ✕ zur
+  Karte. Ganz oben: Ort suchen, daneben das blaue **i** (Anleitung als Notiz,
+  am Handy volle Breite). Darunter Werkzeuge, Zahlen, Art, Hintergrund,
+  Höhenprofil, Wege, Beschreibung, unten Teilen · GPX · Veröffentlichen ·
+  Löschen. Ebenen-Knopf (Satellit …) wie auf der Hauptkarte; Straßennamen
+  eine Zoomstufe früher und dichter als auf der geneigten Hauptkarte.
 
 - **Profile:** Wandern, Spazieren, Rennrad (Asphalt), Tourenrad, Gravel
   (Schotter), Mountainbike, Ausfahrt (Auto).
@@ -345,19 +375,18 @@ Eine Seite, zwei Reiter (`wege.html`; `tours.html` leitet hierher):
   Punkten: große Abstände werden automatisch in Stücke geteilt.
 - **Fester Verlauf:** Übernommene bekannte Wege und GPX-Importe behalten ihren
   Originalverlauf; erst wenn man Punkte verschiebt, wird neu gerechnet.
-- **Vorlage** (bekannte Wege aus Entdecken → „Im Planer öffnen“): Der Weg
-  liegt violett im Hintergrund – genau so, wie er in OpenStreetMap erfasst
-  ist, Stück für Stück, Lücken bleiben Lücken. Eine eigene Strecke gibt es
-  zunächst nicht:
-  - **Selbst planen:** Punkte nah an der Vorlage rasten auf ihr ein (auch
-    beim Ziehen). Liegen zwei Punkte nacheinander auf demselben Stück der
-    Vorlage, folgt die Strecke dazwischen **genau der Vorlage**, ohne
-    Routing. Liegt ein Punkt daneben, wird dorthin normal geroutet.
-  - **So übernehmen:** der ganze Weg auf einen Klick (Stücke der Reihe nach,
-    Lücken über Wege verbunden) als fester Verlauf. Wer danach Punkte ändert,
-    bleibt zwischen Punkten auf der Vorlage weiter genau auf ihr.
-  - **Neu planen** leert die eigenen Punkte, **Ausblenden/Einblenden**. Die
-    Vorlage wird mit der Tour gespeichert und geteilt.
+- **Hintergrund:** bekannte Wege (aus Entdecken → „Im Planer öffnen“, oder
+  „Weg oder Tour dazulegen“ mit Suche) und eigene Touren liegen farbig unter
+  der Planung – bekannte Wege so, wie sie in OpenStreetMap erfasst sind,
+  Lücken bleiben Lücken. Mehrere gleichzeitig; ✕ nimmt einen heraus. Sie
+  werden mit der Tour gespeichert (geteilt: die bekannten Wege).
+  - **Selbst planen:** Punkte nah an einem Hintergrund rasten auf ihm ein
+    (auch beim Ziehen). Liegen zwei Punkte nacheinander darauf, folgt die
+    Strecke dazwischen **genau dem Weg** – der kürzere Weg entlang, bei
+    Rundwegen auch über Start/Ziel hinweg, über Lücken hinweg der verbundene
+    Verlauf. Liegt ein Punkt daneben, wird dorthin normal geroutet.
+  - **So übernehmen:** der ganze Weg auf einen Klick als fester Verlauf
+    (auch Rundwege). **Neu planen** leert die eigenen Punkte.
 - **Touren entdecken** (bei den Werkzeugen) → Entdecken.
 - **Etappen – in Tagestouren teilen** (ab 5 km): „Etappen“ an, dann setzt ein
   Tipp auf die Linie ein Tagesende (Fähnchen mit Nummer, antippen entfernt

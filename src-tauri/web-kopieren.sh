@@ -14,4 +14,7 @@ cp -rL libs/wuefl-libs "$OUT/libs/"
 rm -rf "$OUT/libs/wuefl-libs/.git"
 cp appdata/manifest.json appdata/messages.json appdata/logo.svg appdata/logo.png appdata/wmap-*.png "$OUT/appdata/"
 cp -r appdata/icons "$OUT/appdata/"
+# Start der App: zur Webversion wechseln, wenn sie erreichbar ist (tauri-start.js)
+cp src-tauri/tauri-start.js "$OUT/"
+sed -i 's|<head>|<head>\n    <script src="./tauri-start.js"></script>|' "$OUT/index.html"
 echo "$OUT bereit: $(du -sh "$OUT" | cut -f1)"

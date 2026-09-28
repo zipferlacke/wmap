@@ -315,7 +315,7 @@ export async function tourLink(found, kind) {
     `Quelle: OpenStreetMap, Route ${found.id}`].filter(Boolean).join(' · ');
   const code = await encodeShare({
     name: found.name, description: desc, profile: KINDS[kind].profile, points: [],
-    original: { id: found.id, kind, name: found.name },
+    backgrounds: [{ type: 'way', id: found.id, kind, name: found.name }],
   });
   return `./tour.html#t=${code}`;
 }

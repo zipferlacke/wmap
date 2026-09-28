@@ -68,6 +68,11 @@ export function createMap(container, {
     bearing,
     // Standard sind 60° – für Gelände und Gebäude darf es steiler sein
     maxPitch: 85,
+    // Weniger Kacheln im Speicher halten: Standard sind 5 Zoomstufen je Quelle
+    // (Vektor, Gelände, Relief, Luftbilder …) – das wächst mit jedem
+    // Ortswechsel um Hunderte MB. Zurück ins Bekannte lädt der Service Worker
+    // ohnehin aus seinem Cache
+    maxTileCacheZoomLevels: 2,
     attributionControl: false,
     // Handys mit 3-facher Pixeldichte zeichnen sonst 2,25-mal so viele Pixel wie
     // bei 2 – kaum schärfer, aber spürbar langsamer und stromhungriger. Aus

@@ -137,11 +137,12 @@ export function simplify(coords, tolerance) {
     const [s, e] = stack.pop();
     const a = coords[s], b = coords[e];
     const dx = (b[0] - a[0]) * kx, dy = (b[1] - a[1]) * ky;
-    const len = Math.hypot(dx, dy) || 1;
+    const len = Math.hypot(dx, dy);
     let max = 0, idx = -1;
     for (let i = s + 1; i < e; i += 1) {
       const px = (coords[i][0] - a[0]) * kx, py = (coords[i][1] - a[1]) * ky;
-      const d = Math.abs(dx * py - dy * px) / len;
+      // Rundweg: Anfang = Ende – dann zählt der Abstand zum Punkt selbst
+      const d = len < 1 ? Math.hypot(px, py) : Math.abs(dx * py - dy * px) / len;
       if (d > max) { max = d; idx = i; }
     }
     if (max > tolerance && idx > 0) {

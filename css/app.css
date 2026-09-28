@@ -1768,6 +1768,27 @@ body.flying :is(#search, #sheet, .appnav, .maplibregl-ctrl-top-right, .maplibreg
     &:hover { background: color-mix(in srgb, var(--c) 12%, var(--surface-2)); }
     &[aria-pressed="true"] { background: var(--c); color: #fff; font-weight: 600; .msr { color: #fff; } }
 }
+/* Umschalter: nur dieser Steig ↔ alle Linien der Haltestelle */
+.transit-scope { justify-self: start; display: inline-flex; align-items: center; gap: .25rem; font-size: var(--fs-200); .msr { font-size: 1.1rem; } }
+
+/* Abfahrten nach Fahrplan (js/departures.js) */
+.dep-list {
+    list-style: none; margin: 0; padding: 0; display: grid; gap: .25rem;
+}
+.dep-row {
+    display: grid; grid-template-columns: 3.4rem auto minmax(0, 1fr); align-items: center; gap: .1rem .55rem;
+    width: 100%; padding: .4rem .5rem; border: 0; border-radius: .6rem;
+    background: var(--surface-2); color: inherit; font: inherit; text-align: left; cursor: pointer;
+    &:disabled { cursor: default; }
+    &:not(:disabled):hover { background: color-mix(in srgb, var(--route) 10%, var(--surface-2)); }
+    time { grid-row: span 2; display: grid; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15;
+        b { font-size: var(--fs-100); } .late { color: var(--clr-danger-600, #e03131); } .early { color: var(--clr-success-700, #2b8a3e); } }
+    .transit-badge { min-width: 2.6rem; justify-content: center; }
+    .dep-to { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    small { grid-column: 2 / -1; color: var(--muted); font-size: var(--fs-100); }
+}
+.dep-source { font-size: var(--fs-100); }
+
 .transit-stops {
     font-size: var(--fs-200); padding-left: .3rem;
     summary { cursor: pointer; color: var(--muted); }
@@ -1779,4 +1800,88 @@ body.flying :is(#search, #sheet, .appnav, .maplibregl-ctrl-top-right, .maplibreg
     .spin { animation: spin 1s linear infinite; vertical-align: middle; }
     .layer-info { padding: .6rem .75rem; border-radius: .8rem; background: var(--surface-2); }
     .layer-info + .layer-info { margin-top: 0; border-top: 0; }
+}
+
+/* ── Navigation (appbar.js): Rechner links, Handy unten ─────────────────── */
+.appbar {
+    position: fixed; z-index: 20;
+    display: flex; gap: .25rem;
+    background: var(--surface);
+    a {
+        display: grid; justify-items: center; gap: .15rem;
+        padding: .45rem .25rem; border-radius: .9rem;
+        color: var(--muted); text-decoration: none;
+        font-size: var(--fs-100); font-weight: 600;
+        .msr { font-size: 1.5rem; padding: .15rem .9rem; border-radius: 999px; transition: background .15s; }
+        &:hover .msr { background: var(--surface-2); }
+        &[aria-current="page"] { color: var(--route); .msr { background: color-mix(in srgb, var(--route) 14%, transparent); } }
+    }
+    @media (min-width: 701px) {
+        top: 0; bottom: 0; left: 0; width: 5.5rem;
+        flex-direction: column; justify-content: center;
+        padding: calc(1rem + var(--safe-top)) .35rem 1rem;
+        box-shadow: 1px 0 0 var(--line);
+    }
+    @media (max-width: 700px) {
+        left: 0; right: 0; bottom: 0;
+        justify-content: space-around;
+        padding: .3rem .25rem calc(.3rem + var(--safe-bottom));
+        box-shadow: 0 -1px 0 var(--line);
+        a { flex: 1; .msr { padding: .1rem .7rem; } }
+    }
+}
+@media (min-width: 701px) { body.has-appbar:not(.map-page) { padding-left: 5.5rem; } }
+@media (max-width: 700px) { body.has-appbar:not(.map-page) { padding-bottom: calc(4.2rem + var(--safe-bottom)); } }
+
+/* Kartenseite: die Karte beginnt neben bzw. über der Leiste. Am Handy legen
+   sich Dialoge über die Leiste (ihr ✕ gibt sie wieder frei); beim Navigieren
+   ist sie weg */
+body.map-page.has-appbar:not(.navigating) {
+    @media (min-width: 701px) {
+        --rail: 5.5rem;
+        #map { left: var(--rail); }
+    }
+    @media (max-width: 700px) {
+        .appbar { z-index: 15; }
+        #map { bottom: calc(4.2rem + var(--safe-bottom)); }
+        .quick-ask { bottom: calc(5.2rem + var(--safe-bottom)); }
+    }
+}
+body.map-page.navigating .appbar { display: none; }
+
+/* ── Rechner: Suche und Dialoge links untereinander, die Karte rechts frei ── */
+@media (min-width: 701px) {
+    #search.panel { left: calc(var(--rail, 0px) + .75rem); }
+    #sheet.dialog.sheet {
+        top: calc(var(--panel-h, 4rem) + .5rem); bottom: auto; left: calc(var(--rail, 0px) + .75rem);
+        transform: none; width: 26rem;
+        /* So hoch wie der Inhalt, höchstens bis zum unteren Rand */
+        height: auto !important; max-height: calc(100dvh - var(--panel-h, 4rem) - 1.25rem) !important;
+        border-radius: 1rem;
+        box-shadow: var(--shadow);
+        &.at-min .view > :not(.sheet-head, .sheet-actions) { display: revert !important; }
+        &.at-min { overflow-y: auto; }
+        .sheet-grip { display: none; }
+        .sheet-head { top: 0; padding-top: .75rem; }
+    }
+}
+
+/* ── Bus & Bahn in der Routenplanung (departures.js journeys) ─────────────── */
+[data-view="route"].transit {
+    .elevation, .traffic, .along, .along-list, .along + .along-list, .start-nav, .save-tour { display: none !important; }
+    .route-options { flex-direction: column; overflow: visible; }
+    .section-title:has(+ .along) { display: none; }
+}
+.transit-opt {
+    display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .15rem .6rem; text-align: left;
+    strong { grid-row: span 2; font-variant-numeric: tabular-nums; }
+    .legs { display: flex; flex-wrap: wrap; align-items: center; gap: .15rem; .msr { font-size: 1rem; color: var(--muted); } }
+    .transit-badge { min-width: 0; padding: .05rem .4rem; color: #fff !important; }
+}
+.leg-walk { color: var(--muted); font-size: 1.2rem; }
+.step-list .leg > div {
+    display: grid; grid-template-columns: 3rem auto minmax(0, 1fr); align-items: start; gap: .5rem; padding: .35rem 0;
+    time { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .transit-badge { min-width: 2.6rem; justify-content: center; }
+    .sg-text { display: grid; gap: .1rem; small { color: var(--muted); } }
 }

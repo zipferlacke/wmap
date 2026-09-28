@@ -24,13 +24,16 @@ import { placeMedia, fuelPrices, fuelKey, isTrainStation, trainDepartures } from
 import { local, recent, tours, shapeOf } from './store.js';
 import { Sheet } from './sheet.js';
 import { mountAppNav } from './appnav.js';
+import { mountAppBar } from './appbar.js';
+import { mountSignals } from './signals.js';
 import { recorder, historySetting } from './tracks.js';
 import { setupRecording } from './record-ui.js';
 import { NavPip, pipSupported, autoPip } from './pip.js';
 import { mapLayerIds, propertyTable } from './layers.js';
 import { mountLayerMenu } from './layer-menu.js';
 import { presetOf, layerInfoAt, layerInfoHtml } from './presets.js';
-import { isStop, linesAt, transitHtml, mountTransitLine, lineStopsHtml } from './transit.js';
+import { isStop, linesAt, transitHtml, mountTransitLine, lineStopsHtml, colorOf } from './transit.js';
+import { departures, journeys } from './departures.js';
 import { runExtensions } from './extensions.js';
 import { share, placeUrl, routeUrl, readRoute, requestUrl, myName, clock } from './share.js';
 import { ask } from './ui.js';
@@ -133,9 +136,14 @@ function myPosition() {
  * Rand, rechts neben den Knöpfen. Alles, was eingepasst wird, landet mittig darin.
  */
 function viewPadding() {
+  // Rechner: Dialoge stehen links unter der Suche – die Karte rechts ist frei
+  const sheet = $('#sheet');
+  if (!matchMedia('(max-width: 700px)').matches && sheet.open) {
+    const r = sheet.getBoundingClientRect();
+    return { top: 60, bottom: 40, left: r.right - map.getContainer().getBoundingClientRect().left + 24, right: 64 };
+  }
   const h = map.getContainer().clientHeight;
   const panel = $('#search').getBoundingClientRect();
-  const sheet = $('#sheet');
   // Etwas mehr Luft oben: die Zielnadel ragt über ihren Punkt hinaus
   let top = panel.bottom + 44;
   let bottom = (sheet.open ? sheet.getBoundingClientRect().height : 0) + 24;
@@ -476,7 +484,7 @@ let placeMarker = null;
 let placeCtl = null;
 // Haltestelle → Linien; eine davon komplett auf der Karte
 const transitLine = mountTransitLine(map);
-let stopLines = [];
+let stop = null;                 // angetippte Haltestelle: Linien, Abfahrten, Ansicht
 
 const NEARBY = ['parking', 'fuel', 'charging', 'restaurant', 'cafe', 'bakery', 'supermarket', 'toilets', 'bus', 'hotel'];
 
@@ -540,6 +548,7 @@ async function showPlace(f, { push = true, fly = true, over = false } = {}) {
   const facts = $('.place-facts', view);
   facts.innerHTML = '';
   $('.place-layers', view).innerHTML = '';
+  stop = null;
   $('.place-transit', view).innerHTML = '';
   openSheet('place');
 
@@ -594,7 +603,7 @@ async function showPlace(f, { push = true, fly = true, over = false } = {}) {
     f.properties._tags = tags;
     show(tags);
     facts.classList.remove('loading');
-    if (isStop(tags)) showStopLines(p, tags.name ?? d.title, signal);
+    if (isStop(tags)) showStop(f, tags, d.title, signal);
     await enrich(tags, p, media, signal);
   } catch { /* Details sind Zugabe */ } finally {
     facts.classList.remove('loading');
@@ -1372,9 +1381,12 @@ async function computeRoutes() {
   routeStatus('Route wird berechnet …');
   try {
     const points = await Promise.all(state.waypoints.map((w) => (w.me ? myPosition() : w.point)));
-    const routes = await getRoutes(points, state.profile, {
-      highways: state.highways, avoid: state.avoid.map((p) => avoidRing(p)), signal,
-    });
+    // Bus & Bahn: Verbindungen nach Fahrplan (Zwischenziele zählen hier nicht)
+    const routes = PROFILES[state.profile].transit
+      ? await journeys(points[0], points.at(-1), { signal })
+      : await getRoutes(points, state.profile, {
+        highways: state.highways, avoid: state.avoid.map((p) => avoidRing(p)), signal,
+      });
     if (signal.aborted) return;
     state.points = points;
     state.routes = routes;
@@ -1447,11 +1459,37 @@ function selectRoute(id, { fit = false } = {}) {
   showRoutes(map, state.routes, id);
   renderRouteSheet();
   altLabels();
-  elevation.show(r);
+  elevation.show(r.transit ? null : r);
   loadTraffic(r);
   if (state.along) runAlong(state.along); else { showPois(map, []); $('.along-list').innerHTML = ''; }
   // Erst wenn das Sheet seine endgültige Höhe hat, ist klar, wie viel Karte übrig ist
   if (fit) fitRouteSettled();
+}
+
+/* Bus & Bahn: Abfahrt–Ankunft, Umstiege, je Verbindung die Linien; darunter die Abschnitte */
+const legBadge = (l) => (l.walk ? '<span class="msr leg-walk" title="Fußweg">directions_walk</span>'
+  : `<span class="transit-badge" style="--c:${l.cls !== null && l.cls <= 1 ? '#343a40' : l.cls === 4 ? '#9c36b5' : '#e03131'}">${esc(l.line || l.product)}</span>`);
+
+function renderTransitSheet(view, r) {
+  const t = r.transit;
+  const changes = (x) => (x.changes ? `${x.changes} × umsteigen` : 'ohne Umsteigen');
+  $('.sum-time', view).textContent = `${clock(t.dep)} – ${clock(t.arr)}`;
+  $('.sum-dist', view).textContent = `${fmtDuration(r.time)} · ${changes(t)}`;
+  $('.sum-tags', view).innerHTML = '';
+  $('.route-options', view).innerHTML = state.routes.map((x) => `
+    <button type="button" role="option" class="route-opt transit-opt" data-id="${x.id}" aria-selected="${x.id === r.id}">
+      <strong>${clock(x.transit.dep)} – ${clock(x.transit.arr)}</strong>
+      <span class="legs">${x.transit.legs.filter((l) => !l.walk || l.duration > 300).map(legBadge).join('<span class="msr">chevron_right</span>')}</span>
+      <small>${fmtDuration(x.time)} · ${changes(x.transit)}</small>
+    </button>`).join('');
+  $('.along', view).innerHTML = '';
+  $('.step-list', view).innerHTML = t.legs.map((l) => `
+    <li class="leg${l.walk ? ' walk' : ''}"><div>
+      <time>${clock(l.dep)}</time>${legBadge(l)}
+      <span class="sg-text"><span>${esc(l.walk ? `zu Fuß nach ${l.to}` : `${l.product} ${l.line} → ${l.to_ || l.to}`)}</span>
+        <small>${esc(l.walk ? `${Math.max(1, Math.round(l.duration / 60))} min` : `ab ${l.from}${l.platform ? `, Steig ${l.platform}` : ''} · ${l.stops} ${l.stops === 1 ? 'Halt' : 'Halte'} bis ${l.to} (${clock(l.arr)})`)}</small></span>
+    </div></li>`).join('');
+  $('.steps', view).open = true;
 }
 
 function routeTags(r) {
@@ -1468,6 +1506,8 @@ function routeTags(r) {
 function renderRouteSheet() {
   const view = $('[data-view="route"]');
   const r = current();
+  view.classList.toggle('transit', !!r.transit);
+  if (r.transit) { renderTransitSheet(view, r); return; }
   const climbing = state.profile !== 'car' && r.ascent ? ` · ↗ ${r.ascent} m` : '';
   $('.sum-time', view).textContent = fmtDuration(r.time);
   $('.sum-dist', view).textContent = `${fmtDistance(r.length)}${climbing}`;
@@ -1540,6 +1580,8 @@ function altLabels() {
   altMarkers.forEach((m) => m.remove());
   altMarkers = [];
   const main = current();
+  // Bus & Bahn: die Verbindungen fahren meist denselben Weg – Zeiten stehen in der Liste
+  if (main?.transit) return;
   for (const r of state.routes) {
     if (r.id === state.selected) continue;
     let best = null;
@@ -1691,43 +1733,120 @@ async function runAlong(cat) {
 
 /* ── Haltestellen: welche Linien halten hier, eine davon auf der Karte ───── */
 
-async function showStopLines(point, name, signal) {
+/**
+ * Haltestelle: Linien an genau diesem Steig (die Richtung dieser Seite), auf
+ * Wunsch alle der Haltestelle, dazu die nächsten Abfahrten nach Fahrplan.
+ */
+async function showStop(f, tags, title, signal) {
+  const point = f.geometry.coordinates;
+  const name = tags.name ?? title;
+  stop = {
+    point, name, here: [], all: null, scope: 'here', more: false, active: transitLine.shown, activeLine: null,
+    side: tags.local_ref ?? (tags.public_transport === 'platform' ? tags.ref : null) ?? null,
+    ifopt: tags['ref:IFOPT'] ?? '', deps: null, depMore: false, error: null, depError: null,
+  };
+  const mine = stop;
+  paintStop();
+  const ref = f.properties.osm_type && f.properties.osm_id ? { type: f.properties.osm_type, id: f.properties.osm_id } : null;
+  linesAt(point, name, { ref, signal }).then(({ here, all }) => {
+    if (stop !== mine) return;
+    Object.assign(stop, { here, all, scope: here.length ? 'here' : 'all' });
+    paintStop();
+  }).catch((err) => { if (err.name !== 'AbortError' && stop === mine) { stop.error = err.message; paintStop(); } });
+  departures(point, { name, ifopt: stop.ifopt, signal }).then(({ list }) => {
+    if (stop !== mine) return;
+    stop.deps = list;
+    paintStop();
+  }).catch((err) => { if (err.name !== 'AbortError' && stop === mine) { stop.depError = err.message; paintStop(); } });
+}
+
+const lineCount = (list) => new Set(list.map((r) => `${r.route}|${r.ref ?? r.name}`)).size;
+
+function paintStop() {
   const box = $('[data-view="place"] .place-transit');
-  box.innerHTML = '<h3 class="section-title">Linien hier</h3><p class="muted"><span class="msr spin">progress_activity</span> Welche Linien hier halten …</p>';
-  try {
-    stopLines = await linesAt(point, name, { signal });
-    if (signal.aborted) return;
-    box.innerHTML = stopLines.length ? transitHtml(stopLines, { active: transitLine.shown }) : '';
-  } catch (err) {
-    if (err.name !== 'AbortError') box.innerHTML = `<h3 class="section-title">Linien hier</h3><p class="muted">Gerade nicht abrufbar (${esc(err.message)})</p>`;
+  if (!stop) { box.innerHTML = ''; return; }
+  const s = stop;
+  let lines;
+  if (s.error) lines = `<h3 class="section-title">Linien hier</h3><p class="muted">Gerade nicht abrufbar (${esc(s.error)})</p>`;
+  else if (!s.all) lines = '<h3 class="section-title">Linien hier</h3><p class="muted"><span class="msr spin">progress_activity</span> Welche Linien hier halten …</p>';
+  else if (!s.all.length) lines = '';
+  else {
+    const onlyHere = s.scope === 'here' && s.here.length;
+    const list = onlyHere ? s.here : s.all;
+    const other = lineCount(s.all) > lineCount(s.here) && s.here.length;
+    lines = transitHtml(list, {
+      active: s.active, all: s.more,
+      title: onlyHere ? `Linien an diesem Steig${s.side ? ` (${s.side})` : ''}` : s.here.length ? 'Alle Linien der Haltestelle' : 'Linien hier',
+      extra: other ? `<button type="button" class="link-button transit-scope" data-transit="scope">${onlyHere
+        ? `<span class="msr">unfold_more</span> Alle ${lineCount(s.all)} Linien der Haltestelle` : '<span class="msr">unfold_less</span> Nur dieser Steig'}</button>` : '',
+    });
   }
+  box.innerHTML = lines + departuresHtml(s);
+  if (s.activeLine) box.querySelector(`[data-line="${s.active}"]`)?.insertAdjacentHTML('afterend', lineStopsHtml(s.activeLine));
+}
+
+
+function departuresHtml(s) {
+  const head = '<h3 class="section-title">Abfahrten</h3>';
+  if (s.depError) return `${head}<p class="muted">Fahrplan gerade nicht abrufbar (${esc(s.depError)})</p>`;
+  if (!s.deps) return `${head}<p class="muted"><span class="msr spin">progress_activity</span> Fahrplan wird geladen …</p>`;
+  // Diese Seite: Abfahrten vom angetippten Steig – wenn der Fahrplan ihn kennt
+  const mine = s.ifopt ? s.deps.filter((x) => x.platformId === s.ifopt) : [];
+  const list = s.scope === 'here' && mine.length ? mine : s.deps;
+  if (!list.length) return `${head}<p class="muted">In nächster Zeit keine Abfahrten</p>`;
+  const now = Date.now();
+  const all = s.all ?? [];
+  const rows = list.slice(0, s.depMore ? 30 : 8).map((x) => {
+    // Passende Linie aus OSM: Farbe, und antippen zeigt sie auf der Karte
+    const same = all.filter((r) => String(r.ref ?? '') === x.line);
+    const rel = same.find((r) => (r.to ?? '').includes(x.to) || x.to.includes(r.to ?? '\u0000')) ?? same[0];
+    const at = x.delay ? new Date(+x.time + x.delay * 60000) : x.time;
+    const mins = Math.round((at - now) / 60000);
+    return `<li><button type="button" class="dep-row" ${rel ? `data-line="${rel.id}"` : 'disabled'}>
+      <time>${clock(x.time)}${x.delay ? `<b class="${x.delay > 0 ? 'late' : 'early'}">${x.delay > 0 ? '+' : ''}${x.delay}</b>` : ''}</time>
+      <span class="transit-badge" style="--c:${esc(rel ? colorOf(rel) : x.cls <= 1 ? '#343a40' : '#e03131')}">${esc(x.line)}</span>
+      <span class="dep-to">${x.cancelled ? '<s>' : ''}${esc(x.to)}${x.cancelled ? '</s> fällt aus' : ''}</span>
+      <small>${mins >= 0 && mins < 60 ? `in ${mins} min` : ''}${x.platform ? ` · Steig ${esc(x.platform)}` : ''}</small>
+    </button></li>`;
+  }).join('');
+  return `${head}<ul class="dep-list">${rows}</ul>
+    ${list.length > 8 && !s.depMore ? '<button type="button" class="button transit-more" data-transit="deps"><span class="msr">expand_more</span> Weitere Abfahrten</button>' : ''}
+    <p class="muted dep-source">Fahrplan: NVBW EFA-BW${list.some((x) => x.delay !== null) ? ' · mit Echtzeit' : ''}${s.scope !== 'here' || !s.ifopt ? ''
+      : mine.length ? (mine.length < s.deps.length ? ' · nur dieser Steig' : '') : ' · von diesem Steig gerade nichts – alle Steige'}</p>`;
 }
 
 $('[data-view="place"] .place-transit').addEventListener('click', async (e) => {
-  const box = e.currentTarget;
-  if (e.target.closest('[data-transit="all"]')) { box.innerHTML = transitHtml(stopLines, { active: transitLine.shown, all: true }); return; }
+  if (!stop) return;
+  const act = e.target.closest('[data-transit]')?.dataset.transit;
+  if (act === 'all') { stop.more = true; paintStop(); return; }
+  if (act === 'deps') { stop.depMore = true; paintStop(); return; }
+  if (act === 'scope') { stop.scope = stop.scope === 'here' ? 'all' : 'here'; paintStop(); return; }
   const btn = e.target.closest('[data-line]');
   if (!btn) return;
   const id = Number(btn.dataset.line);
-  const all = !box.querySelector('.transit-more');
-  box.querySelector('.transit-stops')?.remove();
   if (transitLine.shown === id) {
     transitLine.clear();
-    box.innerHTML = transitHtml(stopLines, { all });
+    stop.active = null; stop.activeLine = null;
+    paintStop();
     return;
   }
-  btn.classList.add('loading');
-  $('.msr', btn).textContent = 'progress_activity';
-  $('.msr', btn).classList.add('spin');
+  const icon = $('.msr', btn);
+  if (icon) { icon.textContent = 'progress_activity'; icon.classList.add('spin'); }
+  const mine = stop;
   try {
-    const line = await transitLine.show(id);
-    box.innerHTML = transitHtml(stopLines, { active: id, all });
-    box.querySelector(`[data-line="${id}"]`)?.insertAdjacentHTML('afterend', lineStopsHtml(line));
+    // Ab dieser Haltestelle kräftig – der Weg bis hierher blass
+    const line = await transitLine.show(id, { from: stop.point });
+    if (stop !== mine) return;
+    stop.active = id; stop.activeLine = line;
+    // Linie aus den Abfahrten, die in der Liste noch eingeklappt ist
+    if (![...(stop.scope === 'here' && stop.here.length ? stop.here : stop.all)].some((r) => r.id === id)) stop.scope = 'all';
+    stop.more = true;
+    paintStop();
     if (line.bounds) afterLayout(() => fitTo(line.bounds.flat(), 16));
   } catch (err) {
     if (err.name === 'AbortError') return;
     toast(`Linie gerade nicht abrufbar (${err.message})`);
-    box.innerHTML = transitHtml(stopLines, { active: transitLine.shown, all });
+    paintStop();
   }
 });
 
@@ -1787,6 +1906,8 @@ function showTrafficItem(t) {
 
 /* Ebenen-Menü: Satellit, Wandern & Rad, Wanderwege, eigene Ebenen und Plugins */
 const layerMenu = mountLayerMenu(map, { toast });
+// Ampeln ab Zoom 15 – nur wo eine steht (signals.js)
+mountSignals(map);
 
 map.on('click', (e) => {
   // Beim Fliegen sperrt ein Klick nur die Maus (keys.js) – nichts öffnen
@@ -2215,6 +2336,10 @@ function keysDialog() {
 }
 
 const appNav = mountAppNav();
+// Hauptnavigation wie auf den anderen Seiten: Rechner links, Handy unten
+document.body.classList.add('map-page');
+mountAppBar();
+map.resize();
 // Erweiterungen (JavaScript-Plugins), die man auf der Plugin-Seite aktiviert hat
 runExtensions({ map, toast, appNav }).catch(() => {});
 // „Fliegen“ im Menü: hier auf der Karte ohne Neuladen starten

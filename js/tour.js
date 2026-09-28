@@ -8,24 +8,25 @@
  *          tour.html?id=…       gespeicherte Tour bearbeiten
  *          tour.html#t=…        geteilte Tour ansehen (nur lesen, übernehmbar)
  *
- * Übernommene bekannte Wege (Entdecken) tragen tour.original: Der Weg liegt
- * so, wie er in OSM erfasst ist, als Vorlage im Hintergrund. Man plant
- * selbst – Punkte nah an der Vorlage rasten auf ihr ein, und liegen zwei
- * Punkte nacheinander auf ihr, folgt die Strecke dazwischen genau der
- * Vorlage statt dem Routing – oder übernimmt mit „So übernehmen“ den Verlauf.
+ * Hintergrund (tour.backgrounds): bekannte Wege aus Entdecken und eigene
+ * Touren liegen unter der Planung – so, wie sie in OSM bzw. gespeichert
+ * sind. Punkte nah an einem Hintergrund rasten auf ihm ein, und liegen zwei
+ * Punkte nacheinander darauf, folgt die Strecke dazwischen genau ihm statt
+ * dem Routing. „So übernehmen“ nimmt den ganzen Verlauf. Hintergründe werden
+ * mit der Tour gespeichert; entfernt man einen, ist er weg.
  */
 import { PROFILES } from './config.js';
 import { createMap, showRoutes, showHover } from './map.js';
 import { segment, joinSegments, wayInfo, heightsAlong, hikingTime } from './routing.js';
 import { ElevationProfile } from './elevation.js';
 import { tours, shapeOf, coordsOf, encodeShare, decodeShare, toGpx, download, local } from './store.js';
-import { Sheet } from './sheet.js';
-import { mountAppNav } from './appnav.js';
+import { sheet as sidePanel } from '../libs/wuefl-libs/userDialog/userDialog.js';
+import { mountLayerMenu } from './layer-menu.js';
 import { ask } from './ui.js';
 import * as geocode from './geocode.js';
-import { nearestOnLine, pointAt, simplifyTo, bbox, cumulative, fmtDistance, fmtDuration, esc } from './geo.js';
+import { distance, nearestOnLine, pointAt, simplifyTo, bbox, cumulative, fmtDistance, fmtDuration, esc } from './geo.js';
 import { setupStages } from './tour-stages.js';
-import { tourLine, originalRoute } from './known-tours.js';
+import { tourLine, originalRoute, searchTours } from './known-tours.js';
 import './folder.js';   // gespeicherte Touren landen auch im verbundenen Ordner
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -61,13 +62,17 @@ if (shareCode) {
   try {
     tour = { ...(await decodeShare(shareCode)), id: null };
     // Nur eine Vorlage (aus Entdecken): gleich selbst planen
-    readOnly = !(tour.original && !tour.points.length);
+    readOnly = !(tour.backgrounds?.length && !tour.points.length);
   } catch { toast('Der Link ist unvollständig oder beschädigt'); }
 } else if (idParam) {
   tour = tours.get(idParam);
   if (!tour) toast('Tour nicht gefunden – hier geht es mit einer neuen los');
 }
 tour ??= { id: null, name: '', description: '', profile: local.get('wmap.tourProfile', 'hike'), points: [] };
+// Früher ein einzelner Weg in tour.original
+if (tour.original && !tour.backgrounds) tour.backgrounds = [{ type: 'way', ...tour.original }];
+delete tour.original;
+tour.backgrounds ??= [];
 if (!TOUR_PROFILES.includes(tour.profile)) tour.profile = 'hike';
 
 document.body.classList.toggle('readonly', readOnly);
@@ -87,22 +92,23 @@ const { map } = createMap('map', {
 });
 
 window.__wmap = { map };                         // für Konsole und Tests
+mountLayerMenu(map, { toast });                  // Satellit, Wanderwege, Plugins
 
 const sheet = $('#sheet');
 sheet.show();
 document.activeElement?.blur();                // kein Fokusrahmen um den Griff
-new Sheet(sheet, { onResize: () => fitRoute(), topLimit: () => $('.tour-head').getBoundingClientRect().bottom });
+// Panel wie bei Meine Touren: Rechner links (Breite ziehen, ganz einklappen), Handy unten
+let fitTimer = null;
+const panel = sidePanel(sheet, { min: 300, key: 'wmap.tourPanel', onChange: () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitRoute, 280); } });
+const mobile = () => matchMedia('(max-width: 700px)').matches;
 
-/** Rechner: Panel als Seitenleiste links, sonst unten */
-const side = () => matchMedia('(min-width: 900px)').matches;
-
+/** Freier Kartenausschnitt neben bzw. über dem Panel */
 function viewPadding() {
-  if (side()) return { top: 24, bottom: 24, left: sheet.getBoundingClientRect().right + 24, right: 64 };
+  const r = sheet.open && !panel.collapsed ? sheet.getBoundingClientRect() : null;
+  if (!r) return { top: 60, bottom: 60, left: 40, right: 64 };
+  if (!mobile()) return { top: 40, bottom: 40, left: r.width + 40, right: 64 };
   const h = map.getContainer().clientHeight;
-  const top = $('.tour-head').getBoundingClientRect().bottom + 16;
-  let bottom = sheet.getBoundingClientRect().height + 24;
-  if (top + bottom > h - 100) bottom = Math.max(24, h - 100 - top);
-  return { top, bottom, left: 24, right: 64 };
+  return { top: 60, bottom: Math.min(r.height + 20, h - 160), left: 20, right: 56 };
 }
 
 function fitRoute() {
@@ -116,19 +122,21 @@ const descInput = $('#tour-desc');
 nameInput.value = tour.name;
 descInput.value = tour.description ?? '';
 nameInput.readOnly = descInput.readOnly = readOnly;
-if (readOnly) $('.save-label').textContent = 'Übernehmen';
+if (readOnly) { $('.save-label').textContent = 'Übernehmen'; $('#save .msr').textContent = 'library_add'; }
 
 function paintTitle() {
   document.title = `${tour.name || 'Neue Tour'} – WMap`;
 }
 paintTitle();
 
-const nav = mountAppNav();
-$('.tour-head').append(nav.el);
-nav.addItem('share', 'Tour teilen', () => shareTour());
-nav.addItem('download', 'Als GPX speichern', () => exportGpx());
-nav.addItem('public', 'Veröffentlichen', () => publishTour());
-nav.addItem('delete', 'Tour löschen', () => deleteTour());
+/* Teilen, GPX, Veröffentlichen, Löschen – unten im Panel */
+$('.tour-more').addEventListener('click', (e) => {
+  const act = e.target.closest('[data-tour]')?.dataset.tour;
+  if (act === 'share') shareTour();
+  if (act === 'gpx') exportGpx();
+  if (act === 'publish') publishTour();
+  if (act === 'delete') deleteTour();
+});
 
 /* Anleitung als Notiz am i-Knopf: auf dem Rechner darunter, auf dem Handy volle Breite */
 const help = $('#tour-help');
@@ -309,157 +317,292 @@ const stages = setupStages({
 function routeChanged() {
   $('#stages').hidden = !route || route.length < 5000;
   stages.refresh();
-  if (tour.original) paintOriginal();
+  paintBackgrounds();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   Vorlage: der bekannte Weg, unverändert aus OSM, im Hintergrund
+   Hintergrund: bekannte Wege und eigene Touren unter der Planung
    ══════════════════════════════════════════════════════════════════════════ */
 
-const ORIG = 'original';
-const ORIG_COLOR = '#be4bdb';
-let originalSecs = [];
-let originalCum = [];
-let originalOn = true;
+const BG = 'backgrounds';
+const BG_COLORS = ['#be4bdb', '#1098ad', '#f08c00', '#5c7cfa', '#e64980'];
+const ON_TEMPLATE = 15;                 // Meter: so nah gilt ein Punkt als „auf dem Hintergrund“
+const KIND_OF = { hike: 'hike', walk: 'hike', road: 'bike', tour: 'bike', gravel: 'bike', mtb: 'mtb', drive: 'bike' };
+const bgs = [];                         // geladen: { def, color, sections, secCum, track, cum, loading, error }
+let bgOn = true;
+const keyOf = (b) => `${b.type}:${b.id}`;
 
-async function loadOriginal() {
-  if (!tour.original) return;
-  paintOriginal();
+/**
+ * Laden: die Stücke zum Zeichnen (so, wie sie in OSM stehen) und die
+ * durchgehende Linie („Track“) zum Folgen – bei Wegen aus mehreren Stücken
+ * der Reihe nach verbunden (kommt nach, dauert bei Lücken etwas).
+ */
+async function loadBackground(def, { fit = false } = {}) {
+  const g = { def, color: BG_COLORS[bgs.length % BG_COLORS.length], sections: [], secCum: [], track: null, cum: null, loading: true };
+  bgs.push(g);
+  paintBackgrounds();
   try {
-    // Genau die Stücke, wie sie in OSM stehen – nichts verbunden, nichts gedreht
-    originalSecs = (await tourLine(tour.original.id, { kind: tour.original.kind })).sections;
-    originalCum = originalSecs.map((c) => cumulative(c));
-    drawOriginal();
-    if (!tour.points.length) fitOriginal();
-    // Schon gesetzte Punkte folgen jetzt der Vorlage
-    else if (!tour.fixed && tour.points.length > 1) recompute();
-  } catch (err) { toast(`Vorlage gerade nicht abrufbar (${err.message})`); }
-  paintOriginal();
+    if (def.type === 'tour') {
+      const t = tours.get(def.id);
+      if (!t?.shape) throw new Error('Diese Tour gibt es nicht mehr');
+      g.sections = [coordsOf(t.shape)];
+    } else {
+      g.sections = (await tourLine(def.id, { kind: def.kind })).sections;
+    }
+    g.secCum = g.sections.map((c) => cumulative(c));
+    if (g.sections.length === 1) { g.track = g.sections[0]; g.cum = g.secCum[0]; }
+    else {
+      originalRoute(def.id, def.kind).then(({ line }) => {
+        g.track = line;
+        g.cum = cumulative(line);
+        paintBackgrounds();
+        if (!tour.fixed && tour.points.length > 1) recompute();
+      }).catch(() => {});
+    }
+  } catch (err) { g.error = err.message; }
+  g.loading = false;
+  drawBackgrounds();
+  paintBackgrounds();
+  if (fit && g.sections.length) fitBackground(g);
+  if (!tour.fixed && tour.points.length > 1) recompute();
+  return g;
 }
 
-function fitOriginal() {
-  const b = bbox(originalSecs.flat());
-  map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 60, duration: 0, maxZoom: 14 });
+function fitBackground(g) {
+  const b = bbox(g.sections.flat());
+  map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: viewPadding(), duration: 600, maxZoom: 14 });
 }
 
-function drawOriginal() {
-  const data = { type: 'FeatureCollection', features: originalSecs.map((c, i) => ({ type: 'Feature', properties: { i }, geometry: { type: 'LineString', coordinates: c } })) };
-  if (map.getSource(ORIG)) map.getSource(ORIG).setData(data);
+function drawBackgrounds() {
+  const data = { type: 'FeatureCollection', features: bgs.flatMap((g, gi) => g.sections.map((c, i) => ({
+    type: 'Feature', properties: { g: gi, i, color: g.color }, geometry: { type: 'LineString', coordinates: c },
+  }))) };
+  if (map.getSource(BG)) map.getSource(BG).setData(data);
+  // Stil gerade nicht bereit (Nachladen, Umfärben) – sobald die Karte ruht
+  else if (!map.isStyleLoaded()) { map.once('idle', drawBackgrounds); return; }
   else {
-    map.addSource(ORIG, { type: 'geojson', data });
+    map.addSource(BG, { type: 'geojson', data });
     map.addLayer({
-      id: ORIG, type: 'line', source: ORIG, layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': ORIG_COLOR, 'line-opacity': 0.5, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 6, 14, 13] },
+      id: BG, type: 'line', source: BG, layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': ['get', 'color'], 'line-opacity': 0.5, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 6, 14, 13] },
     }, map.getLayer('route-alt') ? 'route-alt' : undefined);
   }
-  map.setLayoutProperty(ORIG, 'visibility', originalOn ? 'visible' : 'none');
+  if (map.getLayer(BG)) map.setLayoutProperty(BG, 'visibility', bgOn ? 'visible' : 'none');
 }
 
-function paintOriginal() {
+let adding = false;
+function paintBackgrounds() {
   const box = $('.tour-original');
-  box.hidden = !tour.original;
-  if (!tour.original) return;
+  box.hidden = readOnly && !bgs.length;
+  if (box.hidden) return;
   const empty = !tour.points.length;
-  const hint = !originalSecs.length ? 'Wird geladen …'
-    : empty ? 'Setze deine Punkte selbst – auf der Vorlage folgt die Strecke genau dem Weg, daneben wird geroutet. Oder übernimm den ganzen Verlauf.'
-      : `So, wie der Weg in OpenStreetMap erfasst ist${originalSecs.length > 1 ? ` – ${originalSecs.length} Stücke, die Lücken sind echt` : ''}. Zwischen zwei Punkten auf der Vorlage folgt die Strecke genau dem Weg.`;
+  const rows = bgs.map((g, i) => `
+    <li><i style="background:${g.color}"></i>
+      <span><strong>${esc(g.def.name || (g.def.type === 'tour' ? 'Eigene Tour' : 'Bekannter Weg'))}</strong>
+        <small>${g.error ? esc(g.error) : g.loading ? 'Wird geladen …' : g.def.type === 'tour' ? 'eigene Tour'
+          : `aus OpenStreetMap${g.sections.length > 1 ? ` · ${g.sections.length} Stücke${g.track ? '' : ', Verlauf wird verbunden …'}` : ''}`}</small></span>
+      ${tour.fixed || g.loading || g.error ? '' : `<button type="button" class="button${empty ? ' primary' : ''}" data-bg="take" data-i="${i}" title="Ganzen Verlauf übernehmen"><span class="msr">done_all</span> So übernehmen</button>`}
+      <button type="button" class="button" data-shape="round no-background" data-bg="remove" data-i="${i}" title="Aus dem Hintergrund nehmen"><span class="msr">close</span></button>
+    </li>`).join('');
   box.innerHTML = `
-    <p><i style="background:${ORIG_COLOR}"></i><span><strong>Vorlage: ${esc(tour.original.name || 'bekannter Weg')}</strong>
-      <small>${hint}</small></span></p>
+    <span class="section-title">Hintergrund</span>
+    ${bgs.length && empty ? '<p class="muted">Setze deine Punkte selbst – auf dem Hintergrund folgt die Strecke genau dem Weg, daneben wird geroutet. Oder übernimm den ganzen Verlauf.</p>' : ''}
+    ${bgs.length ? `<ul class="bg-list">${rows}</ul>` : ''}
     <div class="tour-tools">
-      ${tour.fixed ? '' : `<button type="button" class="button${empty ? ' primary' : ''}" data-o="restore"><span class="msr">done_all</span> So übernehmen</button>`}
-      ${empty ? '' : '<button type="button" class="button" data-o="fresh"><span class="msr">edit_road</span> Neu planen</button>'}
-      <button type="button" class="button" data-o="toggle"><span class="msr">${originalOn ? 'visibility_off' : 'visibility'}</span> ${originalOn ? 'Ausblenden' : 'Einblenden'}</button>
-    </div>`;
+      <button type="button" class="button" data-bg="add" aria-expanded="${adding}"><span class="msr">add</span> Weg oder Tour dazulegen</button>
+      ${bgs.length ? `<button type="button" class="button" data-bg="toggle"><span class="msr">${bgOn ? 'visibility_off' : 'visibility'}</span> ${bgOn ? 'Ausblenden' : 'Einblenden'}</button>` : ''}
+      ${bgs.length && !empty ? '<button type="button" class="button" data-bg="fresh"><span class="msr">edit_road</span> Neu planen</button>' : ''}
+    </div>
+    ${adding ? `<form class="tour-search bg-search" autocomplete="off"><span class="msr">search</span>
+      <input type="search" placeholder="Bekannter Weg oder eigene Tour …" aria-label="Weg oder Tour suchen"></form>
+      <ul class="tour-search-results bg-results"></ul>` : ''}`;
+  if (adding) box.querySelector('.bg-search input').focus();
 }
 
-/* ── Punkte und Strecke auf der Vorlage ─────────────────────────────────── */
+/* ── Stellen auf einer Linie und Stücke dazwischen ──────────────────────── */
 
-const ON_TEMPLATE = 15;                 // Meter: so nah gilt ein Punkt als „auf der Vorlage“
-
-/** Wo auf der Vorlage liegt der Punkt? → { i (Stück), along } oder null */
-function onTemplate(p) {
-  let best = null;
-  originalSecs.forEach((c, i) => {
-    const s = nearestOnLine(c, originalCum[i], p);
-    if (s.offset <= ON_TEMPLATE && (!best || s.offset < best.offset)) best = { i, along: s.along, offset: s.offset };
-  });
-  return best;
+/**
+ * Alle Durchgänge einer Linie an einem Punkt (näher als ON_TEMPLATE) – ein
+ * Rundweg oder ein doppelt begangenes Stück kommt mehrmals vorbei.
+ * → [{ along, offset }]
+ */
+function passes(line, cum, p) {
+  const kx = Math.cos((p[1] * Math.PI) / 180) * 111320, ky = 110540;
+  const out = [];
+  let last = -2;
+  for (let i = 0; i < line.length - 1; i += 1) {
+    const a = line[i], b = line[i + 1];
+    const ax = (a[0] - p[0]) * kx, ay = (a[1] - p[1]) * ky, dx = (b[0] - a[0]) * kx, dy = (b[1] - a[1]) * ky;
+    const l2 = dx * dx + dy * dy;
+    const t = l2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+    const d = Math.hypot(ax + dx * t, ay + dy * t);
+    if (d > ON_TEMPLATE) continue;
+    const along = cum[i] + (cum[i + 1] - cum[i]) * t;
+    if (i === last + 1 && out.length) { if (d < out.at(-1).offset) out[out.length - 1] = { along, offset: d }; }
+    else out.push({ along, offset: d });
+    last = i;
+  }
+  return out;
 }
 
 /**
- * Punkt nah an der Vorlage → genau auf die Vorlage. Nah heißt: 10 Pixel
- * auf dem Bildschirm (beim Tippen) bzw. aus der gezogenen Stelle berechnet.
+ * Beide Punkte auf derselben Linie? → das Stück dazwischen: der kürzere Weg
+ * entlang der Linie, bei einem Rundweg auch über Start/Ziel hinweg.
  */
+function between(line, cum, a, b) {
+  const A = passes(line, cum, a), B = passes(line, cum, b);
+  if (!A.length || !B.length) return null;
+  const total = cum.at(-1);
+  const ring = line.length > 3 && distance(line[0], line.at(-1)) < 50;
+  let best = null;
+  for (const x of A) for (const y of B) {
+    const d = Math.abs(y.along - x.along);
+    if (d < 5) continue;
+    if (!best || d < best.len) best = { len: d, from: x.along, to: y.along, wrap: false };
+    if (ring && total - d < best.len) best = { len: total - d, from: x.along, to: y.along, wrap: true };
+  }
+  if (!best) return null;
+  const part = (lo, hi) => {
+    const out = [pointAt(line, cum, lo)];
+    for (let k = 0; k < line.length; k += 1) if (cum[k] > lo && cum[k] < hi) out.push(line[k]);
+    out.push(pointAt(line, cum, hi));
+    return out;
+  };
+  const { from, to } = best;
+  if (!best.wrap) return from < to ? part(from, to) : part(to, from).reverse();
+  // Über den Start des Rundwegs: vom Punkt bis zum Ende, dann vom Anfang weiter
+  return from > to ? [...part(from, total), ...part(0, to).slice(1)] : [...part(to, total), ...part(0, from).slice(1)].reverse();
+}
+
+/** Punkt nah an einem Hintergrund → genau darauf (10 Pixel beim Tippen und Ziehen) */
 function snapPoint(p, screen = map.project(p)) {
-  if (!originalOn || !map.getLayer(ORIG)) return null;
-  const hit = map.queryRenderedFeatures([[screen.x - 10, screen.y - 10], [screen.x + 10, screen.y + 10]], { layers: [ORIG] })[0];
-  const i = hit?.properties.i;
-  return originalSecs[i] ? nearestOnLine(originalSecs[i], originalCum[i], p).point : null;
+  if (!bgOn || !map.getLayer(BG)) return null;
+  const hit = map.queryRenderedFeatures([[screen.x - 10, screen.y - 10], [screen.x + 10, screen.y + 10]], { layers: [BG] })[0];
+  const g = hit && bgs[hit.properties.g];
+  const c = g?.sections[hit.properties.i];
+  return c ? nearestOnLine(c, g.secCum[hit.properties.i], p).point : null;
 }
 
 const heightCache = new Map();
 
 /**
- * Liegen beide Punkte auf demselben Stück der Vorlage, ist die Strecke
- * dazwischen genau dieses Stück – im Format von segment(). Sonst null.
+ * Liegen beide Punkte auf einem Hintergrund, ist die Strecke dazwischen
+ * genau dessen Verlauf – im Format von segment(). Sonst null (→ routen).
  */
 async function templatePart(a, b) {
-  if (!originalSecs.length) return null;
-  const A = onTemplate(a), B = onTemplate(b);
-  if (!A || !B || A.i !== B.i || Math.abs(A.along - B.along) < 5) return null;
-  const c = originalSecs[A.i], cum = originalCum[A.i];
-  const [lo, hi] = A.along < B.along ? [A.along, B.along] : [B.along, A.along];
-  const coords = [pointAt(c, cum, lo)];
-  for (let k = 0; k < c.length; k += 1) if (cum[k] > lo && cum[k] < hi) coords.push(c[k]);
-  coords.push(pointAt(c, cum, hi));
-  if (A.along > B.along) coords.reverse();
-  const length = hi - lo;
-  const key = `${A.i}|${Math.round(A.along)}|${Math.round(B.along)}`;
-  if (!heightCache.has(key)) heightCache.set(key, heightsAlong(coords).catch(() => ({ elevation: [] })));
-  const { elevation } = await heightCache.get(key);
-  return { coords, cum: cumulative(coords), length, time: length / (PACE[tour.profile] ?? 1.1), elevation, maneuvers: [], template: true };
+  for (const g of bgs) {
+    if (g.loading || g.error) continue;
+    // Erst der durchgehende Track, sonst ein einzelnes Stück
+    const lines = [...(g.track ? [[g.track, g.cum]] : []), ...g.sections.map((c, i) => [c, g.secCum[i]])];
+    for (const [line, cum] of lines) {
+      const coords = between(line, cum, a, b);
+      if (!coords) continue;
+      const c = cumulative(coords);
+      const length = c.at(-1);
+      const key = `${coords[0]}|${coords.at(-1)}|${coords.length}`;
+      if (!heightCache.has(key)) heightCache.set(key, heightsAlong(coords).catch(() => ({ elevation: [] })));
+      const { elevation } = await heightCache.get(key);
+      return { coords, cum: c, length, time: length / (PACE[tour.profile] ?? 1.1), elevation, maneuvers: [], template: true };
+    }
+  }
+  return null;
+}
+
+/* ── Knöpfe ───────────────────────────────────────────────────────────── */
+
+async function takeBackground(g, button) {
+  if (readOnly) adopt();
+  button.disabled = true;
+  button.innerHTML = '<span class="msr spin">progress_activity</span> Wird übernommen …';
+  try {
+    const line = g.track ?? (g.def.type === 'way' ? (await originalRoute(g.def.id, g.def.kind)).line : g.sections[0]);
+    const prev = tour.points.map((p) => p.slice());
+    prev.fixed = !!tour.fixed;
+    undoStack.push(prev);
+    tour.points = simplifyTo(line, 20);
+    tour.shape = shapeOf(line.length > 1500 ? simplifyTo(line, 1500) : line);
+    tour.fixed = true;
+    tour.stages = [];
+    if (!tour.name) { tour.name = g.def.name; nameInput.value = tour.name; paintTitle(); }
+    await recompute({ fit: true });
+  } catch (err) { toast(`Ließ sich nicht übernehmen (${err.message})`); }
+  paintBackgrounds();
 }
 
 $('.tour-original').addEventListener('click', async (e) => {
-  const act = e.target.closest('[data-o]')?.dataset.o;
-  if (act === 'toggle') {
-    originalOn = !originalOn;
-    if (map.getLayer(ORIG)) map.setLayoutProperty(ORIG, 'visibility', originalOn ? 'visible' : 'none');
+  const b = e.target.closest('[data-bg]');
+  const act = b?.dataset.bg;
+  if (!act) {
+    const pick = e.target.closest('[data-add]');
+    if (pick) addBackground(JSON.parse(pick.dataset.add));
+    return;
   }
+  const g = bgs[Number(b.dataset.i)];
+  if (act === 'toggle') { bgOn = !bgOn; drawBackgrounds(); }
+  if (act === 'add') adding = !adding;
+  if (act === 'remove' && g) {
+    if (readOnly) adopt();
+    bgs.splice(bgs.indexOf(g), 1);
+    tour.backgrounds = tour.backgrounds.filter((x) => keyOf(x) !== keyOf(g.def));
+    drawBackgrounds();
+    scheduleSave();
+    if (!tour.fixed && tour.points.length > 1) recompute();
+  }
+  if (act === 'take' && g) { await takeBackground(g, b); return; }
   if (act === 'fresh') {
     if (readOnly) adopt();
-    // Von vorn: die Vorlage bleibt, die eigene Strecke entsteht Punkt für Punkt
+    // Von vorn: der Hintergrund bleibt, die eigene Strecke entsteht Punkt für Punkt
     tour.fixed = false;
     tour.stages = [];
     change(() => { tour.points = []; });
-    originalOn = true;
-    if (map.getLayer(ORIG)) map.setLayoutProperty(ORIG, 'visibility', 'visible');
-    toast('Setze deine Punkte – die Vorlage bleibt im Hintergrund');
+    bgOn = true;
+    drawBackgrounds();
+    toast('Setze deine Punkte – der Hintergrund bleibt');
   }
-  if (act === 'restore') {
-    // Den ganzen Weg übernehmen: Stücke der Reihe nach, Lücken über Wege verbunden
-    const b = e.target.closest('button');
-    b.disabled = true;
-    b.innerHTML = '<span class="msr spin">progress_activity</span> Verlauf wird zusammengesetzt …';
-    try {
-      if (readOnly) adopt();
-      const { line, bridged } = await originalRoute(tour.original.id, tour.original.kind);
-      const prev = tour.points.map((p) => p.slice());
-      prev.fixed = !!tour.fixed;
-      undoStack.push(prev);
-      tour.points = simplifyTo(line, 20);
-      tour.shape = shapeOf(line.length > 1500 ? simplifyTo(line, 1500) : line);
-      tour.fixed = true;
-      tour.stages = [];
-      await recompute({ fit: true });
-      if (bridged) toast(`${bridged} ${bridged === 1 ? 'Lücke' : 'Lücken'} der Vorlage über Wege verbunden`);
-    } catch (err) { toast(`Vorlage gerade nicht abrufbar (${err.message})`); }
-  }
-  paintOriginal();
+  paintBackgrounds();
 });
 
-if (map.loaded()) loadOriginal(); else map.once('load', loadOriginal);
+function addBackground(def) {
+  adding = false;
+  if (tour.backgrounds.some((x) => keyOf(x) === keyOf(def))) { paintBackgrounds(); return; }
+  if (readOnly) adopt();
+  tour.backgrounds.push(def);
+  loadBackground(def, { fit: true });
+  scheduleSave();
+}
+
+/* Suche: eigene Touren (sofort) und bekannte Wege (Waymarked Trails) */
+let bgCtl = null;
+const bgSearch = debounce(async (q) => {
+  const list = $('.tour-original .bg-results');
+  if (!list) return;
+  const low = q.toLowerCase();
+  const mine = tours.all().filter((t) => t.id !== tour.id && t.shape && t.name?.toLowerCase().includes(low)).slice(0, 5)
+    .map((t) => ({ def: { type: 'tour', id: t.id, name: t.name }, icon: 'bookmark', sub: `Eigene Tour${t.stats?.length ? ` · ${fmtDistance(t.stats.length)}` : ''}` }));
+  const row = (x) => `<li><button type="button" class="button" data-add='${esc(JSON.stringify(x.def))}'><span class="msr">${x.icon}</span>
+    <span>${esc(x.def.name)}<small>${esc(x.sub)}</small></span></button></li>`;
+  list.innerHTML = mine.map(row).join('') + (q.length >= 3 ? '<li class="muted">Bekannte Wege werden gesucht …</li>' : '');
+  if (q.length < 3) return;
+  bgCtl?.abort();
+  bgCtl = new AbortController();
+  const kind = KIND_OF[tour.profile] ?? 'hike';
+  try {
+    const ways = (await searchTours(q, kind, { signal: bgCtl.signal })).slice(0, 8)
+      .map((w) => ({ def: { type: 'way', id: w.id, kind, name: w.name }, icon: 'route', sub: [w.network, w.ref].filter(Boolean).join(' · ') }));
+    list.innerHTML = [...mine, ...ways].map(row).join('') || '<li class="muted">Nichts gefunden</li>';
+  } catch (err) {
+    if (err.name !== 'AbortError') list.innerHTML = mine.map(row).join('') + `<li class="muted">Wege gerade nicht abrufbar (${esc(err.message)})</li>`;
+  }
+}, 300);
+$('.tour-original').addEventListener('input', (e) => { if (e.target.closest('.bg-search')) bgSearch(e.target.value.trim()); });
+$('.tour-original').addEventListener('submit', (e) => e.preventDefault());
+
+const startBackgrounds = () => {
+  paintBackgrounds();
+  const first = !tour.points.length;
+  tour.backgrounds.forEach((def, i) => loadBackground(def, { fit: first && i === 0 }));
+};
+if (map.loaded()) startBackgrounds(); else map.once('load', startBackgrounds);
 
 const elevation = new ElevationProfile($('.elevation', sheet), {
   onHover(km) {
@@ -616,17 +759,18 @@ function snapshotTour(preview) {
 
 /**
  * Zustand des Speichern-Knopfs – man sieht immer, ob alles gesichert ist:
- *   new     noch keine Strecke      „Speichern“ (grau)
- *   dirty   geändert                „Speichert …“ (gleich automatisch)
- *   saved   gesichert               „✓ Gespeichert“ (grün)
+ *   new     noch keine Strecke      Diskette (grau)
+ *   dirty   geändert                drehende Pfeile (gleich automatisch)
+ *   saved   gesichert               grüner Haken
  */
 function saveState(state) {
   const b = $('#save');
   if (readOnly) return;
   b.dataset.state = state;
+  // Nur das Symbol: grüner Haken = gesichert, dreht = speichert, Diskette = noch nicht
   b.querySelector('.msr').textContent = state === 'saved' ? 'check_circle' : state === 'dirty' ? 'sync' : 'save';
-  $('.save-label').textContent = state === 'saved' ? 'Gespeichert' : state === 'dirty' ? 'Speichert …' : 'Speichern';
-  b.title = state === 'saved' ? 'Alles gespeichert – findest du unter „Meine Touren“' : 'Tour speichern';
+  b.title = state === 'saved' ? 'Gespeichert – findest du unter „Meine Touren“' : state === 'dirty' ? 'Speichert …' : 'Tour speichern';
+  b.setAttribute('aria-label', b.title);
 }
 saveState(tour.id ? 'saved' : 'new');
 
@@ -792,7 +936,15 @@ document.addEventListener('visibilitychange', async () => {
 
 map.on('load', () => recompute({ fit: true }));
 
-/* Profil-Leiste und Hinweis sitzen unter dem Kopf, dessen Höhe schwankt (Zeilenumbruch) */
-new ResizeObserver(() => {
-  document.documentElement.style.setProperty('--panel-h', `${Math.round($('.tour-head').getBoundingClientRect().bottom)}px`);
-}).observe($('.tour-head'));
+/* Beim Planen flach von oben: Straßennamen eine Stufe früher und dichter als
+   auf der geneigten Hauptkarte – man orientiert sich an ihnen */
+map.on('style.load', () => {
+  for (const [id, min] of [['highway-name-path', 14.5], ['highway-name-minor', 13.5], ['highway-name-major', 11]]) {
+    if (!map.getLayer(id)) continue;
+    map.setLayerZoomRange(id, min, 24);
+    map.setLayoutProperty(id, 'symbol-spacing', 300);
+    map.setLayoutProperty(id, 'text-padding', 6);
+  }
+});
+
+

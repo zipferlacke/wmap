@@ -136,14 +136,11 @@ body.readonly .save-state { background: var(--route); color: #fff; }
 }
 
 /* Kartenknöpfe unter den Kopf */
-.tour-page .maplibregl-ctrl-top-right, .track-page .maplibregl-ctrl-top-right { top: calc(var(--panel-h, 4rem) + .5rem); }
+.track-page .maplibregl-ctrl-top-right { top: calc(var(--panel-h, 4rem) + .5rem); }
 
 .tour-help-btn {
-    flex-shrink: 0; gap: .3rem; min-height: 2.55rem; background: var(--surface-2);
+    flex-shrink: 0; width: 2.55rem; height: 2.55rem; padding: 0; background: var(--surface-2);
     .msr { color: var(--route); font-variation-settings: 'FILL' 1; }
-    .tour-help-label { display: none; }
-    /* Rechner: mit Wort */
-    @media (min-width: 701px) { .tour-help-label { display: inline; } }
 }
 
 /* Anleitung als Notiz am i-Knopf (Popover): Handy volle Breite, Rechner schmal */
@@ -646,33 +643,38 @@ body.wege-page { overflow: hidden; }
 }
 body.stage-mode #map canvas { cursor: crosshair; }
 
-/* ── Vorlage im Planer: übernommener bekannter Weg (js/tour.js) ─────────── */
+/* ── Hintergrund im Planer: bekannte Wege und eigene Touren (js/tour.js) ─── */
 
 .tour-original {
     display: grid; gap: .5rem; padding: .7rem .75rem; border-radius: .9rem; background: var(--surface-2);
     &[hidden] { display: none; }
-    p { display: flex; align-items: flex-start; gap: .55rem; margin: 0; }
-    p > i { width: 1.4rem; height: .45rem; margin-top: .45rem; border-radius: 999px; flex-shrink: 0; opacity: .7; }
-    p > span { display: grid; gap: .1rem; min-width: 0; }
-    small { color: var(--muted); font-size: var(--fs-200); }
+    .muted { margin: 0; color: var(--muted); font-size: var(--fs-200); }
+    .bg-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+    .bg-list li { display: flex; align-items: center; gap: .5rem; }
+    .bg-list li > i { width: 1.4rem; height: .45rem; border-radius: 999px; flex-shrink: 0; opacity: .75; }
+    .bg-list li > span { display: grid; gap: .05rem; min-width: 0; flex: 1; }
+    .bg-list strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    small { color: var(--muted); font-size: var(--fs-100); }
+    .bg-list .button { flex-shrink: 0; font-size: var(--fs-200); background: var(--surface); }
+    .bg-list .button.primary { background: var(--route); color: #fff; }
     .tour-tools .button { background: var(--surface); }
+    .bg-search { background: var(--surface); }
+    .bg-results .muted { padding: .3rem .75rem; }
+}
 }
 
-/* ── Rechner: Panel als Seitenleiste links, Kopf darüber gleich breit ─────── */
+/* ── Planer-Panel (userDialog sheet wie Meine Touren) ───────────────────── */
 
-@media (min-width: 900px) {
-    .tour-page .tour-head { width: 26rem; right: auto; }
-    .tour-page #sheet.dialog.sheet {
-        top: calc(var(--panel-h, 4rem) + .5rem); bottom: .75rem; left: .75rem;
-        transform: none; width: 26rem;
-        height: auto !important; max-height: none !important;
-        padding-bottom: 1rem;
-        border-radius: 1rem;
-        box-shadow: var(--shadow);
-        .sheet-grip { display: none; }
-        .view { padding-top: .8rem; }
-        .sheet-head { top: 0; padding-top: .5rem; }
+.tour-panel {
+    .tour-bar {
+        grid-template-columns: auto minmax(0, 1fr) auto auto;
+        .tour-name { min-width: 0; font-weight: 600; font-size: var(--fs-400); padding: .4rem .6rem; border-radius: .7rem; background: var(--surface-2); text-align: left; }
+        .save-state { width: 2.5rem; height: 2.5rem; padding: 0; .msr { font-size: 1.4rem; } }
+        .save-label:empty { display: none; }
     }
-    /* Hinweis mittig über der freien Karte */
-    .tour-page .tour-hint { left: calc(50% + 13.4rem); top: 1rem; }
+    .sheet-head { position: sticky; top: 0; margin-inline: 0; padding: .35rem 0; }
+    .tour-more { padding-top: .25rem; border-top: 1px solid var(--line); }
 }
+body.readonly .tour-panel .save-state { width: auto; padding-inline: .8rem; gap: .3rem; }
+.tour-page .tour-hint { top: calc(.75rem + var(--safe-top)); }
+@media (min-width: 701px) { .tour-page .tour-hint { left: calc(50% + 12rem); } }

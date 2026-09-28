@@ -58,6 +58,11 @@ export const PROFILES = {
     label: 'Auto', icon: 'directions_car', costing: 'auto', nav: true,
     radius: 400, announce: { far: 500, near: 60 },
   },
+  /* Bus & Bahn: Verbindungen nach Fahrplan (departures.js, EFA), keine Navigation */
+  transit: {
+    label: 'Bus & Bahn', icon: 'directions_transit', nav: true, transit: true,
+    radius: 150, announce: { far: 80, near: 15 },
+  },
 
   /* Nur im Tourenplaner: welche Wege genommen werden, steuern die Optionen */
   hike: {

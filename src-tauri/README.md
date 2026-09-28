@@ -14,10 +14,11 @@ was Tauri zum Verpacken braucht. Nichts davon wird auf den Server geladen
 | `src/main.rs` | Startpunkt – ruft nur `wmap_lib::run()` |
 | `src/lib.rs` | App starten; unter Linux Standortabfragen von WebKitGTK erlauben |
 | `build.rs` | von Tauri vorgegeben |
-| `capabilities/default.json` | Rechte der Web-App im Fenster (nur Standard) |
-| `capabilities/mobile.json` | Handy-Apps: zusätzlich Standort über das Gerät |
+| `capabilities/default.json` | Rechte der Web-App im Fenster (nur Standard) – auch für `https://app.wuefl.de/*` |
+| `capabilities/mobile.json` | Handy-Apps: zusätzlich Standort über das Gerät – auch für die Webversion |
+| `tauri-start.js` | wechselt beim Start zur Webversion, wenn sie erreichbar ist (s. u.) |
 | `icons/` | App-Icons, erzeugt mit `cargo tauri icon ../appdata/wmap-512.png` |
-| `web-kopieren.sh` | kopiert die Web-Dateien vor jedem Build nach `web/` |
+| `web-kopieren.sh` | kopiert die Web-Dateien vor jedem Build nach `web/` und bindet `tauri-start.js` in deren `index.html` ein |
 
 Generiert, nicht in Git:
 
@@ -43,3 +44,22 @@ jeweiligen System gebaut werden.
 Die Web-App nutzt nur Browser-Schnittstellen. Wo die App mehr kann (z. B. GPS
 auf Android), fragt `../js/native.js` erst nach Tauri und nimmt sonst die
 Browser-Schnittstelle – die Webversion verliert dadurch nichts.
+
+## Oberfläche aus dem Netz, Gerät aus Tauri
+
+Die App startet mit der eingepackten Kopie (`web/`). `tauri-start.js` fragt
+dort als Erstes, ob `https://app.wuefl.de/wmap/` erreichbar ist (höchstens
+2,5 s) – dann läuft die App von dort. So kommt jede Änderung an HTML, CSS
+und JavaScript ohne neue Version im Play Store an; ein neuer Build ist nur
+nötig, wenn sich hier in `src-tauri/` etwas ändert (Rust, Plugins, Rechte,
+Icons). Ohne Netz bleibt die eingepackte Kopie, bis die App neu startet.
+
+Geräte-Funktionen kommen weiter aus Tauri: Die Webadresse steht in beiden
+`capabilities/*.json` unter `remote`, darum findet `../js/native.js` auch dort
+`window.__TAURI__` und nimmt z. B. das GPS des Handys. Weitere Plugins
+(Dateien, Dialoge …) müssen in `Cargo.toml`, `src/lib.rs` und den Rechten
+stehen – und die Webseite fragt vorher, ob es sie gibt.
+
+Achtung: Wer die Webseite ändern kann, darf damit auch alles, was die Rechte
+der App erlauben – die Rechte darum klein halten.
+

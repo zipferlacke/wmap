@@ -9,30 +9,29 @@
     <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
     <meta name="theme-color" content="#1a73e8">
     <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./libs/wuefl-libs/userDialog/userDialog.css">
     <link rel="stylesheet" href="./css/tours.css">
     <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 </head>
 
-<body class="tour-page">
-    <!-- Kopf: Zurück, Name, Speichern mit Zustand; Teilen/GPX/Löschen im Menü -->
-    <header class="tour-head panel">
-        <a class="button" data-shape="round no-background" href="./wege.html?tab=geplant" title="Zu meinen Touren">
-            <span class="msr">arrow_back</span>
-        </a>
-        <input id="tour-name" class="tour-name" type="text" placeholder="Name der Tour" aria-label="Name der Tour">
-        <button type="button" id="save" class="button save-state" data-state="new" title="Tour speichern">
-            <span class="msr">save</span> <span class="save-label">Speichern</span>
-        </button>
-    </header>
-
+<body class="wege-page tour-page">
     <main>
         <section id="map"></section>
         <p class="tour-hint" hidden></p>
 
-        <!-- Handy unten, Rechner links: Suche und Werkzeuge, Zahlen, Art, Höhenprofil, Wege, Beschreibung -->
-        <dialog id="sheet" class="dialog sheet tour-panel" aria-label="Tourdaten">
-            <button type="button" class="sheet-grip" aria-label="Höhe ändern: ziehen, doppelt tippen für ganz auf oder zu"></button>
-            <section class="view">
+        <!-- Panel wie bei Meine Touren und Entdecken (userDialog sheet): Rechner
+             links in voller Höhe, Handy unten; ziehen ändert die Größe, ganz
+             einklappen gibt die Karte frei. Kopf: ←, Name, Speichern, ✕ -->
+        <dialog id="sheet" class="userDialog wege-panel tour-panel" data-pos="left" data-pos-mobile="bottom" aria-label="Tour planen">
+            <header class="uD-header wege-bar tour-bar">
+                <a class="button uD-bar-btn" data-shape="round no-background" href="./wege.html?tab=geplant" title="Zu meinen Touren"><span class="msr">arrow_back</span></a>
+                <input id="tour-name" class="tour-name" type="text" placeholder="Name der Tour" aria-label="Name der Tour">
+                <button type="button" id="save" class="button uD-bar-btn save-state" data-shape="round" data-state="new" title="Tour speichern">
+                    <span class="msr">save</span><span class="save-label"></span>
+                </button>
+                <a class="button uD-bar-btn" data-shape="round no-background" href="./index.html" title="Schließen – zur Karte"><span class="msr">close</span></a>
+            </header>
+            <section class="view wege-content">
                 <!-- Oben: Ort suchen, Anleitung (i), Werkzeuge -->
                 <div class="tour-block tour-top edit-only">
                     <div class="tour-search-row">
@@ -40,8 +39,8 @@
                             <span class="msr">search</span>
                             <input type="search" id="tour-search" placeholder="Ort suchen und als Punkt anhängen" aria-label="Ort suchen">
                         </form>
-                        <button type="button" class="button tour-help-btn" popovertarget="tour-help" title="Anleitung: so planst du eine Tour">
-                            <span class="msr">info</span><span class="tour-help-label">Anleitung</span>
+                        <button type="button" class="button tour-help-btn" data-shape="round" popovertarget="tour-help" title="Anleitung: so planst du eine Tour">
+                            <span class="msr">info</span>
                         </button>
                     </div>
                     <ul class="tour-search-results" hidden></ul>
@@ -79,6 +78,12 @@
                     <span class="section-title">Beschreibung</span>
                     <textarea id="tour-desc" rows="3" placeholder="Worum geht es bei dieser Tour? Einkehr, Parken, Tipps …"></textarea>
                 </label>
+                <div class="tour-tools tour-more">
+                    <button type="button" class="button" data-tour="share"><span class="msr">share</span> Teilen</button>
+                    <button type="button" class="button" data-tour="gpx"><span class="msr">download</span> GPX</button>
+                    <button type="button" class="button edit-only" data-tour="publish"><span class="msr">public</span> Veröffentlichen</button>
+                    <button type="button" class="button edit-only" data-tour="delete"><span class="msr">delete</span> Löschen</button>
+                </div>
             </section>
         </dialog>
     </main>

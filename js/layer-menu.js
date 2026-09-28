@@ -1,9 +1,9 @@
 /**
  * Ebenen-Menü der Karte – Knopf mit dem Ebenen-Symbol oben rechts.
  *
- *   Grundkarte   Karte · Satellit (Sentinel-2 weltweit, in Niedersachsen, NRW
- *                und Bayern amtliche Luftbilder bis 20 cm – Straßen und
- *                Namen bleiben obenauf)
+ *   Grundkarte   Karte · Satellit (Sentinel-2 weltweit, in 12 Ländern
+ *                amtliche Luftbilder bis 20 cm – Straßen und Namen bleiben
+ *                obenauf, Häuser mit Luftbild auf dem Dach)
  *   Schwerpunkt  Wandern & Rad: große Straßen treten zurück, Wanderwege und
  *                Relief treten hervor
  *   Ebenen       Relief, Wander-, Rad- und MTB-Wege (Waymarked Trails)
@@ -18,13 +18,20 @@ import { firstRoadLayer } from './map.js';
 import { layers as ownLayers, showLayer, hideLayer } from './layers.js';
 import { wms } from './own-source.js';
 import { esc } from './geo.js';
+import { mountSatBuildings } from './sat-buildings.js';
 
 const KEY = 'wmap.layers';
 const DEFAULT = { base: 'map', focus: false, relief: true, hiking: false, cycling: false, mtb: false };
 
 const EOX = 'Satellit: <a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless von EOX</a> (Copernicus-Daten 2020)';
 
-/* Luftbilder: weltweit Sentinel-2 (10 m), darüber amtliche Luftbilder der Länder */
+/*
+ * Luftbilder: weltweit Sentinel-2 (10 m), darüber amtliche Luftbilder der
+ * Länder (20–40 cm) – alle, die offen sind und Abrufe aus dem Browser
+ * erlauben (Sachsen-Anhalt sperrt sie, Hamburg hat keinen passenden Dienst).
+ * Außerhalb ihres Landes liefern die Dienste nichts (durchsichtig), darunter
+ * scheint das nächste bzw. Sentinel-2 durch.
+ */
 const SAT = [
   { id: 'sat-s2', tiles: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg', tileSize: 256, maxzoom: 14, attribution: EOX },
   { id: 'sat-ni', tiles: wms('https://opendata.lgln.niedersachsen.de/doorman/noauth/dop_wms', 'ni_dop20'), tileSize: 512, minzoom: 11, bounds: [6.6, 51.29, 11.6, 53.9],
@@ -33,6 +40,24 @@ const SAT = [
     attribution: 'Luftbild NRW: © Geobasis NRW (dl-de/zero-2-0)' },
   { id: 'sat-by', tiles: wms('https://geoservices.bayern.de/od/wms/dop/v1/dop40', 'by_dop40c'), tileSize: 512, minzoom: 11, bounds: [8.97, 47.27, 13.84, 50.56],
     attribution: 'Luftbild Bayern: © Bayerische Vermessungsverwaltung (CC BY 4.0)' },
+  { id: 'sat-he', tiles: wms('https://www.gds-srv.hessen.de/cgi-bin/lika-services/ogc-free-images.ows', 'he_dop20_rgb'), tileSize: 512, minzoom: 11, bounds: [7.77, 49.39, 10.24, 51.66],
+    attribution: 'Luftbild Hessen: © HVBG' },
+  { id: 'sat-th', tiles: wms('https://www.geoproxy.geoportal-th.de/geoproxy/services/DOP', 'th_dop'), tileSize: 512, minzoom: 11, bounds: [9.87, 50.2, 12.66, 51.65],
+    attribution: 'Luftbild Thüringen: © GDI-Th (CC BY 4.0)' },
+  { id: 'sat-sn', tiles: wms('https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest', 'sn_dop_020'), tileSize: 512, minzoom: 11, bounds: [11.87, 50.17, 15.04, 51.69],
+    attribution: 'Luftbild Sachsen: © GeoSN (dl-de/by-2-0)' },
+  { id: 'sat-bb', tiles: wms('https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms', 'bebb_dop20c'), tileSize: 512, minzoom: 11, bounds: [11.26, 51.36, 14.77, 53.56],
+    attribution: 'Luftbild Brandenburg: © GeoBasis-DE/LGB (dl-de/by-2-0)' },
+  { id: 'sat-be', tiles: wms('https://gdi.berlin.de/services/wms/truedop_2024', 'truedop_2024'), tileSize: 512, minzoom: 11, bounds: [13.08, 52.33, 13.77, 52.68],
+    attribution: 'Luftbild Berlin: © Geoportal Berlin (dl-de/zero-2-0)' },
+  { id: 'sat-mv', tiles: wms('https://www.geodaten-mv.de/dienste/adv_dop', 'mv_dop'), tileSize: 512, minzoom: 11, bounds: [10.59, 53.11, 14.42, 54.69],
+    attribution: 'Luftbild M-V: © GeoBasis-DE/M-V' },
+  { id: 'sat-rp', tiles: wms('https://geo4.service24.rlp.de/wms/rp_dop20.fcgi', 'rp_dop20'), tileSize: 512, minzoom: 11, bounds: [6.11, 48.96, 8.51, 50.95],
+    attribution: 'Luftbild Rheinland-Pfalz: © GeoBasis-DE/LVermGeoRP (dl-de/by-2-0)' },
+  { id: 'sat-sl', tiles: wms('https://geoportal.saarland.de/freewms/dop2023', 'sl_dop20_rgb'), tileSize: 512, minzoom: 11, bounds: [6.35, 49.1, 7.41, 49.64],
+    attribution: 'Luftbild Saarland: © LVGL' },
+  { id: 'sat-bw', tiles: wms('https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DOP_20_C', 'IMAGES_DOP_20_RGB'), tileSize: 512, minzoom: 11, bounds: [7.5, 47.53, 10.5, 49.8],
+    attribution: 'Luftbild Baden-Württemberg: © LGL-BW (dl-de/by-2-0)' },
 ];
 
 const TRAILS = {
@@ -46,6 +71,7 @@ const WMT_ATTR = 'Wege: <a href="https://waymarkedtrails.org" target="_blank" re
 const BIG_ROADS = /(motorway|trunk|primary|secondary)/;
 
 export function mountLayerMenu(map, { toast = () => {} } = {}) {
+  const satBuildings = mountSatBuildings(map, { sources: SAT });
   let state = { ...DEFAULT, ...local.get(KEY, {}) };
   let shown = [];                       // eigene Ebenen auf der Karte
   let own = [];
@@ -65,10 +91,15 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
       }
       if (map.getLayer(s.id)) map.setLayoutProperty(s.id, 'visibility', sat ? 'visible' : 'none');
     }
-    // Häuser halb durchsichtig – sonst verdecken sie das Luftbild
+    // Flüsse und Bäche über das Luftbild (sonst liegen sie darunter), leicht
+    // durchscheinend – Wasserflächen bleiben darunter, das Bild zeigt sie ja
     for (const l of map.getStyle().layers) {
-      if (l.type === 'fill-extrusion') map.setPaintProperty(l.id, 'fill-extrusion-opacity', sat ? 0.55 : (l.paint?.['fill-extrusion-opacity'] ?? 1));
+      if (l['source-layer'] !== 'waterway' || l.type !== 'line') continue;
+      if (sat) map.moveLayer(l.id, firstRoadLayer(map)); else if (map.getLayer('water')) map.moveLayer(l.id, 'water');
+      map.setPaintProperty(l.id, 'line-opacity', sat ? 0.75 : 1);
     }
+    // Häuser: graue Wände, das Luftbild auf dem Dach (sat-buildings.js)
+    satBuildings.set(sat);
     document.body.classList.toggle('base-sat', sat);
   }
 
@@ -91,9 +122,12 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
         ? ['interpolate', ['linear'], ['zoom'], 5, 0.8, 14, 0.7, 16, 0.45, 17.5, 0.25]
         : ['interpolate', ['linear'], ['zoom'], 5, 0.6, 12, 0.55, 14.5, 0.4, 16, 0.25, 17.5, 0.1]);
     }
+    // Auf dem Luftbild alle Straßen etwas zurückgenommen, im Schwerpunkt
+    // „Wandern & Rad“ die großen noch mehr
+    const sat = state.base === 'sat' ? 0.7 : 1;
     for (const l of map.getStyle().layers) {
-      if (l.type !== 'line' || l['source-layer'] !== 'transportation' || !BIG_ROADS.test(l.id)) continue;
-      map.setPaintProperty(l.id, 'line-opacity', state.focus ? 0.4 : 1);
+      if (l.type !== 'line' || l['source-layer'] !== 'transportation') continue;
+      map.setPaintProperty(l.id, 'line-opacity', (state.focus && BIG_ROADS.test(l.id) ? 0.4 : 1) * sat);
     }
     document.body.classList.toggle('focus-outdoor', state.focus);
   }
@@ -162,7 +196,7 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
 
   box.addEventListener('click', async (e) => {
     const base = e.target.closest('[data-base]')?.dataset.base;
-    if (base) { state.base = base; save(); applyBase(); paint(); return; }
+    if (base) { state.base = base; save(); applyBase(); applyFocus(); paint(); return; }
     const act = e.target.closest('[data-l]')?.dataset.l;
     if (act === 'close') toggle(false);
   });

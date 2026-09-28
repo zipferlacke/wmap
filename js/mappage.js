@@ -6,6 +6,7 @@
  *   ←  oben links   Liste: zurück zur Übersicht (Dashboard)
  *                   Detail: zurück zur Liste
  *   ✕  oben rechts  Schließen – zurück zur Karte
+ *   Ebenen          Knopf oben rechts wie auf der Hauptkarte (Satellit …)
  *   Griff           über die ganze Kante: ziehen ändert die Größe, weiter
  *                   als das Minimum klappt ein; antippen klappt ein/aus
  *
@@ -13,6 +14,7 @@
  * Panel nur ein.
  */
 import { sheet } from '../libs/wuefl-libs/userDialog/userDialog.js';
+import { mountLayerMenu } from './layer-menu.js';
 
 const HOME = './dashboard.html';
 const MAP = './index.html';
@@ -27,6 +29,8 @@ export function mapPage(panel, { map, onFit = () => {}, key = 'wmap.panel' } = {
 
   // Für die Konsole und Tests, wie auf der Hauptkarte
   window.__wmap = { map };
+  // Ebenen wie auf der Hauptkarte: Satellit, Wanderwege, Plugins
+  mountLayerMenu(map, { toast: (text) => { const el = document.querySelector('#toast'); if (el) el.textContent = text; } });
 
   // Nach dem Ziehen den Kartenausschnitt an den freien Platz anpassen
   let fitTimer = null;

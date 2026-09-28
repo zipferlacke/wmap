@@ -1,13 +1,13 @@
 /**
- * Navigation für Seiten ohne Karte (Übersicht, Plugins): am Rechner eine
- * Leiste links, am Handy unten – wie bei einer App. Kartenseiten haben statt
- * dessen das Menü oben rechts (appnav.js).
+ * Hauptnavigation: am Rechner eine Leiste links, am Handy unten – wie bei
+ * einer App. Auf der Übersicht, den Plugins, den Einstellungen und der Karte
+ * (dort dazu das Menü oben rechts, appnav.js). Reihenfolge: Karte zuerst.
  */
 import './theme.js';
 
 const ITEMS = [
-  { href: './dashboard.html', icon: 'dashboard', label: 'Übersicht', match: /dashboard\.html$/ },
   { href: './index.html', icon: 'map', label: 'Karte', match: /\/(index\.html)?$/ },
+  { href: './dashboard.html', icon: 'dashboard', label: 'Übersicht', match: /dashboard\.html$/ },
   { href: './wege.html?tab=geplant', icon: 'route', label: 'Touren', match: /wege\.html$/ },
   { href: './entdecken.html', icon: 'explore', label: 'Entdecken', match: /entdecken\.html$/ },
   { href: './plugins.html', icon: 'extension', label: 'Plugins', match: /plugins\.html$/ },
