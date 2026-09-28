@@ -116,6 +116,34 @@
         font: inherit;
         text-align: left;
     }
+    /* Knöpfe untereinander, volle Breite – z. B. beim Teilen */
+    &.stacked .confirm-actions {
+        flex-direction: column;
+        align-items: stretch;
+        .button { justify-content: center; }
+    }
+}
+
+/* Teilen: was verschickt wird */
+.share-preview {
+    display: grid;
+    gap: .35rem;
+    padding: .6rem .75rem;
+    border-radius: .6rem;
+    background: var(--surface-2);
+    font-size: var(--fs-200);
+    p { color: inherit; white-space: pre-line; }
+    .share-url { color: var(--route); overflow-wrap: anywhere; }
+}
+textarea.share-link {
+    width: 100%;
+    padding: .6rem .75rem;
+    border: 1px solid var(--line);
+    border-radius: .6rem;
+    background: var(--surface-2);
+    color: inherit;
+    font: inherit;
+    resize: none;
 }
 
 /* ── Ort: Bild, Kurzbeschreibung, Öffnungszeiten, Links, Preise ───────────── */

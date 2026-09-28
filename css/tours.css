@@ -177,8 +177,6 @@ body.readonly .save-state { background: var(--route); color: #fff; }
     }
 }
 
-#share-link { width: 100%; text-align: left; }
-
 /* Geteilte Tour: nur ansehen */
 body.readonly {
     .edit-only { display: none !important; }

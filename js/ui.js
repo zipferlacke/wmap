@@ -4,16 +4,18 @@
  *   const v = await ask({ icon: 'wifi_off', title: '…', text: '…',
  *     buttons: [{ value: 'no', label: 'Nein' }, { value: 'yes', label: 'Ja', primary: true }] });
  *
- * → Wert des gedrückten Knopfs, null bei Esc. Mit `read(dlg)` liefert der
+ * → Wert des gedrückten Knopfs, null bei Esc. `className` kommt zu
+ *   „dialog confirm“ dazu (z. B. „stacked“: Knöpfe untereinander).
+ * Mit `read(dlg)` liefert der
  *   Hauptknopf (primary) stattdessen dessen Ergebnis – z. B. ein Eingabefeld;
  *   Enter im Feld drückt den Hauptknopf.
  */
 import { esc } from './geo.js';
 
-export function ask({ icon = 'help', title, text = '', html = '', buttons, read = null }) {
+export function ask({ icon = 'help', title, text = '', html = '', buttons, read = null, className = '' }) {
   return new Promise((resolve) => {
     const dlg = document.createElement('dialog');
-    dlg.className = 'dialog confirm';
+    dlg.className = `dialog confirm ${className}`.trim();
     dlg.innerHTML = `
       <h2><span class="msr">${esc(icon)}</span> ${esc(title)}</h2>
       ${text ? `<p>${esc(text)}</p>` : ''}${html}

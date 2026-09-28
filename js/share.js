@@ -6,8 +6,8 @@
  *   ?anfrage=Name                  „Name möchte wissen, wo du bist“ – wer den
  *                                  Link öffnet, schickt seinen Standort zurück
  *
- * Geteilt wird über das Teilen-Menü des Geräts; wo es das nicht gibt, landet
- * der Link in der Zwischenablage.
+ * Beim Teilen fragt ein Dialog: Teilen-Menü des Geräts (wo es das gibt), Text
+ * mit Link kopieren oder nur den Link kopieren.
  */
 import { packJson, unpackJson, local } from './store.js';
 import { ask } from './ui.js';
@@ -46,27 +46,47 @@ export async function readRoute(code) {
 export const requestUrl = (name) => `${base()}?anfrage=${encodeURIComponent(name)}`;
 
 /**
- * Über das Teilen-Menü des Geräts, sonst Zwischenablage.
- * `url` darf eine Funktion sein (auch async) – Fehler dabei landen als Hinweis.
- * → 'shared' | 'copied' | null
+ * Teilen-Dialog: Teilen-Menü des Geräts, Text mit Link kopieren oder nur den
+ * Link kopieren. `url` darf eine Funktion sein (auch async) – Fehler dabei
+ * landen als Hinweis. → 'shared' | 'copied' | null
  */
-export async function share({ title, text, url: make }, toast) {
+export async function share({ title, text = '', url: make }, toast) {
   let url;
   try { url = typeof make === 'function' ? await make() : make; } catch (err) { toast?.(err.message); return null; }
-  if (navigator.share) {
+  const full = text ? `${text}\n${url}` : url;
+  const system = !!navigator.share;
+  const choice = await ask({
+    icon: 'share', title, className: 'stacked',
+    html: `<div class="share-preview">${text ? `<p>${esc(text)}</p>` : ''}<span class="share-url">${esc(url)}</span></div>`,
+    buttons: [
+      ...(system ? [{ value: 'share', label: 'Teilen …', icon: 'share', primary: true }] : []),
+      ...(text ? [{ value: 'text', label: 'Text mit Link kopieren', icon: 'content_copy', primary: !system }] : []),
+      { value: 'link', label: 'Nur Link kopieren', icon: 'link', primary: !system && !text },
+      { value: 'no', label: 'Abbrechen' },
+    ],
+  });
+  if (choice === 'share') {
     try { await navigator.share({ title, text, url }); return 'shared'; } catch (err) {
       if (err.name === 'AbortError') return null;             // selbst abgebrochen
+      return copy(full, 'Text mit Link kopiert', title, toast);
     }
   }
+  if (choice === 'text') return copy(full, 'Text mit Link kopiert', title, toast);
+  if (choice === 'link') return copy(url, 'Link kopiert', title, toast);
+  return null;
+}
+
+/** In die Zwischenablage – geht das nicht, zum Markieren und selbst Kopieren. */
+async function copy(value, done, title, toast) {
   try {
-    await navigator.clipboard.writeText(text ? `${text}\n${url}` : url);
-    toast?.('Link kopiert – jetzt einfügen und senden');
-    return 'copied';
+    await navigator.clipboard.writeText(value);
+    toast?.(`${done} – jetzt einfügen und senden`);
   } catch {
-    await ask({ icon: 'link', title, html: `<input class="share-link" type="text" readonly value="${esc(url)}" onfocus="this.select()">`,
+    await ask({ icon: 'content_copy', title, text: 'Kopieren ging nicht – bitte selbst markieren und kopieren:',
+      html: `<textarea class="share-link" readonly rows="${Math.min(6, value.split('\n').length + 2)}" onfocus="this.select()">${esc(value)}</textarea>`,
       buttons: [{ value: 'ok', label: 'Fertig', primary: true }] });
-    return 'copied';
   }
+  return 'copied';
 }
 
 /** Eigener Name für Anfragen – einmal fragen, dann merken. */

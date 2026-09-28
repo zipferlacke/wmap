@@ -23,6 +23,7 @@ import { tours, shapeOf, coordsOf, encodeShare, decodeShare, toGpx, download, lo
 import { sheet as sidePanel } from '../libs/wuefl-libs/userDialog/userDialog.js';
 import { mountLayerMenu } from './layer-menu.js';
 import { ask, toast } from './ui.js';
+import { share } from './share.js';
 import * as geocode from './geocode.js';
 import { distance, nearestOnLine, pointAt, simplifyTo, bbox, cumulative, fmtDistance, fmtDuration, esc } from './geo.js';
 import { setupStages } from './tour-stages.js';
@@ -838,30 +839,12 @@ descInput.addEventListener('input', () => {
 });
 
 /* Teilen: Link trägt die Tour selbst */
-const shareDialog = $('#share-dialog');
 async function shareTour() {
   if (tour.points.length < 2) { toast('Erst eine Strecke planen'); return; }
-  const code = await encodeShare({ ...tour, name: tour.name || nameInput.value || 'Tour' });
-  const url = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}tour.html#t=${code}`;
-  if (navigator.share && matchMedia('(pointer: coarse)').matches) {
-    try { await navigator.share({ title: tour.name, text: `Tour: ${tour.name}`, url }); return; } catch { /* dann Dialog */ }
-  }
-  $('#share-link').value = url;
-  shareDialog.showModal();
-  $('#share-link').select();
+  const name = tour.name || nameInput.value || 'Tour';
+  const code = await encodeShare({ ...tour, name });
+  share({ title: 'Tour teilen', text: `Tour: ${name}`, url: `${location.origin}${location.pathname.replace(/[^/]*$/, '')}tour.html#t=${code}` }, toast);
 }
-shareDialog.addEventListener('click', async (e) => {
-  const b = e.target.closest('button[value]');
-  if (!b) return;
-  if (b.value === 'copy') {
-    try { await navigator.clipboard.writeText($('#share-link').value); toast('Link kopiert'); } catch {
-      $('#share-link').select();
-      document.execCommand?.('copy');
-      toast('Link markiert – bitte kopieren');
-    }
-  }
-  shareDialog.close();
-});
 
 /* GPX mit Höhen */
 function exportGpx() {
