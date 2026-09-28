@@ -573,8 +573,7 @@ WMap/Gemerkt.json
 Lesezeichen (saved.js): je Eintrag gewinnt das Neuere, Gelöschtes steht ein
 Jahr lang in `deleted`, damit es nicht von einem anderen Gerät zurückkommt.
 
-Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene. Dateien der
-früheren Ordnung (`Touren/`, `Wege/<Jahr>/`) zieht der nächste Abgleich um.
+Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene.
 
 - Zu finden in Einstellungen → Daten, Meine Touren (unten) und Übersicht.
 - **Abgleich** beim Öffnen einer Seite, nach jeder Aufzeichnung und nach dem
@@ -759,6 +758,31 @@ takeshots wmap --eigener-server # ohne Docker
 
 - Kein Build-Schritt: ES-Module direkt im Browser, UI-Bausteine aus
   `libs/wuefl-libs` (Verweis aufs Nachbarprojekt, nicht in Git).
+- **Aufbau der Kartenseite** (`index.html`): `js/app.js` ist nur der Einstieg
+  (Startansicht, Menü, Aufruf per Link). Die Teile liegen in `js/app/`:
+
+  | Modul | Was |
+  |---|---|
+  | `core.js` | Karte, Zustand, Hilfen (Einpassen, Marker, Chips) – hängt von keinem anderen Teil ab |
+  | `views.js` | Bottom-Sheet mit Zurück-Stapel |
+  | `search.js` | Suchfeld, Vorschläge, Zuletzt genutzt, Merken |
+  | `place.js` | Ort im Sheet, Punkt auf der Karte, Verkehrsmeldung |
+  | `category.js` | Kategorien und Trefferlisten |
+  | `reach.js` | Erreichbarkeit |
+  | `route-plan.js` | Wegpunkte, Profil, Abfahrt ab / Ankunft bis |
+  | `route-results.js` | Routen berechnen und zeigen, Bus & Bahn im Sheet |
+  | `traffic-along.js` | Verkehrslage und „Entlang der Route“ |
+  | `stops.js` | Haltestellen: Abfahrten, Steige, Fahrt im Detail |
+  | `map-clicks.js` | Klicks und langes Drücken, Ebenen-Menü, Tastatur |
+  | `nav.js` | Navigation, Bild in Bild, Offline, Suche unterwegs |
+  | `report.js` | Fragen und Melden unterwegs |
+  | `mitmachen.js` | Mitmachen bei OpenStreetMap |
+
+  Die Teile rufen sich gegenseitig über Funktionen auf. Was ein Teil an
+  Zustand besitzt, ändern andere nur über seine Funktionen (z. B.
+  `removePlaceMarker()`, `resetStop()`, `cancelSuggestions()`).
+  Oberste Ebene eines Teils: nur `core.js` benutzen – sonst kann beim Laden
+  ein Wert eines anderen Teils noch fehlen.
 - Fremde Bibliotheken liegen fest versioniert in `libs/` und stehen in Git –
   kein CDN, damit Web, App und Offline-Cache dasselbe laden:
   MapLibre GL JS (`libs/maplibre-gl/`) und Apache ECharts für das Höhenprofil
