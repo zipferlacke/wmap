@@ -117,17 +117,12 @@ export function signalBefore(extras, at, within = 30) {
   return (extras?.signals ?? []).some((s) => s <= at + 5 && s >= at - within);
 }
 
-/** Gegenverkehr an der Stelle? */
-export function twoWayAt(extras, at) {
-  return (extras?.twoWay ?? []).some(([a, b]) => at >= a && at <= b);
-}
-
 /* ── Fahrspuren zum Einzeichnen ───────────────────────────────────────────── */
 
-export const LANE_WIDTH = 3.2;       // Meter – typische Spurbreite innerorts
+const LANE_WIDTH = 3.2;       // Meter – typische Spurbreite innerorts
 
 /** Symbol je Spurpfeil (OSRM-Angabe → Name der Icon-Schrift) */
-export const LANE_GLYPH = {
+const LANE_GLYPH = {
   left: 'turn_left', 'slight left': 'turn_slight_left', 'sharp left': 'turn_sharp_left',
   right: 'turn_right', 'slight right': 'turn_slight_right', 'sharp right': 'turn_sharp_right',
   straight: 'straight', uturn: 'u_turn_left', 'merge to left': 'merge', 'merge to right': 'merge', none: 'straight',

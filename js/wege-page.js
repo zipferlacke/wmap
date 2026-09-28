@@ -31,7 +31,7 @@ import { legBadge, changesText, transitLegsHtml } from './transit-legs.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 
-export const GROUP = {
+const GROUP = {
   foot: { label: 'Zu Fuß', icon: 'directions_walk', color: '#e8590c' },
   bike: { label: 'Rad', icon: 'directions_bike', color: '#2f9e44' },
   car: { label: 'Auto', icon: 'directions_car', color: '#1a73e8' },

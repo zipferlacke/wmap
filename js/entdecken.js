@@ -42,9 +42,6 @@ const { map } = createMap('map', { auto3d: false, center: view?.center ?? [10.2,
 const ready = new Promise((r) => (map.loaded() ? r() : map.once('load', r)));
 const page = mapPage(panel, { map });
 
-// Alte Links auf den Reiter „Plugins“ führen zur eigenen Seite
-if (location.hash === '#plugins') location.replace('./plugins.html');
-addEventListener('hashchange', () => { if (location.hash === '#plugins') location.replace('./plugins.html'); });
 let tab = ['wege', 'andere'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'wege';
 let kind = local.get('wmap.entdecken.kind', 'hike');
 let ctl = null;

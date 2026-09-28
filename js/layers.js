@@ -34,7 +34,7 @@ export const RAMP = ['#313695', '#4575b4', '#74add1', '#abd9e9', '#fee090', '#fd
 /* ── GeoJSON lesen ────────────────────────────────────────────────────────── */
 
 /** Text → FeatureCollection (auch einzelnes Feature oder Geometrie). */
-export function readGeoJson(text) {
+function readGeoJson(text) {
   let o;
   try { o = JSON.parse(text); } catch { throw new Error('Das ist kein gültiges GeoJSON (JSON-Fehler)'); }
   if (o?.type === 'FeatureCollection') o = { type: 'FeatureCollection', features: o.features ?? [] };
@@ -155,20 +155,8 @@ export function showLayer(map, layer, { before } = {}) {
     } }, before);
 }
 
-/** Deckkraft einer Ebene sofort auf der Karte ändern (Wert steht in layer.opacity) */
-export function applyOpacity(map, layer) {
-  const { fill, line, point, raster } = ids(layer.id);
-  const o = layer.opacity ?? (layer.raster ? 0.7 : 1);
-  const set = (id, prop, v) => { if (map.getLayer(id)) map.setPaintProperty(id, prop, v); };
-  set(raster, 'raster-opacity', o);
-  set(fill, 'fill-opacity', 0.35 * o);
-  set(line, 'line-opacity', o);
-  set(point, 'circle-opacity', o);
-  set(point, 'circle-stroke-opacity', o);
-}
-
 /** Adress-Anfang einer Kachel-Vorlage – bis zum ersten Platzhalter oder Parameter */
-export const prefixOf = (tiles) => tiles.split(/[{?]/)[0];
+const prefixOf = (tiles) => tiles.split(/[{?]/)[0];
 
 /** Benutzer + Passwort → Wert für „Authorization“ */
 export const basicAuth = (user, pass) => `Basic ${btoa(unescape(encodeURIComponent(`${user}:${pass}`)))}`;

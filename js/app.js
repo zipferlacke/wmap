@@ -2722,9 +2722,6 @@ async function fromUrl() {
       recording.choose();
     } else if (p.get('action') === 'fly') {
       map.once('idle', () => fly.start());
-    } else if (p.get('action') === 'settings') {
-      // Alte Links: Einstellungen sind jetzt eine eigene Seite
-      location.replace('./settings.html');
     } else if (p.get('action') === 'reach') {
       openReach();
     } else if (p.get('action') === 'survey') {

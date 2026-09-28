@@ -40,7 +40,7 @@ function voiceScore(v) {
   return s;
 }
 
-export const speech = {
+const speech = {
   muted: (() => { try { return localStorage.getItem('wmap.muted') === '1'; } catch { return false; } })(),
   voice: null,
 

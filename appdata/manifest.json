@@ -166,7 +166,7 @@
         {
             "name": "Meine Touren",
             "short_name": "Touren",
-            "url": "../tours.html",
+            "url": "../wege.html?tab=geplant",
             "icons": [
                 {
                     "src": "./wmap-192.png",

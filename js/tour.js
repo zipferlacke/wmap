@@ -69,9 +69,6 @@ if (shareCode) {
   if (!tour) toast('Tour nicht gefunden – hier geht es mit einer neuen los');
 }
 tour ??= { id: null, name: '', description: '', profile: local.get('wmap.tourProfile', 'hike'), points: [] };
-// Früher ein einzelner Weg in tour.original
-if (tour.original && !tour.backgrounds) tour.backgrounds = [{ type: 'way', ...tour.original }];
-delete tour.original;
 tour.backgrounds ??= [];
 if (!TOUR_PROFILES.includes(tour.profile)) tour.profile = 'hike';
 

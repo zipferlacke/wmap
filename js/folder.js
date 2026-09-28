@@ -8,8 +8,7 @@
  *   WMap/Abgeschlossen/2026/2026-09-27 Radtour am Samstagnachmittag.gpx  gefahren/gelaufen
  *   WMap/Gemerkt.json   Verbindungen mit Bus & Bahn, Zuhause/Arbeit, Lesezeichen
  *
- * Heißt der verbundene Ordner selbst „WMap“, entfällt die Ebene. Dateien der
- * früheren Ordnung (Touren/, Wege/<Jahr>/) zieht der nächste Abgleich um.
+ * Heißt der verbundene Ordner selbst „WMap“, entfällt die Ebene.
  * Dieselbe Ordnung hat die Sicherung als ZIP (zipBackup).
  *
  * GPX-Dateien von woanders (Garmin, Komoot-Export …) dürfen irgendwo im
@@ -36,7 +35,7 @@ const kv = store('kv');
 const KEY = 'folder';
 const DELETED = 'wmap.folder.deleted';   // in WMap gelöscht, Datei noch löschen
 
-export const folderSupported = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+const folderSupported = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 
 let conf = null;          // { id, handle, name, index: { pfad: { id, at } }, last, result }
 let syncing = null;
@@ -140,14 +139,6 @@ async function run(interactive) {
       continue;
     }
     seen.add(id);
-    // Frühere Ordnung (Touren/, Wege/<Jahr>/): an den neuen Platz umziehen
-    if (OLD_LAYOUT.test(f.path)) {
-      const path = freePath(pathOf(mine.kind, mine.item, base), new Set(Object.keys(next)), files);
-      next[path] = { id, at: await writeFile(c.handle, path, gpxOf(mine)), rev: rev(mine.item) };
-      await removeFile(c.handle, f.path);
-      out.moved = (out.moved ?? 0) + 1;
-      continue;
-    }
     // Geändert heißt: seit dem letzten Abgleich – Datei an ihrer Zeit, WMap an „updated“.
     // So stören abweichende Uhren (Handy ↔ Rechner) nicht; nur wenn beide geändert sind, zählt die Zeit.
     const known = index[f.path]?.id === id ? index[f.path] : null;
@@ -191,7 +182,6 @@ async function run(interactive) {
   const merged = mergeSaved(savedText);
   if (merged.changed) await writeFile(c.handle, savedPath, merged.text);
 
-  if (out.moved) await dropEmptyOld(c.handle);
   c.index = next;
   c.last = Date.now();
   c.result = out;
@@ -246,17 +236,6 @@ async function writeFile(root, path, text) {
   return (await fh.getFile()).lastModified;
 }
 
-/** Leere Ordner der früheren Ordnung wegräumen (volle bleiben – removeEntry scheitert dann) */
-async function dropEmptyOld(root) {
-  for (const top of ['Wege', 'Touren']) {
-    try {
-      const dir = await root.getDirectoryHandle(top);
-      for await (const [name, h] of dir.entries()) if (h.kind === 'directory') await dir.removeEntry(name).catch(() => {});
-      await root.removeEntry(top);
-    } catch { /* nicht da oder nicht leer */ }
-  }
-}
-
 async function removeFile(root, path) {
   try {
     const [dir, name] = await dirOf(root, path, false);
@@ -269,9 +248,8 @@ async function removeFile(root, path) {
 const clean = (s) => String(s || '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 80) || 'ohne Namen';
 const day = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
-const OLD_LAYOUT = /^(Wege|Touren)\//;
-const TOUR_DIR = /(^|\/)(Geplant|Touren)\//;
-const TRACK_DIR = /(^|\/)(Abgeschlossen|Wege)\//;
+const TOUR_DIR = /(^|\/)Geplant\//;
+const TRACK_DIR = /(^|\/)Abgeschlossen\//;
 
 /** Ordner „WMap“ im verbundenen Ordner – außer er heißt schon so */
 const baseOf = (handle) => (/^wmap$/i.test(handle?.name ?? '') ? '' : 'WMap/');
@@ -298,7 +276,7 @@ function gpxOf({ kind, item }) {
 }
 
 /**
- * Datei → Weg oder Tour. Unter Wege/ immer ein Weg, unter Touren/ eine Tour,
+ * Datei → Weg oder Tour. Unter Abgeschlossen/ immer ein Weg, unter Geplant/ eine Tour,
  * sonst: mit Zeitstempeln ein Weg. → { id, rev } oder null
  */
 async function importFile(f, id, before = null) {
@@ -376,7 +354,7 @@ addEventListener('wmap:data', (e) => {
  * Was es schon gibt (gleiche WMap-ID oder gleicher Weg), bleibt einmal.
  * → { imported, skipped }
  */
-export async function importLoose(fileList) {
+async function importLoose(fileList) {
   const known = new Set([...(await tracks.all()).map((t) => t.id), ...tours.all().map((t) => t.id)]);
   const all = await tracks.all();
   const out = { imported: 0, skipped: 0 };
@@ -433,7 +411,7 @@ export async function restoreZip(file) {
 }
 
 /** Alle Wege und Touren als GPX-Dateien teilen – am Handy z. B. „In Proton Drive speichern“. */
-export async function shareAll() {
+async function shareAll() {
   const files = [
     ...(await tracks.all()).map((t) => new File([trackGpx(t)], pathOf('track', t).split('/').pop(), { type: 'application/gpx+xml' })),
     ...tours.all().map((t) => new File([gpxOf({ kind: 'tour', item: t })], pathOf('tour', t).split('/').pop(), { type: 'application/gpx+xml' })),
@@ -444,7 +422,7 @@ export async function shareAll() {
   return files.length;
 }
 
-export const canShareFiles = () => typeof navigator !== 'undefined' && !!navigator.canShare?.({ files: [new File([''], 'a.gpx', { type: 'application/gpx+xml' })] });
+const canShareFiles = () => typeof navigator !== 'undefined' && !!navigator.canShare?.({ files: [new File([''], 'a.gpx', { type: 'application/gpx+xml' })] });
 
 /* ── Baustein für Einstellungen, Meine Wege, Touren ───────────────────────── */
 
@@ -453,7 +431,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 
 function summary(r) {
   if (!r) return '';
-  const parts = [r.imported && `${r.imported} übernommen`, r.written && `${r.written} gespeichert`, r.moved && `${r.moved} in den Ordner „WMap“ umgezogen`, r.removed && `${r.removed} gelöscht`].filter(Boolean);
+  const parts = [r.imported && `${r.imported} übernommen`, r.written && `${r.written} gespeichert`, r.removed && `${r.removed} gelöscht`].filter(Boolean);
   return parts.length ? parts.join(', ') : 'alles aktuell';
 }
 

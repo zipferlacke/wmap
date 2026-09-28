@@ -2,7 +2,7 @@
  * Wem WMap seine Daten und Dienste verdankt – für „Über WMap“ in den
  * Einstellungen und das Danke-Banner unten im Dashboard.
  */
-export const CREDITS = [
+const CREDITS = [
   { what: 'Kartendaten', name: 'OpenStreetMap-Mitwirkende', url: 'https://www.openstreetmap.org/copyright', note: 'ODbL' },
   { what: 'Kartenkacheln', name: 'OpenFreeMap', url: 'https://openfreemap.org' },
   { what: 'Kartenschema', name: 'OpenMapTiles', url: 'https://openmaptiles.org' },

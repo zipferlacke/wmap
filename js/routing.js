@@ -152,7 +152,7 @@ function similar(a, b) {
  * Mehrere Abschnitte (bei Zwischenzielen) werden zu einer Linie verbunden;
  * die Indizes der Manöver werden dabei auf die gemeinsame Linie umgerechnet.
  */
-export function parseTrip(trip) {
+function parseTrip(trip) {
   const coords = [];
   const maneuvers = [];
   const elevation = [];

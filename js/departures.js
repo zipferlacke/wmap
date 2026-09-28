@@ -126,7 +126,7 @@ const TURN = {
 const TRAINS = new Set([0, 1, 13, 14, 15, 16, 18]);
 
 /** Farbe je Verkehrsmittel (EFA-Produktklasse) – Abzeichen und Linie auf der Karte */
-export function modeColor(cls) {
+function modeColor(cls) {
   if ([14, 15, 16].includes(cls)) return '#e03131';          // Fernzug
   if ([0, 13, 18].includes(cls)) return '#495057';           // Regionalzug
   if (cls === 1) return '#2f9e44';                           // S-Bahn

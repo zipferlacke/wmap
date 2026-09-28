@@ -16,7 +16,7 @@ import { local } from './store.js';
 import { account } from './osm-api.js';
 
 const KEY = 'wmap.osmStats';
-export const STAT_KINDS = ['frage', 'bearbeitet', 'neu'];
+const STAT_KINDS = ['frage', 'bearbeitet', 'neu'];
 
 const empty = () => Object.fromEntries(STAT_KINDS.map((k) => [k, { karte: 0, hinweis: 0 }]));
 

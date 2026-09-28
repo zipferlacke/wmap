@@ -135,7 +135,7 @@ function elementXml(el, changeset) {
  * edit = { osm: { type, id }, set: { k: v }, expect: { k: alterWert|null } }
  * → { changes: [element], applied: [edit], conflicts: [edit] }
  */
-export function applyEdits(elements, edits) {
+function applyEdits(elements, edits) {
   const byKey = new Map(elements.map((e) => [`${e.type}/${e.id}`, { ...e, tags: { ...(e.tags ?? {}) } }]));
   const touched = new Set();
   const applied = [], conflicts = [];

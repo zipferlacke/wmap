@@ -675,14 +675,6 @@ body {
     }
     a { color: var(--route); }
 
-    .popup-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: .35rem;
-        margin-top: .25rem;
-        .button { font-size: var(--fs-100); height: 2rem; padding-inline: .7rem; }
-    }
-
     &.context {
         gap: 0;
         button {
@@ -1094,14 +1086,6 @@ body.navigating {
         dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; line-height: 1.3; }
         .unknown dd { color: var(--muted); font-weight: 400; font-style: italic; }
     }
-    .poi-web {
-        display: inline-flex;
-        align-items: center;
-        gap: .3rem;
-        color: var(--route);
-        font-size: var(--fs-200);
-        .msr { font-size: 1.1rem; }
-    }
     &.compact .poi-facts { grid-template-columns: 1fr 1fr; }
 }
 
@@ -1117,29 +1101,8 @@ body.navigating {
 }
 
 /* Popup: die Karte ohne das Grau der MapLibre-Vorgabe */
-.poi-popup .maplibregl-popup-content {
-    padding: .85rem .85rem .75rem;
-    border-radius: 1rem;
-    box-shadow: 0 4px 20px rgb(0 0 0 / .22);
-}
-.poi-popup .maplibregl-popup-close-button {
-    font-size: 1.25rem;
-    width: 1.8rem;
-    height: 1.8rem;
-    border-radius: 50%;
-    right: .3rem;
-    top: .3rem;
-}
 .popup .poi-card .poi-facts > div { background: var(--surface-2); }
 .popup .poi-card :is(small, dt, .unknown dd) { color: var(--muted); }
-.popup .popup-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .4rem;
-    margin-top: .6rem;
-    .button { height: 2.2rem; font-size: var(--fs-200); padding-inline: .85rem; }
-    .button:not(.primary) { background: var(--surface-2); color: var(--clr-neutral-900); --clr-primary-100: var(--clr-neutral-200); }
-}
 
 /* ── Erreichbarkeit ───────────────────────────────────────────────────────── */
 
@@ -1497,29 +1460,6 @@ body.navigating {
 .survey-empty .spin { animation: spin 1s linear infinite; vertical-align: middle; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Abfahrten am Bahnhof ─────────────────────────────────────────────────── */
-
-.departures {
-    display: grid;
-    gap: .35rem;
-    h4 { display: flex; align-items: center; gap: .3rem; color: var(--muted); font-size: var(--fs-100); font-weight: 600; .msr { font-size: 1rem; } }
-    ul { list-style: none; margin: 0; padding: 0; display: grid; }
-    li {
-        display: grid;
-        grid-template-columns: 4.2rem 4.8rem 1fr auto;
-        align-items: baseline;
-        gap: .4rem;
-        padding: .3rem 0;
-        border-bottom: 1px solid var(--line, rgb(0 0 0 / .08));
-        font-size: var(--fs-200);
-    }
-    .dep-time { font-weight: 600; font-variant-numeric: tabular-nums; em { font-style: normal; color: var(--clr-warning, #b8860b); &.late { color: var(--clr-danger-600); } } }
-    .dep-train { color: var(--route); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .dep-dest { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .dep-platform { color: var(--muted); white-space: nowrap; &.changed { color: var(--clr-danger-600); font-weight: 600; } }
-    li.cancelled { .dep-time, .dep-train { text-decoration: line-through; } .dep-dest { color: var(--clr-danger-600); } }
-}
-
 /* ── Kurze Frage (wie bei Google) ─────────────────────────────────────────── */
 
 .quick-ask {
@@ -1649,12 +1589,6 @@ body.recording #search-here, body.navigating .rec { display: none !important; }
 
 /* Android-App im Bild in Bild (MainActivity.kt setzt html.pip-mode): nur die
    Karte und die Anweisung – Knöpfe sind im Mini-Fenster nicht zu treffen */
-.pip-mode {
-    #search, #sheet, .appnav, .maplibregl-ctrl-top-right, .maplibregl-ctrl-bottom-left,
-    .nav-side, .nav-bar, .nav-lanes, .nav-then, .nav-speed, .nav-gps, #toast { display: none !important; }
-    #nav .nav-top { margin: 0; width: 100%; }
-    #nav .nav-banner { border-radius: 0; padding: .4rem .6rem; font-size: .8em; }
-}
 
 /* Eigenschaften eines Objekts (eigene Ebenen) */
 .prop-table {
@@ -1678,7 +1612,6 @@ body.recording #search-here, body.navigating .rec { display: none !important; }
     .folder-note { color: var(--muted); }
 }
 .wege-tools .wege-folder { flex-basis: 100%; }
-.tours-folder { margin: 0 0 .75rem; }
 .appnav-menu hr { border: 0; border-top: 1px solid var(--line); margin: .3rem .4rem; }
 .appnav-menu { max-height: calc(100dvh - 5rem); overflow-y: auto; }
 
@@ -1799,19 +1732,6 @@ body.flying :is(#search, #sheet, .appnav, .maplibregl-ctrl-top-right, .maplibreg
     span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     &:hover { background: color-mix(in srgb, var(--c) 12%, var(--surface-2)); }
     &[aria-pressed="true"] { background: var(--c); color: #fff; font-weight: 600; .msr { color: #fff; } }
-}
-/* Linien dieses Steigs aus dem Fahrplan: Linie → Ziel, nächste Abfahrt */
-.dep-lines {
-    gap: .3rem;
-    li { display: grid; }
-    .transit-dir {
-        display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: .5rem;
-        > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        small { color: var(--muted); font-variant-numeric: tabular-nums; }
-        &[aria-pressed="true"] small { color: #fff; }
-        .transit-badge { min-width: 2.6rem; justify-content: center; }
-        &[aria-pressed="true"] .transit-badge { background: #fff; color: var(--c); }
-    }
 }
 /* Umschalter: nur dieser Steig ↔ alle Linien der Haltestelle */
 .transit-scope { justify-self: start; display: inline-flex; align-items: center; gap: .25rem; font-size: var(--fs-200); .msr { font-size: 1.1rem; } }

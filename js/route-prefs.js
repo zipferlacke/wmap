@@ -16,14 +16,14 @@ import { local } from './store.js';
 const KEY = 'wmap.routePrefs';
 
 /** Verkehrsmittel-Gruppen → Produktklassen der EFA */
-export const MODES = {
+const MODES = {
   long: { label: 'Fernzüge (ICE, IC)', icon: 'train', classes: [14, 15, 16] },
   regional: { label: 'Regionalzug, S-Bahn', icon: 'directions_railway', classes: [0, 1, 13, 18] },
   urban: { label: 'U-Bahn, Tram', icon: 'tram', classes: [2, 3, 4, 8] },
   bus: { label: 'Bus', icon: 'directions_bus', classes: [5, 6, 7, 10, 17, 19] },
 };
 const ALWAYS = [9, 11];                 // Schiff, Sonstige
-export const CHANGE_TIMES = [2, 5, 10, 15, 20];
+const CHANGE_TIMES = [2, 5, 10, 15, 20];
 
 const DEFAULTS = {
   highways: true, tolls: true, ferries: true, unpaved: true,
@@ -32,8 +32,6 @@ const DEFAULTS = {
 };
 
 const saved = local.get(KEY, {}) ?? {};
-// Frühere Einstellung „Autobahnen erlauben“ übernehmen
-if (saved.highways === undefined && local.get('wmap.highways', true) === false) saved.highways = false;
 export const prefs = { ...DEFAULTS, ...saved, modes: { ...DEFAULTS.modes, ...(saved.modes ?? {}) } };
 
 const save = () => local.set(KEY, prefs);

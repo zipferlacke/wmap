@@ -149,8 +149,7 @@ export async function decodeShare(code) {
   return {
     name: o.n ?? 'Geteilte Tour', description: o.d ?? '', profile: o.p ?? 'hike', points: decodePolyline(o.w, 5),
     ...(o.s ? { fixed: true, shape: o.s } : {}),
-    // Früher ein einzelner Weg [id, kind, name], jetzt eine Liste davon
-    ...(o.o ? { backgrounds: (Array.isArray(o.o[0]) ? o.o : [o.o]).map(([id, kind, name]) => ({ type: 'way', id, kind, name: name ?? '' })) } : {}),
+    ...(o.o ? { backgrounds: o.o.map(([id, kind, name]) => ({ type: 'way', id, kind, name: name ?? '' })) } : {}),
   };
 }
 

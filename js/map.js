@@ -231,16 +231,6 @@ function askCellular() {
   });
 }
 
-/** Datensparmodus schalten: Schummerung weg, Gelände aus, Karte flach. */
-export function setDataSaver(map, on) {
-  local.set('wmap.datasaver', !!on);
-  applyDataSaver(map);
-  if (on) {
-    map.setTerrain(null);
-    if (map.getPitch() > 0) map.easeTo({ pitch: 0, duration: 600 });
-  }
-}
-
 function applyDataSaver(map) {
   if (map.getLayer('hillshade')) map.setLayoutProperty('hillshade', 'visibility', dataSaver() ? 'none' : 'visible');
 }

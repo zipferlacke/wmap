@@ -388,7 +388,7 @@ Zweiter Hauptbildschirm (`dashboard.html`), ohne Karte, mit Navigationsleiste.
 
 ## 10. Meine Touren: Geplant, Aufgezeichnet, Bus & Bahn
 
-Eine Seite, drei Reiter (`wege.html`; `tours.html` leitet hierher). Der
+Eine Seite, drei Reiter (`wege.html`). Der
 dritte, **Bus & Bahn** (`?tab=bahn`), zeigt gemerkte Verbindungen: kommende
 oben, **vergangene zugeklappt** darunter; im Detail alle Abschnitte zum
 Aufklappen, auf der Karte jede Fahrt in ihrer Farbe; Knöpfe Neu suchen,
@@ -475,8 +475,7 @@ Ticket bei der Bahn, Löschen. Die ersten zwei:
 
 ## 13. Entdecken
 
-`entdecken.html` – zwei Reiter; Plugins haben eine eigene Seite (`#plugins`
-leitet dorthin).
+`entdecken.html` – zwei Reiter; Plugins haben eine eigene Seite (`plugins.html`).
 
 **Wege** (Wander-, Rad-, MTB-Routen aus OpenStreetMap)
 
@@ -667,7 +666,7 @@ früheren Ordnung (`Touren/`, `Wege/<Jahr>/`) zieht der nächste Abgleich um.
 ## 19. Einstellungen
 
 `settings.html` – eigene Seite ohne Karte (Menü der Karte → Einstellungen,
-Kachel in der Übersicht; `index.html?action=settings` leitet dorthin).
+Kachel in der Übersicht).
 Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 
 - **Darstellung:** hell oder dunkel – wie das System (Standard), Hell, Dunkel.

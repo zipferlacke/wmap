@@ -2,9 +2,9 @@
  * Die Datenbank im Browser (IndexedDB) – für alles, was für localStorage zu
  * groß ist: aufgezeichnete Wege (tracks.js) und eigene Ebenen (layers.js).
  *
- *   v1  tracks   { id, start, … }
- *   v2  layers   { id, name, data (GeoJSON), … }
- *   v3  kv       { id, … } – Einzelnes, z. B. der verbundene Ordner (folder.js)
+ *   tracks   { id, start, … }
+ *   layers   { id, name, data (GeoJSON), … }
+ *   kv       { id, … } – Einzelnes, z. B. der verbundene Ordner (folder.js)
  */
 const NAME = 'wmap';
 const VERSION = 3;

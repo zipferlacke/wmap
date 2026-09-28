@@ -55,7 +55,7 @@ const TOLERANCE = { car: 8, bike: 4 };           // Meter; sonst 3
  * Rohpunkte [[lon, lat, ms], …] → Weg (oder null, wenn zu kurz).
  * Stehzeiten zählen nicht zur Bewegungszeit.
  */
-export function buildTrack(points, { kind, profile, name, from = '', to = '' }) {
+function buildTrack(points, { kind, profile, name, from = '', to = '' }) {
   if (points.length < 2) return null;
   let length = 0, moving = 0, top = 0;
   for (let i = 1; i < points.length; i += 1) {
@@ -95,7 +95,7 @@ const MAX_ACCURACY_M = 35;
  * Nimmt Standortmeldungen auf. Der laufende Stand liegt zusätzlich im
  * localStorage – nach Neuladen oder Absturz geht es dort weiter.
  */
-export class Recorder {
+class Recorder {
   #live = null;
   #unsaved = 0;
   onChange = null;
@@ -240,7 +240,7 @@ export async function restore(text) {
 /* ── Auswertung ───────────────────────────────────────────────────────────── */
 
 /** Importierte Wege ohne Angabe: am Tempo erkennen, womit man unterwegs war. */
-export function guessProfile(t) {
+function guessProfile(t) {
   const v = t.moving ? t.length / t.moving : 0;
   return { ...t, profile: v > 9 ? 'car' : v > 3.2 ? 'bike' : 'foot' };
 }
@@ -249,18 +249,3 @@ export function guessProfile(t) {
 export const sameTrack = (a, b) => Math.abs(a.start - b.start) < 5000 && Math.abs(a.length - b.length) <= Math.max(50, a.length * 0.02);
 
 export const PROFILE_GROUP = { car: 'car', drive: 'car', bike: 'bike', road: 'bike', tour: 'bike', gravel: 'bike', mtb: 'bike', foot: 'foot', walk: 'foot', hike: 'foot' };
-
-/** Summen je Jahr: { 2026: { n, length, moving, by: { car: m, bike: m, foot: m } } } */
-export function yearStats(list) {
-  const out = {};
-  for (const t of list) {
-    const y = new Date(t.start).getFullYear();
-    const s = (out[y] ??= { n: 0, length: 0, moving: 0, by: {} });
-    s.n += 1;
-    s.length += t.length;
-    s.moving += t.moving;
-    const g = PROFILE_GROUP[t.profile] ?? 'foot';
-    s.by[g] = (s.by[g] ?? 0) + t.length;
-  }
-  return out;
-}

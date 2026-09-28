@@ -143,7 +143,7 @@ export function parseWeek(oh) {
   return week.every((x) => x === null) ? null : week;
 }
 
-export function openState(oh, now = new Date()) {
+function openState(oh, now = new Date()) {
   if (!oh) return null;
   if (oh.trim() === '24/7') return { open: true, always: true };
   const week = parseWeek(oh);
@@ -158,7 +158,7 @@ export function openState(oh, now = new Date()) {
   return { open: false, next: next ? fmtMin(next[0]) : null };
 }
 
-export function statusText(state) {
+function statusText(state) {
   if (!state) return null;
   if (state.always) return 'Rund um die Uhr geöffnet';
   if (state.open) return `Jetzt geöffnet · bis ${state.until}`;

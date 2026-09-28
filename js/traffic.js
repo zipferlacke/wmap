@@ -27,7 +27,7 @@ async function service(road, svc, signal) {
 }
 
 /** Welche Autobahnen befährt die Route? „A 7“, „A7“ → „A7“ */
-export function autobahnenOf(route) {
+function autobahnenOf(route) {
   const roads = new Set();
   for (const m of route.maneuvers ?? []) {
     for (const n of [...(m.street_names ?? []), ...(m.begin_street_names ?? [])]) {

@@ -4,73 +4,6 @@
 
 /* ── Liste ────────────────────────────────────────────────────────────────── */
 
-body.tours-page {
-    overflow: auto;
-    height: auto;
-    min-height: 100%;
-}
-
-.tours-head {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    display: flex;
-    align-items: center;
-    gap: .75rem;
-    padding: calc(.75rem + var(--safe-top)) 1rem .75rem;
-    background: var(--surface);
-    box-shadow: 0 1px 0 var(--line);
-
-    h1 { flex: 1; font-size: var(--fs-600); }
-    .appnav { position: static; }
-}
-
-.tour-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
-    gap: 1rem;
-    max-width: 72rem;
-    margin: 0 auto;
-    padding: 1rem;
-}
-
-.tour-card {
-    display: grid;
-    overflow: hidden;
-    border-radius: 1rem;
-    background: var(--surface);
-    box-shadow: var(--shadow);
-
-    .tour-thumb {
-        display: block;
-        width: 100%;
-        aspect-ratio: 16 / 10;
-        object-fit: cover;
-        background: linear-gradient(135deg, #e7eef5, #eef3e6);
-    }
-    .tour-thumb.empty { display: grid; place-items: center; color: var(--muted); .msr { font-size: 3rem; } }
-
-    .tour-body { display: grid; gap: .4rem; padding: .75rem 1rem 1rem; }
-    h2 { font-size: var(--fs-400); line-height: 1.3; a { color: inherit; } }
-    .tour-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: .25rem .9rem;
-        color: var(--muted);
-        font-size: var(--fs-200);
-        span { display: inline-flex; align-items: center; gap: .2rem; }
-        .msr { font-size: 1.05rem; }
-    }
-    .tour-text {
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        font-size: var(--fs-200);
-    }
-    .tour-actions { display: flex; justify-content: flex-end; gap: .25rem; margin-top: .25rem; }
-}
-
 .tour-empty {
     grid-column: 1 / -1;
     display: grid;
@@ -136,7 +69,6 @@ body.readonly .save-state { background: var(--route); color: #fff; }
 }
 
 /* Kartenknöpfe unter den Kopf */
-.track-page .maplibregl-ctrl-top-right { top: calc(var(--panel-h, 4rem) + .5rem); }
 
 .tour-help-btn {
     flex-shrink: 0; width: 2.55rem; height: 2.55rem; padding: 0; background: var(--surface-2);
@@ -256,11 +188,6 @@ body.readonly {
 
 /* ── Reiter: Geplant / Meine Wege ─────────────────────────────────────────── */
 
-.tours-head {
-    .rec-icon { color: var(--clr-danger-500); font-variation-settings: 'FILL' 1; }
-    @media (max-width: 500px) { .lbl { display: none; } }
-}
-
 .tours-tabs {
     position: sticky;
     top: calc(3.9rem + var(--safe-top));
@@ -293,61 +220,6 @@ body.readonly {
     padding: 1rem;
 }
 
-.wege-years:empty { display: none; }
-.wege-years .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; }
-
-.wege-summary {
-    display: grid;
-    gap: .6rem;
-    .wege-totals {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: .5rem;
-        padding: .9rem .5rem;
-        border-radius: 1rem;
-        background: var(--surface);
-        box-shadow: var(--shadow);
-        text-align: center;
-        div { display: grid; }
-        strong { font-size: var(--fs-600); }
-        small { color: var(--muted); font-size: var(--fs-200); }
-    }
-    .wege-groups {
-        display: flex; flex-wrap: wrap; gap: .4rem .8rem; justify-content: center;
-        color: var(--muted); font-size: var(--fs-200);
-        > span { display: inline-flex; align-items: center; gap: .25rem; }
-        .msr { color: var(--c); font-size: 1.15rem; }
-    }
-}
-
-.wege-map-wrap {
-    overflow: hidden;
-    border-radius: 1rem;
-    box-shadow: var(--shadow);
-}
-.wege-map { height: min(45vh, 26rem); }
-.wege-map-bar {
-    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem .8rem;
-    padding: .5rem .75rem;
-    background: var(--surface);
-    font-size: var(--fs-200);
-    .wege-color { display: inline-flex; align-items: center; gap: .35rem; color: var(--muted); }
-    .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; }
-    .wege-legend { display: flex; flex-wrap: wrap; gap: .2rem .7rem; color: var(--muted); }
-    .wege-legend span { display: inline-flex; align-items: center; gap: .3rem; }
-    .wege-legend i { width: 1rem; height: .3rem; border-radius: 999px; display: inline-block; }
-}
-
-.wege-list {
-    display: grid;
-    gap: .5rem;
-}
-.wege-month {
-    margin-top: .75rem;
-    font-size: var(--fs-300);
-    color: var(--muted);
-    text-transform: capitalize;
-}
 .weg {
     display: grid;
     grid-template-columns: 5.5rem 1fr;
@@ -362,11 +234,8 @@ body.readonly {
     transition: transform .15s;
 
     &:hover, &.hover { transform: translateX(3px); outline: 2px solid color-mix(in srgb, var(--route) 40%, transparent); }
-    .weg-thumb { width: 5.5rem; height: 4.1rem; border-radius: .6rem; background: linear-gradient(135deg, #e7eef5, #eef3e6); }
-    .weg-body { display: grid; gap: .1rem; min-width: 0; }
     strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     small { color: var(--muted); font-size: var(--fs-200); }
-    .weg-meta { display: inline-flex; align-items: center; gap: .3rem; font-size: var(--fs-200); .msr { font-size: 1.1rem; } }
 }
 
 .wege-tools {
@@ -377,26 +246,6 @@ body.readonly {
     border-top: 1px solid var(--line);
     > .button { flex: 1 1 12rem; justify-content: center; cursor: pointer; }
     .muted { flex-basis: 100%; color: var(--muted); font-size: var(--fs-200); }
-}
-
-/* ── Ein Weg ──────────────────────────────────────────────────────────────── */
-
-.track-page {
-    .track-when { line-height: 1.5; .msr { vertical-align: -.25rem; } .muted { color: var(--muted); font-size: var(--fs-200); } }
-    .track-legend {
-        display: flex; align-items: center; gap: .5rem;
-        color: var(--muted); font-size: var(--fs-200);
-        i { flex: 0 1 8rem; height: .45rem; border-radius: 999px; background: linear-gradient(90deg, hsl(25 80% 48%), hsl(80 80% 44%), hsl(135 80% 40%)); }
-        .track-top { margin-left: auto; }
-    }
-}
-
-.tour-saved {
-    color: var(--clr-success-700);
-    font-size: var(--fs-100);
-    opacity: 0;
-    transition: opacity .3s;
-    &.show { opacity: 1; }
 }
 
 /* ── Geplant: Leiste, bekannte Touren ─────────────────────────────────────── */
@@ -414,23 +263,10 @@ body.readonly {
     background: var(--surface);
     box-shadow: var(--shadow);
     @media (min-width: 62rem) { margin-inline: auto; }
-    .known-head { display: flex; align-items: center; justify-content: space-between; }
     h2 { display: flex; align-items: center; gap: .4rem; font-size: var(--fs-500); .msr { color: var(--route); } }
     .muted { color: var(--muted); font-size: var(--fs-200); }
     .known-kinds .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; }
     .known-status .spin { animation: spin 1s linear infinite; vertical-align: -.25rem; }
-    .known-list { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
-    .known-item {
-        display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .7rem;
-        width: 100%; padding: .55rem .6rem;
-        border: 0; border-radius: .7rem;
-        background: var(--surface-2);
-        color: inherit; font: inherit; text-align: left; cursor: pointer;
-        > .msr:first-child { color: var(--route); }
-        &:hover { background: color-mix(in srgb, var(--route) 10%, var(--surface-2)); }
-        &.loading .known-go { animation: spin 1s linear infinite; }
-    }
-    .known-text { display: grid; min-width: 0; strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } small { color: var(--muted); font-size: var(--fs-100); } }
 }
 
 /* ── Eigene Ebenen ────────────────────────────────────────────────────────── */
@@ -547,7 +383,6 @@ body.wege-page { overflow: hidden; }
 
 .ent-tabs { position: static; padding: 0; margin: 0 -.25rem .5rem; box-shadow: 0 1px 0 var(--line); background: none; a { padding: .5rem .6rem; font-size: var(--fs-200); } }
 .ent-tabs[hidden], .ent-tabs a[hidden] { display: none; }
-.ent-row { display: flex; flex-wrap: wrap; gap: .5rem; .button { background: var(--surface-2); } }
 /* Wegzeichen von Waymarked Trails (SVG) */
 .wmt-symbol { width: 1.6rem; height: 1.6rem; object-fit: contain; vertical-align: middle; }
 .ent-mark { display: flex; align-items: center; gap: .6rem; .wmt-symbol { width: 2.4rem; height: 2.4rem; flex-shrink: 0; } }
@@ -558,7 +393,6 @@ body.wege-page { overflow: hidden; }
     .msr { font-size: 1.1rem; color: var(--route); }
 }
 .ent-stars { color: #f59f00; letter-spacing: .05em; white-space: nowrap; font-size: 1rem; }
-.known-item .ent-stars { font-size: .85rem; }
 .ent-rate {
     display: grid; gap: .5rem; padding: .75rem; border-radius: .8rem; background: var(--surface-2);
     textarea { width: 100%; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--surface); color: inherit; font: inherit; text-align: left; }
@@ -571,7 +405,6 @@ body.wege-page { overflow: hidden; }
     small { color: var(--muted); margin-left: .4rem; }
     p { margin: .2rem 0 0; }
 }
-.plugin-list { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }
 .plugin {
     display: grid; gap: .4rem; padding: .75rem; border-radius: .8rem; background: var(--surface-2);
     > div:first-child { display: grid; strong { display: flex; align-items: center; gap: .3rem; } small { color: var(--muted); font-size: var(--fs-100); } }
@@ -660,7 +493,6 @@ body.stage-mode #map canvas { cursor: crosshair; }
     .tour-tools .button { background: var(--surface); }
     .bg-search { background: var(--surface); }
     .bg-results .muted { padding: .3rem .75rem; }
-}
 }
 
 /* ── Planer-Panel (userDialog sheet wie Meine Touren) ───────────────────── */

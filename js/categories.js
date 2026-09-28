@@ -150,7 +150,7 @@ export const routeCategories = (profile) => CATEGORIES.filter((c) => c.route?.in
 
 /* ── Abgleich ─────────────────────────────────────────────────────────────── */
 
-export const normalize = (s) => String(s ?? '').toLowerCase()
+const normalize = (s) => String(s ?? '').toLowerCase()
   .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
   .replace(/[^a-z0-9+\- ]/g, ' ').replace(/-/g, '').replace(/\s+/g, ' ').trim();
 

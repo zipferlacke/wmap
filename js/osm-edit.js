@@ -16,7 +16,7 @@ import { countOsm } from './osm-stats.js';
 import { esc } from './geo.js';
 
 /** Arten zum Eintragen – Unternehmen und Veranstaltungsorte */
-export const PLACE_TYPES = [
+const PLACE_TYPES = [
   ['shop', 'Laden', { shop: 'yes' }],
   ['cafe', 'Café', { amenity: 'cafe' }],
   ['restaurant', 'Restaurant', { amenity: 'restaurant' }],

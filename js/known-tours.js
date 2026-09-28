@@ -51,7 +51,7 @@ async function wmt(kind, path, signal) {
 }
 
 /** Bild des Wegzeichens (SVG von Waymarked Trails) */
-export const wmtSymbol = (kind, symbolId) => `https://${WMT_HOST[kind]}.waymarkedtrails.org/api/v1/symbols/id/${encodeURIComponent(symbolId)}.svg`;
+const wmtSymbol = (kind, symbolId) => `https://${WMT_HOST[kind]}.waymarkedtrails.org/api/v1/symbols/id/${encodeURIComponent(symbolId)}.svg`;
 
 /**
  * Wege genau an einer Stelle – für das Antippen der farbigen Linien.
