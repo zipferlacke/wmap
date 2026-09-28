@@ -281,7 +281,25 @@ alle Spuren mit Pfeilen; die richtigen sind hervorgehoben.
 **Sonstiges:** Der Bildschirm bleibt an (Wake Lock). Vor dem Start wird auf
 Wunsch die Karte entlang der Route offline gespeichert. In der Navigation
 nutzt das Gelände gröbere Höhendaten (siehe [7](#7-3d-gelände-und-höhen)).
-Zum Testen: `?sim` fährt die Route simuliert ab, `?tempo=4` im Zeitraffer.
+
+**Simulation zum Testen** (am Schreibtisch, ohne GPS): `sim` an die Adresse
+hängen, Route planen, auf „Los“ tippen – ein simulierter Standort fährt die
+Route ab, mit Ansagen, Umleitung und allem.
+
+```
+index.html?from=Göttingen&to=Kassel&profile=car&sim           Auto, echtes Tempo
+index.html?from=9.9338,51.5374&to=9.95,51.54&profile=bike&sim&tempo=5
+index.html?sim=verfahren&from=…&to=…                          biegt einmal falsch ab (neu berechnen)
+index.html?sim=rauschen&from=…&to=…                           wackliges GPS (± 8 m, Ausreißer)
+```
+
+- Tempo: zu Fuß 5,4 km/h, Rad 18 km/h, Auto so schnell wie erlaubt (höchstens
+  120 km/h); `tempo=2` … `10` als Zeitraffer.
+- Ohne `from`/`to` geht es auch: mit `?sim` öffnen und die Route wie sonst
+  planen. Startet die Route bei „Mein Standort“, fragt der Browser trotzdem
+  einmal nach dem Standort.
+- Simulierte Fahrten werden nicht aufgezeichnet und nicht als Spur gemerkt.
+- In der App gibt es keine Adresszeile – dort am Rechner im Browser testen.
 
 ## 6. Ebenen: Satellit, Wandern & Rad, Plugins
 
@@ -688,6 +706,19 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
   wird er gelöscht; reicht der Platz vorher nicht, weicht zuerst die
   **älteste** Navigation. Schon vorhandene Kacheln werden übernommen statt
   neu geladen. Höhendaten nicht – ohne Netz bleibt die Karte darum flach.
+- **Offline-Karten** (`offline.html`, Kachel in der Übersicht, Link in den
+  Einstellungen): Gebiete als Rechteck (zwei Ecken ziehen) oder freie Form
+  (Punkte tippen) aufs Gerät laden. Vorher steht die Größe da – geschätzt
+  aus einer Stichprobe echter Kacheln, in der Stadt sind sie viel größer als
+  auf dem Land. Detail „Alles“ (bis Zoom 14) oder „Übersicht“ (bis 11), auf
+  Wunsch das Gelände bis Zoom 13 für Schummerung und 3D; höchstens 60 000
+  Kacheln je Gebiet. Jedes Gebiet hat einen eigenen Cache
+  `wmap-area-<id>-<Zeit>` und bleibt, bis man es löscht. In der Liste:
+  hinzoomen, **Neu laden** (in einen neuen Cache, der alte bleibt bis zum
+  Ende nutzbar), **Weiter laden** nach Abbruch, umbenennen, löschen. Die
+  Kacheln von OpenFreeMap liegen dort ohne Version im Pfad – OpenFreeMap
+  baut die Karte wöchentlich neu, das Gebiet passt trotzdem
+  (`sw.js`, `js/data/offline-areas.js`).
 - Suche, Routing und Overpass gehen nur mit Netz.
 
 ## 21. Was wo gespeichert wird
@@ -700,6 +731,7 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 | Verbundener Ordner | IndexedDB / kv | nein |
 | Aktive Erweiterungen | IndexedDB / kv „extensions“ | nein (der Code kommt vom Anbieter) |
 | Gemerkte Verbindungen, Zuhause/Arbeit, Lesezeichen | localStorage `wmap.saved` | nur per Ordner (`Gemerkt.json`) |
+| Offline-Gebiete | localStorage `wmap.areas`, Kacheln im Cache `wmap-area-…` | nein |
 | Verlauf, Einstellungen, Ansicht | localStorage `wmap.*` | nein |
 | Veröffentlichte Touren, Bewertungen, Plugins | Server (SQLite) | ja, gewollt |
 
@@ -717,6 +749,7 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 | `?sim`, `?tempo=4` | Navigation simulieren |
 | `wege.html?tab=geplant`, `?tour=ID`, `?id=ID` | Meine Touren |
 | `entdecken.html#wege\|andere`, `?view=lon,lat,zoom` | Entdecken |
+| `offline.html?neu` | Offline-Karten: gleich ein neues Gebiet wählen |
 | `plugins.html?f=layer\|extension\|own\|active`, `?id=…` | Plugins |
 
 ## Werkzeuge
@@ -816,4 +849,28 @@ takeshots wmap --eigener-server # ohne Docker
   nicht opendata-oepnv.de), Autobahn GmbH, Tankerkönig, Geologie BGR
   (GÜK250) und Macrostrat. Die Danksagung im Dashboard kommt aus
   `js/core/credits.js`.
-- Änderungen stehen in `appdata/messages.json` (erscheinen in der App).
+- **`appdata/messages.json`** – was die App den Nutzern sagt (`js/ui/news.js`):
+
+  ```json
+  {
+    "welcome": ["Absatz", "…"],
+    "minVersion": "1.0.0",
+    "messages": [
+      { "id": "wartung-okt", "title": "Wartung", "text": ["Absatz", "…"],
+        "icon": "construction", "from": "2026-10-01", "until": "2026-10-05" }
+    ],
+    "changelog": [{ "version": "1.0.0", "date": "2026-09-28", "changes": ["…"] }]
+  }
+  ```
+
+  | Feld | Wirkung |
+  |---|---|
+  | `welcome` | Dialog beim allerersten Start |
+  | `changelog` | nach einem Update: alle Versionen seit der zuletzt gesehenen bis zur laufenden; in der Übersicht über die Versionsnummer alles. Oberster Eintrag = neueste Version – daraus macht `git-release` den Tag und GitHub den Release-Text |
+  | `messages` | Nachrichten als Dialog, jede einmal (gemerkt über `id`); `from`/`until` (Datum) optional, `text` HTML erlaubt |
+  | `minVersion` | ist die laufende Version älter: Banner „Aktualisieren“ auf jeder Seite – verwirft die gespeicherten App-Dateien und lädt neu (in der App wieder von der Webversion) |
+
+  Die Dialoge kommen nur beim normalen Start der Karte, nicht wenn ein Link
+  etwas öffnet – dann beim nächsten Mal (so auch nicht auf den Screenshots).
+  Gemerkt wird in localStorage `wmap.seen`. Zum Ausprobieren:
+  `localStorage.setItem('wmap.seen', '{"version":"0.9.0","messages":[]}')`.

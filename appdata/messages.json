@@ -1,160 +1,30 @@
 {
     "welcome": [
-        "<b>WMap</b> ist eine Karte für unterwegs: 3D-Gelände und Gebäude, eine Suche, die Tippfehler verzeiht, und Routen für Fuß, Rad und Auto – alles auf Basis offener Daten.",
-        "Suche einen Ort, eine Adresse oder einfach „Parkplatz“, „Bäckerei“ oder „Fluss“ – oder tippe auf <span class=\"msr\">directions</span> und plane deine Route."
+        "<b>WMap</b> ist eine Karte für unterwegs: suchen, Routen planen, navigieren, Touren planen und aufzeichnen – zu Fuß, mit dem Rad, dem Auto und mit Bus &amp; Bahn.",
+        "Alles beruht auf offenen Daten von OpenStreetMap. Du brauchst kein Konto, und deine Wege bleiben auf deinem Gerät.",
+        "Tippe oben einen Ort, eine Adresse oder einfach „Bäckerei“ ein – oder auf <span class=\"msr\">directions</span>, um eine Route zu planen."
     ],
-    "minVersion": "0.1.0",
+    "minVersion": "1.0.0",
+    "messages": [],
     "changelog": [
         {
-            "version": "0.8.0",
-            "date": "2026-09-27",
+            "version": "1.0.0",
+            "date": "2026-09-28",
             "changes": [
-                "Tourplaner verständlich: Anleitung, Ortssuche, beschriftete Werkzeuge, Speichern zeigt „✓ Gespeichert“",
-                "Bekannte Touren: Wander- und Radwege aus OpenStreetMap finden und mit Originalverlauf übernehmen; GPX-Touren importieren",
-                "Lange Touren: Fernwanderungen und mehrtägige Radtouren lassen sich mit wenigen Punkten planen",
-                "Meine Wege nach Jahren eingefärbt – alle übereinander auf einer Karte",
-                "Eigene Ebenen: GeoJSON (z. B. Messwerte) laden, nach Wert einfärben, Werte antippen – auch auf der Hauptkarte",
-                "Navigation: ein Knopf zum Folgen (blau) statt zwei, der Pfeil bleibt auf der Straße, nach dem Beenden ist die Route weg, kein (i) mehr im Weg",
-                "Ordner verbinden: Wege und Touren als GPX in einem Ordner, den Nextcloud, Proton Drive oder Google Drive abgleicht (Chrome, Edge)",
-                "Entdecken: alle Wege im Kartenausschnitt als Tabelle, gruppiert nach dem Gesamtweg mit seinen Etappen; Touren anderer mit Sternen – wer veröffentlicht, ist sofort für alle zu sehen",
-                "Plugins als eigene Seite wie ein App-Store: Kartenebenen, Erweiterungen (JavaScript) und eigene Ebenen aus Datei, Ordner oder Adresse – antippen, groß ansehen, aktivieren",
-                "Neue Übersicht mit Kacheln, Offline-Karten und letzten Routen zum Löschen und einem Dank an alle Anbieter; Seiten ohne Karte haben eine Leiste links (Handy: unten)",
-                "Meine Touren und Entdecken: Seitenleiste zum Ziehen – breiter, schmaler oder ganz eingeklappt; Zurück oben links, Schließen führt zur Karte",
-                "Ebenen-Menü: Satellit (in Niedersachsen, NRW und Bayern amtliche Luftbilder), Schwerpunkt Wandern & Rad, Wanderwege, eigene Quellen auch mit Passwort",
-                "Fliegen: mit der Maus umsehen, mit W dorthin fliegen, wohin die Bildmitte zeigt; kräftigeres Relief",
-                "Hell oder dunkel: Karte und App folgen dem Modus des Geräts – oder fest in den Einstellungen → Darstellung",
-                "Geologie als fertige Plugins: Geologie und Gesteinsarten Deutschland (BGR, GÜK250) und Geologie weltweit (Macrostrat)",
-                "Navigation mehr von oben und näher dran – Häuser verdecken die Straße nicht mehr",
-                "Kartenknöpfe größer, Menüknopf in derselben Form; Erreichbarkeit nur noch über die Suche",
-                "Einstellungen als eigene Seite; Version und Impressum stehen jetzt unten in der Übersicht",
-                "Entdecken: farbige Wege direkt antippen – der Weg öffnet sich in unter einer Sekunde, mit Wegzeichen und Start und Ziel",
-                "Vorgeladene Navigationskarten bleiben 10 Tage; wird der Platz knapp, weicht zuerst die älteste",
-                "Seitenleiste: nach dem Größeändern lässt sich die Karte wieder ziehen (GNOME Web, Safari)",
-                "Geologie antippen: Gesteinsart bzw. Erdzeitalter an dieser Stelle, dazu die Legende",
-                "Haltestellen antippen: Linien an genau diesem Steig (oder alle der Haltestelle), eine Linie antippen zeigt ihren Weg ab hier; dazu Abfahrten nach Fahrplan mit Echtzeit",
-                "Bild in Bild: Die Android-App geht in der Navigation beim Rauswischen von selbst ins Mini-Fenster – mit der ganzen Karte; im Browser wandert die Karte mit",
-                "Entdecken: gewählter Weg kräftig hervorgehoben, Vorschau beim Überfahren der Liste; lückenhafte Wege (z. B. Karstwanderweg) öffnen im Planer durchgehend",
-                "Planer: lange Touren in Tagesetappen teilen – von Hand oder alle X km – und als Tagestouren speichern",
-                "Verbundener Ordner: WMap/Geplant und WMap/Abgeschlossen/Jahr; Sicherung als ZIP mit derselben Ordnung",
-                "Ebenen: Deckkraft in den Plugin-Einstellungen; was eine Ebene über einen Ort weiß, steht jetzt beim langen Drücken; im Ebenen-Menü nur noch „Verwalten“",
-                "Planer: Wege aus Entdecken liegen als Vorlage im Hintergrund – genau wie in OpenStreetMap; selbst planen (zwischen Punkten auf der Vorlage folgt die Strecke genau dem Weg) oder mit einem Klick übernehmen",
-                "Plugin-Seite auf dem Handy nicht mehr breiter als der Bildschirm",
-                "Eigenes Logo: eine gefaltete Karte mit dem W als Weg, Start und Ziel",
-                "Planer am Rechner als Seitenleiste links; Suche ganz oben, Anleitung als Notiz am i",
-                "Entdecken: Suche nach Namen in rund einer Sekunde – was im Ausschnitt passt, steht sofort oben",
-                "Navigation (Karte, Übersicht, Touren …) auch auf der Karte; Dialoge am Rechner links statt unten mittig",
-                "Planer wie die anderen Seiten: Panel einklappbar, Speichern als Symbol; mehrere Wege und eigene Touren als Hintergrund, zwei Punkte auf dem Weg folgen ihm genau",
-                "Rundwege lassen sich wieder übernehmen (vorher lagen nur Start und Ziel übereinander)",
-                "Ebenen-Knopf mit Satellit auch in Entdecken, Meine Touren und im Planer",
-                "Ampeln auf der Karte ab Zoom 15",
-                "Satellit: Häuser mit grauen Wänden und dem Luftbild auf dem Dach statt halb durchsichtig",
-                "Satellit: amtliche Luftbilder jetzt für 12 Länder; Flüsse über dem Bild, Straßen etwas zurückgenommen",
-                "Karte hält weniger alte Kacheln im Speicher",
-                "Bus & Bahn in der Routenplanung: Verbindungen nach Fahrplan mit Umstiegen, Steigen und dem echten Verlauf",
-                "Routenplanung: Autobahn, Maut, Fähren, unbefestigte Wege hinter dem Filter-Knopf; bei Bus & Bahn Verkehrsmittel (auch ICE/IC an oder aus), Umsteigezeit und „schnellste auch zeigen“",
-                "Bus & Bahn: jeder Abschnitt in Linienfarbe, antippen zeigt Halte mit Zeiten bzw. den Fußweg; Verbindungen merken (Meine Touren → Bus & Bahn), Ticket bei der Bahn",
-                "Haltestellen: sofort die Linien und Abfahrten dieser Straßenseite, Linienverlauf mit Zeiten in Sekundenbruchteilen; Haltestellen merken",
-                "Orte merken als Zuhause, Arbeit oder Lesezeichen – ganz oben in Suche und Routenplanung, mit dem Ordner abgeglichen",
-                "OpenStreetMap: Orte bearbeiten und Unternehmen oder Veranstaltungsorte eintragen",
-                "Weniger Last auf Overpass beim Verschieben der Karte; Hessen-Luftbild in allen Zoomstufen"
-            ]
-        },
-        {
-            "version": "0.7.0",
-            "date": "2026-09-27",
-            "changes": [
-                "Teilen per Link: Orte, Routen, „Hier bin ich“ und in der Navigation die Ankunftszeit – ohne Server",
-                "Standort anfragen: Link schicken, der andere tippt drauf und sendet seinen Standort zurück",
-                "Bild in Bild: die nächste Anweisung in einem kleinen Fenster über anderen Apps (Chrome, Edge, neue Firefox, Safari)",
-                "Fragen zu Öffnungszeiten: „Gibt es nicht mehr“ und „Rund um die Uhr“ überall, neuer Wochen-Editor mit Tages-Chips",
-                "WMap als Desktop-App (Tauri) für Linux, Windows und macOS"
-            ]
-        },
-        {
-            "version": "0.6.0",
-            "date": "2026-09-27",
-            "changes": [
-                "Meine Wege: Aufzeichnen wie bei Komoot, gefahrene Navigationen werden gemerkt – nach Jahren mit Summen, Karte und Liste",
-                "Ein Weg zeigt Tempo als Farbe auf der Linie, Höhenprofil, Zahlen; umbenennen, als GPX speichern, als Tour übernehmen oder teilen",
-                "Alles bleibt auf dem Gerät – kein Konto nötig; mit der Sicherungsdatei auf ein anderes Gerät mitnehmen, GPX importieren",
-                "Spuren: Fahrbahn, Kreuzungsspuren und Pfeile aus einem Guss, weiche Übergänge; oben immer die Spuren der nächsten Kreuzung mit allen Pfeilen",
-                "Navigation: Pfeil im unteren Drittel, stärker geneigt und etwas weiter weg – man sieht mehr von der Strecke"
-            ]
-        },
-        {
-            "version": "0.5.0",
-            "date": "2026-09-27",
-            "changes": [
-                "Navigation zeigt stark hereingezoomt die ganze Fahrbahn mit allen Spuren in echter Breite – Mittellinie, Spurtrennung und deine Spur in Blau, vor dem Linksabbiegen links; wird die Straße breiter, gleitet das weich",
-                "Oben alle Spuren mit ihren Pfeilen, die richtigen weiß hinterlegt",
-                "Ansagen nennen immer eine Richtung: Ort, Bundesstraße oder Autobahn – ohne Wegweiser den nächsten Ort bzw. Stadtteil",
-                "Der Pfeil fährt in der Spur und steht auf einer weißen Scheibe, damit er sich von der Route abhebt",
-                "Häuser mit kräftigeren Wänden, Licht aus Südwest und Schatten am Boden – die Höhe ist besser zu erkennen",
-                "Geneigt nur noch Schilder für Autobahnen und Bundesstraßen, keine Stapel mehr am Horizont",
-                "Wegweiser ohne Nummern: „Richtung Nienburg und Minden“ statt „B 217: Nienburg“",
-                "Restaurants zeigen auch Imbisse"
-            ]
-        },
-        {
-            "version": "0.4.1",
-            "date": "2026-09-27",
-            "changes": [
-                "Suche nach Parkplätzen, Tankstellen, Cafés usw. zeigt Treffer sofort – direkt aus den Kartenkacheln, auch entlang der Route und in der Erreichbarkeit",
-                "Overpass ergänzt nur noch im Hintergrund, fragt bei hängenden Servern parallel den nächsten und merkt sich Ergebnisse"
-            ]
-        },
-        {
-            "version": "0.4.0",
-            "date": "2026-09-26",
-            "changes": [
-                "Fahrspuren auf der Karte: kurz vor der Kreuzung die Fahrbahn in echter Breite, die richtige Spur blau, Pfeile auf dem Asphalt",
-                "Tempo und Tempolimit in einem Element wie bei Google",
-                "Kurze Fragen unterwegs: „Baustelle noch da?“, am Ziel „Parkplatz kostenlos? wie teuer? für alle?“ – mit Vermerk für andere",
-                "Ohne OSM-Konto gehen Antworten als Hinweis an OpenStreetMap; „Melden“ in der Navigation (Stau, Unfall, Baustelle, Gefahr, Sperrung)",
-                "Ziel und Zwischenstopps in der Navigation immer markiert",
-                "Weniger doppelte Straßennummern im geneigten Blick, ruhigere Hausfarben, Dialog scrollt nicht mehr seitlich"
-            ]
-        },
-        {
-            "version": "0.3.0",
-            "date": "2026-09-26",
-            "changes": [
-                "Navigation flüssig: Der Pfeil gleitet auf der Straße, die Karte dreht sich mit dem Straßenverlauf, GPS-Ausreißer werden verworfen, Aussetzer überbrückt",
-                "Ruhigerer Zoom: Stadt nah, Autobahn weiter; 30 Sekunden vor dem Abbiegen näher, an verzwickten Stellen fast aus Fahrersicht – in den Einstellungen anpassbar",
-                "Ansagen ohne Straßennamen: Richtung, Orte und A-/B-Nummern, „an der Ampel“, „bitte links einordnen“",
-                "Fahrspuren, Tempolimit, aktuelles Tempo, Ortsname, Kompass und 3D-Schalter in der Navigation; Pfeile an den Abbiegungen und Ampeln auf der Karte",
-                "Route liegt unter den 3D-Häusern",
-                "Unterwegs entlang der Route suchen und einen Zwischenstopp einlegen",
-                "Alles im Dialog unten statt in Popups – mit Zurück links und Schließen rechts, der Kopf bleibt beim Scrollen stehen",
-                "Routeneingabe klappt nach der Berechnung zu einer Zeile zusammen",
-                "Zug-Abfahrten an Bahnhöfen (DB-Daten über DBF); bessere Suche nach „… Bahnhof“",
-                "Schneller und sparsamer: Höhendaten nur bis Zoom 16, begrenzte Pixeldichte, kein Neuzeichnen im Stand"
-            ]
-        },
-        {
-            "version": "0.2.0",
-            "date": "2026-09-26",
-            "changes": [
-                "Offline unterwegs: Beim Start der Navigation wird die Karte entlang der Strecke gespeichert, Funklöcher fallen nicht mehr auf; eine laufende Navigation lässt sich nach dem Neuladen fortsetzen",
-                "Navigation zoomt 30 Sekunden vor dem Abbiegen heran und berechnet beim Verfahren in Fahrtrichtung neu",
-                "Mitmachen bei OpenStreetMap: kurze Fragen zu Orten, an denen du warst – Parkgebühr, Öffnungszeiten, Belag, Beleuchtung, fehlende Wege; Antworten gehen mit deinem OSM-Konto direkt in die Karte",
-                "Neue Einstellungen: Offline-Karten, Datensparmodus, Aufzeichnung für „Mitmachen“, OSM-Konto"
-            ]
-        },
-        {
-            "version": "0.1.0",
-            "date": "2026-09-26",
-            "changes": [
-                "Suche über Photon (komoot): verzeiht Tippfehler, gewichtet nach dem Kartenausschnitt, mit Verlauf „Zuletzt genutzt“",
-                "Kategorien wie Parkplätze, Tankstellen, E-Ladesäulen, Bäckereien, Flüsse oder Fußballplätze – sofort aus der Karte, danach vollständig mit Flächen",
-                "Orte mit Bild und Kurzbeschreibung aus Wikipedia, Öffnungszeiten als Woche, Stellplätzen, Gebühr, Belag und Links; Spritpreise über Tankerkönig",
-                "Routenplanung mit bis zu fünf Routen, immer auch einer ohne Autobahn, Zwischenzielen und „Entlang der Route“",
-                "Höhenprofil mit Anstieg, Abstieg, höchstem und tiefstem Punkt – die Stelle unter dem Zeiger wird auf der Karte markiert",
-                "Verkehrslage auf Autobahnen: Baustellen, Sperrungen und Meldungen in Fahrtrichtung, Vollsperrungen umfahren",
-                "Navigation mit Ansagen, mitwachsendem Zoom, Neuberechnung beim Verfahren und wählbarer Stimme",
-                "Erreichbarkeit: was in Minuten oder Kilometern erreichbar ist – und was es dort gibt",
-                "3D von selbst beim Heranzoomen, Datensparmodus mit Rückfrage im Mobilfunknetz, mit WASD durch die Karte",
-                "Touren speichern, teilen und als GPX exportieren (erste Fassung)"
+                "Erste Version von WMap – Karte, Navigation und Touren auf Basis offener Daten, ohne Konto und ohne Werbung",
+                "Karte in 3D mit Gelände und Gebäuden, hell oder dunkel, Luftbilder und Wanderwege im Ebenen-Menü",
+                "Suche, die Tippfehler verzeiht – auch nach Kategorien wie „Parkplatz“ oder „Bäckerei“ im Kartenausschnitt",
+                "Routen zu Fuß, mit dem Rad, dem Auto und mit Bus & Bahn – mit Alternativen, Höhenprofil, Verkehrslage und Abfahrten an Haltestellen",
+                "Navigation mit Ansagen, Spurhinweisen, Bild in Bild und vorgeladener Karte gegen Funklöcher",
+                "Offline-Karten: Gebiete als Rechteck oder freie Form aufs Gerät laden – mit Größe vorher, zum Neuladen und Löschen",
+                "Touren planen, in Tagesetappen teilen, aufzeichnen und als GPX in einem eigenen Ordner (Nextcloud, Proton Drive …) ablegen",
+                "Entdecken: Wander- und Radwege aus OpenStreetMap und Touren anderer – übernehmen mit einem Klick",
+                "Plugins: fertige Kartenebenen (z. B. Geologie), eigene GeoJSON-Ebenen und Erweiterungen",
+                "Teilen per Link – Ort, Route, Tour, „Ich bin unterwegs“ oder Standort anfragen; Text mit Link oder nur den Link kopieren",
+                "Karten-Links (geo:) aus anderen Apps öffnen WMap",
+                "Mitmachen bei OpenStreetMap: kurze Fragen zu Orten unterwegs, Orte eintragen und bearbeiten",
+                "WMap-Konto per Passkey nur für Veröffentlichtes – alles andere bleibt auf dem Gerät",
+                "Als Web-App, für Android, Windows, macOS und Linux"
             ]
         }
     ]

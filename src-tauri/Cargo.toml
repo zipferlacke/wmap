@@ -1,6 +1,6 @@
 [package]
 name = "wmap"
-version = "0.8.0"
+version = "1.0.0"
 description = "WMap – 3D-Karte und Navigation als Desktop-App"
 authors = ["Florian Wüllner"]
 license = ""

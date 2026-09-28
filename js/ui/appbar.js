@@ -4,6 +4,7 @@
  * (dort dazu das Menü oben rechts, ui/appnav.js). Reihenfolge: Karte zuerst.
  */
 import '../core/theme.js';
+import { appNews } from './news.js';
 
 const ITEMS = [
   { href: './index.html', icon: 'map', label: 'Karte', match: /\/(index\.html)?$/ },
@@ -14,6 +15,8 @@ const ITEMS = [
 ];
 
 export function mountAppBar() {
+  // Zu alte Version? Dann das Banner „Aktualisieren“ (ui/news.js)
+  appNews();
   const nav = document.createElement('nav');
   nav.className = 'appbar';
   nav.setAttribute('aria-label', 'Hauptnavigation');

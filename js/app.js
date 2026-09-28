@@ -14,6 +14,7 @@ import { runExtensions } from './map/extensions.js';
 import { share, placeUrl, readRoute, requestUrl, myName, clock } from './ui/share.js';
 import { ask, toast } from './ui/dialogs.js';
 import { parseGeoUri } from './core/geo-uri.js';
+import { appNews } from './ui/news.js';
 import { $, debounce, freshView, map, myPosition, q, state } from './app/core.js';
 import { fly } from './app/map-clicks.js';
 import { openSurvey } from './app/mitmachen.js';
@@ -225,3 +226,9 @@ async function answerRequest(from) {
 
 if (map.loaded()) fromUrl(); else map.once('load', fromUrl);
 if (map.loaded()) resumeNav(); else map.once('load', resumeNav);
+// Willkommen, Neues nach einem Update, Nachrichten – nur beim normalen Start,
+// nicht wenn ein Link etwas öffnet und nicht in einer fortgesetzten Navigation
+map.once('idle', () => {
+  const linked = /[?&](view|q|from|to|reach|action|ort|route|anfrage|geo|sim)\b/.test(location.search);
+  appNews({ dialogs: !linked && !nav.active });
+});

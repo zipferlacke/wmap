@@ -9,7 +9,7 @@
 # tauri.ci.json schaltet dafür den beforeBuildCommand aus tauri.conf.json ab.
 #
 # Start: von Hand unter „Actions“ (workflow_dispatch) oder durch einen Tag
-# wie `v0.8.0` (git-release: der Tag entsteht aus dem obersten Eintrag in
+# wie `v1.0.0` (git-release: der Tag entsteht aus dem obersten Eintrag in
 # appdata/messages.json). Bei einem Tag wird daraus ein Release: Titel und
 # Text kommen aus der Tag-Beschreibung, alle gebauten Dateien hängen dran.
 
@@ -269,7 +269,7 @@ jobs:
       - name: Beschreibung aus dem Tag
         run: |
           git fetch --force origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
-          # Erste Zeile („Version 0.8.0“) wird der Titel, der Rest die
+          # Erste Zeile („Version 1.0.0“) wird der Titel, der Rest die
           # Änderungen – je Zeile ein Punkt.
           TITLE=$(git for-each-ref "refs/tags/${GITHUB_REF_NAME}" --format='%(contents:subject)')
           git for-each-ref "refs/tags/${GITHUB_REF_NAME}" --format='%(contents:body)' \

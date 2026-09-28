@@ -2,7 +2,11 @@
  * Menü oben rechts – auf jeder Seite gleich: Übersicht (Dashboard) und die
  * Schnellwege zu den wichtigsten Ansichten. Seitenspezifische Einträge hängt
  * die Seite selbst an (`addItem`), abgesetzt durch einen Strich.
+ * Nebenbei: Ist die App zu alt (messages.json → minVersion), kommt hier wie
+ * überall das Banner „Aktualisieren“ (ui/news.js).
  */
+import { appNews } from './news.js';
+
 const PAGES = [
   { href: './dashboard.html', icon: 'dashboard', label: 'Übersicht', match: /dashboard\.html$/ },
   { href: './index.html', icon: 'map', label: 'Karte', match: /\/(index\.html)?$/ },
@@ -14,6 +18,7 @@ const PAGES = [
 ];
 
 export function mountAppNav() {
+  appNews();
   const nav = document.createElement('nav');
   nav.className = 'appnav';
   nav.innerHTML = `
