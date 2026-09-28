@@ -1439,6 +1439,20 @@ body.navigating {
 
 /* ── Einstellungen (settings.html) ────────────────────────────────────────── */
 
+/* Konto löschen (deleteKonto.html): Liste mit Symbolen, roter Knopf */
+.delete-konto {
+    p { margin: 0; line-height: 1.5; }
+    .muted { color: var(--muted); font-size: var(--fs-200); }
+    .delete-list {
+        list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem;
+        li { display: flex; gap: .6rem; align-items: flex-start; line-height: 1.4; }
+        .msr { flex-shrink: 0; color: var(--muted); }
+    }
+    .delete-status { display: grid; gap: .3rem; p { display: flex; gap: .4rem; align-items: flex-start; } .msr { flex-shrink: 0; } }
+    .delete-button { justify-self: start; white-space: normal; }
+    a { color: var(--route); }
+}
+
 .settings {
     display: grid;
     gap: 1rem;
@@ -1455,6 +1469,7 @@ body.navigating {
         input { flex-shrink: 0; }
     }
     .settings-row { justify-content: flex-start; width: 100%; }
+    .settings-hint { margin: 0; font-size: var(--fs-200); color: var(--muted); strong { color: var(--text-color, inherit); } }
     .settings-select {
         display: flex; align-items: center; justify-content: space-between; gap: 1rem;
         span { display: grid; gap: .1rem; }

@@ -5,7 +5,7 @@
  * die Höhenmeter als Chips hinter einem Berg-Icon. Fährt der Zeiger über das
  * Profil, meldet `onHover` die Stelle in Kilometern – die Karte markiert sie.
  */
-import * as echarts from 'https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.esm.min.js';
+import * as echarts from '../libs/echarts/echarts.esm.min.js';
 import { Diagramm, setIcons } from '../libs/wuefl-libs/diagramm/diagramm.js';
 import { echartsRenderer } from '../libs/wuefl-libs/diagramm/renderer-echarts.js';
 

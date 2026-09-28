@@ -1,7 +1,7 @@
 /**
  * Service Worker: WMap läuft auch ohne Netz weiter.
  *
- *   App (eigene Dateien, MapLibre)   erst Netz, sonst Cache – neue Versionen
+ *   App (eigene Dateien, libs/)      erst Netz, sonst Cache – neue Versionen
  *                                    kommen sofort an, offline geht es trotzdem
  *   Kacheln, Schriften, Symbole      erst Cache, sonst Netz – die Adressen
  *                                    enthalten die Version, ändern sich also nie
@@ -13,7 +13,7 @@
  *   - nach 10 Tagen wird er gelöscht
  *   - reicht der Platz nicht, weicht zuerst die älteste Navigation
  */
-const APP = 'wmap-app-v3';
+const APP = 'wmap-app-v4';          // v4: MapLibre und ECharts aus libs/ statt CDN
 const TILES = 'wmap-tiles-v1';
 const MAX_TILES = 8000;
 const NAV = 'wmap-nav-';
@@ -22,7 +22,6 @@ const NAV_MAX_AGE = 10 * 24 * 3600 * 1000;
 const TILE_BYTES = 60 * 1024;
 
 const TILE_HOSTS = ['tiles.openfreemap.org', 'tiles.mapterhorn.com'];
-const APP_HOSTS = ['unpkg.com'];
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -44,7 +43,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (TILE_HOSTS.includes(url.hostname)) {
     e.respondWith(immutable(url) ? cacheFirst(req) : networkFirst(req, TILES));
-  } else if (url.origin === self.location.origin || APP_HOSTS.includes(url.hostname)) {
+  } else if (url.origin === self.location.origin) {
     e.respondWith(networkFirst(req, APP));
   }
 });

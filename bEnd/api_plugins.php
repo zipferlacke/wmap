@@ -50,7 +50,9 @@ function plugins($requestArray, $data){
                 return [0, ["id" => (int)$data["id"], "status" => $status]];
             }
             $db_helper->execSql("INSERT INTO Plugins (name, description, operator, contact, source_url, source_type, data, attribution, data_date, status, user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)", [...$vals, $user["id"]], $request);
-            return [0, ["id" => $db_helper->lastId(), "status" => $status]];
+            $id = $db_helper->lastId();
+            log_event("plugin_neu", null, "$status $type");
+            return [0, ["id" => $id, "status" => $status]];
 
         case 'data':
             $r = $db_helper->execSql("SELECT data FROM Plugins WHERE id = ? AND source_type = 'stored' AND (status = 'public' OR user_id = ?)", [(int)($data["id"] ?? 0), $uid], $request);

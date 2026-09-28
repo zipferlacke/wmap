@@ -3,6 +3,7 @@
  * Anmelden und Hochladen.
  */
 import { QUESTS, questions, answer, skip, scan, queue, commentFor, anonNotes, editsAsNotes, remarkNotes } from './survey.js';
+import { countOsm } from './osm-stats.js';
 import { account, login, upload, changesetUrl } from './osm-api.js';
 import { contribute } from './trace.js';
 import { hoursTable, parseWeek, buildHours, formatHours, DAYS_DE } from './poi-info.js';
@@ -280,6 +281,7 @@ export class SurveyView {
         const cur = queue.get();
         cur.edits = cur.edits.filter((e) => !q.edits.includes(e) && !q.edits.some((x) => x.at === e.at && x.osm.id === e.osm.id));
         queue.set(cur);
+        countOsm('frage', 'karte', res.applied.length);
         if (res.changeset) parts.push(`<a href="${changesetUrl(res.changeset)}" target="_blank" rel="noopener">${res.applied.length} ${res.applied.length === 1 ? 'Änderung' : 'Änderungen'}</a>`);
         if (res.conflicts.length) parts.push(`${res.conflicts.length} übersprungen (dort hat sich inzwischen etwas geändert)`);
       }
@@ -293,6 +295,7 @@ export class SurveyView {
       }
       for (const n of notes) {
         await upload({ notes: [n] }, {});
+        countOsm('frage', 'hinweis');
         const cur = queue.get();
         cur.notes = cur.notes.filter((x) => x.text !== n.text);
         queue.set(cur);

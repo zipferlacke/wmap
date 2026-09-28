@@ -154,9 +154,19 @@ function toList(els, center) {
 /**
  * Routen im Kartenausschnitt – und der Gesamtweg, zu dem sie gehören (eine
  * Etappe des Harzer Hexenstiegs gehört zur Superroute „Harzer Hexenstieg“).
- * → { routes: [… wie toList, dazu parent], parents: [{ id, name, ref, network, rank, length, children }] }
+ *
+ * Große Ausschnitte (Rechner, Zoom 10) werden auf MAX_BOX um die Mitte
+ * begrenzt: Für jeden Weg den Mittelpunkt zu berechnen, dauerte sonst so lange,
+ * dass alle Overpass-Server mit 504 abbrachen.
+ * → { routes: [… wie toList, dazu parent], parents: [{ id, name, ref, network, rank, length, children }], clipped }
  */
+const MAX_BOX = [0.9, 0.6];                     // Grad Länge × Breite
+
 export async function toursInBox([w, s, e, n], kind, { center = null, signal } = {}) {
+  const [cx, cy] = center ?? [(w + e) / 2, (s + n) / 2];
+  const clipped = e - w > MAX_BOX[0] || n - s > MAX_BOX[1];
+  if (e - w > MAX_BOX[0]) [w, e] = [cx - MAX_BOX[0] / 2, cx + MAX_BOX[0] / 2];
+  if (n - s > MAX_BOX[1]) [s, n] = [cy - MAX_BOX[1] / 2, cy + MAX_BOX[1] / 2];
   const bb = [s, w, n, e].map((v) => v.toFixed(4)).join(',');
   const q = `[out:json][timeout:25];relation["type"="route"]["route"~"^(${KINDS[kind].routes})$"]["name"](${bb})->.r;.r out tags center 400;`
     + 'rel(br.r)["name"]["type"~"^(superroute|route)$"]->.p;.p out body;';
@@ -174,7 +184,7 @@ export async function toursInBox([w, s, e, n], kind, { center = null, signal } =
   }
   // Ein Gesamtweg, der selbst im Ausschnitt liegt, steht nicht noch einmal als Etappe da
   const parentIds = new Set(parents.map((p) => p.id));
-  return { routes: routes.filter((r) => !parentIds.has(r.id)), parents };
+  return { routes: routes.filter((r) => !parentIds.has(r.id)), parents, clipped };
 }
 
 /** Wegstücke in Reihenfolge zu einer Linie, jedes passend gedreht */

@@ -61,7 +61,9 @@ function tours($requestArray, $data){
                 return [0, ["id" => (int)$data["id"], "status" => $status]];
             }
             $db_helper->execSql("INSERT INTO Tours (name, description, profile, shape, length, ascent, west, south, east, north, status, user_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", [...$vals, $user["id"]], $request);
-            return [0, ["id" => $db_helper->lastId(), "status" => $status]];
+            $id = $db_helper->lastId();
+            log_event("tour_neu", null, "$status $profile");
+            return [0, ["id" => $id, "status" => $status]];
 
         case 'delete':
             $user = need_user();
@@ -75,6 +77,7 @@ function tours($requestArray, $data){
             $ok = $db_helper->execSql("SELECT id FROM Tours WHERE id = ? AND status = 'public'", [$id], $request)[1];
             if (!count($ok))                            return [1, "Diese Tour kann man nicht bewerten"];
             $db_helper->execSql("INSERT INTO Ratings (tour_id, user_id, stars, comment) VALUES (?, ?, ?, ?) ON CONFLICT(tour_id, user_id) DO UPDATE SET stars = excluded.stars, comment = excluded.comment, time = CURRENT_TIMESTAMP", [$id, $user["id"], $stars, clean($data["comment"] ?? "", 1000)], $request);
+            log_event("bewertung", null, (string)$stars);
             return [0, true];
 
         default:

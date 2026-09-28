@@ -126,6 +126,24 @@ class DB_Helper{
                 time                DATETIME    DEFAULT CURRENT_TIMESTAMP,
                 updated             DATETIME    DEFAULT CURRENT_TIMESTAMP
             )",
+            // ===================================
+            // Statistics – was über WMap passiert, eine Zeile je Ereignis, anonym:
+            // kein Konto, kein Gerät, kein Ort, keine IP
+            // time (UTC) - event - frage (1 Ja/Nein-Frage, 0 bewusst bearbeitet/eingetragen, sonst leer) - detail
+            //   osm          Beitrag zu OpenStreetMap; detail: frage|bearbeitet|neu + karte|hinweis
+            //   konto_neu / konto_geloescht
+            //   tour_neu     detail: public|private
+            //   plugin_neu   detail: public|private + Quelltyp
+            //   bewertung    detail: Sterne
+            // ===================================
+            "CREATE TABLE IF NOT EXISTS Statistics (
+                id                  INTEGER     PRIMARY KEY AUTOINCREMENT,
+                time                DATETIME    DEFAULT CURRENT_TIMESTAMP,
+                event               TEXT,
+                frage               INTEGER,
+                detail              TEXT
+            )",
+            "CREATE INDEX IF NOT EXISTS StatisticsEvent ON Statistics (event, time)",
         ];
         foreach ($tables as $sql) {
             $result = $this->execSql($sql, [], "openDatabase");
@@ -147,6 +165,11 @@ class DB_Helper{
             return array(1, "Es gab einen Fehler während der Kommunikation mit der Datenbank: ".$action);
         }
     }
+
+    /** Mehrere Schritte ganz oder gar nicht (Konto löschen) */
+    public function begin(){    $this->pdo->beginTransaction(); }
+    public function commit(){   $this->pdo->commit(); }
+    public function rollback(){ if ($this->pdo->inTransaction()) $this->pdo->rollBack(); }
 
     public function lastId(){
         return (int)$this->pdo->lastInsertId();

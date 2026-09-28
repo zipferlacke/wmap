@@ -203,7 +203,7 @@ async function loadBox() {
   const b = map.getBounds();
   try {
     found = await toursInBox([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], kind, { center: map.getCenter().toArray(), signal: ctl.signal });
-    modeTitle = `${found.routes.length} Wege im Kartenausschnitt`;
+    modeTitle = `${found.routes.length} Wege ${found.clipped ? 'rund um die Kartenmitte' : 'im Kartenausschnitt'}`;
     paintWege();
   } catch (err) {
     if (err.name !== 'AbortError' && $('.known-status', content)) $('.known-status', content).textContent = `Gerade nicht abrufbar – bitte gleich noch mal (${err.message})`;

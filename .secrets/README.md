@@ -87,7 +87,7 @@ wieder an – ändern geht nur über **Update**.
 rm .secrets/wmap-upload.base64.txt
 ```
 
-Der Workflow von WKeePass (`keepass/.github/workflows/build.yml`, Schritt
-„Signieren“) zeigt, wie die drei Secrets dort benutzt werden. Für WMap gibt
-es noch kein GitHub-Repository und keinen Workflow – bis dahin baut
-`tauri-android wmap release` lokal.
+Der Workflow `.github/workflows/build.yml` (Schritt „Schlüssel bereitlegen“)
+schreibt daraus dieselbe `wmap.properties` wie lokal, und Gradle signiert AAB
+und APKs damit. Fehlen die Secrets, signiert er mit einem Wegwerfschlüssel –
+das reicht zum Ausprobieren, aber nicht für den Play Store.

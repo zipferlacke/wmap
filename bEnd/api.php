@@ -22,6 +22,7 @@ require_once(__DIR__."/webauthn.php");
 require_once(__DIR__."/api_auth.php");
 require_once(__DIR__."/api_tours.php");
 require_once(__DIR__."/api_plugins.php");
+require_once(__DIR__."/api_stats.php");
 
 $db_helper = new DB_Helper();
 $result = $db_helper->openDatabase();
@@ -35,6 +36,7 @@ switch ($request) {
     case 'auth':    echo json_encode(auth($requestArray, $data)); break;
     case 'tours':   echo json_encode(tours($requestArray, $data)); break;
     case 'plugins': echo json_encode(plugins($requestArray, $data)); break;
+    case 'stats':   echo json_encode(stats($requestArray, $data)); break;
     default:        die(json_encode([1, "nix gefunden... Anfrage falsch"]));
 }
 

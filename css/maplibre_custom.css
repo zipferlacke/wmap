@@ -1,4 +1,4 @@
-@import url("https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css");
+@import url("../libs/maplibre-gl/maplibre-gl.css");
 
 #map {
   position: fixed;

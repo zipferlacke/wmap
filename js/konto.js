@@ -42,6 +42,27 @@ export const konto = {
     }));
   },
 
+  /** Was zum angemeldeten Konto gehört → { user, tours, public_tours, plugins, public_plugins, ratings, passkeys } */
+  summary: () => api(['auth', 'summary']),
+
+  /**
+   * Konto mit allen Touren, Plugins und Bewertungen löschen. Bestätigt wird mit
+   * dem Passkey selbst – das Gerät fragt, welcher; dessen Konto wird gelöscht.
+   * → was gelöscht wurde (wie summary, dazu name)
+   */
+  async remove() {
+    const o = await api(['auth', 'delete_options']);
+    const cred = await navigator.credentials.get({ publicKey: { ...o, challenge: unb64(o.challenge) } });
+    const gone = await api(['auth', 'delete'], {
+      challenge: o.challenge, id: cred.id,
+      clientDataJSON: b64(cred.response.clientDataJSON), authenticatorData: b64(cred.response.authenticatorData),
+      signature: b64(cred.response.signature),
+    });
+    token.set(null);
+    local.set(USER, null);
+    return gone;
+  },
+
   async logout() {
     try { await api(['auth', 'logout']); } catch { /* egal */ }
     token.set(null);

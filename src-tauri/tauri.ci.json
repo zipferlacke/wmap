@@ -1,0 +1,5 @@
+{
+  "build": {
+    "beforeBuildCommand": "echo Web-Dateien liegen schon in src-tauri/web"
+  }
+}

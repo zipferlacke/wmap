@@ -628,6 +628,9 @@ früheren Ordnung (`Touren/`, `Wege/<Jahr>/`) zieht der nächste Abgleich um.
   Die Anmeldung braucht eine OAuth-Client-ID (Einstellungen → Für
   Entwickler); fehlt sie, sagt der Dialog das.
 - Die Aufzeichnung dafür bleibt 14 Tage auf dem Gerät, abschaltbar.
+- **Gezählt** (`osm-stats.js`): jeder hochgeladene Beitrag – Ja/Nein-Frage,
+  Ort bearbeitet, Ort neu; direkt in die Karte oder als Hinweis. Auf dem Gerät
+  (Einstellungen → Mitmachen: „Du hast über WMap …“) und anonym auf dem Server.
 - **Orte bearbeiten und eintragen** (osm-edit.js): in der Ortskarte
   **Bearbeiten** (Name, Öffnungszeiten, Telefon, Website eines Orts aus OSM);
   lange drücken → **Hier eintragen** legt ein Unternehmen oder einen
@@ -645,8 +648,21 @@ früheren Ordnung (`Touren/`, `Wege/<Jahr>/`) zieht der nächste Abgleich um.
 - Nur nötig zum **Veröffentlichen, Bewerten und für Plugins**. Anmeldung mit
   **Passkey** (Fingerabdruck, Gesicht, Geräte-PIN) – kein Passwort.
 - Server: `bEnd/api.php` (PHP, SQLite in `bEnd/data/`, von außen gesperrt).
+- **Statistik** (Tabelle `Statistics`, `bEnd/api_stats.php`): eine Zeile je
+  Ereignis mit Zeit (UTC), `event`, `frage` (1 = Ja/Nein-Frage, 0 = bewusst
+  bearbeitet/eingetragen) und `detail` – ohne Konto, Gerät, Ort oder IP.
+  Ereignisse: `osm` (von der App gemeldet, z. B. „frage karte“, „neu hinweis“),
+  `konto_neu`, `konto_geloescht`, `tour_neu`, `plugin_neu`, `bewertung`
+  (trägt der Server selbst ein). `stats/summary` liefert Summen und Monate.
 - **Veröffentlichen ist sofort öffentlich**, wie bei Komoot. Privat heißt:
   nur für dich, aber auf allen deinen Geräten. Löschen kann jeder nur Eigenes.
+- **Konto löschen:** `deleteKonto.html` (auch ohne App erreichbar, für den
+  Play Store: `https://app.wuefl.de/wmap/deleteKonto.html`; Knopf in den
+  Einstellungen). Bestätigt wird mit dem Passkey selbst (`auth/delete_options`,
+  `auth/delete`) – das Token allein reicht nicht. Gelöscht werden in einem
+  Rutsch Name, Passkeys, Sitzungen, alle Touren (samt Bewertungen anderer
+  dazu), alle Plugins und die eigenen Bewertungen. Ohne Passkey: per E-Mail
+  an contact@wuefl.de.
 
 ## 19. Einstellungen
 
@@ -660,6 +676,7 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
   Datensparmodus, Stimme, Spritpreise.
 - **Mitmachen:** Weg aufzeichnen und danach fragen, anonym als Hinweis,
   OSM-Konto.
+- **WMap-Konto:** wer angemeldet ist, Knopf „Konto löschen“ (→ `deleteKonto.html`).
 - **Daten:** Fahrten merken, Ordner verbinden, aufgezeichnete Wege,
   Suchverlauf löschen.
 
@@ -730,12 +747,24 @@ takeshots wmap --eigener-server # ohne Docker
 - `takeshots` liest `appdata/takeshots.json`, setzt `{base}` auf den
   Docker-Server (`http://localhost:8080/web/wuefl_products/wmap/`) und bricht
   mit „Server nicht erreichbar“ ab, wenn der nicht läuft.
+- **GitHub Actions** (`.github/workflows/build.yml`, wie bei WKeePass): ein Tag
+  `v*` (von `git-release`) baut Windows (.exe), macOS (.dmg), Linux (RPM,
+  AppImage, je x86_64/aarch64) und Android (AAB + APKs) und hängt alles an
+  ein Release. `wuefl-libs` holt `.github/actions/wuefl-libs` (neuester Tag),
+  die Web-Dateien kopiert je Job `src-tauri/web-kopieren.sh`
+  (`src-tauri/tauri.ci.json` schaltet dafür den beforeBuildCommand ab). Die
+  Android-Signatur kommt aus den Secrets (siehe `.secrets/README.md`).
 - Weitere Hinweise: [`tools/README.md`](tools/README.md).
 
 ## Entwicklung
 
-- Kein Build-Schritt: ES-Module direkt im Browser, MapLibre GL JS 5 von unpkg,
-  UI-Bausteine aus `libs/wuefl-libs`.
+- Kein Build-Schritt: ES-Module direkt im Browser, UI-Bausteine aus
+  `libs/wuefl-libs` (Verweis aufs Nachbarprojekt, nicht in Git).
+- Fremde Bibliotheken liegen fest versioniert in `libs/` und stehen in Git –
+  kein CDN, damit Web, App und Offline-Cache dasselbe laden:
+  MapLibre GL JS (`libs/maplibre-gl/`) und Apache ECharts für das Höhenprofil
+  (`libs/echarts/`). Versionen in `libs/VERSIONEN.txt`; neue Version: Nummer
+  in `tools/libs-holen.sh` ändern und das Skript laufen lassen.
 - Lokal: Docker-Container `php` (Port 8080), Live-Neuladen auf Port 3001 nur
   mit `LIVE=1 docker compose up -d php`.
 - Dienste: OpenFreeMap, Mapterhorn, Photon, Valhalla (FOSSGIS), Overpass,

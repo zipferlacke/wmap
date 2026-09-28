@@ -1,6 +1,6 @@
 /**
  * Einstellungen (settings.html): Hell/dunkel, Offline-Karten, Datensparmodus,
- * Mitmachen bei OSM samt Konto, Stimme, Spritpreise, Verlauf. Eine eigene
+ * Mitmachen bei OSM samt Konto, WMap-Konto (löschen), Stimme, Spritpreise, Verlauf. Eine eigene
  * Seite ohne Karte – alles bleibt in diesem Browser, die Karte liest es beim
  * nächsten Öffnen.
  */
@@ -19,6 +19,8 @@ import { dataSaver } from './map.js';
 import { openVoiceDialog } from './navigation.js';
 import { fuelKey } from './media.js';
 import { local, recent } from './store.js';
+import { konto } from './konto.js';
+import { myOsmStats, allOsmStats, statsText } from './osm-stats.js';
 
 const root = document.querySelector('.settings');
 
@@ -35,6 +37,7 @@ let loginError = '';   // an Ort und Stelle zeigen, nicht nur kurz als Meldung
 let jumped = false;    // #osm: einmal hinscrollen, nicht bei jedem Neuzeichnen
 const render = () => {
   const user = account.user();
+  const wmapUser = konto.loggedIn() ? konto.user() : null;
   root.innerHTML = `
     <section>
       <h3>Darstellung</h3>
@@ -71,6 +74,7 @@ const render = () => {
       ${toggle('anon', 'Ohne Konto als Hinweis senden',
         'Ohne OSM-Konto gehen deine Antworten anonym als Hinweis an OpenStreetMap – Mapper tragen sie dann ein. Mit Konto direkt in die Karte.',
         anonNotes.get())}
+      <p class="settings-hint osm-stats">${statsLine()}</p>
       <div class="settings-account">
         ${account.loggedIn()
           ? `<p><span class="msr">account_circle</span> Angemeldet als <strong>${esc(user?.name ?? '?')}</strong></p>
@@ -91,6 +95,14 @@ const render = () => {
         </label>
         <p>Weiterleitungs-URL: <code>${esc(account.redirectUri())}</code></p>
       </details>
+    </section>
+
+    <section>
+      <h3>WMap-Konto</h3>
+      <p class="settings-hint">${wmapUser
+        ? `Angemeldet als <strong>${esc(wmapUser.name)}</strong> – zum Teilen und Bewerten von Touren und Plugins.`
+        : 'Kein WMap-Konto angemeldet. Es wird nur zum Teilen und Bewerten gebraucht (Entdecken, Plugins).'}</p>
+      <a class="button settings-row" href="./deleteKonto.html"><span class="msr">delete_forever</span> Konto löschen – mit Touren, Plugins und Bewertungen</a>
     </section>
 
     <section>
@@ -145,6 +157,22 @@ root.addEventListener('click', async (e) => {
     render();
   }
 });
+
+/* Beiträge: eigene sofort, alle über WMap nachgeladen (einmal je Seitenaufruf) */
+let allStats = null;
+function statsLine() {
+  const mine = statsText(myOsmStats());
+  const all = allStats && statsText(allStats.osm);
+  return [
+    mine ? `Du hast über WMap ${esc(mine)}.` : 'Noch keine Beiträge von diesem Gerät.',
+    all ? `Alle zusammen: ${esc(all)}.` : '',
+  ].filter(Boolean).join(' ') + ' <span class="muted">Gezählt wird anonym, nur die Anzahl – ohne Konto, Gerät oder Ort.</span>';
+}
+allOsmStats().then((s) => {
+  allStats = s;
+  const el = root.querySelector('.osm-stats');
+  if (el) el.innerHTML = statsLine();
+}).catch(() => {});
 
 function setFuelKey() {
   const key = prompt('Tankerkönig-API-Schlüssel (kostenlos unter creativecommons.tankerkoenig.de).\n'

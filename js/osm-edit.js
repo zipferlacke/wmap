@@ -12,6 +12,7 @@
  */
 import { ask } from './ui.js';
 import { account, upload, changesetUrl, noteUrl } from './osm-api.js';
+import { countOsm } from './osm-stats.js';
 import { esc } from './geo.js';
 
 /** Arten zum Eintragen – Unternehmen und Veranstaltungsorte */
@@ -66,10 +67,12 @@ async function withoutAccount(what) {
 
 const noteText = (title, vals) => `${title} (über WMap):\n${Object.entries(vals).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join('\n')}`;
 
-async function send({ edits = [], creates = [], note = null }, comment, toast) {
+/** @param kind  'bearbeitet' | 'neu' – für die Zählung (osm-stats.js) */
+async function send({ edits = [], creates = [], note = null }, comment, toast, kind) {
   try {
     const r = note ? await upload({ notes: [note] }, { comment }) : await upload({ edits, creates }, { comment });
     if (r.conflicts?.length) { toast('Inzwischen hat jemand anderes das geändert – bitte neu laden'); return false; }
+    countOsm(kind, note ? 'hinweis' : 'karte');
     const link = r.changeset ? changesetUrl(r.changeset) : r.notes?.[0]?.id ? noteUrl(r.notes[0].id) : null;
     toast(note ? 'Hinweis gesendet – danke!' : 'In OpenStreetMap eingetragen – danke!', link ? { action: { label: 'Ansehen', run: () => window.open(link, '_blank', 'noopener') } } : undefined);
     return true;
@@ -98,11 +101,11 @@ export async function editPlace({ osm, tags, point, title }, { toast }) {
   const set = Object.fromEntries(Object.entries(vals).filter(([k, v]) => (tags[k] ?? '') !== v && v));
   if (!Object.keys(set).length) { toast('Nichts geändert'); return; }
   if (mode === 'note') {
-    await send({ note: { point, text: noteText(`Bitte ändern bei „${title}“ (${osm.type}/${osm.id})`, set) } }, '', toast);
+    await send({ note: { point, text: noteText(`Bitte ändern bei „${title}“ (${osm.type}/${osm.id})`, set) } }, '', toast, 'bearbeitet');
     return;
   }
   const expect = Object.fromEntries(Object.keys(set).map((k) => [k, tags[k] ?? null]));
-  const ok = await send({ edits: [{ osm, set, expect }] }, `${title || 'Ort'}: ${Object.keys(set).join(', ')} ergänzt`, toast);
+  const ok = await send({ edits: [{ osm, set, expect }] }, `${title || 'Ort'}: ${Object.keys(set).join(', ')} ergänzt`, toast, 'bearbeitet');
   if (ok) Object.assign(tags, set);
 }
 
@@ -131,8 +134,8 @@ export async function addPlace(point, { address = {}, toast }) {
   const kind = PLACE_TYPES.find(([id]) => id === type) ?? PLACE_TYPES[0];
   const tags = { ...kind[2], ...Object.fromEntries(Object.entries(rest).filter(([, v]) => v)) };
   if (mode === 'note') {
-    await send({ note: { point, text: noteText(`Neuer Ort: ${kind[1]} „${rest.name}“`, tags) } }, '', toast);
+    await send({ note: { point, text: noteText(`Neuer Ort: ${kind[1]} „${rest.name}“`, tags) } }, '', toast, 'neu');
     return;
   }
-  await send({ creates: [{ point, tags }] }, `${kind[1]} „${rest.name}“ eingetragen`, toast);
+  await send({ creates: [{ point, tags }] }, `${kind[1]} „${rest.name}“ eingetragen`, toast, 'neu');
 }

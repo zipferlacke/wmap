@@ -6,6 +6,11 @@
  *   login_options {}         → Optionen für navigator.credentials.get
  *   login {challenge, id, clientDataJSON, authenticatorData, signature} → {token, user}
  *   me / logout
+ *   summary {}               → was zum angemeldeten Konto gehört (Touren, Plugins, Bewertungen)
+ *   delete_options {}        → wie login_options, nur zum Löschen
+ *   delete {challenge, id, clientDataJSON, authenticatorData, signature}
+ *                            → Konto mit allem löschen, was dazugehört; bestätigt
+ *                              mit dem Passkey selbst, nicht nur mit dem Token
  * Binärdaten reisen als base64url.
  */
 
@@ -44,6 +49,7 @@ function auth($requestArray, $data){
             $db_helper->execSql("INSERT INTO Users (handle, name) VALUES (?, ?)", [$d["handle"], $d["name"]], $request);
             $userId = $db_helper->lastId();
             $db_helper->execSql("INSERT INTO Credentials (id, user_id, public_key, sign_count) VALUES (?, ?, ?, ?)", [$r[1]["id"], $userId, $r[1]["public_key"], $r[1]["sign_count"]], $request);
+            log_event("konto_neu");
             return [0, new_session($userId)];
 
         case 'login_options':
@@ -65,6 +71,45 @@ function auth($requestArray, $data){
             $u = current_user();
             return [0, $u];
 
+        case 'summary':
+            $u = need_user();
+            return [0, ["user" => $u] + owned($u["id"])];
+
+        case 'delete_options':
+            $challenge = b64url_encode(random_bytes(32));
+            $db_helper->execSql("INSERT INTO Challenges (challenge, purpose, data, time) VALUES (?, 'delete', '', ?)", [$challenge, time()], $request);
+            return [0, ["challenge" => $challenge, "rpId" => $rpId, "userVerification" => "required", "timeout" => 120000]];
+
+        case 'delete':
+            $c = take_challenge($data["challenge"] ?? "", "delete");
+            if (!$c)                                    return [1, "Die Anfrage ist abgelaufen – bitte noch einmal"];
+            $cred = $db_helper->execSql("SELECT id, user_id, public_key, sign_count FROM Credentials WHERE id = ?", [clean($data["id"] ?? "", 400)], $request)[1][0] ?? null;
+            if (!$cred)                                 return [1, "Zu diesem Passkey gibt es kein WMap-Konto (mehr)"];
+            $r = webauthn_login(b64url_decode($data["clientDataJSON"] ?? ""), b64url_decode($data["authenticatorData"] ?? ""), b64url_decode($data["signature"] ?? ""), $c["challenge"], $origin, $rpId, $cred["public_key"], $cred["sign_count"]);
+            if ($r[0] != 0)                             return $r;
+            $uid = $cred["user_id"];
+            $user = $db_helper->execSql("SELECT id, name FROM Users WHERE id = ?", [$uid], $request)[1][0] ?? null;
+            $gone = owned($uid);
+            // Alles in einem Rutsch – bricht etwas ab, bleibt das Konto ganz
+            $db_helper->begin();
+            foreach ([
+                "DELETE FROM Ratings WHERE user_id = ?",
+                "DELETE FROM Ratings WHERE tour_id IN (SELECT id FROM Tours WHERE user_id = ?)",
+                "DELETE FROM Tours WHERE user_id = ?",
+                "DELETE FROM Plugins WHERE user_id = ?",
+                "DELETE FROM Sessions WHERE user_id = ?",
+                "DELETE FROM Credentials WHERE user_id = ?",
+                "DELETE FROM Users WHERE id = ?",
+            ] as $sql) {
+                if ($db_helper->execSql($sql, [$uid], $request)[0] != 0) {
+                    $db_helper->rollback();
+                    return [1, "Löschen ging nicht – es wurde nichts gelöscht. Bitte später noch einmal."];
+                }
+            }
+            $db_helper->commit();
+            log_event("konto_geloescht");
+            return [0, ["name" => $user["name"] ?? ""] + $gone];
+
         case 'logout':
             $h = auth_header();
             if (preg_match('/^Bearer\s+(\S+)$/', $h, $m)) $db_helper->execSql("DELETE FROM Sessions WHERE token = ?", [hash('sha256', $m[1])], $request);
@@ -73,6 +118,20 @@ function auth($requestArray, $data){
         default:
             return [1, "nix gefunden... Anfrage falsch"];
     }
+}
+
+/** Was einem Konto gehört – zum Anzeigen vor und nach dem Löschen */
+function owned($uid){
+    global $db_helper;
+    $n = fn($sql) => (int)($db_helper->execSql($sql, [$uid], "owned")[1][0]["n"] ?? 0);
+    return [
+        "tours" => $n("SELECT COUNT(*) AS n FROM Tours WHERE user_id = ?"),
+        "public_tours" => $n("SELECT COUNT(*) AS n FROM Tours WHERE user_id = ? AND status = 'public'"),
+        "plugins" => $n("SELECT COUNT(*) AS n FROM Plugins WHERE user_id = ?"),
+        "public_plugins" => $n("SELECT COUNT(*) AS n FROM Plugins WHERE user_id = ? AND status = 'public'"),
+        "ratings" => $n("SELECT COUNT(*) AS n FROM Ratings WHERE user_id = ?"),
+        "passkeys" => $n("SELECT COUNT(*) AS n FROM Credentials WHERE user_id = ?"),
+    ];
 }
 
 /** Herkunft und Domain für WebAuthn – nur aus der erlaubten Liste */

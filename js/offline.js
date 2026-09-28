@@ -26,7 +26,7 @@ export async function registerOffline() {
     const reg = await navigator.serviceWorker.ready;
     // Was schon geladen ist, bevor der Service Worker mitlesen konnte
     const urls = performance.getEntriesByType('resource').map((e) => e.name)
-      .filter((u) => u.startsWith(location.origin) || /^https:\/\/(unpkg\.com|tiles\.openfreemap\.org)\//.test(u));
+      .filter((u) => u.startsWith(location.origin) || /^https:\/\/tiles\.openfreemap\.org\//.test(u));
     urls.push(location.href.split(/[?#]/)[0]);
     reg.active?.postMessage({ type: 'app-files', urls: [...new Set(urls)] });
   } catch { /* ohne Service Worker geht es nur online */ }
