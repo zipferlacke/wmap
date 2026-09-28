@@ -11,16 +11,61 @@ aufgerufen von `tauri-android wmap` (wuefl_products/tools) vor jedem Bauen:
   tools/android/MainActivity.kt → Bild in Bild während der Navigation
                              (beim Rauswischen von selbst, siehe js/pip.js)
   supportsPictureInPicture → an die <activity>
+  Upload-Signatur          → app/build.gradle.kts, wenn es die Schlüssel-
+                             datei gibt (für `tauri-android wmap release`)
 
 Mehrfach aufrufbar: alles wird nur einmal eingetragen.
+
+Signatur: Die Datei `.secrets/wmap.properties` im Projekt (oder der Pfad in
+$ANDROID_SIGNING). `.secrets/` steht in .gitignore und in der Ausschlussliste
+von .vscode/sftp.json – kommt also weder ins Repository noch auf den Server:
+
+  storeFile=/home/…/wuefl_products/wmap/.secrets/wmap-upload.jks
+  storePassword=…
+  keyAlias=wmap
+  keyPassword=…
+
+Gibt es sie, signiert Gradle den Release-Build (AAB und APKs) selbst – ohne
+jarsigner. Debug-Builds bleiben davon unberührt.
 """
 
+import os
+import re
 import shutil
 import sys
 from pathlib import Path
 
 PROJEKT = Path(__file__).resolve().parent.parent
 APP = PROJEKT / "src-tauri/gen/android/app"
+SIGNATUR = Path(os.environ.get("ANDROID_SIGNING", PROJEKT / ".secrets/wmap.properties"))
+ANFANG, ENDE = "// wmap:signatur-anfang", "// wmap:signatur-ende"
+
+
+def signatur() -> None:
+    """Release-Signatur in app/build.gradle.kts eintragen (bzw. erneuern)."""
+    datei = APP / "build.gradle.kts"
+    text = datei.read_text(encoding="utf-8")
+    # Alte Einträge weg – so bleibt das Skript beliebig oft aufrufbar
+    text = re.sub(re.escape(ANFANG) + r".*?" + re.escape(ENDE) + r"\n?", "", text, flags=re.S)
+    if not SIGNATUR.is_file():
+        datei.write_text(text, encoding="utf-8")
+        return
+    laden = (f"{ANFANG}\nval wmapSigning = Properties().apply {{\n"
+             f"    val f = file(\"{SIGNATUR}\")\n    if (f.exists()) f.inputStream().use {{ load(it) }}\n}}\n{ENDE}\n")
+    konfig = (f"    {ANFANG}\n    signingConfigs {{\n"
+              "        if (wmapSigning.getProperty(\"storeFile\") != null) create(\"upload\") {\n"
+              "            storeFile = file(wmapSigning.getProperty(\"storeFile\"))\n"
+              "            storePassword = wmapSigning.getProperty(\"storePassword\")\n"
+              "            keyAlias = wmapSigning.getProperty(\"keyAlias\")\n"
+              "            keyPassword = wmapSigning.getProperty(\"keyPassword\")\n"
+              "        }\n    }\n"
+              f"    {ENDE}\n")
+    nutzen = (f"            {ANFANG}\n"
+              "            signingConfigs.findByName(\"upload\")?.let { signingConfig = it }\n"
+              f"            {ENDE}\n")
+    text = text.replace("android {\n", laden + "android {\n" + konfig, 1)
+    text = text.replace('getByName("release") {\n', 'getByName("release") {\n' + nutzen, 1)
+    datei.write_text(text, encoding="utf-8")
 
 BERECHTIGUNGEN = [
     '<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',
@@ -54,7 +99,9 @@ def main() -> int:
     ziel = next((APP / "src/main/java").rglob("MainActivity.kt"), None)
     if ziel:
         shutil.copyfile(PROJEKT / "tools/android/MainActivity.kt", ziel)
-    print("==> WMap-Teile eingesetzt (Symbol, Standort, Bild in Bild)")
+    signatur()
+    print("==> WMap-Teile eingesetzt (Symbol, Standort, Bild in Bild"
+          + (", Upload-Signatur)" if SIGNATUR.is_file() else ")"))
     return 0
 
 

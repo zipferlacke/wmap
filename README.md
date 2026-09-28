@@ -705,13 +705,22 @@ Zentral für alle Projekte unter `wuefl_products` – die Skripte liegen neben
 ```bash
 tauri-android wmap              # bauen, aufs Handy, Protokoll
 tauri-android wmap bauen        # nur bauen (auch: sauber, install, log)
+tauri-android wmap release      # signiertes AAB (Play Store) + APKs → src-tauri/target/android-release/
 takeshots wmap                  # Screenshots nach appdata/images/
 takeshots wmap --eigener-server # ohne Docker
 ```
 
 - `tauri-android` liest den Paketnamen aus `src-tauri/tauri.conf.json` und
   ruft vor jedem Bauen `tools/android-einbinden.py` des Projekts auf (bei
-  WMap: Standortrechte und App-Symbol).
+  WMap: Standortrechte, App-Symbol, Bild in Bild und – für `release` – die
+  Upload-Signatur).
+- **Release fürs Hochladen:** braucht einmalig den Upload-Schlüssel in
+  `.secrets/` (weder in Git noch per FTP auf dem Server). Wie er angelegt
+  und für GitHub Actions hochgeladen wird, steht in
+  [`.secrets/README.md`](.secrets/README.md); fehlt er, zeigt auch
+  `tauri-android wmap release` die Schritte. Gradle signiert damit AAB und
+  APKs selbst. Die Version (versionCode) kommt aus
+  `src-tauri/tauri.conf.json` – vor jedem Upload erhöhen.
 - `takeshots` liest `appdata/takeshots.json`, setzt `{base}` auf den
   Docker-Server (`http://localhost:8080/web/wuefl_products/wmap/`) und bricht
   mit „Server nicht erreichbar“ ab, wenn der nicht läuft.
