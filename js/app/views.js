@@ -1,8 +1,8 @@
 /**
  * Bottom-Sheet mit Zurück: Stapel der geöffneten Ansichten, Öffnen und Schließen.
  */
-import { showPois } from '../map.js';
-import { Sheet } from '../sheet.js';
+import { showPois } from '../map/map.js';
+import { Sheet } from '../ui/sheet.js';
 import { clearCategory } from './category.js';
 import { $, $$, current, debounce, map, q, sheet } from './core.js';
 import { nav } from './nav.js';

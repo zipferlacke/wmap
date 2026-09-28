@@ -1,15 +1,15 @@
 /**
  * Unterwegs kurz fragen und melden – Baustellen, Parkplätze am Ziel.
  */
-import { osmRef } from '../map.js';
-import * as osm from '../osm.js';
-import { toast } from '../ui.js';
-import { quickAsk } from '../quick-ask.js';
-import { report, answered, reportsShared, REPORT_KINDS } from '../reports.js';
-import { answerParking, anonNotes } from '../survey.js';
-import { account } from '../osm-api.js';
-import { contribute } from '../trace.js';
-import { distance } from '../geo.js';
+import { osmRef } from '../map/map.js';
+import * as osm from '../osm/objects.js';
+import { toast } from '../ui/dialogs.js';
+import { quickAsk } from '../osm/quick-ask.js';
+import { report, answered, reportsShared, REPORT_KINDS } from '../nav/reports.js';
+import { answerParking, anonNotes } from '../osm/survey.js';
+import { account } from '../osm/api.js';
+import { contribute } from '../data/trace.js';
+import { distance } from '../core/geo.js';
 import { $, map } from './core.js';
 import { survey } from './mitmachen.js';
 import { nav } from './nav.js';

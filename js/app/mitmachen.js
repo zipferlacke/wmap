@@ -1,11 +1,11 @@
 /**
  * Mitmachen bei OpenStreetMap: Fragen nach der Fahrt, OSM-Anmeldung.
  */
-import { local } from '../store.js';
-import { ask, toast } from '../ui.js';
-import { SurveyView } from '../survey-ui.js';
-import { contribute, trace } from '../trace.js';
-import { finishLogin } from '../osm-api.js';
+import { local } from '../data/store.js';
+import { ask, toast } from '../ui/dialogs.js';
+import { SurveyView } from '../osm/survey-ui.js';
+import { contribute, trace } from '../data/trace.js';
+import { finishLogin } from '../osm/api.js';
 import { clearCategory } from './category.js';
 import { $, SIMULATING, geolocate, map } from './core.js';
 import { clearPlace } from './place.js';

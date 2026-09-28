@@ -1,20 +1,20 @@
 /**
  * Routen berechnen und zeigen: Auswahl, Höhenprofil, Wegbeschreibung, Bus & Bahn.
  */
-import { PROFILES } from '../config.js';
-import { showRoutes, showPois, showHover, showTraffic } from '../map.js';
-import { avoidRing } from '../traffic.js';
-import { routeCategories } from '../categories.js';
-import { getRoutes, maneuverIcon } from '../routing.js';
-import { ElevationProfile } from '../elevation.js';
-import { recent, tours, shapeOf } from '../store.js';
-import { journeys, refineJourney } from '../departures.js';
-import { legBadge, changesText, transitLegsHtml } from '../transit-legs.js';
-import { prefs, transitParams } from '../route-prefs.js';
-import { connections } from '../saved.js';
-import { share, routeUrl, clock } from '../share.js';
-import { toast } from '../ui.js';
-import { nearestOnLine, pointAt, simplifyTo, bbox, fmtDistance, fmtDuration, esc } from '../geo.js';
+import { PROFILES } from '../core/config.js';
+import { showRoutes, showPois, showHover, showTraffic } from '../map/map.js';
+import { avoidRing } from '../services/traffic.js';
+import { routeCategories } from '../core/categories.js';
+import { getRoutes, maneuverIcon } from '../services/routing.js';
+import { ElevationProfile } from '../ui/elevation.js';
+import { recent, tours, shapeOf } from '../data/store.js';
+import { journeys, refineJourney } from '../services/departures.js';
+import { legBadge, changesText, transitLegsHtml } from '../ui/transit-legs.js';
+import { prefs, transitParams } from '../ui/route-prefs.js';
+import { connections } from '../data/saved.js';
+import { share, routeUrl, clock } from '../ui/share.js';
+import { toast } from '../ui/dialogs.js';
+import { nearestOnLine, pointAt, simplifyTo, bbox, fmtDistance, fmtDuration, esc } from '../core/geo.js';
 import { $, afterLayout, chipHtml, current, debounce, fitTo, map, myPosition, sheet, state, viewPadding } from './core.js';
 import { nav } from './nav.js';
 import { compactRoute, isSet, transitWhen } from './route-plan.js';

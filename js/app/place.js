@@ -1,18 +1,18 @@
 /**
  * Ort im Sheet: Details, Knöpfe, Bild und Preise; Punkt auf der Karte; Verkehrsmeldung.
  */
-import { showHighlight } from '../map.js';
-import * as geocode from '../geocode.js';
-import { byId } from '../categories.js';
-import { describePoi, poiCard, categoryFor } from '../poi-info.js';
-import * as osm from '../osm.js';
-import { placeMedia, fuelPrices, fuelKey } from '../media.js';
-import { isStop } from '../transit.js';
-import { places } from '../saved.js';
-import { share, placeUrl } from '../share.js';
-import { toast } from '../ui.js';
-import { editPlace, addPlace } from '../osm-edit.js';
-import { bboxAround, esc } from '../geo.js';
+import { showHighlight } from '../map/map.js';
+import * as geocode from '../services/geocode.js';
+import { byId } from '../core/categories.js';
+import { describePoi, poiCard, categoryFor } from '../ui/poi-info.js';
+import * as osm from '../osm/objects.js';
+import { placeMedia, fuelPrices, fuelKey } from '../services/media.js';
+import { isStop } from '../services/transit.js';
+import { places } from '../data/saved.js';
+import { share, placeUrl } from '../ui/share.js';
+import { toast } from '../ui/dialogs.js';
+import { editPlace, addPlace } from '../osm/edit.js';
+import { bboxAround, esc } from '../core/geo.js';
 import { clearCategory, runCategory } from './category.js';
 import { $, afterLayout, chipHtml, current, extentToBounds, fitTo, lastHl, map, markerEl, parseTags, q, sheet, showHl, state, viewPadding } from './core.js';
 import { showLayerInfo } from './map-clicks.js';

@@ -1,14 +1,14 @@
 /**
  * Kategorien („Parkplätze“): Treffer aus Kacheln und Overpass, Trefferlisten.
  */
-import { osmRef } from '../map.js';
-import { poisInBounds, poisAlong } from '../tile-pois.js';
-import * as geocode from '../geocode.js';
-import * as overpass from '../overpass.js';
-import { describePoi, inCategory } from '../poi-info.js';
-import { recent } from '../store.js';
-import { toast } from '../ui.js';
-import { nearestOnLine, pointAt, bboxAround, distance, fmtDistance, esc } from '../geo.js';
+import { osmRef } from '../map/map.js';
+import { poisInBounds, poisAlong } from '../map/tile-pois.js';
+import * as geocode from '../services/geocode.js';
+import * as overpass from '../services/overpass.js';
+import { describePoi, inCategory } from '../ui/poi-info.js';
+import { recent } from '../data/store.js';
+import { toast } from '../ui/dialogs.js';
+import { nearestOnLine, pointAt, bboxAround, distance, fmtDistance, esc } from '../core/geo.js';
 import { $, afterLayout, extentToBounds, fitTo, map, parseTags, q, sheet, showHl, state, viewBounds, viewPadding } from './core.js';
 import { clearPlace, featureFromPoint, showPlace } from './place.js';
 import { clearReach } from './reach.js';
@@ -108,7 +108,7 @@ export async function runCategory(cat, placeText = null, { bounds = null, label 
 }
 
 /*
- * Treffer aus den Vektorkacheln – ohne Overpass, also sofort (tile-pois.js).
+ * Treffer aus den Vektorkacheln – ohne Overpass, also sofort (map/tile-pois.js).
  * Die Kacheln führen Parkplätze, Tankstellen, Läden usw. als Punkte mit
  * `subclass` (= OSM-Wert). Flächen und Einzelheiten ergänzt Overpass danach.
  */

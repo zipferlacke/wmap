@@ -1,19 +1,19 @@
 /**
  * Navigation: Start, Bild in Bild, Offline-Karten, Suche unterwegs, Fortsetzen.
  */
-import { PROFILES } from '../config.js';
-import { showPois, dataSaver } from '../map.js';
-import * as overpass from '../overpass.js';
-import { byId, routeCategories } from '../categories.js';
-import { Navigation } from '../navigation.js';
-import { recorder, historySetting } from '../tracks.js';
-import { NavPip, pipSupported, autoPip } from '../pip.js';
-import { prefs } from '../route-prefs.js';
-import { share, placeUrl, clock } from '../share.js';
-import { ask, toast } from '../ui.js';
-import { trace, trips } from '../trace.js';
-import { registerOffline, saveRouteOffline, offlineSetting, rememberNav, forgetNav, savedNav } from '../offline.js';
-import { nearestOnLine, pointAt, simplifyTo, fmtDistance, esc, cumulative } from '../geo.js';
+import { PROFILES } from '../core/config.js';
+import { showPois, dataSaver } from '../map/map.js';
+import * as overpass from '../services/overpass.js';
+import { byId, routeCategories } from '../core/categories.js';
+import { Navigation } from '../nav/navigation.js';
+import { recorder, historySetting } from '../data/tracks.js';
+import { NavPip, pipSupported, autoPip } from '../nav/pip.js';
+import { prefs } from '../ui/route-prefs.js';
+import { share, placeUrl, clock } from '../ui/share.js';
+import { ask, toast } from '../ui/dialogs.js';
+import { trace, trips } from '../data/trace.js';
+import { registerOffline, saveRouteOffline, offlineSetting, rememberNav, forgetNav, savedNav } from '../data/offline.js';
+import { nearestOnLine, pointAt, simplifyTo, fmtDistance, esc, cumulative } from '../core/geo.js';
 import { renderResultList, tilePointsAlong } from './category.js';
 import { $, $$, SIMULATING, chipHtml, current, map, state } from './core.js';
 import { askAfterTrip, askContributeOnce } from './mitmachen.js';

@@ -1,13 +1,13 @@
 /**
  * Routenplanung: Wegpunkte, Profil, Bus & Bahn „Abfahrt ab / Ankunft bis“.
  */
-import { PROFILES } from '../config.js';
-import { ROUTE_COLOR } from '../map.js';
-import * as geocode from '../geocode.js';
-import { local } from '../store.js';
-import { mountRoutePrefs } from '../route-prefs.js';
-import { toast } from '../ui.js';
-import { nearestOnLine, esc } from '../geo.js';
+import { PROFILES } from '../core/config.js';
+import { ROUTE_COLOR } from '../map/map.js';
+import * as geocode from '../services/geocode.js';
+import { local } from '../data/store.js';
+import { mountRoutePrefs } from '../ui/route-prefs.js';
+import { toast } from '../ui/dialogs.js';
+import { nearestOnLine, esc } from '../core/geo.js';
 import { clearCategory } from './category.js';
 import { $, $$, afterLayout, current, debounce, map, markerEl, state } from './core.js';
 import { placeWaypoint, removePlaceMarker } from './place.js';

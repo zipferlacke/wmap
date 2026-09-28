@@ -85,7 +85,7 @@ Man startet immer mit der Karte.
 
 ## 2. Karte
 
-- **Navigation unten bzw. links** (appbar.js): Karte · Übersicht · Touren ·
+- **Navigation unten bzw. links** (ui/appbar.js): Karte · Übersicht · Touren ·
   Entdecken · Plugins – am Handy unten (ein offener Dialog legt sich darüber,
   sein ✕ gibt sie frei), am Rechner als Leiste links; beim Navigieren weg.
 - **Dialoge am Rechner links** unter der Suche, so hoch wie ihr Inhalt – die
@@ -299,7 +299,7 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
     Hessen, Rheinland-Pfalz und das Saarland liefern JPEG statt PNG (ein
     Drittel bis ein Zehntel der Daten). Straßen (etwas zurückgenommen), Flüsse und Namen liegen obenauf.
     **Gebäude** (ab Zoom 14,5): graue, deckende Wände, auf dem Dach das
-    Luftbild – eine eigene WebGL-Ebene (sat-buildings.js), weil MapLibre
+    Luftbild – eine eigene WebGL-Ebene (map/sat-buildings.js), weil MapLibre
     einer 3D-Fläche nur eine Farbe gibt. Sie baut sich neu, sobald Gebäude-
     oder Geländekacheln nachgeladen sind; weiter hinten bleiben Dächer grau.
 - **Wandern & Rad** (Schwerpunkt): große Straßen (Autobahn bis Kreisstraße)
@@ -570,7 +570,7 @@ WMap/Gemerkt.json
 ```
 
 `Gemerkt.json` hält gemerkte Verbindungen (Bus & Bahn), Zuhause, Arbeit und
-Lesezeichen (saved.js): je Eintrag gewinnt das Neuere, Gelöschtes steht ein
+Lesezeichen (data/saved.js): je Eintrag gewinnt das Neuere, Gelöschtes steht ein
 Jahr lang in `deleted`, damit es nicht von einem anderen Gerät zurückkommt.
 
 Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene.
@@ -626,10 +626,10 @@ Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene.
   Die Anmeldung braucht eine OAuth-Client-ID (Einstellungen → Für
   Entwickler); fehlt sie, sagt der Dialog das.
 - Die Aufzeichnung dafür bleibt 14 Tage auf dem Gerät, abschaltbar.
-- **Gezählt** (`osm-stats.js`): jeder hochgeladene Beitrag – Ja/Nein-Frage,
+- **Gezählt** (`osm/stats.js`): jeder hochgeladene Beitrag – Ja/Nein-Frage,
   Ort bearbeitet, Ort neu; direkt in die Karte oder als Hinweis. Auf dem Gerät
   (Einstellungen → Mitmachen: „Du hast über WMap …“) und anonym auf dem Server.
-- **Orte bearbeiten und eintragen** (osm-edit.js): in der Ortskarte
+- **Orte bearbeiten und eintragen** (osm/edit.js): in der Ortskarte
   **Bearbeiten** (Name, Öffnungszeiten, Telefon, Website eines Orts aus OSM);
   lange drücken → **Hier eintragen** legt ein Unternehmen oder einen
   Veranstaltungsort an (Art, Name, Öffnungszeiten, Kontakt, Adresse aus der
@@ -711,7 +711,7 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 | `?q=Parkplatz` | Suche |
 | `?from=Göttingen&to=Kassel&profile=bike` | Route (auch `lon,lat`) |
 | `?reach=lon,lat` | Erreichbarkeit |
-| `?action=route\|record\|fly\|settings\|reach\|survey` | Ansicht öffnen |
+| `?action=route\|record\|fly\|reach\|survey` | Ansicht öffnen |
 | `?ort=…`, `?route=…`, `?anfrage=…` | Geteiltes |
 | `?sim`, `?tempo=4` | Navigation simulieren |
 | `wege.html?tab=geplant`, `?tour=ID`, `?id=ID` | Meine Touren |
@@ -758,6 +758,20 @@ takeshots wmap --eigener-server # ohne Docker
 
 - Kein Build-Schritt: ES-Module direkt im Browser, UI-Bausteine aus
   `libs/wuefl-libs` (Verweis aufs Nachbarprojekt, nicht in Git).
+- **Ordner in `js/`** – nach Art gruppiert:
+
+  | Ordner | Was drin ist |
+  |---|---|
+  | `app.js`, `app/` | Kartenseite (`index.html`): Einstieg und ihre Teile, siehe unten |
+  | `pages/` | Einstieg jeder anderen Seite: Übersicht, Meine Touren, Tour planen, Entdecken, Ebenen, Plugins, Einstellungen, Konto löschen |
+  | `ui/` | HTML-Bausteine: Dialoge und Toast, Sheet, Leiste und Menü, Teilen, Höhenprofil, Ebenen-Menü, Ort-Infos, Routen-Filter, Abschnitte Bus & Bahn, Aufzeichnen, Etappen |
+  | `map/` | Karte: Stil und Ebenen, eigene Ebenen, fertige Ebenen, Gebäude im Satellitenmodus, Ampeln, Orte aus den Kacheln, Tastatur, Plugins ausführen |
+  | `nav/` | Navigation unterwegs: Ansicht, Ansagen, Hinweise, Bild in Bild, Meldungen |
+  | `services/` | Dienste im Netz: WMap-API und Konto, Suche, Routing, Overpass, Fahrplan, ÖPNV, Verkehr, Bilder, bekannte Touren |
+  | `data/` | Was auf dem Gerät bleibt: Speicher, Datenbank, Gemerktes, Wege, Spur, Ordner, ZIP, Offline |
+  | `osm/` | OpenStreetMap: Anmelden und Hochladen, Objekte laden, Bearbeiten, Fragen (Mitmachen), Beiträge zählen |
+  | `core/` | Grundlagen ohne Oberfläche: Endpunkte und Profile, Geometrie, Kategorien, Danksagung, Geräte-Funktionen, Hell/Dunkel |
+
 - **Aufbau der Kartenseite** (`index.html`): `js/app.js` ist nur der Einstieg
   (Startansicht, Menü, Aufruf per Link). Die Teile liegen in `js/app/`:
 
@@ -800,5 +814,5 @@ takeshots wmap --eigener-server # ohne Docker
   verwaltungen), Fahrplanauskunft (EFA) der NVBW für Bus & Bahn (DELFI-Daten,
   nicht opendata-oepnv.de), Autobahn GmbH, Tankerkönig, Geologie BGR
   (GÜK250) und Macrostrat. Die Danksagung im Dashboard kommt aus
-  `js/credits.js`.
+  `js/core/credits.js`.
 - Änderungen stehen in `appdata/messages.json` (erscheinen in der App).

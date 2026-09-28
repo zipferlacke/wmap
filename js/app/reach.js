@@ -1,12 +1,12 @@
 /**
  * Erreichbarkeit: Ringe in Minuten oder Kilometern, Orte darin.
  */
-import { PROFILES } from '../config.js';
-import { showReach } from '../map.js';
-import * as overpass from '../overpass.js';
-import { byId } from '../categories.js';
-import { isochrone } from '../routing.js';
-import { simplifyTo, bbox, esc } from '../geo.js';
+import { PROFILES } from '../core/config.js';
+import { showReach } from '../map/map.js';
+import * as overpass from '../services/overpass.js';
+import { byId } from '../core/categories.js';
+import { isochrone } from '../services/routing.js';
+import { simplifyTo, bbox, esc } from '../core/geo.js';
 import { clearCategory, renderResultList, tilePoints } from './category.js';
 import { $, $$, afterLayout, chipHtml, fitTo, map, markerEl, myPosition, q, showHl } from './core.js';
 import { clearPlace } from './place.js';

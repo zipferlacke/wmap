@@ -1,11 +1,11 @@
 /**
  * Haltestellen: Abfahrten nach Fahrplan, Steige, Fahrt im Detail, Linien aus OSM.
  */
-import { linesAt, transitHtml, mountTransitLine, lineStopsHtml, colorOf } from '../transit.js';
-import { departures, samePlatform, tripCourse } from '../departures.js';
-import { clock } from '../share.js';
-import { toast } from '../ui.js';
-import { distance, esc } from '../geo.js';
+import { linesAt, transitHtml, mountTransitLine, lineStopsHtml, colorOf } from '../services/transit.js';
+import { departures, samePlatform, tripCourse } from '../services/departures.js';
+import { clock } from '../ui/share.js';
+import { toast } from '../ui/dialogs.js';
+import { distance, esc } from '../core/geo.js';
 import { $, afterLayout, fitTo, map } from './core.js';
 
 // Haltestelle → Linien; eine davon komplett auf der Karte

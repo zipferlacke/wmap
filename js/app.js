@@ -3,16 +3,16 @@
  * Navigation. Die Fachlogik steckt in den einzelnen Modulen, hier nur der
  * Ablauf der Oberfläche.
  */
-import { PROFILES } from './config.js';
-import * as geocode from './geocode.js';
-import { CATEGORIES } from './categories.js';
-import { local } from './store.js';
-import { mountAppNav } from './appnav.js';
-import { mountAppBar } from './appbar.js';
-import { setupRecording } from './record-ui.js';
-import { runExtensions } from './extensions.js';
-import { share, placeUrl, readRoute, requestUrl, myName, clock } from './share.js';
-import { ask, toast } from './ui.js';
+import { PROFILES } from './core/config.js';
+import * as geocode from './services/geocode.js';
+import { CATEGORIES } from './core/categories.js';
+import { local } from './data/store.js';
+import { mountAppNav } from './ui/appnav.js';
+import { mountAppBar } from './ui/appbar.js';
+import { setupRecording } from './ui/record.js';
+import { runExtensions } from './map/extensions.js';
+import { share, placeUrl, readRoute, requestUrl, myName, clock } from './ui/share.js';
+import { ask, toast } from './ui/dialogs.js';
 import { $, debounce, freshView, map, myPosition, q, state } from './app/core.js';
 import { fly } from './app/map-clicks.js';
 import { openSurvey } from './app/mitmachen.js';
@@ -104,7 +104,7 @@ q.title = `Auch Kategorien: ${CATEGORIES.slice(0, 12).map((c) => c.one).join(', 
    ?action=route                          Planung öffnen (App-Verknüpfung)
    ?action=record                         Aufzeichnen (Touren-Seite)
    ?action=fly|reach|survey               Fliegen, Erreichbarkeit, Mitmachen (Übersicht)
-   ?ort=lon,lat&name=…&zeit=…             geteilter Ort / Standort (share.js)
+   ?ort=lon,lat&name=…&zeit=…             geteilter Ort / Standort (ui/share.js)
    ?route=…                               geteilte Route (gepackt)
    ?anfrage=Name                          Standortanfrage beantworten
    Auch für die Screenshots in appdata/takeshots.json.

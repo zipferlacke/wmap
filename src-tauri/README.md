@@ -42,7 +42,7 @@ jeweiligen System gebaut werden.
 ## Web zuerst
 
 Die Web-App nutzt nur Browser-Schnittstellen. Wo die App mehr kann (z. B. GPS
-auf Android), fragt `../js/native.js` erst nach Tauri und nimmt sonst die
+auf Android), fragt `../js/core/native.js` erst nach Tauri und nimmt sonst die
 Browser-Schnittstelle – die Webversion verliert dadurch nichts.
 
 ## Oberfläche aus dem Netz, Gerät aus Tauri
@@ -55,7 +55,7 @@ nötig, wenn sich hier in `src-tauri/` etwas ändert (Rust, Plugins, Rechte,
 Icons). Ohne Netz bleibt die eingepackte Kopie, bis die App neu startet.
 
 Geräte-Funktionen kommen weiter aus Tauri: Die Webadresse steht in beiden
-`capabilities/*.json` unter `remote`, darum findet `../js/native.js` auch dort
+`capabilities/*.json` unter `remote`, darum findet `../js/core/native.js` auch dort
 `window.__TAURI__` und nimmt z. B. das GPS des Handys. Weitere Plugins
 (Dateien, Dialoge …) müssen in `Cargo.toml`, `src/lib.rs` und den Rechten
 stehen – und die Webseite fragt vorher, ob es sie gibt.

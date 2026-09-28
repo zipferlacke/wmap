@@ -1,13 +1,13 @@
 /**
  * Verkehrslage der Autobahn GmbH und „Entlang der Route“ (Kategorien am Weg).
  */
-import { PROFILES } from '../config.js';
-import { showPois, showTraffic } from '../map.js';
-import { trafficAlong } from '../traffic.js';
-import * as overpass from '../overpass.js';
-import { byId } from '../categories.js';
-import { reportsIn, reportsShared } from '../reports.js';
-import { nearestOnLine, simplifyTo, bbox, fmtDistance, fmtClock, esc } from '../geo.js';
+import { PROFILES } from '../core/config.js';
+import { showPois, showTraffic } from '../map/map.js';
+import { trafficAlong } from '../services/traffic.js';
+import * as overpass from '../services/overpass.js';
+import { byId } from '../core/categories.js';
+import { reportsIn, reportsShared } from '../nav/reports.js';
+import { nearestOnLine, simplifyTo, bbox, fmtDistance, fmtClock, esc } from '../core/geo.js';
 import { renderResultList, tilePointsAlong } from './category.js';
 import { $, $$, afterLayout, current, map, state, viewPadding } from './core.js';
 import { showTrafficItem } from './place.js';

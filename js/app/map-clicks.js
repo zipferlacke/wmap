@@ -1,14 +1,14 @@
 /**
  * Karte: Klicks, langes Drücken, Ebenen-Menü und Tastatur.
  */
-import { showHover, BASE_POI_LAYERS, osmRef } from '../map.js';
-import { keyboardControl } from '../keys.js';
-import { mountSignals } from '../signals.js';
-import { mapLayerIds, propertyTable } from '../layers.js';
-import { mountLayerMenu } from '../layer-menu.js';
-import { presetOf, layerInfoAt, layerInfoHtml } from '../presets.js';
-import { ask, toast } from '../ui.js';
-import { nearestOnLine, esc } from '../geo.js';
+import { showHover, BASE_POI_LAYERS, osmRef } from '../map/map.js';
+import { keyboardControl } from '../map/keys.js';
+import { mountSignals } from '../map/signals.js';
+import { mapLayerIds, propertyTable } from '../map/layers.js';
+import { mountLayerMenu } from '../ui/layer-menu.js';
+import { presetOf, layerInfoAt, layerInfoHtml } from '../map/presets.js';
+import { ask, toast } from '../ui/dialogs.js';
+import { nearestOnLine, esc } from '../core/geo.js';
 import { current, map, sheet, state } from './core.js';
 import { nav } from './nav.js';
 import { featureFromPoint, overContext, showPlace, showPoint, showTrafficItem } from './place.js';
@@ -58,11 +58,11 @@ const CLICKABLE = ['traffic-icon', 'poi-dot', 'hl-dot', 'route-alt', 'hl-fill', 
 
 /* Ebenen-Menü: Satellit, Wandern & Rad, Wanderwege, eigene Ebenen und Plugins */
 const layerMenu = mountLayerMenu(map, { toast });
-// Ampeln ab Zoom 15 – nur wo eine steht (signals.js)
+// Ampeln ab Zoom 15 – nur wo eine steht (map/signals.js)
 mountSignals(map);
 
 map.on('click', (e) => {
-  // Beim Fliegen sperrt ein Klick nur die Maus (keys.js) – nichts öffnen
+  // Beim Fliegen sperrt ein Klick nur die Maus (map/keys.js) – nichts öffnen
   if (fly.active) return;
   // Bus & Bahn: Abschnitt der Verbindung angetippt → hervorheben, Beschreibung zeigen
   if (current()?.transit && !nav.active && sheet.dataset.current === 'route') {

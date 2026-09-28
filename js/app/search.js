@@ -1,14 +1,14 @@
 /**
  * Suche oben: Vorschläge, Zuletzt genutzt, Gemerkt (Lesezeichen, Zuhause/Arbeit).
  */
-import { PROFILES } from '../config.js';
-import * as geocode from '../geocode.js';
-import { byId, matchCategory } from '../categories.js';
-import { recent } from '../store.js';
-import { isStop } from '../transit.js';
-import { places, PLACE_KINDS } from '../saved.js';
-import { ask, toast } from '../ui.js';
-import { esc } from '../geo.js';
+import { PROFILES } from '../core/config.js';
+import * as geocode from '../services/geocode.js';
+import { byId, matchCategory } from '../core/categories.js';
+import { recent } from '../data/store.js';
+import { isStop } from '../services/transit.js';
+import { places, PLACE_KINDS } from '../data/saved.js';
+import { ask, toast } from '../ui/dialogs.js';
+import { esc } from '../core/geo.js';
 import { runCategory } from './category.js';
 import { $, $$, debounce, map, q, state } from './core.js';
 import { paintPlaceActions, placeWaypoint, showPlace } from './place.js';

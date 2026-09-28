@@ -13,7 +13,7 @@
  *   - nach 10 Tagen wird er gelöscht
  *   - reicht der Platz nicht, weicht zuerst die älteste Navigation
  */
-const APP = 'wmap-app-v4';          // v4: MapLibre und ECharts aus libs/ statt CDN
+const APP = 'wmap-app-v5';          // v5: js/ in Ordner gruppiert
 const TILES = 'wmap-tiles-v1';
 const MAX_TILES = 8000;
 const NAV = 'wmap-nav-';

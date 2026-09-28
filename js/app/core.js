@@ -2,11 +2,11 @@
  * Kartenseite – gemeinsamer Kern: Karte, Zustand und Hilfen, die alle Teile brauchen.
  * Hängt von keinem anderen Teil unter app/ ab.
  */
-import { PROFILES } from '../config.js';
-import { geo } from '../native.js';
-import { createMap, showHighlight } from '../map.js';
-import { local } from '../store.js';
-import { bboxAround, esc } from '../geo.js';
+import { PROFILES } from '../core/config.js';
+import { geo } from '../core/native.js';
+import { createMap, showHighlight } from '../map/map.js';
+import { local } from '../data/store.js';
+import { bboxAround, esc } from '../core/geo.js';
 
 export const $ = (s, root = document) => root.querySelector(s);
 export const $$ = (s, root = document) => [...root.querySelectorAll(s)];

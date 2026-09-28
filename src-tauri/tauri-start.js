@@ -5,7 +5,7 @@
  * Skript in ihre index.html ein).
  *
  * Geräte-Funktionen (Standort …) kommen weiter aus Tauri: Die Webadresse ist
- * in src-tauri/capabilities freigegeben, js/native.js findet window.__TAURI__.
+ * in src-tauri/capabilities freigegeben, js/core/native.js findet window.__TAURI__.
  */
 (() => {
   const REMOTE = 'https://app.wuefl.de/wmap/';

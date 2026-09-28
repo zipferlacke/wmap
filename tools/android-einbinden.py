@@ -9,7 +9,7 @@ aufgerufen von `tauri-android wmap` (wuefl_products/tools) vor jedem Bauen:
   Standort-Berechtigungen  → vor <application> (tauri-plugin-geolocation
                              fragt nur nach, was im Manifest steht)
   tools/android/MainActivity.kt → Bild in Bild während der Navigation
-                             (beim Rauswischen von selbst, siehe js/pip.js)
+                             (beim Rauswischen von selbst, siehe js/nav/pip.js)
   supportsPictureInPicture → an die <activity>
   Upload-Signatur          → app/build.gradle.kts, wenn es die Schlüssel-
                              datei gibt (für `tauri-android wmap release`)
