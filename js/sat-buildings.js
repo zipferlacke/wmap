@@ -18,7 +18,7 @@
  * Mitte; es wird erst ersetzt, wenn die Mitte ihn verlässt, und bis das
  * neue da ist, bleibt das alte. Ebenen-Menü → Satellit schaltet sie an.
  */
-import earcut from './earcut.js';
+import earcut from '../libs/earcut/earcut.js';
 
 const ID = 'sat-buildings';
 const MIN_ZOOM = 14.5;

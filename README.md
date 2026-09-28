@@ -762,7 +762,8 @@ takeshots wmap --eigener-server # ohne Docker
 - Fremde Bibliotheken liegen fest versioniert in `libs/` und stehen in Git –
   kein CDN, damit Web, App und Offline-Cache dasselbe laden:
   MapLibre GL JS (`libs/maplibre-gl/`) und Apache ECharts für das Höhenprofil
-  (`libs/echarts/`). Versionen in `libs/VERSIONEN.txt`; neue Version: Nummer
+  (`libs/echarts/`) und earcut für die Dächer der Satelliten-Häuser
+  (`libs/earcut/`). Versionen in `libs/VERSIONEN.txt`; neue Version: Nummer
   in `tools/libs-holen.sh` ändern und das Skript laufen lassen.
 - Lokal: Docker-Container `php` (Port 8080), Live-Neuladen auf Port 3001 nur
   mit `LIVE=1 docker compose up -d php`.

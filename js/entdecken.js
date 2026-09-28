@@ -18,22 +18,13 @@ import { api } from './api.js';
 import { konto, ensureLogin } from './konto.js';
 import { KINDS, toursInBox, findTours, toursAt, searchTours, tourLine, tourLink } from './known-tours.js';
 import { encodeShare, local, coordsOf } from './store.js';
-import { ask } from './ui.js';
+import { ask, toast } from './ui.js';
 import { mapPage } from './mappage.js';
 import { bbox as bboxOf, simplifyTo, fmtDistance, esc } from './geo.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const panel = $('.wege-panel');
 const content = $('.wege-content');
-
-function toast(text) {
-  let el = $('#toast');
-  if (!el) { el = Object.assign(document.createElement('div'), { id: 'toast', role: 'status' }); document.body.append(el); }
-  el.textContent = text;
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), 3500);
-}
 
 // ?view=lon,lat,zoom (Links, Screenshots) – sonst der letzte Kartenausschnitt
 const asked = new URLSearchParams(location.search).get('view')?.split(',').map(Number);

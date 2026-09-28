@@ -6,24 +6,12 @@
 import { createMap, BASE_STYLES } from './map.js';
 import { Sheet } from './sheet.js';
 import { mountAppNav } from './appnav.js';
-import { ask } from './ui.js';
+import { ask, toast } from './ui.js';
 import { local } from './store.js';
 import { layers, newLayer, showLayer, hideLayer, colorExpr, numericProps, mapLayerIds, propertyTable, RAMP } from './layers.js';
 import { esc } from './geo.js';
 
 const $ = (s, root = document) => root.querySelector(s);
-
-function toast(text) {
-  let el = $('#toast');
-  if (!el) {
-    el = Object.assign(document.createElement('div'), { id: 'toast', role: 'status' });
-    document.body.append(el);
-  }
-  el.textContent = text;
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), 3500);
-}
 
 const view = local.get('wmap.view');
 const { map } = createMap('map', { style: BASE_STYLES.hell, center: view?.center ?? [9.93, 51.53], zoom: view?.zoom ?? 6, auto3d: false });

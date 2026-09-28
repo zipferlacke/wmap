@@ -39,7 +39,7 @@ import { prefs, mountRoutePrefs, transitParams } from './route-prefs.js';
 import { connections, places, PLACE_KINDS } from './saved.js';
 import { runExtensions } from './extensions.js';
 import { share, placeUrl, routeUrl, readRoute, requestUrl, myName, clock } from './share.js';
-import { ask } from './ui.js';
+import { ask, toast } from './ui.js';
 import { editPlace, addPlace } from './osm-edit.js';
 import { quickAsk } from './quick-ask.js';
 import { report, answered, reportsIn, reportsShared, REPORT_KINDS } from './reports.js';
@@ -100,25 +100,6 @@ const debounce = (fn, ms) => {
 
 /** Nach dem nächsten Layout – erst dann haben Sheet und Leiste ihre echte Größe. */
 const afterLayout = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn));
-
-/** Kurze Meldung oben; mit `action` bleibt sie länger und hat einen Knopf. */
-function toast(text, { action } = {}) {
-  let el = $('#toast');
-  if (!el) {
-    el = Object.assign(document.createElement('div'), { id: 'toast', role: 'status' });
-    document.body.append(el);
-  }
-  el.textContent = text;
-  el.classList.toggle('has-action', !!action);
-  if (action) {
-    const b = Object.assign(document.createElement('button'), { type: 'button', className: 'toast-action', textContent: action.label });
-    b.addEventListener('click', () => { el.classList.remove('show'); action.run(); });
-    el.append(b);
-  }
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), action ? 9000 : 3500);
-}
 
 geolocate.on('geolocate', (pos) => { state.position = [pos.coords.longitude, pos.coords.latitude]; });
 

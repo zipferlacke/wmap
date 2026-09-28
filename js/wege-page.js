@@ -21,7 +21,7 @@ import { ElevationProfile } from './elevation.js';
 import { tracks, trackCoords, trackGpx, parseGpx, sameTrack, restore, PROFILE_GROUP } from './tracks.js';
 import { tours, shapeOf, coordsOf, encodeShare, toGpx, download } from './store.js';
 import { PROFILES } from './config.js';
-import { ask } from './ui.js';
+import { ask, toast } from './ui.js';
 import { share } from './share.js';
 import { mountFolder, tourFromGpx, zipBackup, restoreZip } from './folder.js';
 import { mapPage } from './mappage.js';
@@ -47,15 +47,6 @@ const LONG = new Intl.DateTimeFormat('de-DE', { weekday: 'long', day: 'numeric',
 const TIME = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
 const km = (m) => (m >= 100000 ? `${Math.round(m / 1000).toLocaleString('de-DE')} km` : fmtDistance(m));
 const moving = (t) => t.moving || (t.end - t.start) / 1000;
-
-function toast(text) {
-  let el = $('#toast');
-  if (!el) { el = Object.assign(document.createElement('div'), { id: 'toast', role: 'status' }); document.body.append(el); }
-  el.textContent = text;
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), 3500);
-}
 
 /* ── Zustand ──────────────────────────────────────────────────────────────── */
 

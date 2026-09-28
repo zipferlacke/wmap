@@ -22,7 +22,7 @@ import { ElevationProfile } from './elevation.js';
 import { tours, shapeOf, coordsOf, encodeShare, decodeShare, toGpx, download, local } from './store.js';
 import { sheet as sidePanel } from '../libs/wuefl-libs/userDialog/userDialog.js';
 import { mountLayerMenu } from './layer-menu.js';
-import { ask } from './ui.js';
+import { ask, toast } from './ui.js';
 import * as geocode from './geocode.js';
 import { distance, nearestOnLine, pointAt, simplifyTo, bbox, cumulative, fmtDistance, fmtDuration, esc } from './geo.js';
 import { setupStages } from './tour-stages.js';
@@ -30,18 +30,6 @@ import { tourLine, originalRoute, searchTours } from './known-tours.js';
 import './folder.js';   // gespeicherte Touren landen auch im verbundenen Ordner
 
 const $ = (s, root = document) => root.querySelector(s);
-
-function toast(text) {
-  let el = $('#toast');
-  if (!el) {
-    el = Object.assign(document.createElement('div'), { id: 'toast', role: 'status' });
-    document.body.append(el);
-  }
-  el.textContent = text;
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), 3000);
-}
 
 const debounce = (fn, ms) => {
   let t;

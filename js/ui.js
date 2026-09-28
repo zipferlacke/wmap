@@ -37,3 +37,25 @@ export function ask({ icon = 'help', title, text = '', html = '', buttons, read 
     dlg.querySelector('input:not([readonly])')?.focus();
   });
 }
+
+/**
+ * Kurze Meldung unten – für alle Seiten. Mit `action` ({ label, run }) steht
+ * ein Knopf daneben, und die Meldung bleibt länger stehen.
+ */
+export function toast(text, { action } = {}) {
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = Object.assign(document.createElement('div'), { id: 'toast', role: 'status' });
+    document.body.append(el);
+  }
+  el.textContent = text;
+  el.classList.toggle('has-action', !!action);
+  if (action) {
+    const b = Object.assign(document.createElement('button'), { type: 'button', className: 'toast-action', textContent: action.label });
+    b.addEventListener('click', () => { el.classList.remove('show'); action.run(); });
+    el.append(b);
+  }
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), action ? 9000 : 3500);
+}

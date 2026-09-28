@@ -10,21 +10,12 @@ import { tours, recent } from './store.js';
 import { layers } from './layers.js';
 import { creditList } from './credits.js';
 import { mountFolder } from './folder.js';
-import { ask } from './ui.js';
+import { ask, toast } from './ui.js';
 import { esc } from './geo.js';
 import { APP_VERSION } from './config.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 mountAppBar();
-
-function toast(text) {
-  let el = $('#toast');
-  if (!el) { el = Object.assign(document.createElement('div'), { id: 'toast', role: 'status' }); document.body.append(el); }
-  el.textContent = text;
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), 3500);
-}
 
 const km = (m) => `${Math.round(m / 1000).toLocaleString('de-DE')} km`;
 const n = (x, one, many) => `${x.toLocaleString('de-DE')} ${x === 1 ? one : many}`;

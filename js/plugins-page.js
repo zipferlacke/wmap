@@ -21,21 +21,12 @@ import { local } from './store.js';
 import { layers, newLayer, rasterLayer } from './layers.js';
 import { extensions } from './extensions.js';
 import { addOwnSource, addOwnFiles } from './own-source.js';
-import { ask } from './ui.js';
+import { ask, toast } from './ui.js';
 import { esc } from './geo.js';
 import { PRESETS, legendHtml } from './presets.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 mountAppBar();
-
-function toast(text) {
-  let el = $('#toast');
-  if (!el) { el = Object.assign(document.createElement('div'), { id: 'toast', role: 'status' }); document.body.append(el); }
-  el.textContent = text;
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), 3500);
-}
 
 const FILTERS = [
   ['all', 'apps', 'Alle'],

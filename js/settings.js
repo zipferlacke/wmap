@@ -21,17 +21,9 @@ import { fuelKey } from './media.js';
 import { local, recent } from './store.js';
 import { konto } from './konto.js';
 import { myOsmStats, allOsmStats, statsText } from './osm-stats.js';
+import { toast } from './ui.js';
 
 const root = document.querySelector('.settings');
-
-function toast(text) {
-  let el = document.getElementById('toast');
-  if (!el) { el = Object.assign(document.createElement('div'), { id: 'toast', role: 'status' }); document.body.append(el); }
-  el.textContent = text;
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), 3500);
-}
 
 let loginError = '';   // an Ort und Stelle zeigen, nicht nur kurz als Meldung
 let jumped = false;    // #osm: einmal hinscrollen, nicht bei jedem Neuzeichnen
