@@ -49,6 +49,9 @@
                         <span class="msr route-line-arrow">arrow_forward</span>
                         <span class="route-line-to"></span>
                     </button>
+                    <button type="button" class="button route-prefs-open" data-shape="round no-background" popovertarget="route-prefs" title="Einstellungen: Autobahn, Fähren, Verkehrsmittel …">
+                        <span class="msr">tune</span>
+                    </button>
                 </div>
                 <div class="route-head">
                     <button type="button" id="route-close" class="button" data-shape="round no-background" title="Zurück">
@@ -60,10 +63,6 @@
                         <label title="Auto"><input type="radio" name="profile" value="car" checked><span class="msr">directions_car</span></label>
                         <label title="Bus &amp; Bahn"><input type="radio" name="profile" value="transit"><span class="msr">directions_transit</span></label>
                     </div>
-                    <label class="hw-toggle" title="Autobahnen erlauben">
-                        <span class="msr">add_road</span>
-                        <input type="checkbox" id="highways" data-shape="toggle" checked>
-                    </label>
                 </div>
                 <div class="waypoints-wrap">
                     <ol id="waypoints" class="waypoints"></ol>
@@ -71,10 +70,26 @@
                         <span class="msr">swap_vert</span>
                     </button>
                 </div>
-                <button type="button" id="add-via" class="link-button">
-                    <span class="msr">add</span> Zwischenziel
-                </button>
+                <!-- Bus & Bahn: wann – Abfahrt ab oder Ankunft bis, leer = jetzt -->
+                <div class="transit-when" hidden>
+                    <span class="msr">schedule</span>
+                    <select id="when-mode" aria-label="Abfahrt oder Ankunft">
+                        <option value="dep">Abfahrt ab</option>
+                        <option value="arr">Ankunft bis</option>
+                    </select>
+                    <input type="datetime-local" id="when-time" aria-label="Zeitpunkt">
+                    <button type="button" id="when-now" class="link-button">Jetzt</button>
+                </div>
+                <div class="route-foot">
+                    <button type="button" id="add-via" class="link-button">
+                        <span class="msr">add</span> Zwischenziel
+                    </button>
+                    <button type="button" id="route-prefs-btn" class="button route-prefs-open" data-shape="round no-background" popovertarget="route-prefs" title="Einstellungen: Autobahn, Fähren, Verkehrsmittel …">
+                        <span class="msr">tune</span>
+                    </button>
+                </div>
             </form>
+            <div id="route-prefs" class="route-prefs" popover></div>
 
             <ul id="suggest" class="suggest" role="listbox" hidden></ul>
         </section>
@@ -214,6 +229,7 @@
                     <summary>Wegbeschreibung</summary>
                     <ol class="step-list"></ol>
                 </details>
+                <div class="transit-actions"></div>
                 <div class="sheet-actions">
                     <button type="button" class="button share-route" data-shape="round" title="Route teilen">
                         <span class="msr">share</span>

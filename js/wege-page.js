@@ -6,12 +6,14 @@
  *   Aufgezeichnet  Wege, die du gefahren oder gelaufen bist (Aufzeichnung,
  *                  Navigation, GPX mit Zeiten). Nach Jahren gruppiert und
  *                  gefärbt; der gewählte Weg zeigt Tempo, Höhe und Puls.
+ *   Bus & Bahn     gemerkte Verbindungen (saved.js): kommende oben,
+ *                  vergangene zugeklappt darunter; im Detail alle Abschnitte
  *
  * Das Panel (Rechner links, Handy unten) zeigt die Liste – Suche oben,
  * Tabelle je Gruppe – oder eine Tour/einen Weg im Detail. Kopfzeile siehe
  * mappage.js: ← Übersicht bzw. Liste, ✕ zur Karte, Griff zum Einklappen.
  *
- * Aufruf: wege.html · ?tab=geplant · ?tour=… (geplante Tour) · ?id=… (Weg)
+ * Aufruf: wege.html · ?tab=geplant · ?tab=bahn · ?tour=… (geplante Tour) · ?id=… (Weg) · ?conn=… (Verbindung)
  */
 import { createMap, showHover } from './map.js';
 import { heightsAlong } from './routing.js';
@@ -23,7 +25,9 @@ import { ask } from './ui.js';
 import { share } from './share.js';
 import { mountFolder, tourFromGpx, zipBackup, restoreZip } from './folder.js';
 import { mapPage } from './mappage.js';
-import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, esc } from './geo.js';
+import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, esc, bbox } from './geo.js';
+import { connections } from './saved.js';
+import { legBadge, changesText, transitLegsHtml } from './transit-legs.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 
@@ -56,10 +60,12 @@ function toast(text) {
 /* ── Zustand ──────────────────────────────────────────────────────────────── */
 
 const params = new URLSearchParams(location.search);
-let tab = params.get('tab') === 'geplant' || params.has('tour') ? 'geplant' : 'wege';
+const tabOf = (p) => (p.get('tab') === 'bahn' || p.has('conn') ? 'bahn' : p.get('tab') === 'geplant' || p.has('tour') ? 'geplant' : 'wege');
+let tab = tabOf(params);
 let all = [];                      // aufgezeichnete Wege
 let planned = [];                  // geplante Touren
-const query = { wege: '', geplant: '' };
+let conns = [];                    // gemerkte Verbindungen mit Bus & Bahn
+const query = { wege: '', geplant: '', bahn: '' };
 let selected = null;               // gewählter Weg oder Tour
 let years = [];
 const yearColor = (y) => YEAR_COLORS[Math.min(Math.max(0, years.indexOf(y)), YEAR_COLORS.length - 1)];
@@ -72,8 +78,8 @@ const ready = new Promise((r) => (map.loaded() ? r() : map.once('load', r)));
 const page = mapPage(panel, { map, onFit: () => fitView() });
 
 function fitView() {
-  const list = selected ? [selected] : tab === 'geplant' ? visiblePlanned() : visible();
-  const boxes = list.map((t) => t.bbox ?? bboxOfTour(t)).filter(Boolean);
+  const list = selected ? [selected] : tab === 'geplant' ? visiblePlanned() : tab === 'bahn' ? visibleConns() : visible();
+  const boxes = list.map((t) => (t.legs ? bbox(connCoords(t)) : t.bbox ?? bboxOfTour(t))).filter(Boolean);
   if (!boxes.length) return;
   const b = boxes.reduce((a, x) => [Math.min(a[0], x[0]), Math.min(a[1], x[1]), Math.max(a[2], x[2]), Math.max(a[3], x[3])], [180, 90, -180, -90]);
   map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: page.padding(), maxZoom: 15, duration: 600 });
@@ -103,13 +109,25 @@ function visiblePlanned() {
   return planned.filter((t) => [t.name, t.description, PROFILES[t.profile]?.label, groupOf(t).label].some((x) => norm(x).includes(q)));
 }
 
+const connCoords = (c) => c.legs.flatMap((l) => l.coords ?? []);
+const connName = (c) => `${c.from?.label?.split(',')[0] ?? 'Start'} → ${c.to?.label?.split(',')[0] ?? 'Ziel'}`;
+function visibleConns() {
+  const q = norm(query.bahn).trim();
+  if (!q) return conns;
+  return conns.filter((c) => [connName(c), DATE.format(c.dep), LONG.format(c.dep), ...c.legs.map((l) => l.line)].some((x) => norm(x).includes(q)));
+}
+
 function showList({ push = false } = {}) {
   selected = null;
-  if (push) history.pushState(null, '', `./wege.html${tab === 'geplant' ? '?tab=geplant' : ''}`);
+  if (push) history.pushState(null, '', `./wege.html${tab === 'wege' ? '' : `?tab=${tab}`}`);
   document.title = 'Meine Touren – WMap';
   page.header('Meine Touren');
-  const isPlan = tab === 'geplant';
-  const empty = isPlan
+  const isPlan = tab === 'geplant', isBahn = tab === 'bahn';
+  const empty = isBahn
+    ? `<div class="tour-empty"><span class="msr">directions_transit</span><p>Noch keine Verbindungen gemerkt.</p>
+        <p class="muted">Plane auf der Karte eine Route mit Bus &amp; Bahn und tippe bei der passenden Verbindung auf „Merken“.</p>
+        <a class="button primary" href="./index.html"><span class="msr">directions</span> Route planen</a></div>`
+    : isPlan
     ? `<div class="tour-empty"><span class="msr">route</span><p>Noch keine Touren geplant.</p>
         <p class="muted">Plane eine Tour Punkt für Punkt, übernimm einen bekannten Wanderweg unter „Entdecken“ – oder speichere eine Route als Tour.</p>
         <a class="button primary" href="./tour.html"><span class="msr">add_road</span> Tour planen</a></div>`
@@ -119,18 +137,20 @@ function showList({ push = false } = {}) {
   content.innerHTML = `
     <nav class="tours-tabs ent-tabs" role="tablist">
       <a role="tab" href="?tab=geplant" data-tab="geplant" aria-selected="${isPlan}"><span class="msr">route</span> Geplant <small>${planned.length}</small></a>
-      <a role="tab" href="./wege.html" data-tab="wege" aria-selected="${!isPlan}"><span class="msr">timeline</span> Aufgezeichnet <small>${all.length}</small></a>
+      <a role="tab" href="./wege.html" data-tab="wege" aria-selected="${tab === 'wege'}"><span class="msr">timeline</span> Aufgezeichnet <small>${all.length}</small></a>
+      <a role="tab" href="?tab=bahn" data-tab="bahn" aria-selected="${isBahn}"><span class="msr">directions_transit</span> Bus &amp; Bahn <small>${conns.length}</small></a>
     </nav>
-    <p class="muted tab-hint">${isPlan ? 'Geplant: Touren, die du noch fahren oder laufen willst – aus dem Planer, übernommen oder importiert.'
-      : 'Aufgezeichnet: Wege, die du wirklich gefahren oder gelaufen bist – mit Zeit, Tempo und Puls.'}</p>
+    <p class="muted tab-hint">${isBahn ? 'Bus & Bahn: gemerkte Verbindungen – kommende oben, vergangene zugeklappt darunter.'
+      : isPlan ? 'Geplant: Touren, die du noch fahren oder laufen willst – aus dem Planer, übernommen oder importiert.'
+        : 'Aufgezeichnet: Wege, die du wirklich gefahren oder gelaufen bist – mit Zeit, Tempo und Puls.'}</p>
     <form class="wege-search tour-search" role="search" onsubmit="return false">
       <span class="msr">search</span>
-      <input type="search" placeholder="${isPlan ? 'Suchen – Name, Beschreibung, Rad, Wandern …' : 'Suchen – Name, Ort, Jahr, Monat …'}" value="${esc(query[tab])}" aria-label="Suchen">
+      <input type="search" placeholder="${isBahn ? 'Suchen – Ort, Linie, Datum …' : isPlan ? 'Suchen – Name, Beschreibung, Rad, Wandern …' : 'Suchen – Name, Ort, Jahr, Monat …'}" value="${esc(query[tab])}" aria-label="Suchen">
     </form>
-    ${(isPlan ? planned : all).length ? '' : empty}
+    ${(isBahn ? conns : isPlan ? planned : all).length ? '' : empty}
     <div class="wege-groups"></div>
     <footer class="wege-tools">
-      ${isPlan ? `
+      ${isBahn ? '' : isPlan ? `
       <a class="button" href="./tour.html"><span class="msr">add_road</span> Tour planen</a>
       <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>` : `
       <a class="button" href="./index.html?action=record"><span class="msr">radio_button_checked</span> Aufzeichnen</a>
@@ -149,7 +169,24 @@ function showList({ push = false } = {}) {
 function paintGroups() {
   const box = $('.wege-groups', content);
   if (!box) return;
-  if (tab === 'geplant') {
+  if (tab === 'bahn') {
+    const list = visibleConns();
+    const now = Date.now();
+    const row = (c) => `<tr data-conn="${esc(c.id)}" tabindex="0">
+      <td class="w-icon"><span class="msr" style="color:#1a73e8">directions_transit</span></td>
+      <td class="w-name"><strong>${esc(connName(c))}</strong><small>${DATE.format(c.dep)} · ${TIME.format(c.dep)}–${TIME.format(c.arr)} · ${changesText(c)}</small>
+        <span class="legs">${c.legs.filter((l) => !l.walk).map(legBadge).join(' ')}</span></td>
+      <td class="w-num">${fmtDuration((c.arr - c.dep) / 1000)}</td>
+    </tr>`;
+    const next = list.filter((c) => c.arr >= now), past = list.filter((c) => c.arr < now).reverse();
+    box.innerHTML = (next.length ? `<details class="wege-year" open>
+        <summary><span class="msr" style="color:#1a73e8">schedule</span><strong>Kommende</strong><small>${next.length} ${next.length === 1 ? 'Verbindung' : 'Verbindungen'}</small></summary>
+        <table class="wege-table conn-table"><tbody>${next.map(row).join('')}</tbody></table></details>` : '')
+      + (past.length ? `<details class="wege-year">
+        <summary><span class="msr" style="color:var(--muted)">history</span><strong>Vergangene</strong><small>${past.length} ${past.length === 1 ? 'Verbindung' : 'Verbindungen'}</small></summary>
+        <table class="wege-table conn-table"><tbody>${past.map(row).join('')}</tbody></table></details>` : '')
+      + (conns.length && !list.length ? `<p class="muted">Nichts gefunden für „${esc(query.bahn)}“.</p>` : '');
+  } else if (tab === 'geplant') {
     const list = visiblePlanned();
     const by = new Map(Object.keys(GROUP).map((k) => [k, []]));
     for (const t of list) by.get(groupKey(t)).push(t);
@@ -204,6 +241,26 @@ content.addEventListener('click', (e) => {
   if (row) { select(row.dataset.id, { push: true }); return; }
   const trow = e.target.closest('tr[data-tour]');
   if (trow) { selectTour(trow.dataset.tour, { push: true }); return; }
+  const crow = e.target.closest('tr[data-conn]');
+  if (crow) { selectConn(crow.dataset.conn, { push: true }); return; }
+  // Abschnitt einer Verbindung auf- und zuklappen
+  const leg = e.target.closest('.leg-head');
+  if (leg) {
+    const li = leg.closest('.leg');
+    li.classList.toggle('open');
+    leg.setAttribute('aria-expanded', li.classList.contains('open'));
+    $('.leg-detail', li).hidden = !li.classList.contains('open');
+    return;
+  }
+  const act = e.target.closest('[data-conn-do]')?.dataset.connDo;
+  if (act === 'delete' && selected?.legs) {
+    connections.remove(selected.id);
+    conns = connections.all();
+    toast('Verbindung gelöscht');
+    showList({ push: true });
+    fitView();
+    return;
+  }
   const tool = e.target.closest('[data-tool]')?.dataset.tool;
   if (tool === 'backup') {
     zipBackup().then((blob) => download(`wmap-sicherung-${new Date().toISOString().slice(0, 10)}.zip`, blob, 'application/zip'))
@@ -214,8 +271,12 @@ content.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
   if (e.target.matches('tr[data-id]')) select(e.target.dataset.id, { push: true });
   if (e.target.matches('tr[data-tour]')) selectTour(e.target.dataset.tour, { push: true });
+  if (e.target.matches('tr[data-conn]')) selectConn(e.target.dataset.conn, { push: true });
 });
-content.addEventListener('mouseover', (e) => hover(e.target.closest('tr[data-id], tr[data-tour]')?.dataset.id ?? e.target.closest('tr[data-tour]')?.dataset.tour ?? null));
+content.addEventListener('mouseover', (e) => {
+  const tr = e.target.closest('tr[data-id], tr[data-tour], tr[data-conn]');
+  hover(tr?.dataset.id ?? tr?.dataset.tour ?? tr?.dataset.conn ?? null);
+});
 content.addEventListener('change', async (e) => {
   const inp = e.target.closest('[data-file]');
   if (!inp?.files?.length) return;
@@ -401,6 +462,34 @@ function selectTour(id, { push = false } = {}) {
   });
 }
 
+/* ── Eine gemerkte Verbindung ─────────────────────────────────────────────── */
+
+function selectConn(id, { push = false } = {}) {
+  const c = conns.find((x) => x.id === id);
+  if (!c) { showList(); return; }
+  tab = 'bahn';
+  selected = c;
+  heights = null;
+  if (push) history.pushState({ conn: id }, '', `./wege.html?conn=${encodeURIComponent(id)}`);
+  document.title = `${connName(c)} – WMap`;
+  page.header(connName(c), () => showList({ push: true }));
+  const pt = (x) => (x?.point ? x.point.map((v) => v.toFixed(5)).join(',') : '');
+  const again = `./index.html?from=${pt(c.from)}&to=${pt(c.to)}&profile=transit`;
+  content.innerHTML = `
+    <p class="weg-when"><span class="msr" style="color:#1a73e8">directions_transit</span>
+      ${LONG.format(c.dep)}<br><span class="muted">${TIME.format(c.dep)} – ${TIME.format(c.arr)} · ${fmtDuration((c.arr - c.dep) / 1000)} · ${changesText(c)}</span></p>
+    ${c.arr < Date.now() ? '<p class="muted">Diese Verbindung liegt in der Vergangenheit.</p>' : ''}
+    <ol class="step-list conn-legs">${transitLegsHtml(c, null)}</ol>
+    <div class="weg-actions">
+      <a class="button primary" href="${again}"><span class="msr">search</span> Neu suchen</a>
+      ${c.booking ? `<a class="button" href="${esc(c.booking)}" target="_blank" rel="noopener"><span class="msr">confirmation_number</span> Ticket bei der Bahn</a>` : ''}
+      <button type="button" class="button" data-conn-do="delete"><span class="msr">delete</span> Löschen</button>
+    </div>`;
+  page.open();
+  paintMap();
+  fitView();
+}
+
 /* ── Karte ────────────────────────────────────────────────────────────────── */
 
 /**
@@ -435,7 +524,11 @@ let markers = [];
 async function paintMap() {
   await ready;
   // Nur der aktive Reiter liegt auf der Karte – sonst mischt sich Geplantes mit Gefahrenem
-  const fc = tab === 'geplant'
+  const fc = tab === 'bahn'
+    ? { type: 'FeatureCollection', features: visibleConns().map((c) => ({
+      type: 'Feature', properties: { id: c.id, color: '#1a73e8' }, geometry: { type: 'LineString', coordinates: connCoords(c) },
+    })) }
+    : tab === 'geplant'
     ? { type: 'FeatureCollection', features: visiblePlanned().map((t) => ({
       type: 'Feature', properties: { id: t.id, color: groupOf(t).color }, geometry: { type: 'LineString', coordinates: coordsOf(t.shape) },
     })) }
@@ -453,7 +546,7 @@ async function paintMap() {
     map.addLayer({ id: 'weg-sel', type: 'line', source: 'weg-sel', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#1a73e8', 'line-width': w(3.5, 7) } });
     map.on('click', 'wege-line', (e) => {
       const id = e.features[0].properties.id;
-      if (tab === 'geplant') selectTour(id, { push: true }); else select(id, { push: true });
+      if (tab === 'bahn') selectConn(id, { push: true }); else if (tab === 'geplant') selectTour(id, { push: true }); else select(id, { push: true });
     });
     map.on('mousemove', 'wege-line', (e) => { map.getCanvas().style.cursor = 'pointer'; hover(e.features[0].properties.id); });
     map.on('mouseleave', 'wege-line', () => { map.getCanvas().style.cursor = ''; hover(null); });
@@ -472,7 +565,20 @@ async function paintMap() {
   map.setPaintProperty('wege-casing', 'line-opacity', selected ? 0.3 : 0.8);
   markers.forEach((m) => m.remove());
   markers = [];
-  if (selected) {
+  if (selected?.legs) {
+    // Verbindung: jeder Abschnitt in seiner Farbe, Fußwege grau
+    map.getSource('weg-sel').setData({ type: 'FeatureCollection', features: selected.legs.filter((l) => l.coords?.length > 1).map((l) => ({
+      type: 'Feature', properties: { color: l.walk ? '#868e96' : (l.color ?? '#1a73e8') }, geometry: { type: 'LineString', coordinates: l.coords },
+    })) });
+    map.setPaintProperty('weg-sel', 'line-gradient', undefined);
+    map.setPaintProperty('weg-sel', 'line-color', ['get', 'color']);
+    const c = connCoords(selected);
+    for (const [p, cls, icon] of [[c[0], 'start', 'trip_origin'], [c.at(-1), 'dest', 'sports_score']]) {
+      if (!p) continue;
+      const el = Object.assign(document.createElement('div'), { className: `wp-marker ${cls}`, innerHTML: `<span class="msr">${icon}</span>` });
+      markers.push(new maplibregl.Marker({ element: el }).setLngLat(p).addTo(map));
+    }
+  } else if (selected) {
     const isTrack = 'start' in selected;
     const c = isTrack ? trackCoords(selected) : coordsOf(selected.shape);
     map.getSource('weg-sel').setData({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: c } });
@@ -493,7 +599,7 @@ async function paintMap() {
 function hover(id) {
   if (map.getLayer('wege-hover')) map.setFilter('wege-hover', ['==', ['get', 'id'], id ?? '']);
   content.querySelectorAll('tr.hover').forEach((r) => r.classList.remove('hover'));
-  if (id) content.querySelector(`tr[data-id="${CSS.escape(id)}"], tr[data-tour="${CSS.escape(id)}"]`)?.classList.add('hover');
+  if (id) content.querySelector(`tr[data-id="${CSS.escape(id)}"], tr[data-tour="${CSS.escape(id)}"], tr[data-conn="${CSS.escape(id)}"]`)?.classList.add('hover');
 }
 
 /* ── Start ────────────────────────────────────────────────────────────────── */
@@ -501,13 +607,15 @@ function hover(id) {
 async function load() {
   try { all = await tracks.all(); } catch { all = []; }
   planned = tours.all();
+  conns = connections.all();
   years = [...new Set(all.map(yearOf))].sort((a, b) => b - a);
 }
 
 function route() {
   const p = new URLSearchParams(location.search);
-  tab = p.get('tab') === 'geplant' || p.has('tour') ? 'geplant' : 'wege';
+  tab = tabOf(p);
   if (p.get('id')) select(p.get('id'));
+  else if (p.get('conn')) selectConn(p.get('conn'));
   else if (p.get('tour')) selectTour(p.get('tour'));
   else showList();
 }
@@ -516,7 +624,7 @@ addEventListener('popstate', () => { route(); fitView(); });
 /* Aus dem Ordner kam etwas dazu oder ging weg */
 addEventListener('wmap:folder', async () => {
   await load();
-  const list = tab === 'geplant' ? planned : all;
+  const list = tab === 'bahn' ? conns : tab === 'geplant' ? planned : all;
   if (selected) { if (!list.some((t) => t.id === selected.id)) showList(); } else showList();
 });
 

@@ -680,7 +680,9 @@ function addLayers(map) {
   /* Routen: Alternativen durchscheinend, gewählte Route kräftig mit Rand.
      Wo die Navigation die Fahrbahn mit Spuren zeichnet (covered), tritt
      die Linie nah dran zurück. */
-  const hideCovered = ['interpolate', ['linear'], ['zoom'], ROAD_ZOOM - 0.3, 1, ROAD_ZOOM, ['case', ['get', 'covered'], 0, 1]];
+  // Bus & Bahn: nicht gewählte Abschnitte treten zurück
+  const legOp = ['case', ['boolean', ['get', 'dim'], false], 0.3, 1];
+  const hideCovered = ['interpolate', ['linear'], ['zoom'], ROAD_ZOOM - 0.3, legOp, ROAD_ZOOM, ['case', ['boolean', ['get', 'covered'], false], 0, legOp]];
   // Einblenden über eine Zoomspanne – nicht über minzoom: Geneigt kommen die
   // Kacheln weiter hinten aus kleineren Zoomstufen, dort fehlte die Ebene sonst
   const fade = (z0, z1, o = 1) => ['interpolate', ['linear'], ['zoom'], z0, 0, z1, o];
@@ -704,11 +706,33 @@ function addLayers(map) {
   }, under);
   map.addLayer({
     id: 'route-main', type: 'line', source: 'routes',
-    filter: ['get', 'selected'],
+    filter: ['all', ['get', 'selected'], ['!', ['boolean', ['get', 'walk'], false]]],
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
-      'line-color': ROUTE_COLOR, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 4.5, 14, 8],
+      // Bus & Bahn: jede Fahrt in der Farbe ihrer Linie
+      'line-color': ['coalesce', ['get', 'color'], ROUTE_COLOR], 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 4.5, 14, 8],
       'line-opacity': hideCovered,
+    },
+  }, under);
+  // Fußwege zwischen den Fahrten: gestrichelt
+  map.addLayer({
+    id: 'route-walk', type: 'line', source: 'routes',
+    filter: ['all', ['get', 'selected'], ['boolean', ['get', 'walk'], false]],
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      'line-color': '#495057', 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 3, 14, 5],
+      'line-dasharray': [0.1, 1.8], 'line-opacity': legOp,
+    },
+  }, under);
+  // Bus & Bahn: Punkte an Ein- und Ausstieg (Umstiege)
+  map.addLayer({
+    id: 'route-dots', type: 'circle', source: 'routes',
+    filter: ['all', ['==', ['geometry-type'], 'Point'], ['boolean', ['get', 'stopDot'], false]],
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 3.5, 14, 6.5],
+      'circle-color': '#ffffff', 'circle-stroke-color': ['coalesce', ['get', 'color'], ROUTE_COLOR],
+      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 6, 2, 14, 3.5],
+      'circle-opacity': legOp, 'circle-stroke-opacity': legOp,
     },
   }, under);
 
@@ -851,7 +875,7 @@ function addLayers(map) {
   });
 
   // Klickbares signalisieren
-  for (const id of ['route-alt', 'route-main', 'hl-dot', 'poi-dot', 'hl-fill', 'traffic-icon']) {
+  for (const id of ['route-alt', 'route-main', 'route-walk', 'hl-dot', 'poi-dot', 'hl-fill', 'traffic-icon']) {
     map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
   }
@@ -936,15 +960,38 @@ function whenReady(map, fn) {
   else map.once('load', () => requestAnimationFrame(fn));
 }
 
-export function showRoutes(map, routes, selected) {
+/**
+ * Routen zeigen; die gewählte zuletzt (obenauf).
+ * @param focusLeg  Bus & Bahn: Nummer des hervorgehobenen Abschnitts, sonst null
+ */
+export function showRoutes(map, routes, selected, focusLeg = null) {
   whenReady(map, () => {
     // Gewählte Route zuletzt, damit sie über den Alternativen liegt
-    const order = routes.filter((r) => r.id !== selected).concat(routes.filter((r) => r.id === selected));
-    src(map, 'routes').setData(fc(order.map((r) => ({
-      type: 'Feature',
-      properties: { id: r.id, selected: r.id === selected, covered: !!r.covered },
-      geometry: { type: 'LineString', coordinates: r.coords },
-    }))));
+    const order = routes.filter((r) => r.id !== selected).concat(routes.filter((r) => r.id === selected))
+      // Bus & Bahn: nur die gewählte Verbindung – die anderen fahren oft dieselben
+      // Straßen, und wo der Fahrplan keinen Verlauf kennt, wären es Luftlinien
+      .filter((r) => !r.transit || r.id === selected);
+    src(map, 'routes').setData(fc(order.flatMap((r) => {
+      // Bus & Bahn gewählt: je Abschnitt ein Stück, Fahrten in Linienfarbe
+      if (r.transit && r.id === selected) {
+        const legs = r.transit.legs.filter((l) => l.coords.length > 1).map((l) => ({
+          type: 'Feature',
+          properties: { id: r.id, selected: true, leg: r.transit.legs.indexOf(l), walk: l.walk, color: l.walk ? null : l.color, dim: focusLeg !== null && r.transit.legs.indexOf(l) !== focusLeg },
+          geometry: { type: 'LineString', coordinates: l.coords },
+        }));
+        // Ein- und Ausstieg jeder Fahrt als Punkt – dort wird umgestiegen
+        const dots = r.transit.legs.filter((l) => !l.walk && l.coords.length > 1).flatMap((l) => [l.coords[0], l.coords.at(-1)].map((c) => ({
+          type: 'Feature', properties: { id: r.id, selected: true, stopDot: true, color: l.color, dim: focusLeg !== null && r.transit.legs.indexOf(l) !== focusLeg },
+          geometry: { type: 'Point', coordinates: c },
+        })));
+        return [...legs, ...dots];
+      }
+      return [{
+        type: 'Feature',
+        properties: { id: r.id, selected: r.id === selected, covered: !!r.covered },
+        geometry: { type: 'LineString', coordinates: r.coords },
+      }];
+    })));
   });
 }
 

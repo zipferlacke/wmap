@@ -32,6 +32,7 @@ function toast(text) {
 }
 
 let loginError = '';   // an Ort und Stelle zeigen, nicht nur kurz als Meldung
+let jumped = false;    // #osm: einmal hinscrollen, nicht bei jedem Neuzeichnen
 const render = () => {
   const user = account.user();
   root.innerHTML = `
@@ -61,7 +62,7 @@ const render = () => {
       <button type="button" class="button settings-row" data-act="fuel"><span class="msr">local_gas_station</span> Spritpreise einrichten</button>
     </section>
 
-    <section>
+    <section id="osm">
       <h3>Mitmachen bei OpenStreetMap</h3>
       ${toggle('contribute', 'Weg aufzeichnen und danach fragen',
         'WMap merkt sich auf diesem Gerät, wo du warst (14 Tage), und fragt danach kurz nach – z. B. ob ein Parkplatz etwas kostet. Nichts verlässt das Gerät, bevor du antwortest und hochlädst.',
@@ -102,6 +103,11 @@ const render = () => {
       <button type="button" class="button settings-row" data-act="history"><span class="msr">history</span> Suchverlauf löschen</button>
     </section>`;
   mountFolder(root.querySelector('.settings-folder'), { toast });
+  // Aus „Ort eintragen/bearbeiten“ ohne Konto: gleich zum OSM-Konto
+  if (location.hash === '#osm' && !jumped) {
+    jumped = true;
+    requestAnimationFrame(() => root.querySelector('#osm')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+  }
 };
 
 root.addEventListener('change', (e) => {

@@ -12,8 +12,12 @@
 import { layers, newLayer, rasterLayer, basicAuth } from './layers.js';
 import { ask } from './ui.js';
 
-/** WMS-Adresse als Kachelvorlage für MapLibre (EPSG:3857, 512er Bilder) */
-export const wms = (url, layer) => `${url}${url.includes('?') ? '&' : '?'}SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${layer}&STYLES=&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=512&HEIGHT=512&FORMAT=image/png&TRANSPARENT=TRUE`;
+/**
+ * WMS-Adresse als Kachelvorlage für MapLibre (EPSG:3857, 512er Bilder).
+ * `format` „image/vnd.jpeg-png“ (MapServer): JPEG, wo Bild ist, sonst
+ * durchsichtiges PNG – bei Luftbildern ein Bruchteil der Daten.
+ */
+export const wms = (url, layer, format = 'image/png') => `${url}${url.includes('?') ? '&' : '?'}SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${layer}&STYLES=&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=512&HEIGHT=512&FORMAT=${format}&TRANSPARENT=TRUE`;
 
 /** → die neue Ebene oder null */
 export async function addOwnSource({ toast = () => {}, index = 0 } = {}) {

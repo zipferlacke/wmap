@@ -50,7 +50,13 @@
                 "Satellit: Häuser mit grauen Wänden und dem Luftbild auf dem Dach statt halb durchsichtig",
                 "Satellit: amtliche Luftbilder jetzt für 12 Länder; Flüsse über dem Bild, Straßen etwas zurückgenommen",
                 "Karte hält weniger alte Kacheln im Speicher",
-                "Bus & Bahn in der Routenplanung: Verbindungen nach Fahrplan mit Umstiegen, Steigen und dem echten Verlauf"
+                "Bus & Bahn in der Routenplanung: Verbindungen nach Fahrplan mit Umstiegen, Steigen und dem echten Verlauf",
+                "Routenplanung: Autobahn, Maut, Fähren, unbefestigte Wege hinter dem Filter-Knopf; bei Bus & Bahn Verkehrsmittel (auch ICE/IC an oder aus), Umsteigezeit und „schnellste auch zeigen“",
+                "Bus & Bahn: jeder Abschnitt in Linienfarbe, antippen zeigt Halte mit Zeiten bzw. den Fußweg; Verbindungen merken (Meine Touren → Bus & Bahn), Ticket bei der Bahn",
+                "Haltestellen: sofort die Linien und Abfahrten dieser Straßenseite, Linienverlauf mit Zeiten in Sekundenbruchteilen; Haltestellen merken",
+                "Orte merken als Zuhause, Arbeit oder Lesezeichen – ganz oben in Suche und Routenplanung, mit dem Ordner abgeglichen",
+                "OpenStreetMap: Orte bearbeiten und Unternehmen oder Veranstaltungsorte eintragen",
+                "Weniger Last auf Overpass beim Verschieben der Karte; Hessen-Luftbild in allen Zoomstufen"
             ]
         },
         {

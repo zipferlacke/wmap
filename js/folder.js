@@ -6,6 +6,7 @@
  *
  *   WMap/Geplant/Harzer Hexenstieg.gpx                                  geplant
  *   WMap/Abgeschlossen/2026/2026-09-27 Radtour am Samstagnachmittag.gpx  gefahren/gelaufen
+ *   WMap/Gemerkt.json   Verbindungen mit Bus & Bahn, Zuhause/Arbeit, Lesezeichen
  *
  * Heißt der verbundene Ordner selbst „WMap“, entfällt die Ebene. Dateien der
  * früheren Ordnung (Touren/, Wege/<Jahr>/) zieht der nächste Abgleich um.
@@ -29,6 +30,7 @@ import { tracks, trackGpx, parseGpx, sameTrack, backup, restore } from './tracks
 import { makeZip, readZip } from './zip.js';
 import { tours, toGpx, coordsOf, shapeOf, local } from './store.js';
 import { simplifyTo, distance } from './geo.js';
+import { mergeSaved } from './saved.js';
 
 const kv = store('kv');
 const KEY = 'folder';
@@ -178,6 +180,16 @@ async function run(interactive) {
     next[path] = { id, at: await writeFile(c.handle, path, gpxOf({ kind, item })), rev: rev(item) };
     out.written += 1;
   }
+
+  // Gemerkte Verbindungen, Zuhause/Arbeit, Lesezeichen: eine JSON-Datei
+  const savedPath = `${base}Gemerkt.json`;
+  let savedText = null;
+  try {
+    const [dir, name] = await dirOf(c.handle, savedPath, false);
+    savedText = await (await (await dir.getFileHandle(name)).getFile()).text();
+  } catch { /* noch keine Datei */ }
+  const merged = mergeSaved(savedText);
+  if (merged.changed) await writeFile(c.handle, savedPath, merged.text);
 
   if (out.moved) await dropEmptyOld(c.handle);
   c.index = next;

@@ -30,8 +30,11 @@ const EOX = 'Satellit: <a href="https://s2maps.eu" target="_blank" rel="noopener
  * Länder (20–40 cm) – alle, die offen sind und Abrufe aus dem Browser
  * erlauben (Sachsen-Anhalt sperrt sie, Hamburg hat keinen passenden Dienst).
  * Außerhalb ihres Landes liefern die Dienste nichts (durchsichtig), darunter
- * scheint das nächste bzw. Sentinel-2 durch.
+ * scheint das nächste bzw. Sentinel-2 durch. Hessen zeigt sein 20-cm-Bild
+ * erst ab Zoom 15 – darüber springen die gröberen Übersichten (3,2 m, 50 m)
+ * desselben Dienstes ein, so ist in keiner Zoomstufe ein Loch.
  */
+const JPNG = 'image/vnd.jpeg-png';
 const SAT = [
   { id: 'sat-s2', tiles: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg', tileSize: 256, maxzoom: 14, attribution: EOX },
   { id: 'sat-ni', tiles: wms('https://opendata.lgln.niedersachsen.de/doorman/noauth/dop_wms', 'ni_dop20'), tileSize: 512, minzoom: 11, bounds: [6.6, 51.29, 11.6, 53.9],
@@ -40,7 +43,7 @@ const SAT = [
     attribution: 'Luftbild NRW: © Geobasis NRW (dl-de/zero-2-0)' },
   { id: 'sat-by', tiles: wms('https://geoservices.bayern.de/od/wms/dop/v1/dop40', 'by_dop40c'), tileSize: 512, minzoom: 11, bounds: [8.97, 47.27, 13.84, 50.56],
     attribution: 'Luftbild Bayern: © Bayerische Vermessungsverwaltung (CC BY 4.0)' },
-  { id: 'sat-he', tiles: wms('https://www.gds-srv.hessen.de/cgi-bin/lika-services/ogc-free-images.ows', 'he_dop20_rgb'), tileSize: 512, minzoom: 11, bounds: [7.77, 49.39, 10.24, 51.66],
+  { id: 'sat-he', tiles: wms('https://www.gds-srv.hessen.de/cgi-bin/lika-services/ogc-free-images.ows', 'el_dop5000_rgb,el_dop320_rgb,he_dop20_rgb', JPNG), tileSize: 512, minzoom: 11, bounds: [7.77, 49.39, 10.24, 51.66],
     attribution: 'Luftbild Hessen: © HVBG' },
   { id: 'sat-th', tiles: wms('https://www.geoproxy.geoportal-th.de/geoproxy/services/DOP', 'th_dop'), tileSize: 512, minzoom: 11, bounds: [9.87, 50.2, 12.66, 51.65],
     attribution: 'Luftbild Thüringen: © GDI-Th (CC BY 4.0)' },
@@ -52,9 +55,9 @@ const SAT = [
     attribution: 'Luftbild Berlin: © Geoportal Berlin (dl-de/zero-2-0)' },
   { id: 'sat-mv', tiles: wms('https://www.geodaten-mv.de/dienste/adv_dop', 'mv_dop'), tileSize: 512, minzoom: 11, bounds: [10.59, 53.11, 14.42, 54.69],
     attribution: 'Luftbild M-V: © GeoBasis-DE/M-V' },
-  { id: 'sat-rp', tiles: wms('https://geo4.service24.rlp.de/wms/rp_dop20.fcgi', 'rp_dop20'), tileSize: 512, minzoom: 11, bounds: [6.11, 48.96, 8.51, 50.95],
+  { id: 'sat-rp', tiles: wms('https://geo4.service24.rlp.de/wms/rp_dop20.fcgi', 'rp_dop20', JPNG), tileSize: 512, minzoom: 11, bounds: [6.11, 48.96, 8.51, 50.95],
     attribution: 'Luftbild Rheinland-Pfalz: © GeoBasis-DE/LVermGeoRP (dl-de/by-2-0)' },
-  { id: 'sat-sl', tiles: wms('https://geoportal.saarland.de/freewms/dop2023', 'sl_dop20_rgb'), tileSize: 512, minzoom: 11, bounds: [6.35, 49.1, 7.41, 49.64],
+  { id: 'sat-sl', tiles: wms('https://geoportal.saarland.de/freewms/dop2023', 'sl_dop20_rgb', JPNG), tileSize: 512, minzoom: 11, bounds: [6.35, 49.1, 7.41, 49.64],
     attribution: 'Luftbild Saarland: © LVGL' },
   { id: 'sat-bw', tiles: wms('https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DOP_20_C', 'IMAGES_DOP_20_RGB'), tileSize: 512, minzoom: 11, bounds: [7.5, 47.53, 10.5, 49.8],
     attribution: 'Luftbild Baden-Württemberg: © LGL-BW (dl-de/by-2-0)' },

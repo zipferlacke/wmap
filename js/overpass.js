@@ -27,22 +27,38 @@ const answers = new Map();          // Abfrage → { at, elements }
  * zum Zeitlimit zu warten, kommt nach 4 s (oder sofort nach einer Absage) der
  * nächste dazu – die erste Antwort gewinnt, die anderen werden abgebrochen.
  * Gleiche Abfragen innerhalb von 10 Minuten kommen aus dem Gedächtnis.
+ *
+ * Wer ablehnt (429) oder überlastet ist (5xx), bekommt eine Pause und wird
+ * erst danach wieder gefragt – sonst hagelt es beim Verschieben der Karte
+ * Absagen. `background` (Ampeln u. Ä.): nicht parallel nachfragen, nur bei
+ * einer Absage der nächste Server; sind alle in der Pause, gar nicht.
  */
-export async function run(query, signal) {
+export async function run(query, signal, { background = false } = {}) {
   const hit = answers.get(query);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.elements;
-  const elements = await hedged(query, signal);
+  const elements = await hedged(query, signal, background);
   answers.set(query, { at: Date.now(), elements });
   if (answers.size > 40) answers.delete(answers.keys().next().value);
   return elements;
 }
 
-function hedged(query, signal) {
+const resting = new Map();          // Server → Pause bis (ms)
+const rest = (url, status) => resting.set(url, Date.now() + (status === 429 ? 60000 : 20000));
+
+/** Server in Ruhe zuerst; im Hintergrund nur diese */
+function serverOrder(background) {
+  const now = Date.now();
+  const ok = API.overpass.filter((u) => !(resting.get(u) > now));
+  if (background) return ok;
+  return [...ok, ...API.overpass.filter((u) => !ok.includes(u))];
+}
+
+function hedged(query, signal, background) {
   return new Promise((resolve, reject) => {
-    const servers = API.overpass;
+    const servers = serverOrder(background);
     const ctrls = [];
     let next = 0, pending = 0, done = false, timer = null;
-    let lastError = null;
+    let lastError = background && !servers.length ? new Error('Overpass ist gerade ausgelastet') : null;
     const finish = (fn, v) => {
       if (done) return;
       done = true;
@@ -66,10 +82,11 @@ function hedged(query, signal) {
       ctrls.push(ctrl);
       pending += 1;
       clearTimeout(timer);
-      timer = setTimeout(start, HEDGE_MS);
+      if (!background) timer = setTimeout(start, HEDGE_MS);
       fetch(url, { method: 'POST', body: new URLSearchParams({ data: query }), signal: withTimeout(ctrl.signal) })
         .then(async (res) => {
           if (!res.ok) {
+            if (res.status === 429 || res.status >= 500) rest(url, res.status);
             throw new Error(res.status === 429 ? 'Overpass ist gerade ausgelastet' : `Overpass antwortet nicht (${res.status})`);
           }
           finish(resolve, (await res.json()).elements ?? []);
@@ -77,6 +94,8 @@ function hedged(query, signal) {
         .catch((err) => {
           if (done) return;
           pending -= 1;
+          // Netzfehler (auch 5xx ohne CORS-Kopf): ebenfalls kurz Ruhe
+          if (err instanceof TypeError) rest(url, 0);
           lastError = err.name === 'TimeoutError' || err.name === 'AbortError' ? new Error('Overpass antwortet gerade nicht') : err;
           start();                     // Absage oder Zeitlimit: gleich den nächsten
         });

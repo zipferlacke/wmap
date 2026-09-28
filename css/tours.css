@@ -678,3 +678,10 @@ body.stage-mode #map canvas { cursor: crosshair; }
 body.readonly .tour-panel .save-state { width: auto; padding-inline: .8rem; gap: .3rem; }
 .tour-page .tour-hint { top: calc(.75rem + var(--safe-top)); }
 @media (min-width: 701px) { .tour-page .tour-hint { left: calc(50% + 12rem); } }
+
+/* Meine Touren → Bus & Bahn: gemerkte Verbindungen */
+.conn-table .legs {
+    display: flex; flex-wrap: wrap; gap: .2rem; margin-top: .2rem;
+    .transit-badge { min-width: 0; padding: .05rem .35rem; font-size: var(--fs-100); }
+}
+.conn-legs { list-style: none; margin: .5rem 0; padding: 0; display: grid; gap: .15rem; }

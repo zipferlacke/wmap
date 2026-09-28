@@ -45,9 +45,10 @@ const quote = (s) => String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
  *   here  Linien, die genau an diesem Steig halten – die Richtung dieser Seite
  *   all   alle der Haltestelle: Steige gleichen Namens im Umkreis (die
  *         Gegenrichtung steht oft gegenüber) und alles direkt daneben
+ * `background`: nur Zugabe (Farben) – Overpass ohne parallele Nachfragen
  * → { here: [{ id, route, ref, name, from, to, colour, … }], all: […] }
  */
-export async function linesAt([lon, lat], name, { ref = null, signal } = {}) {
+export async function linesAt([lon, lat], name, { ref = null, background = false, signal } = {}) {
   const at = (r) => `around:${r},${lat.toFixed(6)},${lon.toFixed(6)}`;
   const stop = '[~"^(public_transport|highway|railway|amenity)$"~"^(platform|stop_position|station|bus_stop|tram_stop|halt|stop|bus_station|ferry_terminal)$"]';
   const rel = `[type=route][route~"^(${KINDS})$"]`;
@@ -56,7 +57,7 @@ export async function linesAt([lon, lat], name, { ref = null, signal } = {}) {
   const q = `[out:json][timeout:25];${mine}make grenze;out;
     (${name ? `nwr(${at(150)})[name="${quote(name)}"]${stop};` : ''}nwr(${at(30)})${stop};)->.s;
     (rel(bn.s)${rel};rel(bw.s)${rel};)->.b;(.b; - .a;)->.c;.c out tags;`;
-  const els = await run(q, signal);
+  const els = await run(q, signal, { background });
   const cut = els.findIndex((e) => e.type === 'grenze');
   const pick = (list) => list.filter((e) => e.type === 'relation').map((e) => ({ id: e.id, ...e.tags }));
   const here = pick(els.slice(0, cut));
@@ -185,8 +186,37 @@ export function mountTransitLine(map) {
     return { tags: { id, ...tags }, stops: stops.map((s) => s.name), next: here === null ? null : next.map((s) => s.name), bounds };
   }
 
+  /**
+   * Verlauf einer Fahrt aus dem Fahrplan zeigen (departures.js tripCourse) –
+   * ohne OSM. Ab dem Halt `index` kräftig, davor blass.
+   * @param key  Kennung für `shown` (Linie und Fahrt)
+   * → { stops, next, bounds } wie show(); Halte mit Zeit
+   */
+  function showCourse(key, { coords, stops, index, color }) {
+    ctl?.abort();
+    const line = coords.length > 1 ? coords : stops.map((x) => x.point).filter(Boolean);
+    const cum = cumulative(line);
+    const at = index >= 0 && stops[index].point && line.length > 1 ? nearestOnLine(line, cum, stops[index].point).along : null;
+    const features = at === null
+      ? [{ type: 'Feature', properties: { color, past: false }, geometry: { type: 'LineString', coordinates: line } }]
+      : [[0, at, true], [at, cum.at(-1), false]].filter(([a, b]) => b - a > 1).map(([a, b, past]) => ({
+        type: 'Feature', properties: { color, past }, geometry: { type: 'LineString', coordinates: sliceLine(line, cum, a, b) },
+      }));
+    stops.forEach((x, i) => {
+      if (x.point) features.push({ type: 'Feature', properties: { color, name: x.name, past: index >= 0 && i < index }, geometry: { type: 'Point', coordinates: x.point } });
+    });
+    ensure();
+    map.getSource(SRC).setData({ type: 'FeatureCollection', features });
+    shown = key;
+    const next = index >= 0 ? stops.slice(index) : null;
+    const pts = (next && next.length > 1 ? next : stops).map((x) => x.point).filter(Boolean);
+    const bounds = pts.length ? [[Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1]))], [Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))]] : null;
+    return { stops, next, bounds };
+  }
+
   return {
     show,
+    showCourse,
     get shown() { return shown; },
     clear() {
       ctl?.abort();
@@ -224,13 +254,18 @@ function sliceLine(line, cum, a, b) {
   return [at(a), ...line.filter((_, i) => cum[i] > a && cum[i] < b), at(b)];
 }
 
-/** Kurzinfo unter der gewählten Richtung: die nächsten Halte, alle zum Aufklappen */
+/**
+ * Kurzinfo unter der gewählten Richtung: die nächsten Halte, alle zum
+ * Aufklappen. Halte sind Namen (OSM) oder { name, time } (Fahrplan).
+ */
 export function lineStopsHtml({ stops, next }) {
   if (!stops.length) return '';
+  const nm = (x) => (typeof x === 'string' ? x : x.name);
+  const tm = (x) => (x?.time ? `<time>${x.time.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</time>` : '');
   const list = next?.length > 1 ? next : stops;
   const summary = !next ? `${stops.length} Halte`
-    : next.length > 1 ? `Noch ${next.length - 1} ${next.length === 2 ? 'Halt' : 'Halte'} bis ${esc(next.at(-1))}`
+    : next.length > 1 ? `Noch ${next.length - 1} ${next.length === 2 ? 'Halt' : 'Halte'} bis ${esc(nm(next.at(-1)))}${next.at(-1).time ? ` (an ${tm(next.at(-1)).replace(/<\/?time>/g, '')})` : ''}`
       : `Endet hier – ${stops.length} Halte bis hierher`;
   return `<details class="transit-stops"><summary>${summary}</summary>
-    <ol>${list.map((s) => `<li>${esc(s)}</li>`).join('')}</ol></details>`;
+    <ol>${list.map((x) => `<li>${tm(x)}${esc(nm(x))}</li>`).join('')}</ol></details>`;
 }

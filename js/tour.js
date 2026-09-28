@@ -296,7 +296,8 @@ results.addEventListener('click', (e) => {
   searchInput.value = '';
   results.hidden = true;
   toast(`„${geocode.describe(f).title}“ als ${tour.points.length === 1 ? 'Start' : `Punkt ${tour.points.length}`} gesetzt`);
-  if (tour.points.length === 1) map.flyTo({ center: tour.points[0], zoom: Math.max(map.getZoom(), 12) });
+  // Zum gefundenen Ort, mittig im freien Teil der Karte
+  map.flyTo({ center: tour.points.at(-1), zoom: Math.max(map.getZoom(), 14), padding: viewPadding(), duration: 1200 });
 });
 
 /* ══════════════════════════════════════════════════════════════════════════

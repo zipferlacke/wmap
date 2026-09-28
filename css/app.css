@@ -183,15 +183,51 @@ body {
     }
 }
 
-.hw-toggle {
+/* Bus & Bahn: Abfahrt ab / Ankunft bis */
+.transit-when {
+    display: flex; align-items: center; gap: .4rem; margin-top: .35rem; padding-left: .2rem;
+    &[hidden] { display: none; }
+    > .msr { color: var(--muted); font-size: 1.2rem; }
+    select, input { width: auto; min-width: 0; height: 2.2rem; padding: 0 .5rem; font-size: var(--fs-200); }
+    input { flex: 1; }
+    .link-button { font-size: var(--fs-200); }
+}
+
+.route-foot {
     display: flex;
-    grid-auto-flow: column;
     align-items: center;
-    gap: .35rem;
-    width: auto;
-    color: var(--muted);
-    cursor: pointer;
-    &:has(input:checked) { color: var(--route); }
+    justify-content: space-between;
+}
+.route-prefs-open { position: relative; color: var(--muted); flex-shrink: 0; }
+/* Punkt: etwas weicht von der Voreinstellung ab */
+.route-prefs-open.changed { color: var(--route); }
+.route-prefs-open.changed::after {
+    content: ''; position: absolute; top: .35rem; right: .35rem;
+    width: .5rem; height: .5rem; border-radius: 50%; background: var(--route);
+}
+
+/* Routen-Einstellungen als Notiz am Filter-Knopf: Handy volle Breite, Rechner schmal */
+.route-prefs {
+    position: fixed; inset: auto; margin: 0;
+    left: .5rem; right: .5rem; width: auto;
+    max-height: 75dvh; overflow-y: auto;
+    padding: .9rem 1rem; border: 0; border-radius: 1rem;
+    background: var(--surface); color: inherit;
+    box-shadow: 0 6px 28px rgb(0 0 0 / .28);
+    @media (min-width: 701px) { right: auto; width: 23rem; }
+    &:popover-open { display: grid; gap: .5rem; }
+    h2 { display: flex; align-items: center; gap: .4rem; margin: 0; font-size: var(--fs-400); .msr { color: var(--route); } }
+    h3 { margin: 0 0 .35rem; font-size: var(--fs-200); font-weight: 600; color: var(--muted); }
+    .chip-row { flex-wrap: wrap; overflow: visible; }
+    .chip .msr { font-size: 1.1rem; }
+    .chip[aria-pressed="true"] { background: var(--route); color: #fff; border-color: var(--route); }
+}
+.pref-row {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .3rem 0; cursor: pointer;
+    > .msr { color: var(--muted); }
+    > span:not(.msr) { flex: 1; display: grid; }
+    small { color: var(--muted); font-size: var(--fs-100); }
 }
 
 .waypoints-wrap {
@@ -1768,6 +1804,19 @@ body.flying :is(#search, #sheet, .appnav, .maplibregl-ctrl-top-right, .maplibreg
     &:hover { background: color-mix(in srgb, var(--c) 12%, var(--surface-2)); }
     &[aria-pressed="true"] { background: var(--c); color: #fff; font-weight: 600; .msr { color: #fff; } }
 }
+/* Linien dieses Steigs aus dem Fahrplan: Linie → Ziel, nächste Abfahrt */
+.dep-lines {
+    gap: .3rem;
+    li { display: grid; }
+    .transit-dir {
+        display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: .5rem;
+        > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        small { color: var(--muted); font-variant-numeric: tabular-nums; }
+        &[aria-pressed="true"] small { color: #fff; }
+        .transit-badge { min-width: 2.6rem; justify-content: center; }
+        &[aria-pressed="true"] .transit-badge { background: #fff; color: var(--c); }
+    }
+}
 /* Umschalter: nur dieser Steig ↔ alle Linien der Haltestelle */
 .transit-scope { justify-self: start; display: inline-flex; align-items: center; gap: .25rem; font-size: var(--fs-200); .msr { font-size: 1.1rem; } }
 
@@ -1775,12 +1824,29 @@ body.flying :is(#search, #sheet, .appnav, .maplibregl-ctrl-top-right, .maplibreg
 .dep-list {
     list-style: none; margin: 0; padding: 0; display: grid; gap: .25rem;
 }
+/* Wahl des Steigs über den Abfahrten: Hier · Alle · Steig 1 … */
+.dep-filter {
+    flex-wrap: wrap; overflow: visible;
+    .chip .msr { font-size: 1rem; }
+    .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; }
+}
+.dep-row.loading { opacity: .6; cursor: progress; }
+/* Angetippte Fahrt: wann sie wo ist */
+.trip-detail {
+    list-style: none; margin: .3rem 0 .4rem .5rem; padding: 0 0 0 .7rem; display: grid; gap: .1rem;
+    border-left: 3px solid var(--route); font-size: var(--fs-200);
+    li { display: grid; grid-template-columns: 3rem 1fr; gap: .4rem; }
+    time { font-variant-numeric: tabular-nums; color: var(--muted); }
+    .past { opacity: .45; }
+    .here { font-weight: 700; time { color: inherit; } }
+}
 .dep-row {
     display: grid; grid-template-columns: 3.4rem auto minmax(0, 1fr); align-items: center; gap: .1rem .55rem;
     width: 100%; padding: .4rem .5rem; border: 0; border-radius: .6rem;
     background: var(--surface-2); color: inherit; font: inherit; text-align: left; cursor: pointer;
     &:disabled { cursor: default; }
     &:not(:disabled):hover { background: color-mix(in srgb, var(--route) 10%, var(--surface-2)); }
+    &[aria-pressed="true"] { background: color-mix(in srgb, var(--route) 16%, var(--surface-2)); }
     time { grid-row: span 2; display: grid; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15;
         b { font-size: var(--fs-100); } .late { color: var(--clr-danger-600, #e03131); } .early { color: var(--clr-success-700, #2b8a3e); } }
     .transit-badge { min-width: 2.6rem; justify-content: center; }
@@ -1793,6 +1859,7 @@ body.flying :is(#search, #sheet, .appnav, .maplibregl-ctrl-top-right, .maplibreg
     font-size: var(--fs-200); padding-left: .3rem;
     summary { cursor: pointer; color: var(--muted); }
     ol { margin: .3rem 0 0; padding-left: 1.6rem; display: grid; gap: .1rem; }
+    li time { display: inline-block; min-width: 3rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 }
 .place-layers {
     display: grid; gap: .5rem;
@@ -1868,9 +1935,21 @@ body.map-page.navigating .appbar { display: none; }
 
 /* ── Bus & Bahn in der Routenplanung (departures.js journeys) ─────────────── */
 [data-view="route"].transit {
-    .elevation, .traffic, .along, .along-list, .along + .along-list, .start-nav, .save-tour { display: none !important; }
+    /* Wegbeschreibung unten entfällt: die Abschnitte stehen unter der gewählten Verbindung */
+    .elevation, .traffic, .along, .along-list, .along + .along-list, .start-nav, .save-tour, .steps { display: none !important; }
     .route-options { flex-direction: column; overflow: visible; }
     .section-title:has(+ .along) { display: none; }
+}
+/* Abschnitte der gewählten Verbindung: Zeitleiste mit Farbstrich je Fahrt */
+.transit-legs {
+    margin: -.1rem 0 .35rem; padding: .25rem 0 .25rem .35rem;
+    .leg { border-left: 3px solid var(--c); margin-left: 1.3rem; padding-left: .1rem; border-radius: 0 .6rem .6rem 0; }
+    .leg.walk { border-left-style: dotted; }
+    .leg-head { grid-template-columns: 2.9rem auto minmax(0, 1fr) auto; }
+    .leg-head strong { font-weight: 600; }
+    .leg-facts { color: var(--muted); }
+    .leg-change { padding-left: 1.6rem; }
+    .leg-detail { padding-left: 3.2rem; }
 }
 .transit-opt {
     display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .15rem .6rem; text-align: left;
@@ -1879,9 +1958,51 @@ body.map-page.navigating .appbar { display: none; }
     .transit-badge { min-width: 0; padding: .05rem .4rem; color: #fff !important; }
 }
 .leg-walk { color: var(--muted); font-size: 1.2rem; }
-.step-list .leg > div {
-    display: grid; grid-template-columns: 3rem auto minmax(0, 1fr); align-items: start; gap: .5rem; padding: .35rem 0;
+.step-list .leg-head {
+    display: grid; grid-template-columns: 3.1rem auto minmax(0, 1fr) auto; align-items: start; gap: .5rem;
+    width: 100%; padding: .4rem .25rem; border: 0; border-radius: .6rem;
+    background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+    &:hover { background: var(--surface-2); }
     time { font-weight: 700; font-variant-numeric: tabular-nums; }
     .transit-badge { min-width: 2.6rem; justify-content: center; }
     .sg-text { display: grid; gap: .1rem; small { color: var(--muted); } }
+    .leg-more { color: var(--muted); transition: rotate .15s; }
+}
+.step-list .leg.open {
+    background: color-mix(in srgb, var(--route) 7%, transparent); border-radius: .6rem;
+    .leg-more { rotate: 180deg; }
+}
+.late { color: #e03131; font-weight: 700; font-size: var(--fs-100); }
+.leg-detail { padding: 0 .5rem .5rem 3.6rem; }
+.leg-stops, .leg-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: .15rem; font-size: var(--fs-200); }
+.leg-stops li {
+    display: grid; grid-template-columns: 3rem 1fr auto; gap: .4rem; padding-left: .6rem;
+    border-left: 3px solid var(--muted);
+    time { font-variant-numeric: tabular-nums; color: var(--muted); }
+    small { color: var(--muted); }
+    &.end { font-weight: 600; time { color: inherit; } }
+}
+.leg-steps li { small { color: var(--muted); } }
+.leg-change {
+    display: flex; align-items: center; gap: .4rem; padding: .15rem .25rem .15rem 3.6rem;
+    font-size: var(--fs-200); color: var(--muted);
+    .msr { font-size: 1.1rem; }
+    &.tight { color: #e8590c; font-weight: 600; }
+}
+.transit-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; &:empty { display: none; } }
+[data-view="route"]:not(.transit) .transit-actions { display: none; }
+
+/* Ort in OSM eintragen/bearbeiten (osm-edit.js) */
+.osm-form { display: grid; gap: .5rem; }
+.osm-field {
+    display: grid; gap: .2rem; font-size: var(--fs-200);
+    > span { color: var(--muted); }
+    input, select { width: 100%; }
+}
+.osm-addr {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem;
+    /* Straße | Nr. – PLZ | Ort */
+    > :nth-child(odd) { grid-column: span 3; }
+    > :nth-child(3) { grid-column: span 1; }
+    > :nth-child(4) { grid-column: span 3; }
 }

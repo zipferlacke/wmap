@@ -33,10 +33,14 @@ import { mapLayerIds, propertyTable } from './layers.js';
 import { mountLayerMenu } from './layer-menu.js';
 import { presetOf, layerInfoAt, layerInfoHtml } from './presets.js';
 import { isStop, linesAt, transitHtml, mountTransitLine, lineStopsHtml, colorOf } from './transit.js';
-import { departures, journeys } from './departures.js';
+import { departures, journeys, samePlatform, tripCourse } from './departures.js';
+import { legBadge, changesText, transitLegsHtml } from './transit-legs.js';
+import { prefs, mountRoutePrefs, transitParams } from './route-prefs.js';
+import { connections, places, PLACE_KINDS } from './saved.js';
 import { runExtensions } from './extensions.js';
 import { share, placeUrl, routeUrl, readRoute, requestUrl, myName, clock } from './share.js';
 import { ask } from './ui.js';
+import { editPlace, addPlace } from './osm-edit.js';
 import { quickAsk } from './quick-ask.js';
 import { report, answered, reportsIn, reportsShared, REPORT_KINDS } from './reports.js';
 import { answerParking, anonNotes } from './survey.js';
@@ -69,7 +73,6 @@ const { map, geolocate } = createMap('map', lastView ? {
 const state = {
   mode: 'search',
   profile: PROFILES[local.get('wmap.profile')]?.nav ? local.get('wmap.profile') : 'car',
-  highways: local.get('wmap.highways', true) !== false,
   waypoints: [],        // { label, point: [lon, lat] | null, me: bool }
   points: [],           // aufgelöste Punkte der letzten Berechnung
   routes: [],
@@ -396,6 +399,50 @@ async function placeSuggestions(text, onPick, { withCategory = true, extra = [] 
 /* ── Zuletzt genutzt ──────────────────────────────────────────────────────── */
 
 const RECENT_SECTION = 'Zuletzt genutzt';
+const SAVED_SECTION = 'Gemerkt';
+
+/**
+ * Zuhause, Arbeit und Lesezeichen als Vorschläge – ganz oben. Bei Bus & Bahn
+ * kommen die gemerkten Haltestellen vor die übrigen Lesezeichen.
+ */
+function savedItems(onPlace) {
+  const order = PROFILES[state.profile]?.transit && state.mode === 'route' ? ['home', 'work', 'stop', 'fav'] : ['home', 'work', 'fav', 'stop'];
+  return places.all().sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind)).slice(0, 8).map((p) => ({
+    section: SAVED_SECTION, icon: PLACE_KINDS[p.kind]?.icon ?? 'star', title: p.name,
+    subtitle: [p.kind === 'home' || p.kind === 'work' ? '' : PLACE_KINDS[p.kind]?.label, p.label].filter(Boolean).join(' · '),
+    run: () => onPlace({ type: 'Feature', geometry: { type: 'Point', coordinates: p.point }, properties: { name: p.name } }),
+  }));
+}
+
+/**
+ * Merken: ein Tipp legt ein Lesezeichen an, noch einer nimmt es weg – für
+ * Orte und Haltestellen gleich. Haltestellen stehen bei Bus & Bahn zuerst.
+ * Die Meldung bietet an, das Lesezeichen als Zuhause oder Arbeit zu nehmen.
+ */
+function togglePlace(f, point, title, subtitle) {
+  const had = places.find(point);
+  if (had) { places.remove(had.id); toast('Lesezeichen entfernt'); paintPlaceActions(); return; }
+  const tags = f.properties._tags;
+  places.save({ kind: tags && isStop(tags) ? 'stop' : 'fav', name: title, label: subtitle, point, ifopt: tags?.['ref:IFOPT'] ?? '' });
+  paintPlaceActions();
+  toast('Als Lesezeichen gemerkt – steht in Suche und Routenplanung ganz oben', {
+    action: {
+      label: 'Zuhause / Arbeit',
+      run: async () => {
+        const v = await ask({
+          icon: 'bookmark', title: 'Lesezeichen als …', text: title,
+          buttons: [{ value: 'home', label: 'Zuhause', icon: 'home' }, { value: 'work', label: 'Arbeit', icon: 'work', primary: true }],
+        });
+        if (!v) return;
+        const mine = places.find(point);
+        if (mine) places.remove(mine.id);
+        places.save({ kind: v, name: PLACE_KINDS[v].label, label: title, point });
+        toast(`Als „${PLACE_KINDS[v].label}“ gemerkt`);
+        paintPlaceActions();
+      },
+    },
+  });
+}
 
 /** Einträge aus dem Verlauf als Vorschläge. `onPlace` bekommt das Photon-Feature. */
 function recentItems(onPlace, kinds = ['place', 'category', 'route']) {
@@ -445,7 +492,7 @@ function discoverItems() {
 const updateSearchSuggestions = debounce(async () => {
   const text = q.value.trim();
   const items = text.length < 2
-    ? [...discoverItems(), ...recentItems((f) => showPlace(f))]
+    ? [...savedItems((f) => showPlace(f)), ...discoverItems(), ...recentItems((f) => showPlace(f))]
     : await placeSuggestions(q.value, (f) => showPlace(f));
   if (items && document.activeElement === q) suggest.show(items);
 }, 160);
@@ -635,7 +682,16 @@ function paintPlaceActions() {
       ['directions', 'Route', true, () => enterRoute({ to: wp })],
       ['trip_origin', 'Als Start', false, () => enterRoute({ from: wp })],
       ['radar', 'Erreichbar', false, () => openReach({ origin: point, label })],
+      [places.find(point) ? 'bookmark_added' : 'bookmark_add', places.find(point) ? 'Gemerkt' : 'Merken', false,
+        () => togglePlace(f, point, label, f.properties._point ? '' : geocode.describe(f).subtitle)],
       ['share', 'Teilen', false, () => share({ title: label, text: label, url: () => placeUrl(point, label) }, toast)],
+      // OpenStreetMap: Ort aus OSM bearbeiten, am freien Punkt einen neuen eintragen
+      f.properties._point
+        ? ['add_business', 'Hier eintragen', false, () => addPlace(point, { address: f.properties._address ?? {}, toast })]
+        : f.properties.osm_type && f.properties.osm_id && ['edit_location_alt', 'Bearbeiten', false, () => editPlace({
+          osm: { type: { N: 'node', W: 'way', R: 'relation' }[f.properties.osm_type] ?? f.properties.osm_type, id: Number(f.properties.osm_id) },
+          tags: f.properties._tags ?? {}, point, title: label,
+        }, { toast }).then(() => { if (state.place === f && f.properties._tags) showPlace(f, { push: false, fly: false, over: !!overState }); })],
     ];
   }
   const box = $('[data-view="place"] .actions');
@@ -657,6 +713,8 @@ function showPoint(point) {
   showLayerInfo(point, $('[data-view="place"] .place-layers'));
   geocode.reverse(point).then((r) => {
     if (state.place !== f || !r) return;
+    // Adresse als Vorschlag, falls hier ein Ort eingetragen wird
+    f.properties._address = r.properties;
     const d = geocode.describe(r);
     $('[data-view="place"] .place-sub').textContent = `bei ${[d.title, d.subtitle].filter(Boolean).join(', ')}`;
   }).catch(() => {});
@@ -1197,13 +1255,45 @@ $('#add-via').addEventListener('click', () => {
   $$('#waypoints input')[state.waypoints.length - 2]?.focus();
 });
 
-/* Profil (group-radio aus wuefl-libs) und Autobahn (Toggle aus wuefl-libs) */
+/* Profil (group-radio aus wuefl-libs); Autobahn, Fähren, Verkehrsmittel … hinter dem Filter-Knopf */
+const routePrefs = mountRoutePrefs($$('.route-prefs-open'), $('#route-prefs'), {
+  profile: () => state.profile,
+  onChange: () => computeRoutes(),
+});
+
 function setProfile(p) {
   state.profile = p;
   local.set('wmap.profile', p);
   $$('input[name="profile"]').forEach((r) => { r.checked = r.value === p; });
-  $('.hw-toggle').hidden = p !== 'car';
+  $('#add-via').hidden = !!PROFILES[p].transit;
+  $('.transit-when').hidden = !PROFILES[p].transit;
+  routePrefs.mark();
 }
+
+/*
+ * Bus & Bahn: Abfahrt ab / Ankunft bis. Leeres Feld heißt „jetzt“; beim
+ * ersten Antippen steht die aktuelle Zeit darin. „Jetzt“ leert es wieder.
+ */
+const whenInput = $('#when-time');
+const localIso = (d) => new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+function whenChanged() {
+  $('#when-now').hidden = !whenInput.value;
+  if (PROFILES[state.profile].transit) computeRoutes();
+}
+whenInput.addEventListener('focus', () => { if (!whenInput.value) whenInput.value = localIso(new Date()); });
+whenInput.addEventListener('change', whenChanged);
+$('#when-mode').addEventListener('change', () => {
+  if (!whenInput.value) whenInput.value = localIso(new Date());
+  whenChanged();
+});
+$('#when-now').addEventListener('click', () => {
+  whenInput.value = '';
+  $('#when-mode').value = 'dep';
+  whenChanged();
+});
+$('#when-now').hidden = true;
+/** → { when: Date, arrive } für journeys() */
+const transitWhen = () => ({ when: whenInput.value ? new Date(whenInput.value) : new Date(), arrive: $('#when-mode').value === 'arr' && !!whenInput.value });
 $$('input[name="profile"]').forEach((r) => r.addEventListener('change', () => {
   if (!r.checked) return;
   setProfile(r.value);
@@ -1212,12 +1302,7 @@ $$('input[name="profile"]').forEach((r) => r.addEventListener('change', () => {
 }));
 setProfile(state.profile);
 
-$('#highways').checked = state.highways;
-$('#highways').addEventListener('change', (e) => {
-  state.highways = e.target.checked;
-  local.set('wmap.highways', state.highways);
-  computeRoutes();
-});
+
 
 /* Wegpunkte als Eingabefelder und Marker */
 let wpMarkers = [];
@@ -1293,7 +1378,7 @@ const updateRouteSuggestions = debounce(async (input, i) => {
   }];
   const onPlace = (f) => setWaypoint(i, placeWaypoint(f));
   const items = input.value.trim().length < 2
-    ? [...extra, ...recentItems(onPlace, ['place'])]
+    ? [...extra, ...savedItems(onPlace), ...recentItems(onPlace, ['place'])]
     : await placeSuggestions(input.value, onPlace, { withCategory: false, extra });
   if (items && document.activeElement === input) suggest.show(items);
 }, 160);
@@ -1383,9 +1468,9 @@ async function computeRoutes() {
     const points = await Promise.all(state.waypoints.map((w) => (w.me ? myPosition() : w.point)));
     // Bus & Bahn: Verbindungen nach Fahrplan (Zwischenziele zählen hier nicht)
     const routes = PROFILES[state.profile].transit
-      ? await journeys(points[0], points.at(-1), { signal })
+      ? await journeys(points[0], points.at(-1), { ...transitWhen(), params: transitParams(), change: prefs.change, fastest: prefs.fastest, signal })
       : await getRoutes(points, state.profile, {
-        highways: state.highways, avoid: state.avoid.map((p) => avoidRing(p)), signal,
+        highways: prefs.highways, avoid: state.avoid.map((p) => avoidRing(p)), signal,
       });
     if (signal.aborted) return;
     state.points = points;
@@ -1453,10 +1538,11 @@ new ResizeObserver(debounce(() => {
 
 function selectRoute(id, { fit = false } = {}) {
   state.selected = id;
+  state.leg = null;
   const r = current();
   if (!r) return;
   $('[data-view="route"]').classList.remove('empty');
-  showRoutes(map, state.routes, id);
+  showRoutes(map, state.routes, id, state.leg);
   renderRouteSheet();
   altLabels();
   elevation.show(r.transit ? null : r);
@@ -1466,30 +1552,57 @@ function selectRoute(id, { fit = false } = {}) {
   if (fit) fitRouteSettled();
 }
 
-/* Bus & Bahn: Abfahrt–Ankunft, Umstiege, je Verbindung die Linien; darunter die Abschnitte */
-const legBadge = (l) => (l.walk ? '<span class="msr leg-walk" title="Fußweg">directions_walk</span>'
-  : `<span class="transit-badge" style="--c:${l.cls !== null && l.cls <= 1 ? '#343a40' : l.cls === 4 ? '#9c36b5' : '#e03131'}">${esc(l.line || l.product)}</span>`);
+/*
+ * Bus & Bahn: oben die Verbindungen (Abfahrt–Ankunft, Linien, Umstiege,
+ * „Schnellste“ bzw. „≥ N min umsteigen“), darunter die Abschnitte der
+ * gewählten – jeder aufklappbar mit Halten bzw. Fußweg. Ein Abschnitt
+ * (in der Liste oder auf der Karte angetippt) wird hervorgehoben und
+ * eingepasst.
+ */
+function transitTags(t) {
+  const tags = [];
+  if (t.fastest) tags.push(transitWhen().arrive ? 'Späteste Abfahrt' : 'Schnellste');
+  if (t.changes && t.relaxed) tags.push(`≥ ${prefs.change} min umsteigen`);
+  else if (t.changes && Number.isFinite(t.buffer)) tags.push(`knapp: ${Math.max(0, Math.round(t.buffer))} min umsteigen`);
+  return tags;
+}
 
 function renderTransitSheet(view, r) {
   const t = r.transit;
-  const changes = (x) => (x.changes ? `${x.changes} × umsteigen` : 'ohne Umsteigen');
   $('.sum-time', view).textContent = `${clock(t.dep)} – ${clock(t.arr)}`;
-  $('.sum-dist', view).textContent = `${fmtDuration(r.time)} · ${changes(t)}`;
-  $('.sum-tags', view).innerHTML = '';
+  $('.sum-dist', view).textContent = `${fmtDuration(r.time)} · ${changesText(t)}`;
+  $('.sum-tags', view).innerHTML = transitTags(t).map((x) => `<span class="badge">${esc(x)}</span>`).join('');
+  // Die gewählte Verbindung klappt direkt unter sich ihre Abschnitte auf
   $('.route-options', view).innerHTML = state.routes.map((x) => `
     <button type="button" role="option" class="route-opt transit-opt" data-id="${x.id}" aria-selected="${x.id === r.id}">
       <strong>${clock(x.transit.dep)} – ${clock(x.transit.arr)}</strong>
       <span class="legs">${x.transit.legs.filter((l) => !l.walk || l.duration > 300).map(legBadge).join('<span class="msr">chevron_right</span>')}</span>
-      <small>${fmtDuration(x.time)} · ${changes(x.transit)}</small>
-    </button>`).join('');
+      <small>${esc([fmtDuration(x.time), changesText(x.transit), ...transitTags(x.transit)].join(' · '))}</small>
+    </button>
+    ${x.id === r.id ? `<ol class="step-list transit-legs">${transitLegsHtml(t, state.leg, prefs.change)}</ol>` : ''}`).join('');
   $('.along', view).innerHTML = '';
-  $('.step-list', view).innerHTML = t.legs.map((l) => `
-    <li class="leg${l.walk ? ' walk' : ''}"><div>
-      <time>${clock(l.dep)}</time>${legBadge(l)}
-      <span class="sg-text"><span>${esc(l.walk ? `zu Fuß nach ${l.to}` : `${l.product} ${l.line} → ${l.to_ || l.to}`)}</span>
-        <small>${esc(l.walk ? `${Math.max(1, Math.round(l.duration / 60))} min` : `ab ${l.from}${l.platform ? `, Steig ${l.platform}` : ''} · ${l.stops} ${l.stops === 1 ? 'Halt' : 'Halte'} bis ${l.to} (${clock(l.arr)})`)}</small></span>
-    </div></li>`).join('');
-  $('.steps', view).open = true;
+  // Die Wegbeschreibung unten entfällt – sie steht jetzt oben bei der Verbindung
+  $('.steps .step-list', view).innerHTML = '';
+  const saved = connections.all().some((c) => c.key === t.key);
+  $('.transit-actions', view).innerHTML = `
+    <button type="button" class="button" data-transit-act="save"${saved ? ' disabled' : ''}><span class="msr">${saved ? 'bookmark_added' : 'bookmark_add'}</span> ${saved ? 'Gemerkt' : 'Merken'}</button>
+    ${t.booking ? `<a class="button" href="${esc(t.booking)}" target="_blank" rel="noopener"><span class="msr">confirmation_number</span> Ticket bei der Bahn</a>` : ''}`;
+}
+
+/** Abschnitt hervorheben, aufklappen und einpassen (null: alle wieder gleich) */
+function focusTransitLeg(i) {
+  const r = current();
+  if (!r?.transit) return;
+  state.leg = state.leg === i ? null : i;
+  showRoutes(map, state.routes, r.id, state.leg);
+  const view = $('[data-view="route"]');
+  const box = $('.transit-legs', view);
+  if (box) box.innerHTML = transitLegsHtml(r.transit, state.leg, prefs.change);
+  const l = r.transit.legs[state.leg];
+  if (l?.coords.length > 1) {
+    fitTo(bbox(l.coords), 17);
+    $(`.transit-legs [data-leg="${state.leg}"]`, view)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  } else if (state.leg === null) fitRoute();
 }
 
 function routeTags(r) {
@@ -1524,13 +1637,30 @@ function renderRouteSheet() {
   $('.along', view).innerHTML = routeCategories(state.profile)
     .map((c) => chipHtml(c, state.along?.id === c.id)).join('');
 
-  $('.step-list', view).innerHTML = r.maneuvers.map((m, i) => `
+  $('.steps .step-list', view).innerHTML = r.maneuvers.map((m, i) => `
     <li><button type="button" data-i="${i}">
       <span class="msr">${maneuverIcon(m)}</span>
       <span class="sg-text"><span>${esc(m.instruction)}</span>
       ${m.length ? `<small>${fmtDistance(m.length * 1000)}</small>` : ''}</span>
     </button></li>`).join('');
 }
+
+// Abschnitt der gewählten Verbindung antippen: aufklappen und hinzoomen
+$('.route-options').addEventListener('click', (e) => {
+  const head = e.target.closest('.leg-head');
+  if (!head) return;
+  e.stopImmediatePropagation();
+  focusTransitLeg(Number(head.closest('[data-leg]').dataset.leg));
+});
+$('.transit-actions').addEventListener('click', (e) => {
+  const act = e.target.closest('[data-transit-act]')?.dataset.transitAct;
+  const r = current();
+  if (act !== 'save' || !r?.transit) return;
+  const wp = (w, p) => ({ label: w.me ? 'Mein Standort' : (w.label || 'Punkt'), point: p });
+  connections.save(r, wp(state.waypoints[0], state.points[0]), wp(state.waypoints.at(-1), state.points.at(-1)));
+  toast('Verbindung gemerkt – unter Meine Touren → Verbindungen', { action: { label: 'Ansehen', run: () => { location.href = './wege.html?tab=bahn'; } } });
+  renderRouteSheet();
+});
 
 $('.route-options').addEventListener('click', (e) => {
   const b = e.target.closest('[data-id]');
@@ -1734,8 +1864,12 @@ async function runAlong(cat) {
 /* ── Haltestellen: welche Linien halten hier, eine davon auf der Karte ───── */
 
 /**
- * Haltestelle: Linien an genau diesem Steig (die Richtung dieser Seite), auf
- * Wunsch alle der Haltestelle, dazu die nächsten Abfahrten nach Fahrplan.
+ * Haltestelle. Schnell zuerst der Fahrplan (EFA, gut ¼ s): seine Steige
+ * haben Koordinaten – der nächste zum angetippten Punkt ist diese Seite der
+ * Straße, also eine Richtung. Daraus „Linien an diesem Steig“ (Linie →
+ * Ziel, nächste Abfahrt) und die Abfahrten. OSM (Overpass, oft Sekunden)
+ * läuft nebenher: Linienfarben und der Verlauf auf der Karte; ohne Fahrplan
+ * (Ausland) zeigt es die Linien wie bisher.
  */
 async function showStop(f, tags, title, signal) {
   const point = f.geometry.coordinates;
@@ -1743,76 +1877,150 @@ async function showStop(f, tags, title, signal) {
   stop = {
     point, name, here: [], all: null, scope: 'here', more: false, active: transitLine.shown, activeLine: null,
     side: tags.local_ref ?? (tags.public_transport === 'platform' ? tags.ref : null) ?? null,
-    ifopt: tags['ref:IFOPT'] ?? '', deps: null, depMore: false, error: null, depError: null,
+    ifopt: tags['ref:IFOPT'] ?? '', deps: null, depMore: false, error: null, depError: null, osm: null,
   };
   const mine = stop;
   paintStop();
   const ref = f.properties.osm_type && f.properties.osm_id ? { type: f.properties.osm_type, id: f.properties.osm_id } : null;
-  linesAt(point, name, { ref, signal }).then(({ here, all }) => {
-    if (stop !== mine) return;
-    Object.assign(stop, { here, all, scope: here.length ? 'here' : 'all' });
-    paintStop();
-  }).catch((err) => { if (err.name !== 'AbortError' && stop === mine) { stop.error = err.message; paintStop(); } });
+  // OSM: mit Fahrplan nur für die Linienfarben (im Hintergrund), ohne ihn die Linien selbst
+  const osmLines = (background) => {
+    stop.osm = linesAt(point, name, { ref, background, signal }).then(({ here, all }) => {
+      if (stop !== mine) return;
+      Object.assign(stop, { here, all });
+      paintStop();
+    }).catch((err) => { if (err.name !== 'AbortError' && stop === mine) { stop.error = err.message; stop.all = []; paintStop(); } });
+  };
   departures(point, { name, ifopt: stop.ifopt, signal }).then(({ list }) => {
     if (stop !== mine) return;
     stop.deps = list;
     paintStop();
-  }).catch((err) => { if (err.name !== 'AbortError' && stop === mine) { stop.depError = err.message; paintStop(); } });
+    osmLines(list.length > 0);
+  }).catch((err) => {
+    if (err.name === 'AbortError' || stop !== mine) return;
+    stop.depError = err.message;
+    paintStop();
+    osmLines(false);
+  });
 }
 
 const lineCount = (list) => new Set(list.map((r) => `${r.route}|${r.ref ?? r.name}`)).size;
 
+/**
+ * Steige dieser Seite → Set der EFA-Kennungen, oder null (nur ein Steig,
+ * oder keiner nah genug). Erst über den IFOPT aus OSM, sonst der nächste
+ * Steig (und alle, die kaum weiter weg sind – ein Mast, zwei Kennungen).
+ */
+function sideOf(s) {
+  const plats = new Map();
+  for (const d of s.deps ?? []) if (d.platformId && !plats.has(d.platformId)) plats.set(d.platformId, d.platformPoint);
+  if (plats.size < 2) return null;
+  if (s.ifopt.split(':').length > 3) {
+    const ids = [...plats.keys()].filter((id) => samePlatform(id, s.ifopt));
+    if (ids.length) return new Set(ids);
+  }
+  const near = [...plats].filter(([, p]) => p).map(([id, p]) => [id, distance(p, s.point)]).sort((a, b) => a[1] - b[1]);
+  if (!near.length || near[0][1] > 80) return null;
+  return new Set(near.filter(([, d]) => d <= near[0][1] + 8).map(([id]) => id));
+}
+
+const tripKey = (x) => `${x.lineId}|${x.tripCode}|${+x.time}`;
+
+/** Passende OSM-Linie zu einer Abfahrt (gleiche Nummer, Ziel passt) */
+function relFor(x, all = stop?.all ?? []) {
+  const same = all.filter((r) => String(r.ref ?? '') === x.line);
+  return same.find((r) => (r.to ?? '').includes(x.to) || x.to.includes(r.to ?? '\u0000')) ?? same[0] ?? null;
+}
+
+/** Steige der Haltestelle aus den Abfahrten → [{ label, ids }] nach Namen sortiert */
+function platformsOf(s) {
+  const by = new Map();
+  for (const d of s.deps ?? []) {
+    const k = d.platform || d.platformId;
+    if (!k) continue;
+    if (!by.has(k)) by.set(k, new Set());
+    by.get(k).add(d.platformId);
+  }
+  return [...by].map(([label, ids]) => ({ label, ids }))
+    .sort((a, b) => String(a.label).localeCompare(String(b.label), 'de', { numeric: true }));
+}
+
+/*
+ * Haltestelle: nur noch die Abfahrten, zeitlich sortiert. Oben die Wahl des
+ * Steigs – „Hier“ (die angetippte Seite, also eine Richtung; Vorgabe), jeder
+ * einzelne Steig oder alle. Eine Abfahrt antippen zeigt die Fahrt auf der
+ * Karte und darunter, wann sie wo ist.
+ */
 function paintStop() {
   const box = $('[data-view="place"] .place-transit');
   if (!stop) { box.innerHTML = ''; return; }
   const s = stop;
+  if (s.deps?.length || (s.deps === null && !s.depError)) {
+    const side = s.deps?.length ? sideOf(s) : null;
+    const plats = platformsOf(s);
+    const pick = s.pick ?? (side ? 'here' : 'all');
+    const ids = pick === 'here' ? side : null;
+    const deps = s.deps ? (ids ? s.deps.filter((d) => ids.has(d.platformId)) : s.deps) : null;
+    const hereLabel = side ? plats.filter((p) => [...p.ids].some((id) => side.has(id))).map((p) => p.label).join(', ') : '';
+    const chip = (v, label, icon = '') => `<button type="button" class="chip" data-pick="${esc(v)}" aria-pressed="${pick === v}">${icon ? `<span class="msr">${icon}</span>` : ''}${esc(label)}</button>`;
+    // Nur „Hier“ und „Alle Steige“ – einzelne Steige machen große Bahnhöfe unübersichtlich
+    const chips = side ? `<div class="chip-row dep-filter">
+      ${chip('here', `Hier${hereLabel ? ` · Steig ${hereLabel}` : ''}`, 'my_location')}
+      ${chip('all', 'Alle Steige')}
+    </div>` : '';
+    box.innerHTML = `<h3 class="section-title">Abfahrten</h3>${chips}${departuresHtml(s, deps, pick !== 'all')}`;
+    if (s.activeLine) {
+      box.querySelector(`[data-key="${CSS.escape(String(s.active))}"]`)
+        ?.insertAdjacentHTML('afterend', s.activeLine.course ? tripDetailHtml(s.activeLine) : lineStopsHtml(s.activeLine));
+    }
+    return;
+  }
   let lines;
   if (s.error) lines = `<h3 class="section-title">Linien hier</h3><p class="muted">Gerade nicht abrufbar (${esc(s.error)})</p>`;
   else if (!s.all) lines = '<h3 class="section-title">Linien hier</h3><p class="muted"><span class="msr spin">progress_activity</span> Welche Linien hier halten …</p>';
   else if (!s.all.length) lines = '';
   else {
-    const onlyHere = s.scope === 'here' && s.here.length;
-    const list = onlyHere ? s.here : s.all;
+    // Ohne Fahrplan (Ausland, EFA gestört): die Linien aus OSM
+    const osmHere = s.scope === 'here' && s.here.length;
+    const list = osmHere ? s.here : s.all;
     const other = lineCount(s.all) > lineCount(s.here) && s.here.length;
     lines = transitHtml(list, {
       active: s.active, all: s.more,
-      title: onlyHere ? `Linien an diesem Steig${s.side ? ` (${s.side})` : ''}` : s.here.length ? 'Alle Linien der Haltestelle' : 'Linien hier',
-      extra: other ? `<button type="button" class="link-button transit-scope" data-transit="scope">${onlyHere
+      title: osmHere ? `Linien an diesem Steig${s.side ? ` (${s.side})` : ''}` : s.here.length ? 'Alle Linien der Haltestelle' : 'Linien hier',
+      extra: other ? `<button type="button" class="link-button transit-scope" data-transit="scope">${osmHere
         ? `<span class="msr">unfold_more</span> Alle ${lineCount(s.all)} Linien der Haltestelle` : '<span class="msr">unfold_less</span> Nur dieser Steig'}</button>` : '',
     });
   }
-  box.innerHTML = lines + departuresHtml(s);
+  box.innerHTML = lines;
   if (s.activeLine) box.querySelector(`[data-line="${s.active}"]`)?.insertAdjacentHTML('afterend', lineStopsHtml(s.activeLine));
 }
 
+/** Fahrt im Detail: alle Halte mit Zeit – schon gefahrene blass, dieser Halt fett */
+function tripDetailHtml({ stops, next }) {
+  const at = next ? stops.length - next.length : -1;
+  return `<ol class="trip-detail">${stops.map((x, i) => `<li class="${i < at ? 'past' : ''}${i === at ? ' here' : ''}">
+    <time>${x.time ? clock(x.time) : ''}</time><span>${esc(x.name)}</span></li>`).join('')}</ol>`;
+}
 
-function departuresHtml(s) {
-  const head = '<h3 class="section-title">Abfahrten</h3>';
-  if (s.depError) return `${head}<p class="muted">Fahrplan gerade nicht abrufbar (${esc(s.depError)})</p>`;
-  if (!s.deps) return `${head}<p class="muted"><span class="msr spin">progress_activity</span> Fahrplan wird geladen …</p>`;
-  // Diese Seite: Abfahrten vom angetippten Steig – wenn der Fahrplan ihn kennt
-  const mine = s.ifopt ? s.deps.filter((x) => x.platformId === s.ifopt) : [];
-  const list = s.scope === 'here' && mine.length ? mine : s.deps;
-  if (!list.length) return `${head}<p class="muted">In nächster Zeit keine Abfahrten</p>`;
+function departuresHtml(s, deps, filtered) {
+  if (s.depError) return `<p class="muted">Fahrplan gerade nicht abrufbar (${esc(s.depError)})</p>`;
+  if (!deps) return '<p class="muted"><span class="msr spin">progress_activity</span> Fahrplan wird geladen …</p>';
+  if (!deps.length) return '<p class="muted">An diesem Steig in nächster Zeit keine Abfahrten</p>';
   const now = Date.now();
-  const all = s.all ?? [];
-  const rows = list.slice(0, s.depMore ? 30 : 8).map((x) => {
+  const rows = deps.slice(0, s.depMore ? 40 : 12).map((x) => {
     // Passende Linie aus OSM: Farbe, und antippen zeigt sie auf der Karte
-    const same = all.filter((r) => String(r.ref ?? '') === x.line);
-    const rel = same.find((r) => (r.to ?? '').includes(x.to) || x.to.includes(r.to ?? '\u0000')) ?? same[0];
+    const rel = relFor(x, s.all ?? []);
     const at = x.delay ? new Date(+x.time + x.delay * 60000) : x.time;
     const mins = Math.round((at - now) / 60000);
-    return `<li><button type="button" class="dep-row" ${rel ? `data-line="${rel.id}"` : 'disabled'}>
+    return `<li><button type="button" class="dep-row" data-dep="${s.deps.indexOf(x)}" data-key="${esc(tripKey(x))}" aria-pressed="${tripKey(x) === s.active}">
       <time>${clock(x.time)}${x.delay ? `<b class="${x.delay > 0 ? 'late' : 'early'}">${x.delay > 0 ? '+' : ''}${x.delay}</b>` : ''}</time>
-      <span class="transit-badge" style="--c:${esc(rel ? colorOf(rel) : x.cls <= 1 ? '#343a40' : '#e03131')}">${esc(x.line)}</span>
+      <span class="transit-badge" style="--c:${esc(rel ? colorOf(rel) : x.color)}">${esc(x.line)}</span>
       <span class="dep-to">${x.cancelled ? '<s>' : ''}${esc(x.to)}${x.cancelled ? '</s> fällt aus' : ''}</span>
       <small>${mins >= 0 && mins < 60 ? `in ${mins} min` : ''}${x.platform ? ` · Steig ${esc(x.platform)}` : ''}</small>
     </button></li>`;
   }).join('');
-  return `${head}<ul class="dep-list">${rows}</ul>
-    ${list.length > 8 && !s.depMore ? '<button type="button" class="button transit-more" data-transit="deps"><span class="msr">expand_more</span> Weitere Abfahrten</button>' : ''}
-    <p class="muted dep-source">Fahrplan: NVBW EFA-BW${list.some((x) => x.delay !== null) ? ' · mit Echtzeit' : ''}${s.scope !== 'here' || !s.ifopt ? ''
-      : mine.length ? (mine.length < s.deps.length ? ' · nur dieser Steig' : '') : ' · von diesem Steig gerade nichts – alle Steige'}</p>`;
+  return `<ul class="dep-list">${rows}</ul>
+    ${deps.length > 12 && !s.depMore ? '<button type="button" class="button transit-more" data-transit="deps"><span class="msr">expand_more</span> Weitere Abfahrten</button>' : ''}
+    <p class="muted dep-source">Fahrplan: NVBW EFA-BW${deps.some((x) => x.delay !== null) ? ' · mit Echtzeit' : ''}${filtered ? ' · nur dieser Steig' : ''}</p>`;
 }
 
 $('[data-view="place"] .place-transit').addEventListener('click', async (e) => {
@@ -1821,6 +2029,10 @@ $('[data-view="place"] .place-transit').addEventListener('click', async (e) => {
   if (act === 'all') { stop.more = true; paintStop(); return; }
   if (act === 'deps') { stop.depMore = true; paintStop(); return; }
   if (act === 'scope') { stop.scope = stop.scope === 'here' ? 'all' : 'here'; paintStop(); return; }
+  const pick = e.target.closest('[data-pick]')?.dataset.pick;
+  if (pick) { stop.pick = pick; paintStop(); return; }
+  const depBtn = e.target.closest('[data-dep]');
+  if (depBtn) { showTrip(stop.deps[Number(depBtn.dataset.dep)], depBtn); return; }
   const btn = e.target.closest('[data-line]');
   if (!btn) return;
   const id = Number(btn.dataset.line);
@@ -1838,8 +2050,6 @@ $('[data-view="place"] .place-transit').addEventListener('click', async (e) => {
     const line = await transitLine.show(id, { from: stop.point });
     if (stop !== mine) return;
     stop.active = id; stop.activeLine = line;
-    // Linie aus den Abfahrten, die in der Liste noch eingeklappt ist
-    if (![...(stop.scope === 'here' && stop.here.length ? stop.here : stop.all)].some((r) => r.id === id)) stop.scope = 'all';
     stop.more = true;
     paintStop();
     if (line.bounds) afterLayout(() => fitTo(line.bounds.flat(), 16));
@@ -1849,6 +2059,45 @@ $('[data-view="place"] .place-transit').addEventListener('click', async (e) => {
     paintStop();
   }
 });
+
+/**
+ * Eine Fahrt aus den Abfahrten auf der Karte: Verlauf und Halte mit Zeiten
+ * aus dem Fahrplan (schnell). Kennt der ihn nicht, die passende OSM-Linie.
+ */
+async function showTrip(x, btn) {
+  if (!x) return;
+  const key = tripKey(x);
+  if (stop.active === key) {
+    transitLine.clear();
+    stop.active = null; stop.activeLine = null;
+    paintStop();
+    return;
+  }
+  btn?.classList.add('loading');
+  const mine = stop;
+  try {
+    const course = await tripCourse(x);
+    if (stop !== mine) return;
+    const rel = relFor(x, stop.all ?? []);
+    const line = transitLine.showCourse(key, { ...course, color: rel ? colorOf(rel) : x.color });
+    stop.active = key; stop.activeLine = { ...line, course: true };
+    paintStop();
+    if (line.bounds) afterLayout(() => fitTo(line.bounds.flat(), 16));
+  } catch (err) {
+    if (stop !== mine) return;
+    // Ersatz: Linie aus OSM (dauert länger)
+    await stop.osm;
+    const rel = stop === mine && relFor(x, stop.all ?? []);
+    if (!rel) { toast(`Verlauf von ${x.line} gerade nicht abrufbar`); paintStop(); return; }
+    try {
+      const line = await transitLine.show(rel.id, { from: stop.point });
+      if (stop !== mine) return;
+      stop.active = key; stop.activeLine = line;
+      paintStop();
+      if (line.bounds) afterLayout(() => fitTo(line.bounds.flat(), 16));
+    } catch (e2) { if (e2.name !== 'AbortError') { toast(`Linie gerade nicht abrufbar (${e2.message})`); paintStop(); } }
+  }
+}
 
 /** Klick auf ein Symbol der Karte selbst (Parkplatz, Laden, Haltestelle …). */
 function openBasePoi(feat) {
@@ -1912,6 +2161,13 @@ mountSignals(map);
 map.on('click', (e) => {
   // Beim Fliegen sperrt ein Klick nur die Maus (keys.js) – nichts öffnen
   if (fly.active) return;
+  // Bus & Bahn: Abschnitt der Verbindung angetippt → hervorheben, Beschreibung zeigen
+  if (current()?.transit && !nav.active && sheet.dataset.current === 'route') {
+    const legs = ['route-main', 'route-walk'].filter((id) => map.getLayer(id));
+    const leg = map.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: legs })
+      .find((f) => f.properties.leg !== undefined);
+    if (leg) { focusTransitLeg(Number(leg.properties.leg)); return; }
+  }
   // Eigene Ebene getroffen? Dann ihre Werte zeigen
   const mainLayers = layerMenu.shown();
   const own = mainLayers.flatMap((l) => mapLayerIds(l.id)).filter((id) => map.getLayer(id));
@@ -2049,7 +2305,7 @@ $('.start-nav').addEventListener('click', async () => {
   if (!SIMULATING && historySetting.get() && !recorder.active) {
     recorder.start({ kind: 'nav', profile: state.profile, name: navDestination ? `Nach ${navDestination.split(',')[0]}` : '', from: state.waypoints[0]?.label ?? '', to: navDestination });
   }
-  nav.start(r, { profile: state.profile, highways: state.highways, targets: state.points.slice(1) });
+  nav.start(r, { profile: state.profile, highways: prefs.highways, targets: state.points.slice(1) });
 });
 
 /*

@@ -90,8 +90,12 @@ Man startet immer mit der Karte.
 - **Dialoge am Rechner links** unter der Suche, so hoch wie ihr Inhalt – die
   Karte rechts bleibt frei und passt Routen und Orte daneben ein.
 - **Ampeln** ab Zoom 15 als kleines Symbol – nur wo eine steht, ohne Rot/Grün
-  (OSM `highway=traffic_signals` per Overpass für den Ausschnitt; die
-  Grundkarte kennt keine Ampeln).
+  (OSM `highway=traffic_signals` per Overpass; die Grundkarte kennt keine
+  Ampeln). Geholt wird in Feldern von etwa 1 km: nur Felder im Blick, die
+  noch fehlen – beim Verschieben der neue Streifen, beim Zurückschieben
+  nichts. Die Abfrage fragt die Server nacheinander statt parallel; ein
+  Server, der ablehnt (429) oder überlastet ist (5xx), bekommt 60 bzw. 20 s
+  Pause – das gilt für alle Overpass-Abfragen der App.
 - **Kartenbild:** OpenFreeMap „Liberty“ mit deutschen Namen (`name:de` vor
   `name`; bei nicht-lateinischer Schrift steht der deutsche Name vorn und das
   Original darunter). Gebäude haben Farben nach Nutzung und Schatten am Boden,
@@ -115,26 +119,53 @@ Man startet immer mit der Karte.
 - **Antippen:** ein Ort der Karte (Laden, Haltestelle …) öffnet seine Karte
   unten; ein Treffer einer eigenen Ebene zeigt alle Werte des Objekts.
 - **Haltestellen und Bahnhöfe** (die Symbole der Grundkarte):
-  - **Linien an diesem Steig:** nur die Linien, die genau am angetippten
-    Steig halten – also die Richtung dieser Straßenseite (Steig aus OSM, z. B.
-    „B“). **Alle N Linien der Haltestelle** schaltet auf alle Steige gleichen
-    Namens im Umkreis von 150 m um.
-  - Eine Richtung antippen zeigt **genau diese Linie** in ihrer Farbe mit
-    allen Halten: ab dieser Haltestelle kräftig, der Weg bis hierher blass;
-    die Karte zeigt den Weg ab hier. Darunter „Noch N Halte bis …“ zum
-    Aufklappen. Nochmal antippen oder den Ort schließen nimmt sie weg.
-  - **Abfahrten nach Fahrplan** (EFA der NVBW, ganz Deutschland, mit
-    Echtzeit, wo es sie gibt): Uhrzeit, Verspätung, Linie in Linienfarbe,
-    Ziel, „in N min“, Steig. Über den IFOPT-Schlüssel des OSM-Steigs nur die
-    Abfahrten dieser Seite. Antippen zeigt die Linie auf der Karte.
+  - Zuerst der **Fahrplan** (EFA der NVBW, ganz Deutschland, gut ¼ s, mit
+    Echtzeit, wo es sie gibt). Seine Steige haben Koordinaten: der nächste
+    zum angetippten Symbol ist **diese Straßenseite**, also eine Richtung
+    (passt der IFOPT-Schlüssel aus OSM, zählt der – auch wenn die EFA eine
+    andere Kreisnummer nutzt).
+  - Nur noch **Abfahrten**, zeitlich sortiert: Uhrzeit, Verspätung, Linie,
+    Ziel, „in N min“, Steig. Darüber die Wahl des Steigs: **Hier** (die
+    angetippte Seite – Vorgabe), **Alle Steige** oder ein einzelner Steig.
+  - Eine Abfahrt antippen zeigt **genau diese Fahrt** auf der Karte –
+    Verlauf und Halte aus dem Fahrplan (XML_STOPSEQCOORD_REQUEST, rund ⅕ s):
+    ab hier kräftig, der Weg bis hierher blass. Darunter klappt auf, wann sie
+    wo ist: alle Halte mit Zeit, gefahrene blass, dieser Halt fett. Kennt der
+    Fahrplan den Verlauf nicht, kommt die Linie aus OSM (Overpass).
+  - OSM (Overpass) läuft nur nebenher im Hintergrund-Modus für die echten
+    Linienfarben; ohne Fahrplan (Ausland) liefert es die Linien wie früher.
+  - **Merken** (wie bei jedem Ort) legt die Haltestelle als Lesezeichen ab –
+    in der Routenplanung mit Bus & Bahn steht sie dann ganz oben.
   - Ein eigenes Liniennetz wird nie gezeichnet.
 
 - **Bus & Bahn** (Art in der Routenplanung): Verbindungen nach Fahrplan über
   die EFA der NVBW (ganz Deutschland, ohne Schlüssel, Echtzeit wo es sie
-  gibt) – vier Verbindungen ab jetzt mit Abfahrt–Ankunft, Dauer, Umstiegen
-  und den Linien; darunter die Abschnitte mit Fußwegen, Linie, Steig, Zahl
-  der Halte und Ankunft. Auf der Karte der echte Verlauf. Keine Navigation;
-  Zwischenziele zählen hier nicht.
+  gibt). Keine Navigation; Zwischenziele zählen hier nicht.
+  - **Wann:** im Formular „Abfahrt ab“ oder „Ankunft bis“ mit Datum und
+    Uhrzeit; leer heißt jetzt, „Jetzt“ setzt zurück. Fahrten vor der Zeit
+    (bzw. mit späterer Ankunft), die die EFA mitliefert, fallen weg.
+  - Zwei Anfragen zugleich (normal und „langsam umsteigen“), zusammen bis
+    zu sechs Verbindungen: Abfahrt–Ankunft, Linien, Dauer, Umstiege und
+    „Schnellste“ (bei „Ankunft bis“: „Späteste Abfahrt“) bzw. „≥ N min
+    umsteigen“ / „knapp: N min umsteigen“.
+  - **Filter-Knopf** (siehe [4](#4-route-planen)): Verkehrsmittel
+    (Fernzüge ICE/IC, Regionalzug/S-Bahn, U-Bahn/Tram, Bus), **Umsteigezeit
+    mindestens** 2–20 min, **Schnellste auch zeigen** (auch wenn knapp).
+    Gezeigt werden alle mit genug Umsteigezeit, dazu – wenn eingeschaltet –
+    die schnellste.
+  - **Abschnitte direkt unter der gewählten Verbindung** (die
+    Wegbeschreibung unten entfällt bei Bus & Bahn): „Zu Fuß nach …“ mit
+    Zeit, Strecke und Tempo; „Bus 91 nehmen → Roringen“ mit Einstieg →
+    Ausstieg samt Steigen, Halte · Fahrzeit · km. Zwischen zwei Fahrten
+    steht immer die Umsteigezeit und wo (knapp: orange). Einen Abschnitt
+    antippen (Liste oder Karte) hebt ihn hervor, zoomt hin und klappt die
+    Halte dazwischen mit Zeiten bzw. den Fußweg auf.
+  - Auf der Karte jede Fahrt in der Farbe ihres Verkehrsmittels, Fußwege
+    gestrichelt, an jedem Ein- und Ausstieg ein Punkt.
+  - **Merken** legt die Verbindung unter Meine Touren → Bus & Bahn ab.
+  - **Ticket bei der Bahn** (wenn Züge dabei sind): Suche auf bahn.de mit
+    erstem und letztem Bahnhof und Abfahrt. Reine Bus-/Tramfahrten haben
+    keinen Link (Verbund, Deutschlandticket).
 
 ## 3. Suchen und Orte
 
@@ -145,14 +176,31 @@ Man startet immer mit der Karte.
   (Flächen, Linien, seltene Kategorien). Restaurants zeigen auch Imbisse.
 - **Ortskarte:** Name, Art, Öffnungszeiten, Adresse, Bild und Kurztext aus
   Wikipedia/Commons, an Bahnhöfen die Abfahrten, an Tankstellen die Preise
-  (mit eigenem Tankerkönig-Schlüssel). Knöpfe: Route, Teilen, in der Nähe.
+  (mit eigenem Tankerkönig-Schlüssel). Knöpfe: Route, Als Start,
+  Erreichbar, Merken, Teilen, Bearbeiten (OSM) bzw. am freien Punkt „Hier
+  eintragen“.
+- **Merken:** ein Knopf für alles – ein Tipp legt ein **Lesezeichen** an
+  (Ort, Adresse, Haltestelle), noch einer („Gemerkt“) nimmt es weg. Die
+  Meldung danach bietet „Zuhause / Arbeit“ an. Lesezeichen stehen in der
+  Suche und in den Feldern der Routenplanung ganz oben (bei Bus & Bahn die
+  Haltestellen zuerst).
 - **Zuletzt gesucht:** WMap merkt sich Orte, Kategorien und Routen; löschbar
   in den Einstellungen und in der Übersicht.
 
 ## 4. Route planen
 
 - Knopf **Route** neben dem Suchfeld oder „Route“ in einer Ortskarte.
-- **Profile:** Zu Fuß, Fahrrad, Auto (Valhalla auf Servern der FOSSGIS).
+- **Profile** immer oben: Zu Fuß, Fahrrad, Auto (Valhalla auf Servern der
+  FOSSGIS), Bus & Bahn (Fahrplan, siehe [2](#2-karte)).
+- **Filter-Knopf** (unten neben „Zwischenziel“ und in der zusammengeklappten
+  Zeile; ein Punkt zeigt, dass etwas verstellt ist) öffnet eine Notiz:
+  Auto – Autobahnen, Mautstraßen, Fähren vermeiden; Fahrrad – unbefestigte
+  Wege, Fähren; zu Fuß – Fähren; Bus & Bahn – siehe oben. Gilt auch fürs
+  Neuberechnen in der Navigation (`wmap.routePrefs`).
+- **Lange Strecken zu Fuß und mit dem Rad** (Göttingen → Hamburg): Valhalla
+  rechnet am Stück nur 90 bzw. 135 km Luftlinie. Darüber wird die Strecke
+  wie im Tourenplaner in Stücke geteilt und zusammengesetzt – eine Route
+  ohne Alternativen; die Navigation rechnet unterwegs genauso neu.
 - Start ist standardmäßig der eigene Standort; ein Klick in die Karte füllt
   das erste leere Feld. Zwischenziele lassen sich hinzufügen.
 - Wo es welche gibt, stehen Alternativen zur Auswahl – mit Zeit, Strecke und Höhenprofil.
@@ -240,7 +288,10 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
     Hessen, Thüringen, Sachsen, Brandenburg, Berlin, Mecklenburg-Vorpommern,
     Rheinland-Pfalz, Saarland und Baden-Württemberg** (offen, Abruf aus dem
     Browser erlaubt; Sachsen-Anhalt sperrt ihn, Hamburg hat keinen passenden
-    Dienst). Straßen (etwas zurückgenommen), Flüsse und Namen liegen obenauf.
+    Dienst). Hessen liefert sein 20-cm-Bild erst ab Zoom 15; darunter
+    springen die gröberen Übersichten desselben Dienstes (3,2 m, 50 m) ein.
+    Hessen, Rheinland-Pfalz und das Saarland liefern JPEG statt PNG (ein
+    Drittel bis ein Zehntel der Daten). Straßen (etwas zurückgenommen), Flüsse und Namen liegen obenauf.
     **Gebäude** (ab Zoom 14,5): graue, deckende Wände, auf dem Dach das
     Luftbild – eine eigene WebGL-Ebene (sat-buildings.js), weil MapLibre
     einer 3D-Fläche nur eine Farbe gibt. Sie baut sich neu, sobald Gebäude-
@@ -329,9 +380,13 @@ Zweiter Hauptbildschirm (`dashboard.html`), ohne Karte, mit Navigationsleiste.
 - **Danke-Banner** (grün, Hand mit Herz) mit allen Anbietern, darunter
   Version und Impressum.
 
-## 10. Meine Touren: Geplant und Aufgezeichnet
+## 10. Meine Touren: Geplant, Aufgezeichnet, Bus & Bahn
 
-Eine Seite, zwei Reiter (`wege.html`; `tours.html` leitet hierher):
+Eine Seite, drei Reiter (`wege.html`; `tours.html` leitet hierher). Der
+dritte, **Bus & Bahn** (`?tab=bahn`), zeigt gemerkte Verbindungen: kommende
+oben, **vergangene zugeklappt** darunter; im Detail alle Abschnitte zum
+Aufklappen, auf der Karte jede Fahrt in ihrer Farbe; Knöpfe Neu suchen,
+Ticket bei der Bahn, Löschen. Die ersten zwei:
 
 | | Geplant | Aufgezeichnet |
 |---|---|---|
@@ -506,7 +561,12 @@ braucht dafür kein Konto, es liest und schreibt nur Dateien.
 ```
 WMap/Geplant/Harzer Hexenstieg.gpx
 WMap/Abgeschlossen/2026/2026-09-20 Radtour am Samstagnachmittag.gpx
+WMap/Gemerkt.json
 ```
+
+`Gemerkt.json` hält gemerkte Verbindungen (Bus & Bahn), Zuhause, Arbeit und
+Lesezeichen (saved.js): je Eintrag gewinnt das Neuere, Gelöschtes steht ein
+Jahr lang in `deleted`, damit es nicht von einem anderen Gerät zurückkommt.
 
 Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene. Dateien der
 früheren Ordnung (`Touren/`, `Wege/<Jahr>/`) zieht der nächste Abgleich um.
@@ -562,6 +622,14 @@ früheren Ordnung (`Touren/`, `Wege/<Jahr>/`) zieht der nächste Abgleich um.
   Die Anmeldung braucht eine OAuth-Client-ID (Einstellungen → Für
   Entwickler); fehlt sie, sagt der Dialog das.
 - Die Aufzeichnung dafür bleibt 14 Tage auf dem Gerät, abschaltbar.
+- **Orte bearbeiten und eintragen** (osm-edit.js): in der Ortskarte
+  **Bearbeiten** (Name, Öffnungszeiten, Telefon, Website eines Orts aus OSM);
+  lange drücken → **Hier eintragen** legt ein Unternehmen oder einen
+  Veranstaltungsort an (Art, Name, Öffnungszeiten, Kontakt, Adresse aus der
+  Rückwärtssuche). Mit OSM-Konto geht es direkt in die Karte (ein Changeset,
+  Konflikte werden erkannt). Ohne Konto erklärt ein Dialog, wozu es gebraucht
+  wird: **Konto verbinden** führt zu Einstellungen → OpenStreetMap
+  (`settings.html#osm`), **Als Hinweis senden** schickt es anonym als Hinweis.
 - **Meldungen unterwegs** (Stau, Unfall, Baustelle) mit kurzer Rückfrage für
   andere („Baustelle noch da? Ja/Nein“). Autobahn-Verkehrslage aus den offenen
   Daten der Autobahn GmbH.
@@ -610,6 +678,7 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 | Eigene Ebenen, Plugins, Zugangsdaten | IndexedDB / layers | nur „Als Plugin“ |
 | Verbundener Ordner | IndexedDB / kv | nein |
 | Aktive Erweiterungen | IndexedDB / kv „extensions“ | nein (der Code kommt vom Anbieter) |
+| Gemerkte Verbindungen, Zuhause/Arbeit, Lesezeichen | localStorage `wmap.saved` | nur per Ordner (`Gemerkt.json`) |
 | Verlauf, Einstellungen, Ansicht | localStorage `wmap.*` | nein |
 | Veröffentlichte Touren, Bewertungen, Plugins | Server (SQLite) | ja, gewollt |
 

@@ -155,15 +155,18 @@ export function applyEdits(elements, edits) {
 }
 
 /**
- * Warteschlange hochladen: Tag-Änderungen in einem Changeset, Hinweise einzeln.
+ * Warteschlange hochladen: Tag-Änderungen und neue Punkte in einem
+ * Changeset, Hinweise einzeln.
+ * @param creates  neue Orte: [{ point: [lon, lat], tags }]
+ * @param source   Quelle im Changeset („survey“: selbst vor Ort gesehen)
  * → { changeset, applied, conflicts, notes }
  */
-export async function upload({ edits = [], notes = [] }, { comment }) {
+export async function upload({ edits = [], notes = [], creates = [] }, { comment, source = 'survey' }) {
   // Hinweise gehen auch ohne Konto (anonym) – Änderungen an der Karte nicht
-  if (edits.length && !account.loggedIn()) throw new Error('Nicht bei OSM angemeldet');
+  if ((edits.length || creates.length) && !account.loggedIn()) throw new Error('Nicht bei OSM angemeldet');
   const out = { changeset: null, applied: [], conflicts: [], notes: [] };
 
-  if (edits.length) {
+  if (edits.length || creates.length) {
     // Aktuellen Stand holen – die Version muss stimmen, sonst lehnt OSM ab
     const ids = { node: new Set(), way: new Set(), relation: new Set() };
     for (const e of edits) ids[e.osm.type].add(e.osm.id);
@@ -177,8 +180,8 @@ export async function upload({ edits = [], notes = [] }, { comment }) {
     out.applied = applied;
     out.conflicts = conflicts;
 
-    if (changes.length) {
-      const tags = { created_by: `WMap ${APP_VERSION}`, comment, source: 'survey', locale: 'de-DE' };
+    if (changes.length || creates.length) {
+      const tags = { created_by: `WMap ${APP_VERSION}`, comment, source, locale: 'de-DE' };
       const cs = await api('/changeset/create', {
         method: 'PUT', type: 'text/xml',
         body: `<osm><changeset>${Object.entries(tags).map(([k, v]) => `<tag k="${x(k)}" v="${x(v)}"/>`).join('')}</changeset></osm>`,
@@ -187,7 +190,7 @@ export async function upload({ edits = [], notes = [] }, { comment }) {
       try {
         await api(`/changeset/${out.changeset}/upload`, {
           method: 'POST', type: 'text/xml',
-          body: `<osmChange version="0.6" generator="WMap"><modify>${changes.map((e) => elementXml(e, out.changeset)).join('')}</modify></osmChange>`,
+          body: `<osmChange version="0.6" generator="WMap">${creates.length ? `<create>${creates.map((c, i) => `<node id="-${i + 1}" changeset="${out.changeset}" lat="${c.point[1].toFixed(7)}" lon="${c.point[0].toFixed(7)}">${Object.entries(c.tags).map(([k, v]) => `<tag k="${x(k)}" v="${x(v)}"/>`).join('')}</node>`).join('')}</create>` : ''}${changes.length ? `<modify>${changes.map((e) => elementXml(e, out.changeset)).join('')}</modify>` : ''}</osmChange>`,
         });
       } finally {
         await api(`/changeset/${out.changeset}/close`, { method: 'PUT' }).catch(() => {});

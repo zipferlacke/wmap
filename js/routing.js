@@ -7,6 +7,7 @@
  */
 import { API, PROFILES, MAX_ROUTES } from './config.js';
 import { decodePolyline, encodePolyline, cumulative, simplifyTo } from './geo.js';
+import { valhallaPrefs } from './route-prefs.js';
 
 const ELEVATION_STEP = 30;   // Meter zwischen zwei Höhenwerten
 
@@ -28,7 +29,8 @@ function body(points, profile, { highways = true, alternates = 0, avoid = [], he
     ...(avoid.length ? { exclude_polygons: avoid } : {}),
     locations,
     costing,
-    costing_options: costingOptions(profile, { highways }),
+    // Dazu Maut, Fähren, unbefestigte Wege aus den Routen-Einstellungen
+    costing_options: { [costing]: { ...costingOptions(profile, { highways })[costing], ...valhallaPrefs(costing) } },
     units: 'kilometers',
     language: 'de-DE',
     directions_options: { units: 'kilometers', language: 'de-DE' },
@@ -64,6 +66,7 @@ export async function request(payload, signal, endpoint = 'route') {
  */
 export async function getRoutes(points, profile, { highways = true, avoid = [], signal } = {}) {
   const car = PROFILES[profile].costing === 'auto';
+  if (tooLong(points, profile)) return [{ ...(await longRoute(points, profile, signal)), id: 0, noHighway: false }];
   const main = request(body(points, profile, { highways: car ? highways : true, alternates: MAX_ROUTES - 1, avoid }), signal);
   // Parallel, damit die Auswahl nicht auf eine zweite Anfrage warten muss
   const extra = car && highways
@@ -94,6 +97,7 @@ export async function getRoutes(points, profile, { highways = true, avoid = [], 
  */
 export async function reroute(points, profile, { highways = true, heading = null, signal } = {}) {
   const car = PROFILES[profile].costing === 'auto';
+  if (tooLong(points, profile)) return { ...(await longRoute(points, profile, signal)), noHighway: false };
   const payload = (h) => body(points, profile, { highways: car ? highways : true, heading: h });
   let trips;
   try {
@@ -105,6 +109,36 @@ export async function reroute(points, profile, { highways = true, heading = null
   const route = parseTrip(trips[0]);
   route.noHighway = car && !route.hasHighway;
   return route;
+}
+
+/*
+ * Lange Strecken zu Fuß und mit dem Rad (Göttingen → Hamburg): Valhalla
+ * lehnt ab, wenn die Luftlinie über alle Punkte zu lang ist. Dann jedes
+ * Stück für sich rechnen und zu lange Stücke teilen (segment, wie im
+ * Tourenplaner) – eine Route, keine Alternativen.
+ */
+function tooLong(points, profile) {
+  const max = MAX_STRAIGHT[PROFILES[profile]?.costing];
+  if (!max) return false;
+  let d = 0;
+  for (let i = 1; i < points.length; i += 1) d += straight(points[i - 1], points[i]);
+  return d > max;
+}
+
+async function longRoute(points, profile, signal) {
+  const parts = await Promise.all(points.slice(1).map((p, i) => segment(points[i], p, profile, { signal })));
+  const r = withCum(joinSegments(parts, profile));
+  // Nur die echten Zwischenziele melden „angekommen“ – nicht die Nahtstellen
+  let last = -1;
+  r.maneuvers = r.maneuvers.filter((m, i) => {
+    const arrive = [4, 5, 6].includes(m.type);
+    if (arrive && i < r.maneuvers.length - 1) return false;
+    const depart = [1, 2, 3].includes(m.type);
+    if (depart && last >= 0) return false;
+    last = i;
+    return true;
+  });
+  return { ...r, hasHighway: false, hasToll: false, hasFerry: parts.some((x) => x.hasFerry) };
 }
 
 /** Zwei Routen, die sich nur in Nachkommastellen unterscheiden, sind eine. */
