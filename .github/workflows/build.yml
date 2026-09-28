@@ -32,12 +32,14 @@ jobs:
             args: --bundles nsis
             targets: ''
             output: src-tauri/target/release/bundle/nsis/*.exe
+            file: wmap-windows-setup.exe
           - name: macOS
             os: macos-latest
             # Eine .dmg für Apple Silicon und Intel zugleich
             args: --target universal-apple-darwin --bundles dmg
             targets: aarch64-apple-darwin,x86_64-apple-darwin
             output: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            file: wmap-macos.dmg
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -67,10 +69,15 @@ jobs:
         working-directory: src-tauri
         run: npx --yes @tauri-apps/cli@2 build --config tauri.ci.json ${{ matrix.args }}
 
+      # Feste Dateinamen, damit die Webseite über releases/latest/download/…
+      # direkt darauf zeigen kann (Tauri hängt sonst die Version an)
+      - name: Fester Dateiname
+        run: cp ${{ matrix.output }} ${{ matrix.file }}
+
       - uses: actions/upload-artifact@v4
         with:
           name: wmap-${{ matrix.name }}
-          path: ${{ matrix.output }}
+          path: ${{ matrix.file }}
 
   # RPM und AppImage. Gebaut auf Ubuntu 22.04: Das AppImage läuft nur auf
   # Systemen mit mindestens der glibc, gegen die es gebaut wurde – die ältere

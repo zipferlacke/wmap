@@ -782,7 +782,11 @@ takeshots wmap --eigener-server # ohne Docker
 - **GitHub Actions** (`.github/workflows/build.yml`, wie bei WKeePass): ein Tag
   `v*` (von `git-release`) baut Windows (.exe), macOS (.dmg), Linux (RPM,
   AppImage, je x86_64/aarch64) und Android (AAB + APKs) und hängt alles an
-  ein Release. `wuefl-libs` holt `.github/actions/wuefl-libs` (neuester Tag),
+  ein Release – mit festen Dateinamen, auf die wuefl.de/wmap über
+  `releases/latest/download/…` zeigt: `wmap-windows-setup.exe`,
+  `wmap-macos.dmg`, `wmap-x86_64.AppImage`, `wmap-aarch64.AppImage`,
+  `wmap-x86_64.rpm`, `wmap-aarch64.rpm`, `wmap-android.apk` (dazu `-armv7`,
+  `-x86_64`) und `wmap-android.aab`. `wuefl-libs` holt `.github/actions/wuefl-libs` (neuester Tag),
   die Web-Dateien kopiert je Job `src-tauri/web-kopieren.sh`
   (`src-tauri/tauri.ci.json` schaltet dafür den beforeBuildCommand ab). Die
   Android-Signatur kommt aus den Secrets (siehe `.secrets/README.md`).
