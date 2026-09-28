@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Offline-Karten – WMap</title>
+    <link rel="manifest" href="./appdata/manifest.json">
+    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#1a73e8">
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/tours.css">
+    <script src="./libs/maplibre-gl/maplibre-gl.js"></script>
+</head>
+
+<body class="tour-page offline-page">
+    <header class="tour-head panel">
+        <a class="button" data-shape="round no-background" href="./dashboard.html" title="Zur Übersicht">
+            <span class="msr">arrow_back</span>
+        </a>
+        <h1 class="tour-name">Offline-Karten</h1>
+    </header>
+
+    <main>
+        <section id="map"></section>
+
+        <dialog id="sheet" class="dialog sheet tour-panel" aria-label="Offline-Karten">
+            <button type="button" class="sheet-grip" aria-label="Höhe ändern: ziehen, doppelt tippen für ganz auf oder zu"></button>
+            <section class="view">
+                <!-- Liste der Gebiete -->
+                <div class="area-home">
+                    <div class="tour-bar area-bar">
+                        <button type="button" class="button primary" data-act="new"><span class="msr">add_location_alt</span> Neues Gebiet</button>
+                    </div>
+                    <p class="muted area-intro">Gebiete, die ganz auf dem Gerät liegen – für unterwegs ohne Netz.
+                        Sie bleiben, bis du sie löschst, und lassen sich jederzeit neu laden.</p>
+                    <ul class="area-list"></ul>
+                    <p class="muted area-usage"></p>
+                </div>
+
+                <!-- Neues Gebiet: Form wählen, Größe sehen, laden -->
+                <form class="area-new" hidden>
+                    <h2><span class="msr">add_location_alt</span> Neues Gebiet</h2>
+                    <div class="area-shape" role="group" aria-label="Form">
+                        <button type="button" class="chip" data-shape="rect" aria-pressed="true"><span class="msr">crop_square</span> Rechteck</button>
+                        <button type="button" class="chip" data-shape="free" aria-pressed="false"><span class="msr">polyline</span> Freie Form</button>
+                    </div>
+                    <p class="muted area-hint"></p>
+                    <div class="area-free-tools" hidden>
+                        <button type="button" class="button" data-act="remove"><span class="msr">delete</span> Letzten Punkt löschen</button>
+                        <button type="button" class="button" data-act="clear"><span class="msr">restart_alt</span> Neu anfangen</button>
+                    </div>
+                    <label class="area-field">Name<input type="text" name="name" maxlength="80" placeholder="z. B. Harz"></label>
+                    <label class="area-field">Detail<select name="detail"></select></label>
+                    <label class="area-check"><input type="checkbox" name="terrain"> Gelände mitnehmen – Schummerung und 3D</label>
+                    <p class="area-estimate"></p>
+                    <div class="confirm-actions">
+                        <button type="button" class="button" data-act="cancel">Abbrechen</button>
+                        <button type="submit" class="button primary" data-act="save"><span class="msr">download</span> Herunterladen</button>
+                    </div>
+                </form>
+            </section>
+        </dialog>
+    </main>
+
+    <script type="module" src="./js/pages/offline.js"></script>
+</body>
+
+</html>

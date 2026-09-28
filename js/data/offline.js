@@ -37,7 +37,7 @@ export async function registerOffline() {
 const EARTH = 40075016.686;
 
 /** Kachelnummern bei Zoom z, gebrochen – [x, y] */
-function tileXY([lon, lat], z) {
+export function tileXY([lon, lat], z) {
   const n = 2 ** z;
   const r = (lat * Math.PI) / 180;
   return [((lon + 180) / 360) * n, ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n];
@@ -81,7 +81,7 @@ const BUFFER = (z) => (z >= 14 ? 350 : z >= 12 ? 1500 : 4000);
 const ZOOMS = [6, 7, 8, 9, 10, 11, 12, 13, 14];
 const MAX_TILES = 2500;
 
-function styleAssets(map) {
+export function styleAssets(map) {
   const style = map.getStyle();
   const urls = [];
   const src = map.getSource('openmaptiles');

@@ -7,17 +7,23 @@
  *                                    enthalten die Version, ändern sich also nie
  *   Suche, Routing, Overpass …       nur Netz
  *
+ * Offline-Gebiete (offline.html) liegen je in einem Cache „wmap-area-…“ und
+ * bleiben, bis man sie löscht. Die Kacheln von OpenFreeMap stehen dort ohne
+ * die Version im Pfad (planet/<Version>/ → planet/offline/) – OpenFreeMap
+ * baut die Karte wöchentlich neu, das Gebiet passt so trotzdem weiter.
+ *
  * Vor einer Navigation lädt die Seite die Kacheln entlang der Route vor
  * (Nachricht „prefetch“), damit Funklöcher unterwegs nicht auffallen. Jede
  * Navigation bekommt einen eigenen Cache „wmap-nav-<Zeit>“:
  *   - nach 10 Tagen wird er gelöscht
  *   - reicht der Platz nicht, weicht zuerst die älteste Navigation
  */
-const APP = 'wmap-app-v5';          // v5: js/ in Ordner gruppiert
+const APP = 'wmap-app-v6';          // v6: Offline-Gebiete
 const TILES = 'wmap-tiles-v1';
 const MAX_TILES = 8000;
 const NAV = 'wmap-nav-';
 const NAV_MAX_AGE = 10 * 24 * 3600 * 1000;
+const AREA = 'wmap-area-';
 // Grob je Kachel samt Cache-Verwaltung – nur um vorher Platz zu schaffen
 const TILE_BYTES = 60 * 1024;
 
@@ -26,7 +32,7 @@ const TILE_HOSTS = ['tiles.openfreemap.org', 'tiles.mapterhorn.com'];
 self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', (e) => e.waitUntil((async () => {
-  for (const k of await caches.keys()) if (![APP, TILES].includes(k) && !k.startsWith(NAV)) await caches.delete(k);
+  for (const k of await caches.keys()) if (![APP, TILES].includes(k) && !k.startsWith(NAV) && !k.startsWith(AREA)) await caches.delete(k);
   await dropOldNavs();
   await self.clients.claim();
 })()));
@@ -35,6 +41,11 @@ self.addEventListener('activate', (e) => e.waitUntil((async () => {
 function immutable(url) {
   if (url.hostname === 'tiles.mapterhorn.com') return /\/\d+\/\d+\/\d+\.webp$/.test(url.pathname);
   return /^\/(planet\/\d|fonts\/|sprites\/|natural_earth\/)/.test(url.pathname);
+}
+
+/** Schlüssel der Offline-Gebiete: Kacheln von OpenFreeMap ohne Version */
+function areaKey(u) {
+  return String(u).replace(/^(https:\/\/tiles\.openfreemap\.org\/planet\/)[^/]+\/(?=\d+\/)/, '$1offline/');
 }
 
 self.addEventListener('fetch', (e) => {
@@ -59,8 +70,10 @@ async function networkFirst(req, name) {
     return res;
   } catch (err) {
     // Aufruf mit Parametern (?sim, ?q=…) findet die gespeicherte Seite trotzdem
+    // Stil und TileJSON der Karte liegen auch in den Offline-Gebieten
     const hit = await cache.match(req, { ignoreVary: true })
-      ?? (req.mode === 'navigate' ? await cache.match(req, { ignoreSearch: true, ignoreVary: true }) : null);
+      ?? (req.mode === 'navigate' ? await cache.match(req, { ignoreSearch: true, ignoreVary: true }) : null)
+      ?? (name === TILES ? await caches.match(req, { ignoreVary: true }) : null);
     if (hit) return hit;
     throw err;
   }
@@ -70,8 +83,9 @@ let puts = 0;
 
 async function cacheFirst(req) {
   const cache = await caches.open(TILES);
-  // Auch in den Caches der vorgeladenen Navigationen suchen
-  const hit = await caches.match(req, { ignoreVary: true });
+  // Auch in den Caches der vorgeladenen Navigationen und der Offline-Gebiete suchen
+  const hit = await caches.match(req, { ignoreVary: true })
+    ?? (areaKey(req.url) !== req.url ? await caches.match(areaKey(req.url), { ignoreVary: true }) : undefined);
   if (hit) return hit;
   let res;
   try {
@@ -100,6 +114,7 @@ self.addEventListener('message', (e) => {
   const port = e.ports[0];
   if (type === 'app-files') e.waitUntil(storeApp(urls));
   if (type === 'prefetch') e.waitUntil(prefetch(urls, port));
+  if (type === 'area') e.waitUntil(areaBatch(e.data.cache, urls, port));
 });
 
 /** Was die Seite vor dem ersten Start des Service Workers geladen hat. */
@@ -189,4 +204,43 @@ async function prefetch(urls, port) {
   };
   await Promise.all(Array.from({ length: 6 }, worker));
   port?.postMessage({ done, total: urls.length, loaded, failed, finished: true });
+}
+
+/* ── Offline-Gebiete ──────────────────────────────────────────────────────── */
+
+/**
+ * Ein Stapel Adressen in den Cache eines Gebiets (die Seite schickt sie in
+ * Stapeln, damit kein einzelnes Ereignis zu lange läuft). Schon Gespeichertes
+ * bleibt – so lässt sich ein abgebrochenes Gebiet fortsetzen. Was anderswo
+ * schon liegt (angesehen, Navigation), wird nur übernommen.
+ * → { bytes, failed, full } über den Port
+ */
+async function areaBatch(name, urls, port) {
+  const cache = await caches.open(name);
+  let bytes = 0, failed = 0, full = false;
+  const queue = urls.slice();
+  const size = async (res) => (await res.clone().blob()).size;
+  const worker = async () => {
+    while (queue.length && !full) {
+      const u = queue.shift();
+      const key = areaKey(u);
+      try {
+        const own = await cache.match(key, { ignoreVary: true });
+        if (own) { bytes += await size(own); continue; }
+        let res = await caches.match(u, { ignoreVary: true });
+        if (!res) {
+          res = await fetch(u);
+          // Leere Kacheln (Meer, 204) und fehlende (404) gibt es – kein Fehler
+          if (res.status === 204 || res.status === 404) continue;
+          if (!res.ok) { failed += 1; continue; }
+        }
+        bytes += await size(res);
+        await cache.put(key, res);
+      } catch (err) {
+        if (err?.name === 'QuotaExceededError') full = true; else failed += 1;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: 6 }, worker));
+  port?.postMessage({ bytes, failed, full });
 }

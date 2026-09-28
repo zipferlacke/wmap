@@ -59,6 +59,7 @@ const render = () => {
       ${toggle('saver', 'Datensparmodus', 'Keine 3D-Höhendaten und keine Offline-Karten.', dataSaver())}
       <button type="button" class="button settings-row" data-act="voice"><span class="msr">record_voice_over</span> Stimme für Ansagen</button>
       <button type="button" class="button settings-row" data-act="fuel"><span class="msr">local_gas_station</span> Spritpreise einrichten</button>
+      <a class="button settings-row" href="./offline.html"><span class="msr">download_for_offline</span> Offline-Karten: Gebiete aufs Gerät laden</a>
     </section>
 
     <section id="osm">

@@ -52,7 +52,13 @@ dort als Erstes, ob `https://app.wuefl.de/wmap/` erreichbar ist (höchstens
 2,5 s) – dann läuft die App von dort. So kommt jede Änderung an HTML, CSS
 und JavaScript ohne neue Version im Play Store an; ein neuer Build ist nur
 nötig, wenn sich hier in `src-tauri/` etwas ändert (Rust, Plugins, Rechte,
-Icons). Ohne Netz bleibt die eingepackte Kopie, bis die App neu startet.
+Icons).
+
+Ohne Netz geht die App trotzdem zur Webversion, sobald sie dort einmal
+gelaufen ist: Deren Service Worker liefert dann den zuletzt geladenen Stand,
+die angesehenen Karten und die Offline-Gebiete aus seinem Speicher. Nur beim
+allerersten Start ohne Netz bleibt die eingepackte Kopie – ohne Karte, weil
+noch nichts gespeichert ist.
 
 Geräte-Funktionen kommen weiter aus Tauri: Die Webadresse steht in beiden
 `capabilities/*.json` unter `remote`, darum findet `../js/core/native.js` auch dort
