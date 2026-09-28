@@ -15,7 +15,9 @@ export const CREDITS = [
   { what: 'Geologie Deutschland', name: 'BGR, GÜK250', url: 'https://www.bgr.bund.de', note: 'Plugin' },
   { what: 'Geologie weltweit', name: 'Macrostrat', url: 'https://macrostrat.org', note: 'CC BY 4.0, Plugin' },
   { what: 'Bilder und Texte', name: 'Wikipedia, Wikimedia Commons', url: 'https://www.wikipedia.org' },
-  { what: 'Abfahrten', name: 'DBF', url: 'https://dbf.finalrewind.org' },
+  { what: 'Bus & Bahn, Abfahrten', name: 'Fahrplanauskunft (EFA) der NVBW', url: 'https://www.nvbw.de/open-data', note: 'Fahrplandaten DELFI' },
+  { what: 'Luftbilder', name: 'Vermessungsverwaltungen der Länder', url: 'https://www.adv-online.de', note: 'u. a. CC BY 4.0, dl-de' },
+  { what: 'Verkehrslage', name: 'Die Autobahn GmbH des Bundes', url: 'https://verkehr.autobahn.de' },
   { what: 'Spritpreise', name: 'Tankerkönig', url: 'https://creativecommons.tankerkoenig.de', note: 'CC BY 4.0' },
   { what: 'Kartendarstellung', name: 'MapLibre GL JS', url: 'https://maplibre.org' },
 ];

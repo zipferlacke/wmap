@@ -109,7 +109,7 @@ export function createMap(container, {
       'Suche: <a href="https://photon.komoot.io" target="_blank" rel="noopener">Photon</a>',
       'Routing: <a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a> (FOSSGIS)',
       'Höhen: <a href="https://mapterhorn.com" target="_blank" rel="noopener">Mapterhorn</a>',
-      '© 2026 Florian Wüllner · <a href="https://wuefl.de/impressum">Impressum</a>',
+      '© 2026 wuefl · <a href="https://wuefl.de/impressum.html">Impressum</a>',
     ],
   }), 'bottom-left');
   collapseAttribution(map.getContainer());

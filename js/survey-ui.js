@@ -19,7 +19,7 @@ export class SurveyView {
 
   /**
    * @param root      die Sheet-Ansicht [data-view=survey]
-   * @param opts.onCount  Anzahl offener Fragen hat sich geändert (Menü-Zähler)
+   * @param opts.onCount  Anzahl offener Fragen hat sich geändert (optional)
    */
   constructor(root, { map, toast, onCount }) {
     this.#root = root;

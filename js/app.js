@@ -20,7 +20,7 @@ import { ElevationProfile } from './elevation.js';
 import { Navigation, navSettings } from './navigation.js';
 import { describePoi, poiCard, categoryFor, inCategory } from './poi-info.js';
 import * as osm from './osm.js';
-import { placeMedia, fuelPrices, fuelKey, isTrainStation, trainDepartures } from './media.js';
+import { placeMedia, fuelPrices, fuelKey } from './media.js';
 import { local, recent, tours, shapeOf } from './store.js';
 import { Sheet } from './sheet.js';
 import { mountAppNav } from './appnav.js';
@@ -33,7 +33,7 @@ import { mapLayerIds, propertyTable } from './layers.js';
 import { mountLayerMenu } from './layer-menu.js';
 import { presetOf, layerInfoAt, layerInfoHtml } from './presets.js';
 import { isStop, linesAt, transitHtml, mountTransitLine, lineStopsHtml, colorOf } from './transit.js';
-import { departures, journeys, samePlatform, tripCourse } from './departures.js';
+import { departures, journeys, samePlatform, tripCourse, refineJourney } from './departures.js';
 import { legBadge, changesText, transitLegsHtml } from './transit-legs.js';
 import { prefs, mountRoutePrefs, transitParams } from './route-prefs.js';
 import { connections, places, PLACE_KINDS } from './saved.js';
@@ -746,21 +746,8 @@ async function enrich(tags, point, box, signal) {
         </div>`);
     }).catch(() => {}));
   }
-  if (isTrainStation(tags)) {
-    box.insertAdjacentHTML('beforeend', '<section class="departures"><h4><span class="msr">train</span> Abfahrten</h4><p class="muted">Lade …</p></section>');
-    const sec = box.querySelector('.departures');
-    jobs.push(trainDepartures(tags, { signal }).then((list) => {
-      if (signal.aborted) return;
-      sec.innerHTML = `<h4><span class="msr">train</span> Abfahrten</h4>${list.length ? `<ul>${list.map((d) => `
-        <li class="${d.cancelled ? 'cancelled' : ''}">
-          <span class="dep-time">${esc(d.time)}${d.delay ? ` <em class="${d.delay >= 5 ? 'late' : ''}">+${d.delay}</em>` : ''}</span>
-          <span class="dep-train">${esc(d.train)}</span>
-          <span class="dep-dest">${esc(d.destination)}${d.cancelled ? ' · fällt aus' : ''}</span>
-          <span class="dep-platform${d.platformChanged ? ' changed' : ''}">${d.platform ? `Gl. ${esc(d.platform)}` : ''}</span>
-        </li>`).join('')}</ul>` : '<p class="muted">Gerade keine Abfahrten</p>'}
-        <small class="muted">Züge · Daten: DB (IRIS) über dbf.finalrewind.org</small>`;
-    }).catch((err) => { if (!signal.aborted) sec.querySelector('.muted').textContent = err.message; }));
-  }
+  // Abfahrten an Bahnhöfen kommen mit allen anderen Haltestellen aus dem
+  // Fahrplan (showStop, EFA) – eine eigene Zugliste wäre doppelt
   await Promise.all(jobs);
 }
 
@@ -1550,6 +1537,15 @@ function selectRoute(id, { fit = false } = {}) {
   if (state.along) runAlong(state.along); else { showPois(map, []); $('.along-list').innerHTML = ''; }
   // Erst wenn das Sheet seine endgültige Höhe hat, ist klar, wie viel Karte übrig ist
   if (fit) fitRouteSettled();
+  // Bus & Bahn: echten Verlauf und Fußwege der gewählten Verbindung nachladen
+  if (r.transit && !r.refined) {
+    refineJourney(r).then((changed) => {
+      if (!changed || current() !== r) return;
+      showRoutes(map, state.routes, r.id, state.leg);
+      const box = $('[data-view="route"] .transit-legs');
+      if (box) box.innerHTML = transitLegsHtml(r.transit, state.leg, prefs.change);
+    }).catch(() => {});
+  }
 }
 
 /*
@@ -2613,7 +2609,6 @@ appNav.addItem('person_pin_circle', 'Standort anfragen', async () => {
   if (!name) return;
   share({ title: 'Wo bist du?', text: `${name} möchte wissen, wo du gerade bist. Tippe auf den Link, um deinen Standort zu senden:`, url: () => requestUrl(name) }, toast);
 });
-const surveyItem = appNav.addItem('volunteer_activism', 'Mitmachen', () => openSurvey());
 appNav.addItem('keyboard', 'Tastatur', keysDialog);
 appNav.addItem('settings', 'Einstellungen', () => { location.href = './settings.html'; });
 
@@ -2621,13 +2616,8 @@ appNav.addItem('settings', 'Einstellungen', () => { location.href = './settings.
    Mitmachen bei OpenStreetMap
    ══════════════════════════════════════════════════════════════════════════ */
 
-const survey = new SurveyView($('[data-view="survey"]'), { map, toast, onCount: paintSurveyCount });
-
-function paintSurveyCount(n) {
-  surveyItem.innerHTML = `<span class="msr">volunteer_activism</span>Mitmachen${n ? ` <span class="badge">${n}</span>` : ''}`;
-  appNav.el.querySelector('.appnav-btn').classList.toggle('has-badge', n > 0);
-}
-paintSurveyCount(survey.count);
+// Nicht im Menü: erreichbar über die Übersicht (?action=survey) und den Hinweis nach einer Fahrt
+const survey = new SurveyView($('[data-view="survey"]'), { map, toast });
 
 function openSurvey({ push = true } = {}) {
   leaveRouteMode();

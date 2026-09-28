@@ -22,9 +22,6 @@ export const API = {
   // Tankerkönig (Markttransparenzstelle): Spritpreise, braucht einen
   // kostenlosen Schlüssel – https://creativecommons.tankerkoenig.de
   tankerkoenig: 'https://creativecommons.tankerkoenig.de/json/list.php',
-  // DBF (Derf's Abfahrtstafel, DB-IRIS): Abfahrten an Bahnhöfen – nur Züge.
-  // Ein freies Hobby-Projekt: nur auf Klick fragen, Ergebnisse kurz merken.
-  departures: 'https://dbf.finalrewind.org',
   // Autobahn GmbH: Sperrungen, Baustellen, Meldungen auf Autobahnen
   autobahn: 'https://verkehr.autobahn.de/o/autobahn',
   // Overpass: Kategorien, POIs entlang der Route, Geometrien zum Hervorheben

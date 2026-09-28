@@ -96,6 +96,16 @@ body.dash-page { height: auto; overflow: visible; overflow-x: clip; }
     p { margin: 0 0 .5rem; }
     ul { margin: 0; padding-left: 1.1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: .15rem 1.5rem; font-size: var(--fs-200); }
     a { color: inherit; font-weight: 600; }
+    .dash-support {
+        display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem;
+        margin: .9rem 0 0; font-size: var(--fs-200);
+        a {
+            display: inline-flex; align-items: center; gap: .35rem;
+            padding: .45rem .9rem; border-radius: 999px; text-decoration: none;
+            background: light-dark(#2e7d32, #81c784); color: light-dark(#fff, #0d1f10);
+            .msr { font-size: 1.1rem; }
+        }
+    }
 }
 
 /* Navigation (appbar.js): steht in app.css – auch die Karte hat sie */

@@ -1305,25 +1305,6 @@ body.navigating {
 
 /* ── Mitmachen bei OpenStreetMap ──────────────────────────────────────────── */
 
-.appnav-btn.has-badge::after {
-    content: '';
-    position: absolute;
-    top: .35rem; right: .35rem;
-    width: .6rem; height: .6rem;
-    border-radius: 50%;
-    background: #7b1fa2;
-    box-shadow: 0 0 0 2px var(--surface);
-}
-.appnav-menu .badge {
-    margin-left: auto;
-    padding: 0 .45rem;
-    border-radius: 999px;
-    background: #7b1fa2;
-    color: #fff;
-    font-size: var(--fs-100);
-    font-weight: 600;
-}
-
 .survey-account {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem;
     margin-bottom: .75rem;

@@ -56,7 +56,8 @@ Man startet immer mit der Karte.
   oben rechts das **Menü** (neun Punkte): oben die Schnellwege – Übersicht,
   Karte, Meine Touren, Tour planen, Entdecken, Plugins, Fliegen –, nach einem
   Strich die Einträge der Seite (auf der Karte z. B. Aufzeichnen, Standort
-  teilen/anfragen, Mitmachen, Tastatur, Einstellungen).
+  teilen/anfragen, Tastatur, Einstellungen). Mitmachen steht nicht
+  im Menü, sondern in der Übersicht und im Hinweis nach einer Fahrt.
 - **Seiten ohne Karte** (Übersicht, Plugins, Einstellungen) zeichnen keine Karte, sondern
   haben eine **Navigationsleiste** – am Rechner links, am Handy unten:
   Übersicht · Karte · Touren · Entdecken · Plugins.
@@ -144,6 +145,11 @@ Man startet immer mit der Karte.
   - **Wann:** im Formular „Abfahrt ab“ oder „Ankunft bis“ mit Datum und
     Uhrzeit; leer heißt jetzt, „Jetzt“ setzt zurück. Fahrten vor der Zeit
     (bzw. mit späterer Ankunft), die die EFA mitliefert, fallen weg.
+  - **Schnell zuerst:** Die Verbindungen kommen ohne Verlauf und
+    Fußweg-Texte (`genC=0`, `genP=0` – rund 3 s statt 9 s, ein Drittel der
+    Daten) und stehen erst von Halt zu Halt auf der Karte. Für die gewählte
+    Verbindung lädt `refineJourney()` den echten Verlauf nach (je Fahrt aus
+    dem Fahrplan, Fußwege über Valhalla samt Wegbeschreibung) – gut 1 s.
   - Zwei Anfragen zugleich (normal und „langsam umsteigen“), zusammen bis
     zu sechs Verbindungen: Abfahrt–Ankunft, Linien, Dauer, Umstiege und
     „Schnellste“ (bei „Ankunft bis“: „Späteste Abfahrt“) bzw. „≥ N min
@@ -377,8 +383,8 @@ Zweiter Hauptbildschirm (`dashboard.html`), ohne Karte, mit Navigationsleiste.
   - Letzte Routen – einzeln (✕) oder alle löschen; antippen öffnet sie
   - Suchverlauf – löschen
   - Speicher insgesamt, Ordner verbinden
-- **Danke-Banner** (grün, Hand mit Herz) mit allen Anbietern, darunter
-  Version und Impressum.
+- **Danke-Banner** (grün, Hand mit Herz) mit allen Anbietern und dem Knopf
+  „Entwicklung unterstützen“ (paypal.me/wuefl), darunter Version und Impressum.
 
 ## 10. Meine Touren: Geplant, Aufgezeichnet, Bus & Bahn
 
@@ -733,6 +739,9 @@ takeshots wmap --eigener-server # ohne Docker
 - Lokal: Docker-Container `php` (Port 8080), Live-Neuladen auf Port 3001 nur
   mit `LIVE=1 docker compose up -d php`.
 - Dienste: OpenFreeMap, Mapterhorn, Photon, Valhalla (FOSSGIS), Overpass,
-  Waymarked Trails, EOX Sentinel-2, Luftbilder LGLN/Geobasis NRW/LDBV Bayern,
-  Geologie BGR (GÜK250) und Macrostrat.
+  Waymarked Trails, EOX Sentinel-2, Luftbilder der Länder (12 Vermessungs-
+  verwaltungen), Fahrplanauskunft (EFA) der NVBW für Bus & Bahn (DELFI-Daten,
+  nicht opendata-oepnv.de), Autobahn GmbH, Tankerkönig, Geologie BGR
+  (GÜK250) und Macrostrat. Die Danksagung im Dashboard kommt aus
+  `js/credits.js`.
 - Änderungen stehen in `appdata/messages.json` (erscheinen in der App).

@@ -9,7 +9,15 @@
  *                 300 m um den Punkt, gleicher Name bevorzugt
  *   Steig         die EFA nennt ihre Steige mit demselben Schlüssel – so
  *                 lassen sich die Abfahrten dieser Seite herausfiltern
+ *
+ * Verbindungen kommen erst ohne Verlauf und Fußweg-Texte (genC/genP = 0:
+ * rund 3 s statt 9 s, ein Drittel der Daten) – auf der Karte zunächst von
+ * Halt zu Halt. Den echten Verlauf lädt refineJourney() nur für die
+ * gewählte Verbindung nach: je Fahrt aus dem Fahrplan, Fußwege über das
+ * Fußgänger-Routing.
  */
+import { segment } from './routing.js';
+
 const EFA = 'https://www.efa-bw.de/nvbw/';
 const COORD = 'WGS84[dd.ddddd]';
 
@@ -163,6 +171,12 @@ function legCoords(l, stops) {
   const line = (l.coords ?? []).map(([lat, lon]) => [lon, lat]);
   const pts = stops.map((s) => s.point).filter(Boolean);
   if (line.length < 3 && pts.length > line.length) return pts;
+  // Ohne Verlauf und ohne Halte (Fußweg): Anfang und Ende des Abschnitts
+  if (line.length < 2) {
+    const p = (x) => (x?.coord ? [x.coord[1], x.coord[0]] : null);
+    const ends = [p(l.origin), p(l.destination)].filter(Boolean);
+    return ends.length === 2 ? ends : line;
+  }
   // Kaputter Verlauf (bei FlixBus z. B. 870 km für 56 km Fahrt): viel länger
   // als die Fahrt selbst → dann von Halt zu Halt
   const len = cum(line).at(-1) ?? 0;
@@ -231,6 +245,8 @@ function parseJourney(j) {
       duration: l.duration ?? 0,
       // EFA liefert [lat, lon]
       coords: legCoords(l, stops),
+      // Für refineJourney: welche Fahrt, ab welchem Steig
+      lineId: t.id ?? '', tripCode: t.properties?.tripCode ?? null, stopId: l.origin?.id ?? '',
     };
   }));
   const coords = legs.flatMap((l) => l.coords);
@@ -292,6 +308,8 @@ export async function journeys(from, to, { when = new Date(), arrive = false, pa
     itdDate: `${when.getFullYear()}${pad(when.getMonth() + 1)}${pad(when.getDate())}`,
     itdTime: `${pad(when.getHours())}${pad(when.getMinutes())}`,
     itdTripDateTimeDepArr: arrive ? 'arr' : 'dep', calcNumberOfTrips: '5', useRealtime: '1',
+    // Ohne Verläufe und Fußweg-Texte – die kommen per refineJourney()
+    genC: '0', genP: '0',
     ...params, ...extra,
   }, signal);
   const answers = await Promise.allSettled([ask({}), change > 5 ? ask({ changeSpeed: 'slow' }) : Promise.resolve({})]);
@@ -321,4 +339,61 @@ export async function journeys(from, to, { when = new Date(), arrive = false, pa
   const list = arrive ? byDep.slice(-6) : byDep.slice(0, 6);
   list.forEach((r, id) => { r.id = id; });
   return list;
+}
+
+/* ── Verlauf der gewählten Verbindung nachladen ─────────────────────────── */
+
+/** Stück einer Linie zwischen den Stellen, die a und b am nächsten liegen */
+function sliceBetween(line, a, b) {
+  if (line.length < 2) return null;
+  const d2 = (p, q) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
+  let ia = 0;
+  for (let i = 1; i < line.length; i += 1) if (d2(line[i], a) < d2(line[ia], a)) ia = i;
+  let ib = ia;
+  for (let i = ia; i < line.length; i += 1) if (d2(line[i], b) < d2(line[ib], b)) ib = i;
+  if (ib <= ia) return null;
+  return [a, ...line.slice(ia, ib + 1), b];
+}
+
+/**
+ * Echten Verlauf der Abschnitte nachladen – nur für die gewählte Verbindung:
+ *   Fahrt    Verlauf der ganzen Fahrt aus dem Fahrplan (tripCourse, ⅕ s),
+ *            davon das Stück zwischen Ein- und Ausstieg
+ *   Fußweg   über das Fußgänger-Routing, samt Wegbeschreibung
+ * Scheitert etwas, bleibt der Abschnitt von Halt zu Halt.
+ * → true, wenn sich etwas geändert hat
+ */
+export async function refineJourney(route, { signal } = {}) {
+  if (route.refined) return false;
+  route.refined = true;
+  let changed = false;
+  await Promise.all(route.transit.legs.map(async (l) => {
+    if (l.coords.length < 2) return;
+    const a = l.coords[0], b = l.coords.at(-1);
+    try {
+      if (l.walk) {
+        if (cum([a, b]).at(-1) < 30) return;
+        const w = await segment(a, b, 'foot', { signal });
+        l.coords = w.coords;
+        l.steps = w.maneuvers.filter((m) => ![1, 2, 3, 4, 5, 6].includes(m.type))
+          .map((m) => ({ text: m.instruction, distance: Math.round((m.length ?? 0) * 1000) }));
+        l.distance = Math.round(w.length);
+        changed = true;
+      } else if (l.lineId && l.tripCode !== null) {
+        const c = await tripCourse({ lineId: l.lineId, tripCode: l.tripCode, platformId: l.stopId, time: l.planned }, { signal });
+        const part = sliceBetween(c.coords, a, b);
+        // Nur nehmen, wenn es plausibel ist (nicht viel länger als von Halt zu Halt)
+        if (part && cum(part).at(-1) < 2.5 * Math.max(cum(l.coords).at(-1), l.distance || 0, 2000)) {
+          l.coords = part;
+          changed = true;
+        }
+      }
+    } catch { /* bleibt von Halt zu Halt */ }
+  }));
+  if (!changed) return false;
+  route.coords = route.transit.legs.flatMap((l) => l.coords);
+  route.cum = cum(route.coords);
+  route.length = route.cum.at(-1);
+  route.bounds = bboxOf(route.coords);
+  return true;
 }
