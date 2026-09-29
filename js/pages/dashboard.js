@@ -17,6 +17,7 @@ import { autoSync } from '../data/auto-sync.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { esc } from '../core/geo.js';
 import { APP_VERSION } from '../core/config.js';
+import { appVersion } from '../core/native.js';
 import { showChangelog } from '../ui/news.js';
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -160,6 +161,8 @@ document.addEventListener('click', async (e) => {
 
 $('.dash-credits').innerHTML = creditList();
 $('.dash-version').textContent = APP_VERSION;
+// In der App: dazu die Version der App selbst – die Oberfläche kommt von app.wuefl.de und kann neuer sein
+appVersion().then((v) => { if (v) $('.dash-version').textContent = `${APP_VERSION} · App ${v}`; });
 $('.dash-version').addEventListener('click', () => showChangelog());
 paintTiles();
 paintStore();

@@ -9,6 +9,8 @@
 //!   write { path, text } legt fehlende Ordner an → { modified }
 //!   remove { path }
 //!   disconnect
+//!   save { name, data, mime } eine Datei (Base64) über den Speichern-Dialog des
+//!                       Systems ablegen, z. B. den ZIP-Export → { name }
 //!
 //! Alle Befehle nehmen `slot` (optional): leer = Ordner für Sicherung &
 //! Synchronisation, „layers“ = Ordner für eigene Ebenen (Plugins).
@@ -34,7 +36,8 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
     desktop::read,
     desktop::write,
     desktop::remove,
-    desktop::disconnect
+    desktop::disconnect,
+    desktop::save
   ]);
   builder
     .setup(|_app, _api| {

@@ -96,3 +96,10 @@ export const geo = {
 };
 
 const toNative = ({ enableHighAccuracy = true, timeout = 10000, maximumAge = 0 } = {}) => ({ enableHighAccuracy, timeout, maximumAge });
+
+/**
+ * Version der App selbst („2.1.0“) – steht in der Programmdatei, nicht in der
+ * Oberfläche von app.wuefl.de (config.js APP_VERSION), und ändert sich nur mit
+ * einem neuen Build. Im Browser null.
+ */
+export const appVersion = () => Promise.resolve(window.__TAURI__?.app?.getVersion?.() ?? null).catch(() => null);

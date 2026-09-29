@@ -29,6 +29,13 @@ class PathArgs {
 }
 
 @InvokeArg
+class SaveArgs {
+    var name: String = "wmap"
+    var data: String = ""
+    var mime: String = "application/octet-stream"
+}
+
+@InvokeArg
 class WriteArgs {
     var slot: String = ""
     var path: String = ""
@@ -43,6 +50,8 @@ class WriteArgs {
  *
  *   pick, info, list, read { path }, write { path, text }, remove { path },
  *   disconnect – Pfade relativ zum Ordner, mit „/“.
+ *   save { name, data, mime } – eine Datei (Base64) über die Dokumentauswahl
+ *   des Systems ablegen (ACTION_CREATE_DOCUMENT), z. B. den ZIP-Export.
  *
  * `slot` (optional, alle Befehle): welcher Ordner – leer ist der für
  * Sicherung & Synchronisation, „layers“ der für eigene Ebenen (Plugins).
@@ -215,6 +224,33 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
             resolve(args.slot, t, args.path, false)?.let { DocumentsContract.deleteDocument(resolver, DocumentsContract.buildDocumentUriUsingTree(t, it)) }
             ids.remove("${args.slot}\u0000${args.path}")
             invoke.resolve()
+        }
+    }
+
+    @Command
+    fun save(invoke: Invoke) {
+        val a = invoke.parseArgs(SaveArgs::class.java)
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
+            .addCategory(Intent.CATEGORY_OPENABLE)
+            .setType(a.mime)
+            .putExtra(Intent.EXTRA_TITLE, a.name)
+        startActivityForResult(invoke, intent, "saved")
+    }
+
+    @ActivityCallback
+    fun saved(invoke: Invoke, result: ActivityResult) {
+        val uri = result.data?.data ?: return invoke.reject("abgebrochen", "cancel")
+        thread {
+            try {
+                val a = invoke.parseArgs(SaveArgs::class.java)
+                val bytes = android.util.Base64.decode(a.data, android.util.Base64.DEFAULT)
+                resolver.openOutputStream(uri, "wt")!!.use { it.write(bytes) }
+                val name = resolver.query(uri, arrayOf(Document.COLUMN_DISPLAY_NAME), null, null, null)
+                    ?.use { if (it.moveToFirst()) it.getString(0) else null }
+                invoke.resolve(JSObject().put("name", name))
+            } catch (e: Exception) {
+                invoke.reject(e.message ?: e.toString(), e)
+            }
         }
     }
 

@@ -176,3 +176,35 @@ pub fn disconnect<R: Runtime>(app: AppHandle<R>, slot: Option<String>) -> Result
   let _ = fs::remove_file(conf_file(&app, &slot)?);
   Ok(())
 }
+
+#[derive(Serialize)]
+pub struct Saved {
+  name: Option<String>,
+}
+
+/// Eine Datei über den Speichern-Dialog ablegen (ZIP-Export …); `data` in Base64
+#[command]
+pub async fn save<R: Runtime>(app: AppHandle<R>, name: String, data: String) -> Result<Saved, String> {
+  use base64::Engine;
+  let bytes = base64::engine::general_purpose::STANDARD.decode(data.as_bytes()).map_err(|e| e.to_string())?;
+  let start = app.path().download_dir().ok();
+  let (tx, rx) = std::sync::mpsc::channel();
+  app
+    .run_on_main_thread(move || {
+      let mut dialog = rfd::AsyncFileDialog::new().set_title("Speichern").set_file_name(&name);
+      if let Some(dir) = start {
+        dialog = dialog.set_directory(dir);
+      }
+      let dialog = dialog.save_file();
+      std::thread::spawn(move || {
+        let _ = tx.send(tauri::async_runtime::block_on(dialog).map(|h| h.path().to_path_buf()));
+      });
+    })
+    .map_err(|e| e.to_string())?;
+  let picked = tauri::async_runtime::spawn_blocking(move || rx.recv().ok().flatten())
+    .await
+    .map_err(|e| e.to_string())?;
+  let Some(path) = picked else { return Err("abgebrochen".into()) };
+  fs::write(&path, bytes).map_err(|e| e.to_string())?;
+  Ok(Saved { name: path.file_name().map(|n| n.to_string_lossy().into_owned()) })
+}

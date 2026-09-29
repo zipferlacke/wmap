@@ -184,11 +184,26 @@ ${pts}
 `;
 }
 
+/** Datei speichern (Text oder Blob) → { name } bzw. null, wenn der Dialog abgebrochen wurde */
 export function download(filename, text, type = 'application/gpx+xml') {
-  const url = URL.createObjectURL(new Blob([text], { type }));
+  const blob = text instanceof Blob ? text : new Blob([text], { type });
+  // In der App: Speichern-Dialog des Systems (Plugin „folder“) – ein Download
+  // über <a download> kommt in den WebViews der Apps nicht an
+  const core = window.__TAURI__?.core;
+  if (core) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(blob);
+    }).then((data) => core.invoke('plugin:folder|save', { name: filename, data, mime: type }))
+      .catch((err) => { if (!/abgebrochen|cancel/i.test(String(err))) throw new Error(String(err?.message ?? err)); return null; });
+  }
+  const url = URL.createObjectURL(blob);
   const a = Object.assign(document.createElement('a'), { href: url, download: filename });
   document.body.append(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return Promise.resolve({ name: filename });
 }

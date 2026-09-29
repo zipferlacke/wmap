@@ -916,7 +916,24 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 
 ## 20. Offline und Datenverbrauch
 
-- Der Service Worker hält die App offline bereit (erst Netz, sonst Cache).
+- Der Service Worker (`sw.js`) hält **genau eine Version** der App bereit –
+  **erst Cache, sonst Netz**, auch mit Netz. Jede Version hat ihren Cache
+  `wmap-app-<Version>`; beim Installieren lädt er alle Dateien aus
+  `appdata/sw-files.json` vorab (von `appdata/version.py` erzeugt: alles,
+  was die Seiten über `import`, `@import`, `url()`, `src`/`href` erreichen –
+  aus wuefl-libs nur das Genutzte, zurzeit gut 8 MB). Nur
+  `appdata/messages.json` kommt immer erst aus dem Netz (sie sagt, ob es
+  Neues gibt), `bEnd/` nur aus dem Netz.
+- **Updates** (`js/ui/news.js`, nur mit Netz): Ist im `changelog` eine
+  neuere Version, lädt der Browser die neue `sw.js` im Hintergrund, und es
+  kommt „Neue Version verfügbar“ – **Aktualisieren** oder **Später** (dann
+  erst beim nächsten Start wieder). Ausgelassene Versionen werden
+  übersprungen; nach dem Aktualisieren zeigt die Seite alles Neue seit der
+  zuletzt gesehenen Version. Zwingend (ohne Später, Escape schließt nicht)
+  bei `minVersion` bzw. `minAppVersion`, siehe `messages.json` unten.
+- Auf **localhost** arbeitet der Service Worker wie früher erst mit Netz –
+  Änderungen sind beim Entwickeln sofort zu sehen. Cache first ausprobieren:
+  über `127.0.0.1` statt `localhost` öffnen (so auch `test/update.py`).
 - Kacheln, Schriften und Symbole angesehener Gegenden bleiben im Cache
   `wmap-tiles-v1` (bis 8000 Kacheln, älteste zuerst raus).
 - Vor der Navigation werden bis zu 2500 Kacheln entlang der Route geladen –
@@ -1082,7 +1099,8 @@ takeshots wmap --eigener-server # ohne Docker
   ```json
   {
     "welcome": ["Absatz", "…"],
-    "minVersion": "1.0.0",
+    "minVersion": "2.1.0",
+    "minAppVersion": "2.1.0",
     "messages": [
       { "id": "wartung-okt", "title": "Wartung", "text": ["Absatz", "…"],
         "icon": "construction", "from": "2026-10-01", "until": "2026-10-05" }
@@ -1096,11 +1114,13 @@ takeshots wmap --eigener-server # ohne Docker
   | `welcome` | Dialog beim allerersten Start |
   | `changelog` | nach einem Update: alle Versionen seit der zuletzt gesehenen bis zur laufenden; in der Übersicht über die Versionsnummer alles. Oberster Eintrag = neueste Version – daraus macht `git-release` den Tag und GitHub den Release-Text |
   | `messages` | Nachrichten als Dialog, jede einmal (gemerkt über `id`); `from`/`until` (Datum) optional, `text` HTML erlaubt |
-  | `minVersion` | ist die laufende Version älter: Banner „Aktualisieren“ auf jeder Seite – verwirft die gespeicherten App-Dateien und lädt neu (in der App wieder von der Webversion) |
+  | `minVersion` | kleinste Version der **Oberfläche**. Ist die laufende älter (z. B. nach einer Änderung an der Server-API): „Update nötig“ – nur **Aktualisieren**, lädt den neuen Service Worker |
+  | `minAppVersion` | kleinste Version der **App selbst** (Tauri-Teil: Rust, Kotlin, Plugins, Rechte). Ist die installierte App älter: gesperrt mit „WMap-App aktualisieren“ – sichern (in den Ordner bzw. als ZIP), dann Play Store bzw. wuefl.de. Im Browser gilt es nicht (`src-tauri/README.md`) |
 
   **Neue Version:** oben im `changelog` eintragen, dann
   `python3 appdata/version.py` – trägt die Nummer in `js/core/config.js`,
-  `src-tauri/tauri.conf.json`, `Cargo.toml` und `Cargo.lock` ein
+  `sw.js`, `src-tauri/tauri.conf.json`, `Cargo.toml` und `Cargo.lock` ein und
+  schreibt `appdata/sw-files.json` neu
   (`--pruefen` nur prüfen; `git-release` prüft das vor dem Tag).
 
   Die Dialoge kommen nur beim normalen Start der Karte, nicht wenn ein Link

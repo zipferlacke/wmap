@@ -171,26 +171,8 @@ body.recording #search-here, body.navigating .rec { display: none !important; }
     .news-release + .news-release { padding-top: .6rem; border-top: 1px solid var(--line); }
 }
 
-/* Zu alte Version (messages.json → minVersion) */
-#update-banner {
-    position: fixed;
-    z-index: 80;
-    top: calc(var(--safe-top) + .6rem);
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(34rem, calc(100vw - 1.2rem));
-    display: flex; align-items: center; gap: .7rem;
-    padding: .6rem .6rem .6rem .9rem;
-    border-radius: .9rem;
-    background: var(--surface);
-    color: inherit;
-    border: 1px solid var(--line);
-    box-shadow: var(--shadow);
-    font-size: var(--fs-200);
-    > .msr { color: var(--route); }
-    > span:not(.msr) { flex: 1; }
-    .button { flex: none; }
-}
+/* Update (js/ui/news.js): Stand beim Laden bzw. Sichern */
+#update-dialog .update-status { margin: 0; font-size: var(--fs-200); color: var(--muted); }
 
 /* Health Connect: Überblick vor dem Übernehmen (pages/wege.js) */
 .health-table {

@@ -4,15 +4,19 @@
         "Alles beruht auf offenen Daten von OpenStreetMap. Du brauchst kein Konto, und deine Wege bleiben auf deinem Gerät.",
         "Tippe oben einen Ort, eine Adresse oder einfach „Bäckerei“ ein – oder auf <span class=\"msr\">directions</span>, um eine Route zu planen."
     ],
-    "minVersion": "2.0.1",
+    "minVersion": "2.1.0",
+    "minAppVersion": "2.1.0",
     "messages": [],
     "changelog": [
         {
-            "version": "2.0.1",
+            "version": "2.1.0",
             "date": "2026-09-29",
             "changes": [
-                "Sicherung & Synchronisation vereinfacht und besser Performance.",
-                "Bessere Fortschrittsanzeige beim Synchronisieren – mit Prozent und Restzeit und läft im Hintegrund ab jetzt",
+                "Apps holen die Oberfläche jetzt von app.wuefl.de – Neues kommt ohne App-Update, bis zum nächsten Update läuft alles aus dem Speicher, auch ohne Netz",
+                "Neue Version verfügbar: WMap fragt, ob du jetzt aktualisieren willst – ausgelassene Versionen werden übersprungen, danach siehst du alles Neue. Nötige Updates kommen zwingend, bei App-Updates vorher Sicherung in deinen Ordner oder als ZIP",
+                "Exportieren als ZIP und GPX speichern in den Apps über den Speichern-Dialog",
+                "Sicherung & Synchronisation vereinfacht und bessere Performance.",
+                "Bessere Fortschrittsanzeige beim Synchronisieren – mit Prozent und Restzeit und läuft im Hintergrund ab jetzt",
                 "Standard beim Synchronisieren geändert zu „beim App-Start synchronisieren“ – auch für Health Connect",
                 "Fix: „Meine Touren“ und „Entdecken“ blieben schwarz – in den Apps für Android, Windows, macOS und Linux",
                 "Fix: Standort in der Navigation kam nur alle 10 s oder gar nicht mehr – in der Android-App",

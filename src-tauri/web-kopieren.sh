@@ -19,6 +19,12 @@ cp -r appdata/icons "$OUT/appdata/"
 # von hier – so lässt sich Neues auf dem Handy testen, bevor es hochgeladen ist.
 if [ "${TAURI_ENV_DEBUG:-false}" != "true" ]; then
   cp src-tauri/tauri-start.js "$OUT/"
+  # Zum Testen eine andere Webversion (z. B. den lokalen Server) – die Adresse
+  # muss dann auch in src-tauri/capabilities unter „remote“ stehen
+  if [ -n "${WMAP_REMOTE:-}" ]; then
+    sed -i.bak "s|const REMOTE = 'https://app.wuefl.de/wmap/';|const REMOTE = '$WMAP_REMOTE';|" "$OUT/tauri-start.js" && rm "$OUT/tauri-start.js.bak"
+    echo "Webversion zum Testen: $WMAP_REMOTE"
+  fi
   # -i.bak statt -i: geht mit GNU-sed (Linux) und BSD-sed (macOS, GitHub Actions)
   sed -i.bak 's|<head>|<head>\
     <script src="./tauri-start.js"></script>|' "$OUT/index.html" && rm "$OUT/index.html.bak"

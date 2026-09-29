@@ -1,11 +1,22 @@
 /**
- * Service Worker: WMap läuft auch ohne Netz weiter.
+ * Service Worker: WMap läuft auch ohne Netz weiter – und genau eine Version.
  *
- *   App (eigene Dateien, libs/)      erst Netz, sonst Cache – neue Versionen
- *                                    kommen sofort an, offline geht es trotzdem
+ *   App (eigene Dateien, libs/)      erst Cache, sonst Netz – je Version ein
+ *                                    Cache „wmap-app-<VERSION>“, beim
+ *                                    Installieren ganz geladen (sw-files.json)
+ *   appdata/messages.json            erst Netz (sagt, ob es Neues gibt), ohne
+ *                                    Netz der Cache mit „X-WMap-Offline: 1“
  *   Kacheln, Schriften, Symbole      erst Cache, sonst Netz – die Adressen
  *                                    enthalten die Version, ändern sich also nie
- *   Suche, Routing, Overpass …       nur Netz
+ *   Suche, Routing, Overpass, bEnd/  nur Netz
+ *
+ * Update: Eine neue VERSION (appdata/version.py) macht eine neue sw.js – der
+ * Browser installiert sie im Hintergrund, sie wartet. Die Seite fragt
+ * (js/ui/news.js): „Neue Version verfügbar“ bzw. zwingend bei minVersion;
+ * „Aktualisieren“ schickt „skip-waiting“, dann lädt die Seite neu.
+ *
+ * Auf localhost (Entwicklung) erst Netz, sonst Cache – Änderungen sind sofort
+ * zu sehen. Cache first testen: über 127.0.0.1 statt localhost öffnen.
  *
  * Offline-Gebiete (offline.html) liegen je in einem Cache „wmap-area-…“ und
  * bleiben, bis man sie löscht. Die Kacheln von OpenFreeMap stehen dort ohne
@@ -18,7 +29,10 @@
  *   - nach 10 Tagen wird er gelöscht
  *   - reicht der Platz nicht, weicht zuerst die älteste Navigation
  */
-const APP = 'wmap-app-v6';          // v6: Offline-Gebiete
+const VERSION = '2.1.0';            // von appdata/version.py – neue Nummer = Update
+const APP = `wmap-app-${VERSION}`;
+const APP_PREFIX = 'wmap-app-';
+const DEV = self.location.hostname === 'localhost';
 const TILES = 'wmap-tiles-v1';
 const MAX_TILES = 8000;
 const NAV = 'wmap-nav-';
@@ -29,7 +43,22 @@ const TILE_BYTES = 60 * 1024;
 
 const TILE_HOSTS = ['tiles.openfreemap.org', 'tiles.mapterhorn.com'];
 
-self.addEventListener('install', () => self.skipWaiting());
+// Neue Version: alle Dateien vorab laden, dann warten, bis die Seite „Aktualisieren“ sagt
+// (die allererste Version wird sofort aktiv – es gibt ja keine alte)
+self.addEventListener('install', (e) => e.waitUntil(precache()));
+
+async function precache() {
+  const cache = await caches.open(APP);
+  let files = [];
+  try { files = await (await fetch('appdata/sw-files.json', { cache: 'no-store' })).json(); } catch { /* dann nach und nach */ }
+  // Einzeln: Fehlt eine Datei auf dem Server, scheitert nicht gleich die ganze Version
+  await Promise.all(files.map(async (f) => {
+    try {
+      const res = await fetch(new Request(f, { cache: 'reload' }));
+      if (res.ok) await cache.put(f, res);
+    } catch { /* kommt beim ersten Aufruf */ }
+  }));
+}
 
 self.addEventListener('activate', (e) => e.waitUntil((async () => {
   for (const k of await caches.keys()) if (![APP, TILES].includes(k) && !k.startsWith(NAV) && !k.startsWith(AREA)) await caches.delete(k);
@@ -55,9 +84,38 @@ self.addEventListener('fetch', (e) => {
   if (TILE_HOSTS.includes(url.hostname)) {
     e.respondWith(immutable(url) ? cacheFirst(req) : networkFirst(req, TILES));
   } else if (url.origin === self.location.origin) {
-    e.respondWith(networkFirst(req, APP));
+    if (url.pathname.includes('/bEnd/')) return;                     // Server-API: nur Netz
+    if (url.pathname.endsWith('/appdata/messages.json')) e.respondWith(versionFile(req));
+    else e.respondWith(DEV ? networkFirst(req, APP) : appFirst(req));
   }
 });
+
+/** Eigene Dateien: aus dem Cache dieser Version, nur Fehlendes aus dem Netz */
+async function appFirst(req) {
+  const cache = await caches.open(APP);
+  const hit = await cache.match(req, { ignoreVary: true })
+    ?? (req.mode === 'navigate' ? await cache.match(req, { ignoreSearch: true, ignoreVary: true }) : null);
+  if (hit) return hit;
+  const res = await fetch(req);
+  if (res.ok) cache.put(req, res.clone()).catch(() => {});
+  return res;
+}
+
+/** messages.json: immer frisch vom Server; ohne Netz die gespeicherte – markiert */
+async function versionFile(req) {
+  const cache = await caches.open(APP);
+  try {
+    const res = await fetch(req, { cache: 'no-store' });
+    if (res.ok) cache.put(req, res.clone()).catch(() => {});
+    return res;
+  } catch (err) {
+    const hit = await cache.match(req, { ignoreSearch: true });
+    if (!hit) throw err;
+    const headers = new Headers(hit.headers);
+    headers.set('X-WMap-Offline', '1');
+    return new Response(await hit.blob(), { status: 200, headers });
+  }
+}
 
 async function networkFirst(req, name) {
   const cache = await caches.open(name);
@@ -112,6 +170,7 @@ async function trim(cache) {
 self.addEventListener('message', (e) => {
   const { type, urls = [] } = e.data ?? {};
   const port = e.ports[0];
+  if (type === 'skip-waiting') self.skipWaiting();
   if (type === 'app-files') e.waitUntil(storeApp(urls));
   if (type === 'prefetch') e.waitUntil(prefetch(urls, port));
   if (type === 'area') e.waitUntil(areaBatch(e.data.cache, urls, port));

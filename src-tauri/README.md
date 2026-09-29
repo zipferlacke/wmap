@@ -52,7 +52,10 @@ Browser-Schnittstelle – die Webversion verliert dadurch nichts.
 
 Die App startet mit der eingepackten Kopie (`web/`). `tauri-start.js` fragt
 dort als Erstes, ob `https://app.wuefl.de/wmap/` erreichbar ist (höchstens
-2,5 s) – dann läuft die App von dort. So kommt jede Änderung an HTML, CSS
+2,5 s) – dann läuft die App von dort. Gefragt wird mit `mode: 'no-cors'`:
+Es zählt nur, ob der Server antwortet. app.wuefl.de schickt keine
+CORS-Header – bis 2.0.1 scheiterte die Abfrage daran jedes Mal, und die App
+blieb bei ihrer eingepackten Kopie (samt alter wuefl-libs). So kommt jede Änderung an HTML, CSS
 und JavaScript ohne neue Version im Play Store an; ein neuer Build ist nur
 nötig, wenn sich hier in `src-tauri/` etwas ändert (Rust, Plugins, Rechte,
 Icons).
@@ -62,6 +65,24 @@ gelaufen ist: Deren Service Worker liefert dann den zuletzt geladenen Stand,
 die angesehenen Karten und die Offline-Gebiete aus seinem Speicher. Nur beim
 allerersten Start ohne Netz bleibt die eingepackte Kopie – ohne Karte, weil
 noch nichts gespeichert ist.
+
+**Zwei Versionen:** `APP_VERSION` (`js/core/config.js`) ist die der
+Oberfläche und kommt mit jedem Hochladen neu; die der App selbst steht in
+der Programmdatei (`tauri.conf.json`) und liefert `appVersion()` in
+`js/core/native.js` über Tauri – kein Service Worker kann sie verfälschen.
+Die Übersicht zeigt in der App beides („2.1.3 · App 2.1.0“). Braucht neue
+Oberfläche einen neuen Tauri-Teil (Plugin, Rechte), `minAppVersion` in
+`appdata/messages.json` auf diese Version setzen: Ältere Apps sind dann
+gesperrt mit „WMap-App aktualisieren“ – sichern (in den Ordner bzw. als
+ZIP), dann Play Store bzw. wuefl.de/wmap. `minVersion` gilt dagegen für die
+Oberfläche (zwingendes Update über den Service Worker).
+
+**Umzug:** Die Webversion hat ihren eigenen Speicher (app.wuefl.de statt
+`tauri://localhost`). Hat die eingepackte Kopie noch eigene Daten (Apps bis
+2.0.x), fragt `tauri-start.js` einmal vor dem Wechsel: in den verbundenen
+Ordner sichern – die Webversion findet den Ordner im Plugin und holt alles
+von dort – oder als ZIP speichern (dort unter Sicherung & Synchronisation →
+„ZIP wählen“), oder ohne Sicherung weiter. Gemerkt in `wmap.umzug`.
 
 Geräte-Funktionen kommen weiter aus Tauri: Die Webadresse steht in beiden
 `capabilities/*.json` unter `remote`, darum findet `../js/core/native.js` auch dort
@@ -96,6 +117,11 @@ schon, gibt `tauri-plugin-single-instance` den Link ans offene Fenster
 `web-kopieren.sh` bindet `tauri-start.js` nur in Release-Builds ein. Der
 Debug-Build (`tauri-android wmap`) bleibt bei den eingepackten Dateien –
 so lässt sich Neues auf dem Handy testen, bevor es auf dem Server liegt.
+
+Einen Release-Build gegen eine andere Webversion testen (z. B. den lokalen
+Server am Rechner): `WMAP_REMOTE=http://localhost:8080/web/wuefl_products/wmap/
+cargo tauri build --no-bundle` – die Adresse muss dafür vorübergehend in
+`capabilities/default.json` unter `remote` stehen (danach wieder heraus).
 
 ## Health Connect (`plugins/health`)
 
@@ -143,6 +169,7 @@ Synchronisation.
 | `list` | `.gpx`/`.json`/`.geojson`/`.js` bis 5 Ebenen tief → `{ files: [{ path, modified }] }` |
 | `read { path }` / `write { path, text }` / `remove { path }` | Pfade relativ zum Ordner mit „/“; `..` und absolute Pfade lehnt das Plugin ab; `write` legt fehlende Ordner an |
 | `disconnect` | Ordner vergessen (Android: Freigabe zurückgeben) |
+| `save { name, data, mime }` | eine Datei (Base64) über den Speichern-Dialog ablegen → `{ name }`; Android `ACTION_CREATE_DOCUMENT`, Rechner Dialog von `rfd`. Nutzt `download()` in `js/data/store.js` in der App (ZIP-Export, GPX) – `<a download>` kommt in den WebViews nicht an |
 
 - **Android** (`FolderPlugin.kt`): `ACTION_OPEN_DOCUMENT_TREE`, die Freigabe
   bleibt über Neustarts (`takePersistableUriPermission`); Dateien über
