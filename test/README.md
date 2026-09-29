@@ -8,7 +8,7 @@ wenn es welche gab.
 ```sh
 cd test
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # einmal
-./alle.sh                      # alle nacheinander
+./alle.sh                      # alle nacheinander, Log in out/all.log (tail -f zum Mitlesen)
 .venv/bin/python smoke.py      # einzeln
 WMAP_URL=https://app.wuefl.de/wmap/ .venv/bin/python smoke.py   # gegen den Server
 ```
