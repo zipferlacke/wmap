@@ -3609,6 +3609,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-health"
+version = "0.1.0"
+dependencies = [
+ "tauri",
+ "tauri-plugin",
+]
+
+[[package]]
 name = "tauri-plugin-log"
 version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4883,6 +4891,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-deep-link",
  "tauri-plugin-geolocation",
+ "tauri-plugin-health",
  "tauri-plugin-log",
  "tauri-plugin-single-instance",
  "webkit2gtk",

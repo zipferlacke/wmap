@@ -575,6 +575,14 @@ ansehen“) – GeoJSON auf heller Karte (z. B. aus QGIS).
 - **Als Plugin:** hochladen (bis 2 MB), privat oder öffentlich.
 - Alles liegt nur im Browser (IndexedDB).
 
+**Health Connect** (nur Android-App): Meine Touren → Aufgezeichnet → „Aus
+Health Connect“ zeigt erst, was da ist – Trainings nach App und Art, mit
+oder ohne Route –, dann werden die Routen als Wege übernommen (Name aus dem
+Training oder „Radtour am …“, Profil aus der Art, sonst am Tempo erkannt).
+Schon Übernommenes kommt nicht doppelt. Routen fremder Apps gibt Health
+Connect ab Android 15 mit Dauerfreigabe heraus, sonst fragt es je Training
+(`js/services/health.js`, Plugin in `src-tauri/plugins/health`).
+
 ## 15. Ordner verbinden
 
 Wege und Touren als GPX-Dateien in einem Ordner, den ein Sync-Programm mit der

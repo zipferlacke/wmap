@@ -16,6 +16,7 @@ was Tauri zum Verpacken braucht. Nichts davon wird auf den Server geladen
 | `build.rs` | von Tauri vorgegeben |
 | `capabilities/default.json` | Rechte der Web-App im Fenster (nur Standard) – auch für `https://app.wuefl.de/*` |
 | `capabilities/mobile.json` | Handy-Apps: zusätzlich Standort über das Gerät – auch für die Webversion |
+| `plugins/health/` | eigenes Plugin: Trainings und Routen aus Health Connect (Android, Kotlin) – siehe unten |
 | `tauri-start.js` | wechselt beim Start zur Webversion, wenn sie erreichbar ist (s. u.) |
 | `icons/` | App-Icons, erzeugt mit `cargo tauri icon ../appdata/wmap-512.png` |
 | `web-kopieren.sh` | kopiert die Web-Dateien vor jedem Build nach `web/` und bindet `tauri-start.js` in deren `index.html` ein |
@@ -87,3 +88,35 @@ Standard-Karten-App:
 schon, gibt `tauri-plugin-single-instance` den Link ans offene Fenster
 (Rechner). Selbst zur Standard-App macht sich WMap nicht
 (`register_all()` fehlt mit Absicht) – das entscheidet, wer sie nutzt.
+
+## Debug-Build: eingepackte Dateien
+
+`web-kopieren.sh` bindet `tauri-start.js` nur in Release-Builds ein. Der
+Debug-Build (`tauri-android wmap`) bleibt bei den eingepackten Dateien –
+so lässt sich Neues auf dem Handy testen, bevor es auf dem Server liegt.
+
+## Health Connect (`plugins/health`)
+
+Eigenes Tauri-Plugin, nur Android tut etwas: Die Befehle stehen in Kotlin
+(`android/src/main/java/HealthPlugin.kt`), Tauri leitet
+`invoke('plugin:health|…')` direkt dorthin; Rust registriert nur.
+
+| Befehl | Was |
+|---|---|
+| `status` | gibt es Health Connect, was ist freigegeben |
+| `request_access` | Freigabe-Dialog von Health Connect |
+| `sessions { days }` | alle Trainings: Art, Zeit, App, Route ja/nein/Nachfrage |
+| `route { id }` | Punkte [lon, lat, Höhe, Zeit]; fremde Routen ohne Dauerfreigabe fragt Health Connect einzeln |
+
+- Rechte (Manifest des Plugins): nur lesen – `READ_EXERCISE`,
+  `READ_EXERCISE_ROUTES`, `READ_HEALTH_DATA_HISTORY` (sonst nur 30 Tage).
+- `RationaleActivity` erklärt, wofür – ohne sie zeigt Health Connect den
+  Freigabe-Dialog nicht (Android 13: Aktion, ab 14: Alias).
+- minSdk 26 (`bundle.android.minSdkVersion`, `tools/android-einbinden.py`
+  überträgt es ins erzeugte Projekt).
+- In der Web-App: `js/services/health.js`, Knopf „Aus Health Connect“ unter
+  Meine Touren → Aufgezeichnet (nur in der Android-App).
+- **Play Store:** Gesundheitsdaten brauchen dort eine eigene Erklärung
+  (Formular „Health Connect“ in der Play Console) und in der
+  Datensicherheit „Fitness“ – erhoben, nur auf dem Gerät, nicht geteilt.
+

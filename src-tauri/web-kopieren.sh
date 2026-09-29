@@ -14,9 +14,15 @@ cp -rL libs/wuefl-libs libs/maplibre-gl libs/echarts libs/earcut "$OUT/libs/"
 rm -rf "$OUT/libs/wuefl-libs/.git"
 cp appdata/manifest.json appdata/messages.json appdata/logo.svg appdata/logo.png appdata/wmap-*.png "$OUT/appdata/"
 cp -r appdata/icons "$OUT/appdata/"
-# Start der App: zur Webversion wechseln, wenn sie erreichbar ist (tauri-start.js)
-cp src-tauri/tauri-start.js "$OUT/"
-# -i.bak statt -i: geht mit GNU-sed (Linux) und BSD-sed (macOS, GitHub Actions)
-sed -i.bak 's|<head>|<head>\
+# Start der App: zur Webversion wechseln, wenn sie erreichbar ist (tauri-start.js).
+# Nicht im Debug-Build (Tauri setzt TAURI_ENV_DEBUG): der zeigt die Dateien
+# von hier – so lässt sich Neues auf dem Handy testen, bevor es hochgeladen ist.
+if [ "${TAURI_ENV_DEBUG:-false}" != "true" ]; then
+  cp src-tauri/tauri-start.js "$OUT/"
+  # -i.bak statt -i: geht mit GNU-sed (Linux) und BSD-sed (macOS, GitHub Actions)
+  sed -i.bak 's|<head>|<head>\
     <script src="./tauri-start.js"></script>|' "$OUT/index.html" && rm "$OUT/index.html.bak"
+else
+  echo "Debug-Build: bleibt bei den eingepackten Dateien (ohne tauri-start.js)"
+fi
 echo "$OUT bereit: $(du -sh "$OUT" | cut -f1)"

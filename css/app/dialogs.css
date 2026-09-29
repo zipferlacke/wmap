@@ -191,3 +191,14 @@ body.recording #search-here, body.navigating .rec { display: none !important; }
     > span:not(.msr) { flex: 1; }
     .button { flex: none; }
 }
+
+/* Health Connect: Überblick vor dem Übernehmen (pages/wege.js) */
+.health-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-200);
+    th, td { padding: .3rem .4rem; text-align: left; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 600; }
+    td:not(:first-child), th:not(:first-child) { text-align: right; white-space: nowrap; }
+}
+.dialog.confirm.news h3 { margin: .4rem 0 0; font-size: var(--fs-300); }

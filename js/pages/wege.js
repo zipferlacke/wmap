@@ -28,6 +28,7 @@ import { mapPage } from '../ui/map-page.js';
 import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, esc, bbox } from '../core/geo.js';
 import { connections } from '../data/saved.js';
 import { legBadge, changesText, transitLegsHtml } from '../ui/transit-legs.js';
+import { healthAvailable, healthSessions, importHealth, appName, TYPE_NAME } from '../services/health.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 
@@ -145,7 +146,8 @@ function showList({ push = false } = {}) {
       <a class="button" href="./tour.html"><span class="msr">add_road</span> Tour planen</a>
       <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>` : `
       <a class="button" href="./index.html?action=record"><span class="msr">radio_button_checked</span> Aufzeichnen</a>
-      <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx"></label>`}
+      <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx"></label>
+      ${healthAvailable ? '<button type="button" class="button" data-tool="health"><span class="msr">favorite</span> Aus Health Connect</button>' : ''}`}
       <button type="button" class="button" data-tool="backup" title="ZIP mit den Ordnern WMap/Geplant und WMap/Abgeschlossen/Jahr – als GPX, dazu alles für die Wiederherstellung"><span class="msr">folder_zip</span> Sicherung speichern (ZIP)</button>
       <label class="button"><span class="msr">settings_backup_restore</span> Sicherung laden<input type="file" accept=".zip,.json,application/zip,application/json" hidden data-file="restore"></label>
       <div class="wege-folder"></div>
@@ -207,7 +209,7 @@ function paintGroups() {
         <table class="wege-table"><tbody>${ts.map((t) => `
           <tr data-id="${esc(t.id)}" tabindex="0">
             <td class="w-icon"><span class="msr" style="color:${groupOf(t).color}">${groupOf(t).icon}</span></td>
-            <td class="w-name"><strong>${esc(t.name || 'Weg')}</strong><small>${DATE.format(t.start)} · ${TIME.format(t.start)}${t.kind === 'nav' ? ' · Navigation' : t.kind === 'gpx' ? ' · GPX' : ''}</small></td>
+            <td class="w-name"><strong>${esc(t.name || 'Weg')}</strong><small>${DATE.format(t.start)} · ${TIME.format(t.start)}${t.kind === 'nav' ? ' · Navigation' : t.kind === 'gpx' ? ' · GPX' : t.kind === 'health' ? ` · ${esc(appName(t.source?.app))}` : ''}</small></td>
             <td class="w-num">${fmtDistance(t.length)}<small>${fmtDuration(moving(t))}</small></td>
           </tr>`).join('')}</tbody></table>
       </details>`;
@@ -253,11 +255,59 @@ content.addEventListener('click', (e) => {
     return;
   }
   const tool = e.target.closest('[data-tool]')?.dataset.tool;
+  if (tool === 'health') fromHealth();
   if (tool === 'backup') {
     zipBackup().then((blob) => download(`wmap-sicherung-${new Date().toISOString().slice(0, 10)}.zip`, blob, 'application/zip'))
       .catch((err) => toast(`Sicherung ging nicht: ${err.message}`));
   }
 });
+/**
+ * Health Connect (Android-App): erst zeigen, was da ist – nach App und Art,
+ * mit oder ohne Route –, dann die Routen als Wege übernehmen.
+ */
+async function fromHealth() {
+  let list;
+  try {
+    toast('Health Connect wird gelesen …');
+    list = await healthSessions();
+  } catch (err) { toast(String(err?.message ?? err)); return; }
+  const routed = list.filter((x) => x.route !== 'none');
+  const groups = new Map();
+  for (const x of list) {
+    const key = `${appName(x.app)} · ${TYPE_NAME[x.type] ?? x.type}`;
+    const g = groups.get(key) ?? { n: 0, route: 0 };
+    g.n += 1;
+    if (x.route !== 'none') g.route += 1;
+    groups.set(key, g);
+  }
+  const rows = [...groups].sort((a, b) => b[1].n - a[1].n)
+    .map(([k, g]) => `<tr><td>${esc(k)}</td><td>${g.n}</td><td>${g.route}</td></tr>`).join('');
+  const day = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
+  const recent = list.slice(0, 12).map((x) => `<tr><td>${day.format(x.start)}</td><td>${esc(TYPE_NAME[x.type] ?? x.type)}</td>
+      <td>${x.route === 'data' ? `${x.points.toLocaleString('de-DE')} Punkte` : x.route === 'consent' ? 'Route (Nachfrage)' : '–'}</td></tr>`).join('');
+  const v = await ask({
+    icon: 'favorite', title: 'Health Connect', className: 'news',
+    html: list.length ? `<p>${list.length.toLocaleString('de-DE')} Trainings, davon <strong>${routed.length.toLocaleString('de-DE')} mit Route</strong>.</p>
+      <table class="health-table"><thead><tr><th>App · Art</th><th>Trainings</th><th>mit Route</th></tr></thead><tbody>${rows}</tbody></table>
+      <h3>Zuletzt</h3>
+      <table class="health-table"><tbody>${recent}</tbody></table>
+      ${list.some((x) => x.route === 'consent') ? '<p class="muted">„Nachfrage“: Health Connect fragt für diese Routen einzeln, ob WMap sie lesen darf.</p>' : ''}`
+      : '<p>Health Connect hat keine Trainings – oder keine, die WMap lesen darf.</p>',
+    buttons: routed.length
+      ? [{ value: 'no', label: 'Abbrechen' }, { value: 'ok', label: `${routed.length.toLocaleString('de-DE')} Routen übernehmen`, icon: 'download', primary: true }]
+      : [{ value: 'no', label: 'OK', primary: true }],
+  });
+  if (v !== 'ok') return;
+  try {
+    const r = await importHealth(routed, { onProgress: (i, n) => { if (i % 5 === 0) toast(`Übernehme ${i + 1} von ${n} …`); } });
+    toast([`${r.added} ${r.added === 1 ? 'Weg' : 'Wege'} übernommen`, r.known ? `${r.known} gab es schon` : '',
+      r.empty ? `${r.empty} zu kurz` : '', r.denied ? 'eine Route nicht freigegeben – abgebrochen' : ''].filter(Boolean).join(' · '));
+  } catch (err) { toast(String(err?.message ?? err)); }
+  await load();
+  showList();
+  fitView();
+}
+
 content.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
   if (e.target.matches('tr[data-id]')) select(e.target.dataset.id, { push: true });

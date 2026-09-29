@@ -49,7 +49,8 @@
       "icons/icon.ico"
     ],
     "android": {
-      "debugApplicationIdSuffix": ".debug"
+      "debugApplicationIdSuffix": ".debug",
+      "minSdkVersion": 26
     },
     "category": "Travel",
     "shortDescription": "3D-Karte und Navigation auf Basis offener Daten",

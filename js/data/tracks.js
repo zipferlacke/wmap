@@ -55,7 +55,7 @@ const TOLERANCE = { car: 8, bike: 4 };           // Meter; sonst 3
  * Rohpunkte [[lon, lat, ms], …] → Weg (oder null, wenn zu kurz).
  * Stehzeiten zählen nicht zur Bewegungszeit.
  */
-function buildTrack(points, { kind, profile, name, from = '', to = '' }) {
+export function buildTrack(points, { kind, profile, name, from = '', to = '' }) {
   if (points.length < 2) return null;
   let length = 0, moving = 0, top = 0;
   for (let i = 1; i < points.length; i += 1) {
@@ -240,7 +240,7 @@ export async function restore(text) {
 /* ── Auswertung ───────────────────────────────────────────────────────────── */
 
 /** Importierte Wege ohne Angabe: am Tempo erkennen, womit man unterwegs war. */
-function guessProfile(t) {
+export function guessProfile(t) {
   const v = t.moving ? t.length / t.moving : 0;
   return { ...t, profile: v > 9 ? 'car' : v > 3.2 ? 'bike' : 'foot' };
 }

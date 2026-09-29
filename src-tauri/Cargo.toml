@@ -25,6 +25,8 @@ tauri = { version = "2.11.3", features = [] }
 tauri-plugin-log = "2"
 # Karten-Links „geo:“ anderer Apps öffnen (Android, Linux, macOS, Windows)
 tauri-plugin-deep-link = "2"
+# Trainings und Routen aus Health Connect (nur Android tut es etwas; eigenes Plugin)
+tauri-plugin-health = { path = "plugins/health" }
 
 # Rechner: ein Klick auf einen geo:-Link bei offener App startet keine zweite,
 # sondern gibt den Link an das offene Fenster
