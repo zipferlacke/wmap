@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Plugins bauen – WMap</title>
+    <meta name="description" content="So baust du ein Plugin für WMap: Kartenebenen aus GeoJSON, Kartenkacheln und Erweiterungen in einem Ordner.">
+    <link rel="manifest" href="./appdata/manifest.json">
+    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#1a73e8">
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/tours.css">
+    <link rel="stylesheet" href="./css/dashboard.css">
+</head>
+
+<!--
+  Anleitung zu den Plugin-Ordnern (js/data/plugin-folders.js), verlinkt von
+  der Plugin-Seite. Reiner Text – was hier steht, muss zu plugin-folders.js
+  passen (wmap-plugin.json, Felder, lose Dateien).
+-->
+<body class="dash-page settings-page">
+    <header class="dash-head">
+        <h1>Plugins bauen</h1>
+    </header>
+
+    <main class="dash settings howto">
+        <section>
+            <h3>Worum es geht</h3>
+            <p>Ein Plugin-Ordner ist ein ganz normaler Ordner auf deinem Gerät – oder in Nextcloud, Drive, Syncthing … WMap liest daraus
+               <strong>Kartenebenen</strong> und <strong>Erweiterungen</strong>. Du kannst mehrere Ordner hinzufügen; WMap merkt sie sich,
+               und „Neu einlesen“ holt geänderte Dateien.</p>
+            <ul>
+                <li><strong>Nur eine Ebene:</strong> GeoJSON-Datei in den Ordner legen – fertig.</li>
+                <li><strong>Ebene mit Namen, Beschreibung, Farbe:</strong> ein Unterordner mit einer <code>wmap-plugin.json</code>.</li>
+                <li><strong>Kartenkacheln</strong> (z. B. eine geologische Karte, WMS): auch über <code>wmap-plugin.json</code>.</li>
+                <li><strong>Richtiges Plugin mit Programmcode</strong> (Erweiterung): eine JavaScript-Datei, die auf der Karte etwas tut.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>Wo es geht</h3>
+            <ul>
+                <li><strong>WMap-App</strong> (Android, Windows, macOS, Linux): Ordner wählen, WMap merkt ihn.</li>
+                <li><strong>Chrome und Edge</strong> (auch als installierte Web-App): ebenso – nach einem Neustart fragt der Browser einmal, ob WMap wieder lesen darf.</li>
+                <li><strong>Firefox und Safari:</strong> nur <em>einmal einlesen</em>. Diese Browser bieten die Schnittstelle zum dauerhaften
+                    Ordnerzugriff (File System Access) nicht an – Mozilla hält sie für zu riskant, weil eine Webseite damit in echte Ordner
+                    schreiben könnte. Zum Aktualisieren denselben Ordner einfach noch einmal wählen.</li>
+            </ul>
+            <p class="muted">Hinzufügen: <a href="./plugins.html">Plugins</a> → Hinzufügen → „Plugin-Ordner hinzufügen“.</p>
+        </section>
+
+        <section>
+            <h3>Aufbau eines Ordners</h3>
+<pre><code>Meine Plugins/
+├── Hochsitze.geojson             → Ebene „Hochsitze“
+├── Messnetz/
+│   ├── wmap-plugin.json          → Ebene mit Name, Beschreibung, Farbe
+│   └── messstellen.geojson
+├── Geologie/
+│   └── wmap-plugin.json          → Kartenkacheln (tiles)
+└── Wetterwarnung/
+    ├── wmap-plugin.json          → Erweiterung (script)
+    └── main.js</code></pre>
+            <ul>
+                <li>Lose <code>.geojson</code>/<code>.json</code>-Dateien werden zu je einer Ebene, benannt nach der Datei.</li>
+                <li>Lose <code>.js</code>-Dateien werden zu Erweiterungen (siehe unten).</li>
+                <li>Alles in einem Unterordner mit <code>wmap-plugin.json</code> gehört zu diesem Plugin.</li>
+                <li>Unterordner bis 5 Ebenen tief; Dateien und Ordner mit Punkt am Anfang werden übergangen.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>wmap-plugin.json – Ebene aus GeoJSON</h3>
+<pre><code>{
+  "name": "Messnetz Harz",
+  "description": "Grundwasser-Messstellen, monatlich aktualisiert.",
+  "operator": "Wasserverband Harz",
+  "attribution": "© Wasserverband Harz, CC BY 4.0",
+  "data": "messstellen.geojson",
+  "color": "#1a73e8",
+  "colorBy": "pegel"
+}</code></pre>
+            <div class="table-wrap"><table>
+                <tr><th><code>name</code></th><td>Name in WMap (sonst der Ordnername)</td></tr>
+                <tr><th><code>description</code></th><td>Beschreibung auf der Plugin-Seite</td></tr>
+                <tr><th><code>operator</code>, <code>attribution</code></th><td>Anbieter und Quellenangabe</td></tr>
+                <tr><th><code>data</code></th><td>eine Datei oder eine Liste (<code>["a.geojson", "b.geojson"]</code>); fehlt es, nimmt WMap alle GeoJSON-Dateien im Ordner</td></tr>
+                <tr><th><code>color</code></th><td>Farbe der Punkte, Linien und Flächen</td></tr>
+                <tr><th><code>colorBy</code></th><td>Eigenschaft mit Zahlen – eingefärbt von blau (niedrig) bis rot (hoch)</td></tr>
+            </table></div>
+            <p class="muted">GeoJSON in WGS84 (Längen- und Breitengrad), wie es QGIS, geojson.io &amp; Co. schreiben. Eigenschaften der Objekte zeigt WMap beim Antippen.</p>
+        </section>
+
+        <section>
+            <h3>wmap-plugin.json – Kartenkacheln</h3>
+<pre><code>{
+  "name": "Geologische Karte",
+  "tiles": "https://example.org/tiles/{z}/{x}/{y}.png",
+  "attribution": "© Landesamt …",
+  "minzoom": 6,
+  "maxzoom": 16,
+  "opacity": 0.7
+}</code></pre>
+            <p class="muted">Für einen WMS-Dienst eine Kachelvorlage mit <code>BBOX={bbox-epsg-3857}</code>, <code>CRS=EPSG:3857</code>, <code>WIDTH=512&amp;HEIGHT=512</code>.</p>
+        </section>
+
+        <section>
+            <h3>Erweiterung – ein richtiges Plugin</h3>
+<pre><code>{
+  "name": "Wetterwarnung",
+  "description": "Zeigt Unwetterwarnungen als Fläche.",
+  "type": "extension",
+  "script": "main.js"
+}</code></pre>
+<pre><code>// main.js – ein ES-Modul in einer Datei
+export function activate(wmap) {
+  wmap.onMapReady((map) =&gt; {
+    map.addSource('warnung', { type: 'geojson', data: 'https://example.org/warnungen.geojson' });
+    map.addLayer({ id: 'warnung', type: 'fill', source: 'warnung',
+      paint: { 'fill-color': '#e03131', 'fill-opacity': 0.3 } });
+  });
+  wmap.addMenuItem('warning', 'Warnungen', () =&gt; wmap.toast('Warnungen an'));
+}</code></pre>
+            <div class="table-wrap"><table>
+                <tr><th><code>wmap.map</code></th><td>die Karte (MapLibre)</td></tr>
+                <tr><th><code>wmap.maplibregl</code></th><td>MapLibre selbst (Marker, Popups …)</td></tr>
+                <tr><th><code>wmap.onMapReady(fn)</code></th><td>fn(map), sobald die Karte geladen ist</td></tr>
+                <tr><th><code>wmap.addMenuItem(icon, text, fn)</code></th><td>Eintrag im Menü der Karte (Symbole: Material Symbols)</td></tr>
+                <tr><th><code>wmap.toast(text)</code></th><td>kurze Meldung unten</td></tr>
+                <tr><th><code>wmap.storage.get(k)</code> / <code>.set(k, v)</code></th><td>kleiner Speicher nur für diese Erweiterung</td></tr>
+                <tr><th><code>wmap.version</code></th><td>WMap-Version</td></tr>
+            </table></div>
+            <ul>
+                <li>Eine Datei, ohne <code>import</code> anderer eigener Dateien (Bibliotheken per <code>https://</code>-Adresse gehen).</li>
+                <li>Erweiterungen laufen erst, wenn du sie auf der Plugin-Seite <strong>aktivierst</strong> – sie dürfen in WMap alles, auch deinen Standort sehen.</li>
+                <li>Nach dem Ändern: „Neu einlesen“, dann die Karte neu öffnen.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>Teilen</h3>
+            <p>Plugin-Ordner bleiben auf deinem Gerät. Anderen gibst du ein Plugin, indem du den Ordner teilst – oder es auf der Plugin-Seite
+               über „Plugin anbieten“ in den Katalog stellst (privat oder öffentlich, mit WMap-Konto).</p>
+        </section>
+    </main>
+
+    <script type="module">
+        import { mountAppBar } from './js/ui/appbar.js';
+        mountAppBar();
+    </script>
+</body>
+
+</html>

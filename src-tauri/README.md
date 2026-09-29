@@ -140,7 +140,7 @@ Synchronisation.
 |---|---|
 | `pick` | Ordner wählen → `{ connected, name }` |
 | `info` | `{ connected, name }` |
-| `list` | `.gpx`/`.json`/`.geojson` bis 5 Ebenen tief → `{ files: [{ path, modified }] }` |
+| `list` | `.gpx`/`.json`/`.geojson`/`.js` bis 5 Ebenen tief → `{ files: [{ path, modified }] }` |
 | `read { path }` / `write { path, text }` / `remove { path }` | Pfade relativ zum Ordner mit „/“; `..` und absolute Pfade lehnt das Plugin ab; `write` legt fehlende Ordner an |
 | `disconnect` | Ordner vergessen (Android: Freigabe zurückgeben) |
 

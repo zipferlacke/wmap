@@ -4,9 +4,29 @@
         "Alles beruht auf offenen Daten von OpenStreetMap. Du brauchst kein Konto, und deine Wege bleiben auf deinem Gerät.",
         "Tippe oben einen Ort, eine Adresse oder einfach „Bäckerei“ ein – oder auf <span class=\"msr\">directions</span>, um eine Route zu planen."
     ],
-    "minVersion": "1.0.0",
+    "minVersion": "2.0.0",
     "messages": [],
     "changelog": [
+        {
+            "version": "2.0.0",
+            "date": "2026-09-29",
+            "changes": [
+                "Konto: Dein WMap-Konto ist jetzt dein OpenStreetMap-Konto – eine Anmeldung für Orte bearbeiten, Touren teilen und bewerten. Passkeys entfallen; wer noch angemeldet ist, behält sein Konto",
+                "Neue Seite „Sicherung & Synchronisation“: ein Ordner (Nextcloud, Drive, Syncthing …) für alle Geräte – Geplante und Aufgezeichnete Touren nach Jahr und Monat, Bus & Bahn, Lesezeichen und Einstellungen; automatisch beim Öffnen oder alle 30 Minuten, dazu die ZIP-Sicherung",
+                "Ordner verbinden geht jetzt auch in der App für Android, Windows, macOS und Linux",
+                "Health Connect (Android): Trainings mit Route übernehmen – mit Puls, Tempo, Frequenz und Leistung, Art und App („Rudern · Zepp“)",
+                "Aufgezeichnete Touren: Diagramme für Höhe, Tempo, Puls, Frequenz und Leistung, Runden zu 1, 2 oder 5 km mit schnellster und langsamster, Kilometermarken auf der Karte",
+                "Meine Touren getrennt in Geplante und Aufgezeichnete Touren; „Tour starten“ direkt aus der Liste – gestartete Touren werden immer aufgezeichnet, normale Navigationen nur auf Wunsch",
+                "Lesezeichen mit eigenem Namen und in Listen wie „Hannover Urlaub“ – ganze Listen ansehen und teilen; in der Suche ganz oben",
+                "Ortskarte mit Route, Teilen, Erreichbar, Merken und Bearbeiten; Merkmale wie Lieferdienst, Bio oder Vegan unter dem Namen, dazu die Beschreibung",
+                "Orte bearbeiten: Öffnungszeiten Tag für Tag mit Feiertagen, 24/7 und „dauerhaft geschlossen“, Beschreibung, Merkmale, Bild, Veranstaltungsseite und alle Tags; beim Eintragen die Art suchen und die Marke wählen",
+                "Tourenplaner: Suchtreffer erst als Vorschau, Punkte zum Start oder Ziel machen, Rundweg mit einem Tipp",
+                "Plugins: mehrere Plugin-Ordner mit Ebenen, Kartenkacheln und Erweiterungen – gemerkt, neu einlesbar, mit Anleitung zum Selberbauen",
+                "Weblinks öffnen in der App mit Leiste zum Schließen und „Im Browser öffnen“; Teilen über das Teilen-Menü von Android",
+                "Android: Berechtigungen für Standort und Health Connect werden erklärt, App-Symbol mit Rand, nichts mehr unter Status- und Gestenleiste",
+                "Karte: 3D-Häuser stehen wieder auf dem Boden, ruhiger Standortpunkt, Ebenen-Menü über den Seitenleisten"
+            ]
+        },
         {
             "version": "1.0.0",
             "date": "2026-09-28",

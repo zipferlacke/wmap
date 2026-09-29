@@ -332,11 +332,22 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
 - **Eigene Ebenen & Plugins:** jede eigene Ebene und jedes geholte Plugin mit
   Schalter „auf der Karte“. Darunter nur ein Knopf **Verwalten** → Plugin-
   Seite: Plugins holen, eigene Quelle (Kacheln, WMS, GeoJSON – auf Wunsch mit
-  Benutzer und Passwort), Deckkraft. **Ordner laden** nimmt alle GeoJSON-
-  Dateien eines Ordners (auch Unterordner); in der App über das Plugin
-  `folder` (das WebView kann keine Ordner-Auswahl) – der Ordner bleibt
-  gemerkt, „… neu laden“ liest ihn ohne Rückfrage wieder ein und ersetzt,
-  was vorher daraus kam.
+  Benutzer und Passwort), Deckkraft.
+- **Plugin-Ordner** (`js/data/plugin-folders.js`, Anleitung für Nutzer:
+  `plugin-anleitung.html`, verlinkt auf der Plugin-Seite): mehrere lokale
+  Ordner, gemerkt und mit „Neu einlesen“ aktualisierbar. Lose `.geojson` →
+  Ebene, lose `.js` → Erweiterung; ein Unterordner mit `wmap-plugin.json`
+  ist ein Plugin: GeoJSON-Ebene (`data`, `color`, `colorBy`, `description`,
+  `operator`, `attribution`), Kartenkacheln (`tiles`, `minzoom`, `maxzoom`,
+  `opacity`) oder Erweiterung (`type: "extension"`, `script`; der Code läuft
+  als Blob-Modul, erst nach dem Aktivieren). Neu einlesen ersetzt, was aus
+  dem Ordner kam, und behält „auf der Karte“ bzw. „aktiv“.
+  App: Plugin `folder` mit je einem Platz (`slot` „layers“, „layers2“ …);
+  Chrome/Edge: File System Access, der Zugriff liegt in IndexedDB (nach
+  einem Neustart fragt der Browser beim Neu-Einlesen einmal nach);
+  Firefox/Safari: nur einmal einlesen (`<input webkitdirectory>`) – beide
+  bieten `showDirectoryPicker` nicht an (Mozilla hält dauerhaften
+  Ordnerzugriff für Webseiten für zu riskant).
 
 ## 7. 3D, Gelände und Höhen
 

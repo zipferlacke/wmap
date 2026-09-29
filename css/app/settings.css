@@ -1,5 +1,22 @@
 /* ── Einstellungen (settings.html) ────────────────────────────────────────── */
 
+/* Anleitung Plugin-Ordner (plugin-anleitung.html): Text, Ordnerbaum, Beispiele */
+.howto {
+    p, li { margin: 0; line-height: 1.5; }
+    ul, ol { margin: 0; padding-left: 1.2rem; display: grid; gap: .3rem; }
+    .muted { color: var(--muted); font-size: var(--fs-200); }
+    a { color: var(--route); }
+    code { font-family: ui-monospace, monospace; font-size: .92em; padding: 0 .25rem; border-radius: .3rem; background: var(--surface); }
+    pre {
+        margin: 0; padding: .7rem .8rem; border-radius: .7rem; background: var(--surface);
+        overflow-x: auto; font-size: var(--fs-100, .8rem); line-height: 1.45;
+        code { padding: 0; background: none; }
+    }
+    table { border-collapse: collapse; font-size: var(--fs-200); }
+    th, td { text-align: start; vertical-align: top; padding: .3rem .5rem .3rem 0; border-bottom: 1px solid var(--line); }
+    .table-wrap { overflow-x: auto; }
+}
+
 /* Konto löschen (deleteKonto.html): Liste mit Symbolen, roter Knopf */
 .delete-konto {
     p { margin: 0; line-height: 1.5; }

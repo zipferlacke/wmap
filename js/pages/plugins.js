@@ -6,8 +6,9 @@
  *                  (Ebenen-Menü), deaktivieren nimmt sie wieder weg.
  *   Erweiterungen  JavaScript, das die App verändert (map/extensions.js) – erst
  *                  nach einem deutlichen Hinweis aktiv.
- *   Eigene         selbst geladene Ebenen: Datei, ganzer Ordner, Adresse
- *                  (auch mit Passwort). Nur auf diesem Gerät.
+ *   Eigene         selbst geladene Ebenen: Datei, Adresse (auch mit Passwort),
+ *                  Plugin-Ordner (mehrere, gemerkt – data/plugin-folders.js,
+ *                  Aufbau: plugin-anleitung.html). Nur auf diesem Gerät.
  *
  * Antippen zeigt ein Plugin groß: Beschreibung, Anbieter, Stand, Quelle –
  * und den Knopf Aktivieren/Deaktivieren.
@@ -20,7 +21,8 @@ import { konto, ensureLogin } from '../services/konto.js';
 import { local } from '../data/store.js';
 import { layers, newLayer, rasterLayer } from '../map/layers.js';
 import { extensions } from '../map/extensions.js';
-import { addOwnSource, addOwnFiles, addOwnFolder, folderHere, layerFolder } from '../ui/own-source.js';
+import { addOwnSource, addOwnFiles } from '../ui/own-source.js';
+import { pluginFolders, folderMode } from '../data/plugin-folders.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { esc } from '../core/geo.js';
 import { PRESETS, legendHtml } from '../map/presets.js';
@@ -84,13 +86,13 @@ async function load() {
     }),
     ...exts.filter((x) => !x.pluginId).map((x) => ({
       id: `x${x.id}`, kind: 'extension', icon: 'bolt', name: x.name, operator: x.operator || 'du selbst', type: 'JavaScript',
-      description: 'Selbst per Adresse hinzugefügt.', url: x.url, ext: x, active: !!x.active, localOnly: true,
+      description: x.folder ? (x.description || `Aus deinem Plugin-Ordner: ${x.path}`) : 'Selbst per Adresse hinzugefügt.', url: x.url, ext: x, active: !!x.active, localOnly: true,
     })),
     ...own.filter((l) => !['plugin', 'preset'].includes(l.source?.kind)).map((l) => ({
       id: `l${l.id}`, kind: 'own', icon: l.raster ? 'grid_on' : 'scatter_plot', name: l.name,
-      operator: l.source?.kind === 'url' ? new URL(l.source.url).hostname : l.source?.path ? 'aus einem Ordner' : 'aus einer Datei',
+      operator: l.operator || (l.source?.kind === 'url' ? new URL(l.source.url).hostname : l.source?.folder ? 'aus einem Plugin-Ordner' : l.source?.path ? 'aus einem Ordner' : 'aus einer Datei'),
       type: l.raster ? (l.raster.auth ? 'Kartenkacheln, privat' : 'Kartenkacheln') : `${(l.count ?? 0).toLocaleString('de-DE')} Objekte`,
-      description: l.source?.path ? `Datei: ${l.source.path}` : l.source?.url ?? '', layer: l, active: !!(l.onMain && l.visible),
+      description: l.description || (l.source?.path ? `Datei: ${l.source.path}` : l.source?.url ?? ''), attribution: l.attribution, layer: l, active: !!(l.onMain && l.visible),
     })),
   ];
 }
@@ -219,7 +221,7 @@ async function toggle(i) {
   } else if (i.kind === 'extension') {
     if (on) {
       const v = await ask({ icon: 'warning', title: `„${i.name}“ aktivieren?`,
-        text: `Die Erweiterung lädt Programmcode von ${new URL(i.url).hostname} und darf in WMap alles – auch deinen Standort sehen. Nur aktivieren, wenn du dem Anbieter vertraust.`,
+        text: `Die Erweiterung ${i.url ? `lädt Programmcode von ${new URL(i.url).hostname}` : `aus deinem Plugin-Ordner (${i.ext?.path ?? ''})`} und darf in WMap alles – auch deinen Standort sehen. Nur aktivieren, wenn du dem Anbieter vertraust.`,
         buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Aktivieren', primary: true }] });
       if (v !== 'yes') return;
     }
@@ -344,20 +346,72 @@ document.addEventListener('click', async (e) => {
   if (add === 'source') { if (await addOwnSource({ toast, index: items.length })) { await load(); filter = 'own'; showList(); } }
   if (add === 'script') addScript();
   if (add === 'offer') offer();
-  if (add === 'folder-app' || add === 'folder-again') {
-    try { loaded(await addOwnFolder({ pick: add === 'folder-app', index: items.length })); } catch (err) {
+  if (add === 'plugin-folder') {
+    try { const r = await pluginFolders.add({ index: items.length }); folderLoaded(r.folder.name, r); } catch (err) {
       if (err.name !== 'AbortError') toast(`Ordner ging nicht: ${err.message}`);
     }
-    folderButtons();
+  }
+  const fa = e.target.closest('[data-folder-act]');
+  if (fa) {
+    const id = fa.closest('[data-folder]').dataset.folder;
+    const name = fa.closest('[data-folder]').dataset.name;
+    if (fa.dataset.folderAct === 'reload') {
+      fa.disabled = true;
+      try { folderLoaded(name, await pluginFolders.reload(id, { index: items.length })); } catch (err) { toast(err.message); }
+      fa.disabled = false;
+    }
+    if (fa.dataset.folderAct === 'remove') {
+      const v = await ask({ icon: 'folder_off', title: `„${name}“ entfernen?`, text: 'WMap vergisst den Ordner und nimmt die Ebenen und Erweiterungen daraus wieder weg. Die Dateien im Ordner bleiben.',
+        buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Entfernen', primary: true }] });
+      if (v === 'yes') { await pluginFolders.remove(id); await load(); showList(); paintFolders(); }
+    }
   }
 });
 document.addEventListener('change', async (e) => {
   const inp = e.target.closest('input[data-add]');
   if (!inp?.files?.length) return;
+  if (inp.dataset.add === 'folder-once') {
+    const r = await pluginFolders.readOnce(inp.files, { index: items.length });
+    inp.value = '';
+    folderLoaded(r.name, r);
+    return;
+  }
   const r = await addOwnFiles(inp.files, { index: items.length });
   inp.value = '';
   loaded(r);
 });
+
+/** Nach dem Einlesen eines Plugin-Ordners */
+async function folderLoaded(name, { layers: nl = 0, extensions: ne = 0, failed = [] }) {
+  const what = [nl ? `${nl} ${nl === 1 ? 'Ebene' : 'Ebenen'}` : '', ne ? `${ne} ${ne === 1 ? 'Erweiterung' : 'Erweiterungen'}` : ''].filter(Boolean).join(' und ');
+  toast(`${what ? `${what} aus „${name}“` : `In „${name}“ nichts gefunden`}${failed.length ? ` – nicht lesbar: ${failed.slice(0, 3).join(', ')}` : ''}`);
+  await load();
+  filter = 'own';
+  showList();
+  paintFolders();
+}
+
+/*
+ * Plugin-Ordner: in der App und in Chrome/Edge gemerkt (neu einlesen,
+ * entfernen); Firefox/Safari können nur einmal einlesen.
+ */
+async function paintFolders() {
+  const box = $('.plug-folders');
+  const add = $('[data-add="plugin-folder"]');
+  const once = $('input[data-add="folder-once"]')?.closest('label');
+  add.hidden = folderMode === 'once';
+  if (once) once.hidden = folderMode !== 'once';
+  if (folderMode === 'once') {
+    box.innerHTML = '<p class="muted"><span class="msr">info</span> Dieser Browser kann einen Ordner nur einmal einlesen, nicht merken – das können die App sowie Chrome und Edge. Neu einlesen: einfach denselben Ordner noch einmal wählen.</p>';
+    return;
+  }
+  const list = await pluginFolders.list();
+  box.innerHTML = list.length ? `<h3>Plugin-Ordner</h3><ul>${list.map((f) => `
+    <li data-folder="${esc(f.id)}" data-name="${esc(f.name)}"><span class="msr">folder</span><strong>${esc(f.name)}</strong>
+      <button type="button" class="button" data-folder-act="reload"><span class="msr">refresh</span> Neu einlesen</button>
+      <button type="button" class="button" data-folder-act="remove" title="Ordner entfernen" aria-label="Ordner entfernen"><span class="msr">folder_off</span></button></li>`).join('')}</ul>` : '';
+}
+paintFolders();
 
 async function loaded({ added, failed }) {
   toast(added.length ? `${added.length} ${added.length === 1 ? 'Ebene' : 'Ebenen'} geladen${failed.length ? ` – ${failed.length} ließen sich nicht lesen` : ''}`
@@ -367,25 +421,6 @@ async function loaded({ added, failed }) {
   showList();
 }
 
-/*
- * App: Ordner über das Plugin „folder“ – das Android-WebView kann keine
- * Ordner-Auswahl (<input webkitdirectory>). Der Ordner bleibt gemerkt;
- * „neu laden“ liest ihn wieder ein, ohne erneut zu fragen.
- */
-async function folderButtons() {
-  if (!folderHere) return;
-  const row = $('.plug-add-row');
-  row.querySelector('input[data-add="folder"]')?.closest('label')
-    ?.replaceWith(Object.assign(document.createElement('button'), { type: 'button', className: 'button', innerHTML: '<span class="msr">drive_folder_upload</span> Ordner laden' }));
-  const pick = [...row.querySelectorAll('button')].find((b) => /Ordner laden/.test(b.textContent));
-  pick?.setAttribute('data-add', 'folder-app');
-  row.querySelector('[data-add="folder-again"]')?.remove();
-  const f = await layerFolder();
-  if (f.connected) {
-    pick.insertAdjacentHTML('afterend', `<button type="button" class="button" data-add="folder-again"><span class="msr">refresh</span> „${esc(f.name ?? 'Ordner')}“ neu laden</button>`);
-  }
-}
-folderButtons();
 $('.plug-search input').addEventListener('input', (e) => { query = e.target.value; if (!$('.plug-detail').hidden) showList(); else paintGrid(); });
 addEventListener('popstate', () => {
   const p = new URLSearchParams(location.search);

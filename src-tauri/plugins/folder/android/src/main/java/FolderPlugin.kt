@@ -168,7 +168,7 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
                 val path = prefix + name
                 if (c.dir) {
                     if (depth < 5) walk(c.id, "$path/", depth + 1)
-                } else if (name.endsWith(".gpx", true) || name.endsWith(".json", true) || name.endsWith(".geojson", true)) {
+                } else if (name.endsWith(".gpx", true) || name.endsWith(".json", true) || name.endsWith(".geojson", true) || name.endsWith(".js", true) || name.endsWith(".mjs", true)) {
                     ids["$slot\u0000$path"] = c.id
                     out.put(JSObject().put("path", path).put("modified", c.modified))
                 }

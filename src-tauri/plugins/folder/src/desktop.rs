@@ -127,7 +127,7 @@ fn walk(dir: &Path, prefix: &str, depth: usize, out: &mut Vec<Entry>) {
       }
     } else {
       let lower = name.to_lowercase();
-      if lower.ends_with(".gpx") || lower.ends_with(".json") || lower.ends_with(".geojson") {
+      if [".gpx", ".json", ".geojson", ".js", ".mjs"].iter().any(|e| lower.ends_with(e)) {
         out.push(Entry { path: rel, modified: modified(&path) });
       }
     }
