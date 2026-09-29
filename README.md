@@ -874,6 +874,11 @@ takeshots wmap --eigener-server # ohne Docker
   | `messages` | Nachrichten als Dialog, jede einmal (gemerkt über `id`); `from`/`until` (Datum) optional, `text` HTML erlaubt |
   | `minVersion` | ist die laufende Version älter: Banner „Aktualisieren“ auf jeder Seite – verwirft die gespeicherten App-Dateien und lädt neu (in der App wieder von der Webversion) |
 
+  **Neue Version:** oben im `changelog` eintragen, dann
+  `python3 appdata/version.py` – trägt die Nummer in `js/core/config.js`,
+  `src-tauri/tauri.conf.json`, `Cargo.toml` und `Cargo.lock` ein
+  (`--pruefen` nur prüfen; `git-release` prüft das vor dem Tag).
+
   Die Dialoge kommen nur beim normalen Start der Karte, nicht wenn ein Link
   etwas öffnet – dann beim nächsten Mal (so auch nicht auf den Screenshots).
   Gemerkt wird in localStorage `wmap.seen`. Zum Ausprobieren:
