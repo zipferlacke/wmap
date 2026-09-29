@@ -586,7 +586,8 @@ Grund fehlt (schon da, gleicher Weg, zu kurz, nicht freigegeben). Routen
 fremder Apps gibt Health Connect nur mit „Immer erlauben“ ohne Rückfrage
 heraus – lehnt man eine Rückfrage ab, fragt der Import für den Rest nicht
 mehr, übernimmt aber alles andere; der Knopf „Health Connect öffnen“ führt
-zur Seite von WMap dort (`js/services/health.js`, Plugin in
+dorthin (WMap antippen – direkt auf die Seite einer App dürfen nur
+System-Apps) (`js/services/health.js`, Plugin in
 `src-tauri/plugins/health`).
 
 **Berechtigungen** (nur Android-App, `js/ui/permissions.js`): Nach dem

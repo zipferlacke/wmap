@@ -278,7 +278,7 @@ async function fromHealth() {
     list = await healthSessions();
   } catch (err) { toast(String(err?.message ?? err)); return; }
   // Ältere Importe kannten die Art noch nicht – nachtragen
-  if (await fillHealthTypes(list)) await load();
+  if (await fillHealthTypes(list)) { await load(); showList(); }
   const known = await knownHealthIds();
   const n = (x) => x.toLocaleString('de-DE');
   const routed = list.filter((x) => x.route !== 'none');
@@ -305,7 +305,7 @@ async function fromHealth() {
       <h3>Zuletzt</h3>
       <table class="health-table"><tbody>${recent}</tbody></table>
       ${consent ? `<p class="perm-hint"><span class="msr">info</span> Für ${n(consent)} Routen fragt Health Connect einzeln nach.
-        Einfacher: in Health Connect bei WMap die Trainingsrouten auf „Immer erlauben“ stellen –
+        Einfacher: in Health Connect WMap antippen und die Trainingsrouten auf „Immer erlauben“ stellen –
         oder bei der ersten Rückfrage „Alle erlauben“ wählen.</p>` : ''}`
       : '<p>Health Connect hat keine Trainings – oder keine, die WMap lesen darf.</p>',
     buttons: [
@@ -335,8 +335,8 @@ async function fromHealth() {
     icon: r.added ? 'task_alt' : 'info', title: `${n(r.added)} ${r.added === 1 ? 'Weg' : 'Wege'} übernommen`, className: 'news',
     html: why.length ? `<p>Nicht übernommen:</p>
       <table class="health-table"><tbody>${why.map(([k, t]) => `<tr><td>${esc(t)}</td><td>${n(k)}</td></tr>`).join('')}</tbody></table>
-      ${r.denied ? `<p class="perm-hint"><span class="msr">info</span> Stell in Health Connect bei WMap die Trainingsrouten auf „Immer erlauben“
-        und tippe dann noch einmal auf „Aus Health Connect“ – übernommen wird nur, was fehlt.</p>` : ''}` : '<p>Alles da.</p>',
+      ${r.denied ? `<p class="perm-hint"><span class="msr">info</span> In Health Connect WMap antippen, die Trainingsrouten auf „Immer erlauben“ stellen
+        und dann noch einmal auf „Aus Health Connect“ tippen – übernommen wird nur, was fehlt.</p>` : ''}` : '<p>Alles da.</p>',
     buttons: [
       ...(r.denied ? [{ value: 'settings', label: 'Health Connect öffnen', icon: 'settings' }] : []),
       { value: 'ok', label: 'OK', primary: true },

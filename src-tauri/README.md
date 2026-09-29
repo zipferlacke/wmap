@@ -107,7 +107,7 @@ Eigenes Tauri-Plugin, nur Android tut etwas: Die Befehle stehen in Kotlin
 | `request_access` | Freigabe-Dialog von Health Connect |
 | `sessions { days }` | alle Trainings: Art, Zeit, App, Route ja/nein/Nachfrage |
 | `route { id }` | Punkte [lon, lat, Höhe, Zeit]; fremde Routen ohne Dauerfreigabe fragt Health Connect einzeln |
-| `open_settings { target }` | `health`: Seite von WMap in Health Connect (Routen „Immer erlauben“, widerrufen); `app`: App-Info (Standort); `location`: Standort am Gerät |
+| `open_settings { target }` | `health`: Health Connect – die Seite einer App direkt dürfen nur System-Apps öffnen, dort WMap antippen (Routen „Immer erlauben“, widerrufen); `app`: App-Info (Standort); `location`: Standort am Gerät |
 
 - Rechte (Manifest des Plugins): nur lesen – `READ_EXERCISE`,
   `READ_EXERCISE_ROUTES`, `READ_HEALTH_DATA_HISTORY` (sonst nur 30 Tage).

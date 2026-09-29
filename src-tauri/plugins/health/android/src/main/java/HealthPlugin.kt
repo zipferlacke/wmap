@@ -3,7 +3,6 @@ package de.wuefl.wmap.health
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.provider.Settings
 import androidx.activity.result.ActivityResult
 import androidx.health.connect.client.HealthConnectClient
@@ -57,8 +56,9 @@ class SettingsArgs {
  *                       fremden Routen einzeln nach, wenn es keine
  *                       Dauerfreigabe gibt
  *   open_settings { target }
- *                       "health": Freigaben von WMap in Health Connect
- *                       (Routen „Immer erlauben“, widerrufen);
+ *                       "health": Health Connect (die Seite einer App direkt
+ *                       – MANAGE_HEALTH_PERMISSIONS – dürfen nur System-Apps
+ *                       öffnen; dort WMap antippen);
  *                       "app": App-Info von WMap (Standort …);
  *                       "location": Standort des Geräts an/aus
  */
@@ -198,11 +198,7 @@ class HealthPlugin(private val activity: Activity) : Plugin(activity) {
         val tries = when (args.target) {
             "app" -> listOf(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", pkg, null)))
             "location" -> listOf(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-            else -> listOfNotNull(
-                // Ab Android 14 gleich die Seite von WMap in Health Connect
-                if (Build.VERSION.SDK_INT >= 34)
-                    Intent("android.health.connect.action.MANAGE_HEALTH_PERMISSIONS").putExtra(Intent.EXTRA_PACKAGE_NAME, pkg)
-                else null,
+            else -> listOf(
                 Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS),
                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", pkg, null)),
             )

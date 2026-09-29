@@ -89,8 +89,10 @@ async function healthItem(reason) {
       button: ['health-request', 'favorite', 'Health Connect freigeben', true],
     });
   }
-  const routes = st.routes ? '' : `<p class="perm-hint"><span class="msr">info</span> Routen: Health Connect fragt noch bei jedem Training einzeln.
-      Unter <strong>Health Connect → WMap → Trainingsrouten</strong> „Immer erlauben“ wählen – dann kommen alle ohne Rückfrage.</p>`;
+  const routes = st.routes
+    ? '<p class="perm-hint"><span class="msr">info</span> Zum Ändern oder Widerrufen öffnet sich Health Connect – dort WMap antippen (sonst unter „Weitere Gesundheits-Apps“).</p>'
+    : `<p class="perm-hint"><span class="msr">info</span> Routen: Health Connect fragt noch bei jedem Training einzeln.
+      In Health Connect <strong>WMap → Trainingsrouten</strong> auf „Immer erlauben“ stellen (WMap steht sonst unter „Weitere Gesundheits-Apps“) – dann kommen alle ohne Rückfrage.</p>`;
   return item({
     id: 'health', icon: 'favorite', title: 'Health Connect', state: st.routes ? 'granted' : 'coarse', wanted: reason === 'health',
     status: st.routes ? 'Trainings und Routen erlaubt' : 'Trainings erlaubt, Routen mit Rückfrage',

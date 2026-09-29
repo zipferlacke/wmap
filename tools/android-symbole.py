@@ -8,8 +8,11 @@ Android schneidet das Symbol je nach Gerät rund, eckig oder als Tropfen zu
 (adaptive icon, 108 dp). Sicher sichtbar ist nur der Kreis in der Mitte
 (66 dp). `cargo tauri icon` legt das Logo aber randlos auf die ganze Fläche –
 dann fehlen die Ecken. Hier wird das Logo (appdata/wmap-1024.png, freigestellt)
-so verkleinert, dass sein äußerster Punkt im sicheren Kreis liegt, auf den
-Hintergrund des maskierbaren Web-Symbols (appdata/wmap-maskable-512.png).
+auf den sichtbaren Teil zugeschnitten, mittig gesetzt und so verkleinert,
+dass sein äußerster Punkt im sicheren Kreis liegt – auf den Hintergrund des
+maskierbaren Web-Symbols (appdata/wmap-maskable-512.png). Die Bildfläche
+von wmap-1024.png ist oben leerer als unten, sie mittig zu setzen hieße,
+das Logo säße zu tief.
 
 Ergebnis: appdata/icons/android/ – tools/android-einbinden.py kopiert es
 in die App.
@@ -27,6 +30,16 @@ OUT = ROOT / 'appdata/icons/android'
 DENSITIES = {'mdpi': 1, 'hdpi': 1.5, 'xhdpi': 2, 'xxhdpi': 3, 'xxxhdpi': 4}
 # Radius des sicheren Kreises (66 dp von 108) – etwas Luft dazu
 SAFE = 33 / 108 * 0.96
+
+
+def visible(img):
+    """Auf den sichtbaren Teil zuschneiden, quadratisch mit ihm in der Mitte"""
+    box = img.getchannel('A').point(lambda v: 255 if v > 40 else 0).getbbox()
+    part = img.crop(box)
+    side = max(part.size)
+    square = Image.new('RGBA', (side, side), (0, 0, 0, 0))
+    square.alpha_composite(part, ((side - part.width) // 2, (side - part.height) // 2))
+    return square
 
 
 def logo_radius(img):
@@ -50,7 +63,7 @@ def foreground(logo, size, scale):
 
 
 def main():
-    logo = Image.open(LOGO).convert('RGBA')
+    logo = visible(Image.open(LOGO).convert('RGBA'))
     bg = Image.open(MASKABLE).convert('RGB').getpixel((4, 4))
     scale = SAFE / logo_radius(logo)
     for name, f in DENSITIES.items():

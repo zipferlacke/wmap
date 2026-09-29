@@ -46,7 +46,8 @@ def page():
 
 class Remote:
     def __init__(self):
-        self.ws = websocket.create_connection(page()['webSocketDebuggerUrl'], timeout=600)
+        # Ohne Origin – neuere WebViews lehnen fremde Herkunft ab (403)
+        self.ws = websocket.create_connection(page()['webSocketDebuggerUrl'], timeout=600, suppress_origin=True)
         self.n = 0
 
     def call(self, method, **params):
