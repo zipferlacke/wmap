@@ -18,21 +18,19 @@
 import { createMap, showHover } from '../map/map.js';
 import { heightsAlong } from '../services/routing.js';
 import { ElevationProfile } from '../ui/elevation.js';
-import { tracks, trackCoords, trackGpx, parseGpx, sameTrack, restore, PROFILE_GROUP } from '../data/tracks.js';
+import { tracks, trackCoords, trackGpx, parseGpx, sameTrack, PROFILE_GROUP } from '../data/tracks.js';
 import { tours, shapeOf, coordsOf, encodeShare, toGpx, download, local } from '../data/store.js';
 import { metrics, laps, lapLine } from '../data/track-stats.js';
 import { PROFILES } from '../core/config.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { share } from '../ui/share.js';
-import { mountFolder, tourFromGpx, zipBackup, restoreZip } from '../data/folder.js';
+import { tourFromGpx } from '../data/folder.js';
+import { autoSync } from '../data/auto-sync.js';
 import { mapPage } from '../ui/map-page.js';
 import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, esc, bbox } from '../core/geo.js';
 import { connections } from '../data/saved.js';
 import { legBadge, changesText, transitLegsHtml } from '../ui/transit-legs.js';
-import {
-  healthAvailable, healthSessions, importHealth, knownHealthIds, fillHealthTypes, fillHealthValues, refreshHealthValues,
-  healthSettings, appName, typeName, typeIcon,
-} from '../services/health.js';
+import { healthAvailable, refreshHealthValues, appName, typeName, typeIcon } from '../services/health.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 
@@ -144,25 +142,24 @@ function showList({ push = false } = {}) {
     <p class="muted tab-hint">${isBahn ? 'Bus & Bahn: gemerkte Verbindungen – kommende oben, vergangene zugeklappt darunter.'
       : isPlan ? 'Geplant: Touren, die du noch fahren oder laufen willst – aus dem Planer, übernommen oder importiert.'
         : 'Aufgezeichnet: Wege, die du wirklich gefahren oder gelaufen bist – mit Zeit, Tempo und Puls.'}</p>
+    ${isBahn ? '' : `<div class="wege-tools">${isPlan ? `
+      <a class="button" href="./tour.html"><span class="msr">add_road</span> Tour planen</a>
+      <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>` : `
+      <a class="button" href="./index.html?action=record"><span class="msr">radio_button_checked</span> Aufzeichnen</a>
+      <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx"></label>`}
+    </div>`}
     <form class="wege-search tour-search" role="search" onsubmit="return false">
       <span class="msr">search</span>
       <input type="search" placeholder="${isBahn ? 'Suchen – Ort, Linie, Datum …' : isPlan ? 'Suchen – Name, Beschreibung, Rad, Wandern …' : 'Suchen – Name, Ort, Jahr, Monat …'}" value="${esc(query[tab])}" aria-label="Suchen">
     </form>
     ${(isBahn ? conns : isPlan ? planned : all).length ? '' : empty}
     <div class="wege-groups"></div>
-    <footer class="wege-tools">
-      ${isBahn ? '' : isPlan ? `
-      <a class="button" href="./tour.html"><span class="msr">add_road</span> Tour planen</a>
-      <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>` : `
-      <a class="button" href="./index.html?action=record"><span class="msr">radio_button_checked</span> Aufzeichnen</a>
-      <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx"></label>
-      ${healthAvailable ? '<button type="button" class="button" data-tool="health"><span class="msr">favorite</span> Aus Health Connect</button>' : ''}`}
-      <button type="button" class="button" data-tool="backup" title="ZIP mit den Ordnern WMap/Geplant und WMap/Abgeschlossen/Jahr – als GPX, dazu alles für die Wiederherstellung"><span class="msr">folder_zip</span> Sicherung speichern (ZIP)</button>
-      <label class="button"><span class="msr">settings_backup_restore</span> Sicherung laden<input type="file" accept=".zip,.json,application/zip,application/json" hidden data-file="restore"></label>
-      <div class="wege-folder"></div>
-      <p class="muted">Alles bleibt auf diesem Gerät – außer du verbindest einen Ordner, den Nextcloud, Proton Drive o. Ä. abgleicht, oder nimmst es mit der Sicherungsdatei mit.</p>
-    </footer>`;
-  mountFolder($('.wege-folder', content), { toast });
+    <a class="wege-sync-hint" href="./sync.html">
+      <span class="msr">sync</span>
+      <span>Alles bleibt auf diesem Gerät. Auf andere Geräte über einen Ordner (Nextcloud, Drive …), Health Connect
+        oder eine Sicherung: <strong>Sicherung &amp; Abgleich</strong></span>
+      <span class="msr">chevron_right</span>
+    </a>`;
   paintGroups();
   page.open();
 }
@@ -263,95 +260,7 @@ content.addEventListener('click', (e) => {
     fitView();
     return;
   }
-  const tool = e.target.closest('[data-tool]')?.dataset.tool;
-  if (tool === 'health') fromHealth();
-  if (tool === 'backup') {
-    zipBackup().then((blob) => download(`wmap-sicherung-${new Date().toISOString().slice(0, 10)}.zip`, blob, 'application/zip'))
-      .catch((err) => toast(`Sicherung ging nicht: ${err.message}`));
-  }
 });
-/**
- * Health Connect (Android-App): erst zeigen, was da ist – nach App und Art,
- * mit oder ohne Route, schon übernommen –, dann die Routen als Wege
- * übernehmen und sagen, was aus welchem Grund fehlt.
- */
-async function fromHealth() {
-  let list;
-  try {
-    toast('Health Connect wird gelesen …');
-    list = await healthSessions();
-  } catch (err) { toast(String(err?.message ?? err)); return; }
-  // Ältere Importe kannten die Art noch nicht – nachtragen
-  if (await fillHealthTypes(list)) { await load(); showList(); }
-  // Puls & Co. für früher übernommene Wege nachladen (einmal je Weg)
-  const withValues = await fillHealthValues({ onProgress: (i, total) => { if (i % 10 === 0) toast(`Messwerte nachladen: ${i + 1} von ${total} …`); } });
-  if (withValues) { await load(); showList(); toast(`Puls & Co. für ${withValues} ${withValues === 1 ? 'Weg' : 'Wege'} nachgeladen`); }
-  const known = await knownHealthIds();
-  const n = (x) => x.toLocaleString('de-DE');
-  const routed = list.filter((x) => x.route !== 'none');
-  const fresh = routed.filter((x) => !known.has(x.id));
-  const consent = fresh.filter((x) => x.route === 'consent').length;
-  const groups = new Map();
-  for (const x of list) {
-    const key = `${typeName(x.type)} · ${appName(x.app)}`;
-    const g = groups.get(key) ?? { n: 0, route: 0, icon: typeIcon(x.type) };
-    g.n += 1;
-    if (x.route !== 'none') g.route += 1;
-    groups.set(key, g);
-  }
-  const rows = [...groups].sort((a, b) => b[1].n - a[1].n)
-    .map(([k, g]) => `<tr><td><span class="msr">${g.icon}</span> ${esc(k)}</td><td>${g.n}</td><td>${g.route}</td></tr>`).join('');
-  const day = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
-  const recent = list.slice(0, 12).map((x) => `<tr><td>${day.format(x.start)}</td><td><span class="msr">${typeIcon(x.type)}</span> ${esc(typeName(x.type))}</td>
-      <td>${known.has(x.id) ? 'übernommen' : x.route === 'data' ? `${n(x.points)} Punkte` : x.route === 'consent' ? 'Route (Rückfrage)' : 'ohne Route'}</td></tr>`).join('');
-  const v = await ask({
-    icon: 'favorite', title: 'Health Connect', className: consent ? 'news stacked' : 'news',
-    html: list.length ? `<p>${n(list.length)} Trainings, davon <strong>${n(routed.length)} mit Route</strong>
-        ${routed.length - fresh.length ? ` – ${n(routed.length - fresh.length)} schon übernommen` : ''}.</p>
-      <table class="health-table"><thead><tr><th>Art · App</th><th>Trainings</th><th>mit Route</th></tr></thead><tbody>${rows}</tbody></table>
-      <h3>Zuletzt</h3>
-      <table class="health-table"><tbody>${recent}</tbody></table>
-      ${consent ? `<p class="perm-hint"><span class="msr">info</span> Für ${n(consent)} Routen fragt Health Connect einzeln nach.
-        Einfacher: in Health Connect WMap antippen und die Trainingsrouten auf „Immer erlauben“ stellen –
-        oder bei der ersten Rückfrage „Alle erlauben“ wählen.</p>` : ''}`
-      : '<p>Health Connect hat keine Trainings – oder keine, die WMap lesen darf.</p>',
-    buttons: [
-      ...(consent ? [{ value: 'settings', label: 'Health Connect öffnen', icon: 'settings' }] : []),
-      ...(fresh.length
-        ? [{ value: 'no', label: 'Abbrechen' }, { value: 'ok', label: `${n(fresh.length)} Routen übernehmen`, icon: 'download', primary: true }]
-        : [{ value: 'no', label: 'OK', primary: true }]),
-    ],
-  });
-  if (v === 'settings') { healthSettings('health').catch((err) => toast(err.message ?? String(err))); return; }
-  if (v !== 'ok') return;
-  let r;
-  try {
-    r = await importHealth(fresh, { onProgress: (i, total) => { if (i % 5 === 0) toast(`Übernehme ${i + 1} von ${total} …`); } });
-  } catch (err) { toast(String(err?.message ?? err)); }
-  await load();
-  showList();
-  fitView();
-  if (!r) return;
-  const why = [
-    r.known ? [r.known, 'schon übernommen'] : null,
-    r.dup ? [r.dup, 'gleicher Weg schon da (z. B. selbst aufgezeichnet oder aus einer anderen App)'] : null,
-    r.empty ? [r.empty, 'kürzer als 200 m oder ohne brauchbare Punkte'] : null,
-    r.denied ? [r.denied, 'Route nicht freigegeben – Rückfrage abgelehnt oder abgebrochen'] : null,
-  ].filter(Boolean);
-  const done = await ask({
-    icon: r.added ? 'task_alt' : 'info', title: `${n(r.added)} ${r.added === 1 ? 'Weg' : 'Wege'} übernommen`, className: 'news',
-    html: why.length ? `<p>Nicht übernommen:</p>
-      <table class="health-table"><tbody>${why.map(([k, t]) => `<tr><td>${esc(t)}</td><td>${n(k)}</td></tr>`).join('')}</tbody></table>
-      ${r.denied ? `<p class="perm-hint"><span class="msr">info</span> In Health Connect WMap antippen, die Trainingsrouten auf „Immer erlauben“ stellen
-        und dann noch einmal auf „Aus Health Connect“ tippen – übernommen wird nur, was fehlt.</p>` : ''}` : '<p>Alles da.</p>',
-    buttons: [
-      ...(r.denied ? [{ value: 'settings', label: 'Health Connect öffnen', icon: 'settings' }] : []),
-      { value: 'ok', label: 'OK', primary: true },
-    ],
-  });
-  if (done === 'settings') healthSettings('health').catch((err) => toast(err.message ?? String(err)));
-}
-
 content.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
   if (e.target.matches('tr[data-id]')) select(e.target.dataset.id, { push: true });
@@ -386,10 +295,6 @@ content.addEventListener('change', async (e) => {
         n += 1;
       }
       toast(n ? `${n} ${n === 1 ? 'Tour' : 'Touren'} importiert – mit Originalverlauf` : 'In der Datei war keine Tour');
-    } else {
-      const f = inp.files[0];
-      n = /\.zip$/i.test(f.name) || f.type === 'application/zip' ? await restoreZip(f) : await restore(await f.text());
-      toast(`${n} Einträge aus der Sicherung übernommen`);
     }
   } catch (err) { toast(err.message); }
   inp.value = '';
@@ -863,3 +768,4 @@ addEventListener('wmap:folder', async () => {
 await load();
 route();
 fitView();
+autoSync();

@@ -9,6 +9,9 @@
  *   Ereignis „wmap:theme“     { dark } – bei jedem Wechsel, auch wenn das
  *                             System umschaltet oder ein anderer Tab wählt
  */
+// Weblinks in der App über WMap öffnen (jede Seite lädt theme.js)
+import './links.js';
+
 const KEY = 'wmap.theme';
 const system = matchMedia('(prefers-color-scheme: dark)');
 let last = null;

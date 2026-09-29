@@ -18,6 +18,7 @@ import { account, upload, changesetUrl, noteUrl } from './api.js';
 import { countOsm } from './stats.js';
 import { esc } from '../core/geo.js';
 import { hoursField, mountHours } from './hours-editor.js';
+import { openLink } from '../core/links.js';
 
 /** Arten zum Eintragen – Unternehmen und Veranstaltungsorte */
 const PLACE_TYPES = [
@@ -77,7 +78,7 @@ async function send({ edits = [], creates = [], note = null }, comment, toast, k
     if (r.conflicts?.length) { toast('Inzwischen hat jemand anderes das geändert – bitte neu laden'); return false; }
     countOsm(kind, note ? 'hinweis' : 'karte');
     const link = r.changeset ? changesetUrl(r.changeset) : r.notes?.[0]?.id ? noteUrl(r.notes[0].id) : null;
-    toast(note ? 'Hinweis gesendet – danke!' : 'In OpenStreetMap eingetragen – danke!', link ? { action: { label: 'Ansehen', run: () => window.open(link, '_blank', 'noopener') } } : undefined);
+    toast(note ? 'Hinweis gesendet – danke!' : 'In OpenStreetMap eingetragen – danke!', link ? { action: { label: 'Ansehen', run: () => openLink(link) } } : undefined);
     return true;
   } catch (err) {
     toast(`Ging nicht: ${err.message}`);

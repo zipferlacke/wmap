@@ -236,14 +236,26 @@ body.readonly {
     small { color: var(--muted); font-size: var(--fs-200); }
 }
 
+/* Oben in Meine Touren: Tour planen / Aufzeichnen und GPX importieren */
 .wege-tools {
     display: flex;
     flex-wrap: wrap;
     gap: .5rem;
-    padding-top: .5rem;
-    border-top: 1px solid var(--line);
-    > .button { flex: 1 1 12rem; justify-content: center; cursor: pointer; }
-    .muted { flex-basis: 100%; color: var(--muted); font-size: var(--fs-200); }
+    > .button { flex: 1 1 9rem; justify-content: center; cursor: pointer; background: var(--surface-2); }
+}
+/* Unten: Hinweis auf „Sicherung & Abgleich“ */
+.wege-sync-hint {
+    display: flex; align-items: center; gap: .6rem;
+    margin-top: .25rem;
+    padding: .65rem .75rem;
+    border: 1px dashed var(--line);
+    border-radius: .8rem;
+    color: var(--muted);
+    font-size: var(--fs-200);
+    text-decoration: none;
+    > .msr { flex-shrink: 0; color: var(--route); }
+    strong { color: var(--route); }
+    &:hover { background: var(--surface-2); }
 }
 
 /* ── Geplant: Leiste, bekannte Touren ─────────────────────────────────────── */
@@ -417,15 +429,30 @@ body.wege-page { overflow: hidden; }
 
 .wege-search { position: sticky; top: 0; z-index: 2; box-shadow: 0 0 0 .4rem var(--surface); }
 
+/* Jahr (bzw. Gruppe) als Aufklapp-Zeile – mit Pfeil, damit man sieht, dass sie aufgeht */
 .wege-year {
+    & + .wege-year { margin-top: .4rem; }
     summary {
         display: flex; align-items: center; gap: .5rem;
-        padding: .45rem .25rem;
+        padding: .55rem .6rem;
+        border-radius: .7rem;
+        background: var(--surface-2);
         cursor: pointer;
         list-style: none;
+        user-select: none;
         i { width: .8rem; height: .8rem; border-radius: 50%; flex-shrink: 0; }
+        strong { font-size: var(--fs-400); }
         small { color: var(--muted); font-size: var(--fs-100); margin-left: auto; }
+        &::after {
+            content: "expand_more";
+            font-family: 'Material Symbols Rounded';
+            font-size: 1.4rem; line-height: 1;
+            color: var(--muted);
+            transition: rotate .2s;
+        }
+        &:hover { background: color-mix(in srgb, var(--route) 10%, var(--surface-2)); }
     }
+    &[open] > summary { border-radius: .7rem .7rem 0 0; &::after { rotate: 180deg; } }
     summary::-webkit-details-marker { display: none; }
 }
 

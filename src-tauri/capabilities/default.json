@@ -6,7 +6,9 @@
     "main"
   ],
   "permissions": [
-    "core:default"
+    "core:default",
+    "folder:default",
+    "browser:default"
   ],
   "remote": {
     "urls": [

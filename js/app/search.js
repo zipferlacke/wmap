@@ -1,5 +1,6 @@
 /**
- * Suche oben: Vorschläge, Zuletzt genutzt, Gemerkt (Lesezeichen, Zuhause/Arbeit).
+ * Suche oben: Vorschläge, Zuletzt genutzt, Lesezeichen (Zuhause, Arbeit, eigene
+ * Namen) – die stehen immer ganz oben, beim Tippen die passenden.
  */
 import { PROFILES } from '../core/config.js';
 import * as geocode from '../services/geocode.js';
@@ -116,15 +117,21 @@ export async function placeSuggestions(text, onPick, { withCategory = true, extr
 /* ── Zuletzt genutzt ──────────────────────────────────────────────────────── */
 
 const RECENT_SECTION = 'Zuletzt genutzt';
-const SAVED_SECTION = 'Gemerkt';
+const SAVED_SECTION = 'Lesezeichen';
+
+const fold = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ß/g, 'ss');
 
 /**
  * Zuhause, Arbeit und Lesezeichen als Vorschläge – ganz oben. Bei Bus & Bahn
- * kommen die gemerkten Haltestellen vor die übrigen Lesezeichen.
+ * kommen die gemerkten Haltestellen vor die übrigen Lesezeichen. Mit `text`
+ * nur die, deren Name (oder Ort) dazu passt.
  */
-function savedItems(onPlace) {
+export function savedItems(onPlace, text = '') {
   const order = PROFILES[state.profile]?.transit && state.mode === 'route' ? ['home', 'work', 'stop', 'fav'] : ['home', 'work', 'fav', 'stop'];
-  return places.all().sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind)).slice(0, 8).map((p) => ({
+  const words = fold(text).split(/\s+/).filter(Boolean);
+  const hit = (p) => words.every((w) => fold(`${p.name} ${p.label} ${PLACE_KINDS[p.kind]?.label ?? ''}`).includes(w));
+  return places.all().filter((p) => !words.length || hit(p))
+    .sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind)).slice(0, words.length ? 5 : 12).map((p) => ({
     section: SAVED_SECTION, icon: PLACE_KINDS[p.kind]?.icon ?? 'star', title: p.name,
     subtitle: [p.kind === 'home' || p.kind === 'work' ? '' : PLACE_KINDS[p.kind]?.label, p.label].filter(Boolean).join(' · '),
     run: () => onPlace({ type: 'Feature', geometry: { type: 'Point', coordinates: p.point }, properties: { name: p.name } }),
@@ -134,7 +141,8 @@ function savedItems(onPlace) {
 /**
  * Merken: ein Tipp legt ein Lesezeichen an, noch einer nimmt es weg – für
  * Orte und Haltestellen gleich. Haltestellen stehen bei Bus & Bahn zuerst.
- * Die Meldung bietet an, das Lesezeichen als Zuhause oder Arbeit zu nehmen.
+ * Die Meldung bietet „Benennen“ an: eigener Name („Oma“, „Verein“ …) oder
+ * Zuhause bzw. Arbeit.
  */
 export function togglePlace(f, point, title, subtitle) {
   const had = places.find(point);
@@ -143,26 +151,46 @@ export function togglePlace(f, point, title, subtitle) {
   places.save({ kind: tags && isStop(tags) ? 'stop' : 'fav', name: title, label: subtitle, point, ifopt: tags?.['ref:IFOPT'] ?? '' });
   paintPlaceActions();
   toast('Als Lesezeichen gemerkt – steht in Suche und Routenplanung ganz oben', {
-    action: {
-      label: 'Zuhause / Arbeit',
-      run: async () => {
-        const v = await ask({
-          icon: 'bookmark', title: 'Lesezeichen als …', text: title,
-          buttons: [{ value: 'home', label: 'Zuhause', icon: 'home' }, { value: 'work', label: 'Arbeit', icon: 'work', primary: true }],
-        });
-        if (!v) return;
-        const mine = places.find(point);
-        if (mine) places.remove(mine.id);
-        places.save({ kind: v, name: PLACE_KINDS[v].label, label: title, point });
-        toast(`Als „${PLACE_KINDS[v].label}“ gemerkt`);
-        paintPlaceActions();
-      },
-    },
+    action: { label: 'Benennen', run: () => nameBookmark(point, title) },
   });
 }
 
+/** Passende Lesezeichen vor die Suchergebnisse – die bekommen dann eine eigene Überschrift */
+export function withSaved(saved, found) {
+  if (!found) return saved.length ? saved : found;
+  return saved.length ? [...saved, ...found.map((x) => ({ ...x, section: x.section ?? 'Suchergebnisse' }))] : found;
+}
+
+/** Lesezeichen benennen: eigener Name, Zuhause oder Arbeit */
+async function nameBookmark(point, title) {
+  const mine = places.find(point);
+  if (!mine) return;
+  const v = await ask({
+    icon: 'bookmark', title: 'Lesezeichen benennen', className: 'stacked',
+    html: `<label class="bm-name"><span>Name</span><input type="text" value="${esc(mine.name)}" maxlength="60" placeholder="z. B. Oma, Verein, Lieblingsbäcker"></label>
+      <p class="muted">${esc(title)}</p>`,
+    buttons: [
+      { value: 'name', label: 'Speichern', icon: 'check', primary: true },
+      { value: 'home', label: 'Als Zuhause', icon: 'home' },
+      { value: 'work', label: 'Als Arbeit', icon: 'work' },
+    ],
+    read: (dlg) => ({ name: dlg.querySelector('.bm-name input').value.trim() }),
+  });
+  if (!v) return;
+  if (v === 'home' || v === 'work') {
+    places.remove(mine.id);
+    places.save({ kind: v, name: PLACE_KINDS[v].label, label: title, point });
+    toast(`Als „${PLACE_KINDS[v].label}“ gemerkt`);
+  } else if (v.name) {
+    // Der eigene Name steht oben, der eigentliche Ort darunter
+    places.rename(mine.id, v.name, mine.label || (v.name !== title ? title : ''));
+    toast(`Gemerkt als „${v.name}“`);
+  }
+  paintPlaceActions();
+}
+
 /** Einträge aus dem Verlauf als Vorschläge. `onPlace` bekommt das Photon-Feature. */
-function recentItems(onPlace, kinds = ['place', 'category', 'route']) {
+export function recentItems(onPlace, kinds = ['place', 'category', 'route']) {
   return recent.list(kinds).slice(0, 7).map((e) => {
     if (e.kind === 'place') {
       return { section: RECENT_SECTION, icon: e.icon ?? 'history', title: e.title, subtitle: e.subtitle, run: () => onPlace(e.feature) };
@@ -209,7 +237,7 @@ const updateSearchSuggestions = debounce(async () => {
   const text = q.value.trim();
   const items = text.length < 2
     ? [...savedItems((f) => showPlace(f)), ...discoverItems(), ...recentItems((f) => showPlace(f))]
-    : await placeSuggestions(q.value, (f) => showPlace(f));
+    : withSaved(savedItems((f) => showPlace(f), text), await placeSuggestions(q.value, (f) => showPlace(f)));
   if (items && document.activeElement === q) suggest.show(items);
 }, 160);
 

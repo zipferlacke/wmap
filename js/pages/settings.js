@@ -12,7 +12,6 @@ import { OSM_AUTH } from '../core/config.js';
 import { esc } from '../core/geo.js';
 import { navSettings } from '../nav/navigation.js';
 import { historySetting } from '../data/tracks.js';
-import { mountFolder } from '../data/folder.js';
 import { theme } from '../core/theme.js';
 import { mountAppBar } from '../ui/appbar.js';
 import { dataSaver } from '../map/map.js';
@@ -107,13 +106,12 @@ const render = () => {
     <section>
       <h3>Daten</h3>
       ${toggle('history', 'Fahrten merken',
-        'Navigierte Strecken landen unter Meine Touren → Aufgezeichnet – nur auf diesem Gerät, über Jahre. Mit Sicherungsdatei auf ein anderes Gerät.',
+        'Navigierte Strecken landen unter Aufgezeichnete Touren – auf diesem Gerät, über Jahre. Auf andere Geräte über Sicherung & Abgleich.',
         historySetting.get())}
-      <div class="settings-folder"></div>
+      <a class="button settings-row" href="./sync.html"><span class="msr">sync</span> Sicherung &amp; Abgleich – Ordner, Health Connect, ZIP</a>
       <a class="button settings-row" href="./wege.html"><span class="msr">timeline</span> Aufgezeichnete Wege ansehen</a>
       <button type="button" class="button settings-row" data-act="history"><span class="msr">history</span> Suchverlauf löschen</button>
     </section>`;
-  mountFolder(root.querySelector('.settings-folder'), { toast });
   // Aus „Ort eintragen/bearbeiten“ ohne Konto: gleich zum OSM-Konto
   if (location.hash === '#osm' && !jumped) {
     jumped = true;

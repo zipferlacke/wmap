@@ -3,12 +3,13 @@
  *
  *   Verbindungen   Bus & Bahn von A nach B zu einer Zeit, mit allen
  *                  Abschnitten – unter Meine Touren → Verbindungen
- *   Orte           Zuhause, Arbeit und Lesezeichen (Haltestellen, Orte) –
- *                  in der Suche und der Routenplanung ganz oben
+ *   Orte           Zuhause, Arbeit und Lesezeichen (Haltestellen, Orte, mit
+ *                  eigenem Namen) – in der Suche und Routenplanung ganz oben
  *
- * Liegt im Browser (wmap.saved). Mit verbundenem Ordner gleicht data/folder.js es
- * mit der Datei „WMap/Gemerkt.json“ ab: je Eintrag gewinnt das Neuere,
- * Gelöschtes merkt sich eine Liste (`deleted`), damit es nicht wiederkommt.
+ * Liegt im Browser (wmap.saved). Mit verbundenem Ordner gleicht data/folder.js
+ * ab: jede Verbindung als eigene Datei unter „Bus & Bahn/“ (wie ein Weg),
+ * die Orte in „Lesezeichen.json“ – je Eintrag gewinnt das Neuere, Gelöschtes
+ * merkt sich eine Liste (`deleted`), damit es nicht wiederkommt.
  */
 import { local } from './store.js';
 
@@ -36,7 +37,10 @@ function remove(listKey, id) {
   const d = read();
   d[listKey] = d[listKey].filter((x) => x.id !== id);
   d.deleted[id] = Date.now();
-  write(d);
+  local.set(KEY, d);
+  dispatchEvent(new CustomEvent('wmap:saved'));
+  // Verbindungen sind im Ordner eigene Dateien – der Abgleich muss wissen, welche
+  dispatchEvent(new CustomEvent('wmap:data', { detail: { kind: listKey === 'connections' ? 'conn' : 'saved', id, removed: listKey === 'connections' } }));
 }
 
 export const connections = {
@@ -63,12 +67,23 @@ export const connections = {
     return c;
   },
   remove: (id) => remove('connections', id),
+  /** Aus dem Ordner (data/folder.js) – ohne erneuten Abgleich */
+  putQuiet(c) {
+    const d = read();
+    d.connections = [...d.connections.filter((x) => x.id !== c.id), c];
+    write(d, { sync: false });
+  },
+  removeQuiet(id) {
+    const d = read();
+    d.connections = d.connections.filter((x) => x.id !== id);
+    write(d, { sync: false });
+  },
 };
 
 export const places = {
   all: () => read().places,
   byKind: (kind) => read().places.filter((p) => p.kind === kind),
-  /** Zuhause/Arbeit gibt es nur einmal – neu setzen ersetzt */
+  /** Zuhause/Arbeit gibt es nur einmal – neu setzen ersetzt. `name` darf frei sein („Oma“, „Verein“ …) */
   save({ kind = 'fav', name, label = '', point, ifopt = '' }) {
     const d = read();
     const at = (p) => Math.abs(p.point[0] - point[0]) < 1e-5 && Math.abs(p.point[1] - point[1]) < 1e-5;
@@ -81,6 +96,14 @@ export const places = {
   find: (point, kind = null) => read().places.find((p) => (!kind || p.kind === kind)
     && Math.abs(p.point[0] - point[0]) < 1e-4 && Math.abs(p.point[1] - point[1]) < 1e-4) ?? null,
   remove: (id) => remove('places', id),
+  rename(id, name, label = null) {
+    const d = read();
+    const p = d.places.find((x) => x.id === id);
+    if (!p) return null;
+    Object.assign(p, { name, ...(label !== null ? { label } : {}), updated: Date.now() });
+    write(d);
+    return p;
+  },
 };
 
 function thin(coords, max) {
@@ -91,7 +114,32 @@ function thin(coords, max) {
 
 /* ── Abgleich mit dem Ordner (data/folder.js) ─────────────────────────────────── */
 
-/** Stand des Ordners (JSON-Text oder null) mit dem eigenen zusammenführen → { text, changed } */
+const mergeBy = (deleted) => (a, b) => {
+  const by = new Map();
+  for (const x of [...a, ...b]) if (!deleted[x.id] && (!by.has(x.id) || (x.updated ?? 0) > (by.get(x.id).updated ?? 0))) by.set(x.id, x);
+  return [...by.values()];
+};
+
+/**
+ * Lesezeichen.json (JSON-Text oder null) mit den eigenen Orten zusammenführen
+ * → { text, changed (Datei neu schreiben) }
+ */
+export function mergePlaces(text) {
+  const mine = read();
+  let theirs = { places: [], deleted: {} };
+  try { if (text) theirs = { ...theirs, ...JSON.parse(text) }; } catch { /* kaputte Datei: neu schreiben */ }
+  const deleted = { ...theirs.deleted, ...mine.deleted };
+  for (const [id, at] of Object.entries(deleted)) if (Date.now() - at > 365 * 864e5) delete deleted[id];
+  const places = mergeBy(deleted)(mine.places, theirs.places ?? []);
+  const ids = new Set([...mine.places, ...(theirs.places ?? [])].map((x) => x.id));
+  const next = JSON.stringify({ app: 'WMap', places, deleted: Object.fromEntries(Object.entries(deleted).filter(([id]) => ids.has(id))) }, null, 1);
+  if (JSON.stringify(places) !== JSON.stringify(mine.places) || JSON.stringify(deleted) !== JSON.stringify(mine.deleted)) {
+    write({ ...mine, places, deleted }, { sync: false });
+  }
+  return { text: next, changed: next !== text };
+}
+
+/** Alte „Gemerkt.json“ (bis 1.0: Verbindungen und Orte in einer Datei) übernehmen */
 export function mergeSaved(text) {
   const mine = read();
   let theirs = { connections: [], places: [], deleted: {} };

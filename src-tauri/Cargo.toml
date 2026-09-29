@@ -27,6 +27,10 @@ tauri-plugin-log = "2"
 tauri-plugin-deep-link = "2"
 # Trainings und Routen aus Health Connect (nur Android tut es etwas; eigenes Plugin)
 tauri-plugin-health = { path = "plugins/health" }
+# Ordner verbinden: Wege, Touren, Lesezeichen als Dateien (eigenes Plugin)
+tauri-plugin-folder = { path = "plugins/folder" }
+# Weblinks über der App öffnen – Leiste mit ✕ und „Im Browser öffnen“ (eigenes Plugin)
+tauri-plugin-browser = { path = "plugins/browser" }
 
 # Rechner: ein Klick auf einen geo:-Link bei offener App startet keine zweite,
 # sondern gibt den Link an das offene Fenster

@@ -60,6 +60,7 @@ body.dash-page { height: auto; overflow: visible; overflow-x: clip; }
     small { color: var(--muted); font-size: var(--fs-200); max-width: 16rem; }
     em { font-style: normal; font-weight: 600; font-size: var(--fs-200); color: var(--route); margin-top: .3rem; }
     &.main { background: var(--route); color: #fff; .dash-icon, em { color: #fff; } small { color: rgb(255 255 255 / .85); } .dash-bg { color: #fff; opacity: .16; } }
+    &.warn em { color: light-dark(#c92a2a, #ff8787); }
 }
 @media (min-width: 701px) { .dash-tile.main { grid-column: span 2; } }
 

@@ -57,3 +57,23 @@
 }
 .survey-empty .spin { animation: spin 1s linear infinite; vertical-align: middle; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Sicherung & Abgleich (pages/sync.js) */
+.sync {
+    h3 { display: flex; align-items: center; gap: .4rem; .msr { color: var(--route); font-size: 1.25rem; } }
+    .sync-status {
+        display: flex; align-items: flex-start; gap: .45rem; margin: 0;
+        font-size: var(--fs-200);
+        > .msr { flex-shrink: 0; font-size: 1.15rem; color: var(--muted); }
+        &.busy > .msr { color: var(--route); animation: spin 1.2s linear infinite; }
+        &.warn > .msr { color: #e8590c; }
+        &.error { color: light-dark(#c92a2a, #ff8787); > .msr { color: inherit; } }
+    }
+    .sync-actions { display: flex; flex-wrap: wrap; gap: .5rem; .button { cursor: pointer; } }
+    .sync-tree {
+        font-size: var(--fs-200);
+        summary { cursor: pointer; color: var(--route); }
+        pre { margin: .4rem 0; padding: .6rem .7rem; border-radius: .6rem; background: var(--surface-2); overflow-x: auto; font-size: var(--fs-100); line-height: 1.5; }
+    }
+    .sync-note { display: flex; gap: .4rem; align-items: flex-start; .msr { font-size: 1.1rem; } }
+}

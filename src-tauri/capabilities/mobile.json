@@ -14,7 +14,9 @@
     "geolocation:default",
     "geolocation:allow-check-permissions",
     "geolocation:allow-request-permissions",
-    "health:default"
+    "health:default",
+    "folder:default",
+    "browser:default"
   ],
   "remote": {
     "urls": [

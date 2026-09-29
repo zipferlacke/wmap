@@ -17,8 +17,10 @@ body.flying :is(#search, #sheet, .appnav, .maplibregl-ctrl-top-right, .maplibreg
 
 /* ── Ebenen-Menü (layer-menu.js) ──────────────────────────────────────────── */
 .layer-ctrl button .msr { font-size: 1.4rem; line-height: var(--ctrl-size); }
+/* Über den Seitenleisten aus wuefl-libs (userDialog, z-index 1000) – sonst lag
+   es in Entdecken und Meine Touren darunter */
 .layer-menu {
-    position: fixed; z-index: 25;
+    position: fixed; z-index: 1001;
     top: calc(.75rem + var(--safe-top)); right: 3.4rem;
     width: min(22rem, calc(100vw - 4.5rem));
     max-height: calc(100dvh - 1.5rem - var(--safe-top));

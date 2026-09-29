@@ -1,0 +1,20 @@
+[package]
+name = "tauri-plugin-folder"
+version = "0.1.0"
+description = "WMap: einen Ordner verbinden (Android: Speicherzugriff des Systems, Rechner: Ordnerdialog) und darin Dateien lesen und schreiben"
+edition = "2021"
+rust-version = "1.77.2"
+links = "tauri-plugin-folder"
+publish = false
+
+[dependencies]
+tauri = { version = "2.11.3", features = [] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Rechner: Ordnerdialog (wie tauri-plugin-dialog)
+[target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
+rfd = { version = "0.16", default-features = false, features = ["gtk3", "common-controls-v6"] }
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

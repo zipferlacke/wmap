@@ -3,7 +3,7 @@ import sys
 from common import Browser
 
 PAGES = ['index.html', 'dashboard.html', 'wege.html', 'wege.html?tab=geplant', 'wege.html?tab=bahn', 'tour.html',
-         'entdecken.html', 'plugins.html', 'settings.html', 'ebenen.html', 'deleteKonto.html', 'offline.html',
+         'entdecken.html', 'plugins.html', 'settings.html', 'ebenen.html', 'deleteKonto.html', 'offline.html', 'sync.html',
          'offline.html?neu', 'index.html?from=9.9338,51.5374&to=9.4467,51.3130&profile=transit']
 
 with Browser() as b:

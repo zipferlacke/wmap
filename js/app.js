@@ -15,6 +15,7 @@ import { share, placeUrl, readRoute, requestUrl, myName, clock } from './ui/shar
 import { ask, toast } from './ui/dialogs.js';
 import { parseGeoUri } from './core/geo-uri.js';
 import { appNews } from './ui/news.js';
+import { autoSync } from './data/auto-sync.js';
 import { $, debounce, freshView, map, myPosition, q, state } from './app/core.js';
 import { fly } from './app/map-clicks.js';
 import { openSurvey } from './app/mitmachen.js';
@@ -237,4 +238,6 @@ if (map.loaded()) resumeNav(); else map.once('load', resumeNav);
 map.once('idle', () => {
   const linked = /[?&](view|q|from|to|reach|action|ort|route|anfrage|geo|sim)\b/.test(location.search);
   appNews({ dialogs: !linked && !nav.active });
+  // Ordner und Health Connect still abgleichen (wenn eingeschaltet) – nicht während einer Navigation
+  if (!nav.active) autoSync();
 });

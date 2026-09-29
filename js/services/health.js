@@ -13,12 +13,15 @@
  *                      übernommene (gleiche ID oder gleicher Weg) nicht doppelt;
  *                      dazu die Messwerte (Puls, Frequenz, Leistung) je Punkt
  *   fillHealthValues() Messwerte für früher übernommene Wege nachladen
+ *   syncHealth()       Neues holen – von Hand oder automatisch beim Öffnen
+ *                      (healthSync.auto, Seite „Sicherung & Abgleich“)
  *
  * Routen fremder Apps gibt Health Connect nur mit „Immer erlauben“ ohne
  * Rückfrage heraus; sonst fragt es je Training nach. Lehnt man einmal ab,
  * fragt der Import für den Rest nicht mehr und zählt sie nur.
  */
 import { tracks, buildTrack, guessProfile, sameTrack, defaultName } from '../data/tracks.js';
+import { local } from '../data/store.js';
 
 const core = window.__TAURI__?.core;
 export const healthAvailable = !!core && /Android/i.test(navigator.userAgent);
@@ -139,12 +142,13 @@ export async function knownHealthIds() {
  * nicht ab: die übrigen Routen mit Nachfrage werden nur gezählt (denied),
  * die ohne Nachfrage weiter übernommen.
  * → { added, known, dup, empty, denied }; onProgress(i, n)
+ * `ask: false`: nie nachfragen (automatisch) – Routen mit Rückfrage zählen als denied
  */
-export async function importHealth(sessions, { onProgress } = {}) {
+export async function importHealth(sessions, { onProgress, ask: askFirst = true } = {}) {
   const have = await tracks.all();
   const seen = new Set(have.map((t) => t.source?.health).filter(Boolean));
   const out = { added: 0, known: 0, dup: 0, empty: 0, denied: 0 };
-  let ask = true;
+  let ask = askFirst;
   for (const [i, s] of sessions.entries()) {
     onProgress?.(i, sessions.length);
     if (s.route === 'none') continue;
@@ -251,4 +255,49 @@ export async function fillHealthValues({ onProgress } = {}) {
     if (await refreshHealthValues(t)) n += 1;
   }
   return n;
+}
+
+/* ── Abgleich: von Hand oder automatisch ──────────────────────────────────── */
+
+const LAST = 'wmap.health.sync';     // { at, added, denied, error }
+const AUTO = 'wmap.health.auto';
+
+export const healthSync = {
+  /** Beim Öffnen von WMap selbst Neues holen (höchstens alle 30 min) */
+  get auto() { return local.get(AUTO, false) === true; },
+  set auto(on) { local.set(AUTO, !!on); },
+  /** Letzter Abgleich: { at, added, denied, error } oder null */
+  last: () => local.get(LAST, null),
+};
+
+/**
+ * Neue Trainings mit Route übernehmen und Messwerte nachladen.
+ * `quiet`: ohne Rückfragen – fehlt die Freigabe, steht es als Fehler da.
+ * → { added, denied, values }
+ */
+export async function syncHealth({ quiet = false, onProgress } = {}) {
+  try {
+    const st = await healthStatus();
+    if (!st.available) throw new Error(st.reason);
+    if (!st.read) throw new Error('Health Connect ist noch nicht freigegeben');
+    const { sessions } = await call('sessions', { days: 3650 });
+    const known = await knownHealthIds();
+    const fresh = sessions.filter((s) => s.route !== 'none' && !known.has(s.id)).sort((a, b) => b.start - a.start);
+    const r = await importHealth(fresh, { onProgress, ask: !quiet });
+    await fillHealthTypes(sessions);
+    const values = await fillHealthValues();
+    const out = { at: Date.now(), added: r.added, denied: r.denied, error: null };
+    local.set(LAST, out);
+    return { ...r, values };
+  } catch (err) {
+    local.set(LAST, { ...(healthSync.last() ?? {}), at: Date.now(), error: String(err?.message ?? err) });
+    throw err;
+  }
+}
+
+/** Beim Öffnen: wenn eingeschaltet und der letzte Abgleich über 30 min her ist */
+export async function autoHealthSync() {
+  if (!healthAvailable || !healthSync.auto) return null;
+  if (Date.now() - (healthSync.last()?.at ?? 0) < 30 * 60000) return null;
+  return syncHealth({ quiet: true }).catch(() => null);
 }

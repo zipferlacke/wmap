@@ -1,0 +1,18 @@
+[package]
+name = "tauri-plugin-browser"
+version = "0.1.0"
+description = "WMap: Weblinks in der App öffnen – mit Leiste (✕ links, im Browser öffnen rechts)"
+edition = "2021"
+rust-version = "1.77.2"
+links = "tauri-plugin-browser"
+publish = false
+
+[dependencies]
+tauri = { version = "2.11.3", features = [] }
+
+# Rechner: Standardbrowser öffnen
+[target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
+open = "5"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

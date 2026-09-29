@@ -1,0 +1,205 @@
+## Default Permission
+
+Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, löschen – nur im gewählten Ordner
+
+#### This default permission set includes the following:
+
+- `allow-pick`
+- `allow-info`
+- `allow-list`
+- `allow-read`
+- `allow-write`
+- `allow-remove`
+- `allow-disconnect`
+
+## Permission Table
+
+<table>
+<tr>
+<th>Identifier</th>
+<th>Description</th>
+</tr>
+
+
+<tr>
+<td>
+
+`folder:allow-disconnect`
+
+</td>
+<td>
+
+Enables the disconnect command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:deny-disconnect`
+
+</td>
+<td>
+
+Denies the disconnect command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:allow-info`
+
+</td>
+<td>
+
+Enables the info command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:deny-info`
+
+</td>
+<td>
+
+Denies the info command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:allow-list`
+
+</td>
+<td>
+
+Enables the list command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:deny-list`
+
+</td>
+<td>
+
+Denies the list command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:allow-pick`
+
+</td>
+<td>
+
+Enables the pick command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:deny-pick`
+
+</td>
+<td>
+
+Denies the pick command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:allow-read`
+
+</td>
+<td>
+
+Enables the read command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:deny-read`
+
+</td>
+<td>
+
+Denies the read command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:allow-remove`
+
+</td>
+<td>
+
+Enables the remove command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:deny-remove`
+
+</td>
+<td>
+
+Denies the remove command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:allow-write`
+
+</td>
+<td>
+
+Enables the write command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:deny-write`
+
+</td>
+<td>
+
+Denies the write command without any pre-configured scope.
+
+</td>
+</tr>
+</table>
