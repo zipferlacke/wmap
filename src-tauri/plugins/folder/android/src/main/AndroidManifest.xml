@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ordner verbinden: keine Rechte nötig – der Ordner wird über den
+     Speicherzugriff des Systems gewählt, die Freigabe gilt nur für ihn. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

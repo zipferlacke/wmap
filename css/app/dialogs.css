@@ -191,3 +191,44 @@ body.recording #search-here, body.navigating .rec { display: none !important; }
     > span:not(.msr) { flex: 1; }
     .button { flex: none; }
 }
+
+/* Health Connect: Überblick vor dem Übernehmen (pages/wege.js) */
+.health-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-200);
+    th, td { padding: .3rem .4rem; text-align: left; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 600; }
+    td .msr { font-size: 1.05rem; vertical-align: -.2rem; color: var(--route); }
+    td:not(:first-child), th:not(:first-child) { text-align: right; white-space: nowrap; }
+}
+.dialog.confirm.news h3 { margin: .4rem 0 0; font-size: var(--fs-300); }
+
+/* Berechtigungen (ui/permissions.js): je Recht Erklärung, Zustand, Knopf */
+.dialog.confirm.perms {
+    .perm-list { display: grid; gap: .7rem; }
+    .perm-item {
+        display: grid; gap: .4rem;
+        padding: .7rem .8rem;
+        border: 1px solid var(--line);
+        border-radius: .9rem;
+        h3 { display: flex; align-items: center; gap: .4rem; margin: 0; font-size: var(--fs-400); .msr { color: var(--route); } }
+        p { margin: 0; font-size: var(--fs-300); }
+        .button { justify-self: start; }
+        &.wanted { border-color: var(--route); box-shadow: 0 0 0 1px var(--route); }
+    }
+    .perm-state {
+        display: flex; align-items: center; gap: .35rem;
+        font-size: var(--fs-200) !important; font-weight: 600;
+        .msr { font-size: 1.15rem; }
+        &.granted { color: #2f9e44; }
+        &.coarse { color: #e8590c; }
+        &.prompt, &.off, &.none { color: var(--muted); }
+    }
+}
+/* Hinweis mit Symbol – auch im Überblick von Health Connect (pages/wege.js) */
+.dialog.confirm .perm-hint {
+    display: flex; gap: .4rem; align-items: flex-start;
+    color: var(--muted); font-size: var(--fs-200);
+    .msr { font-size: 1.1rem; color: var(--route); }
+}

@@ -1,5 +1,22 @@
 /* ── Einstellungen (settings.html) ────────────────────────────────────────── */
 
+/* Anleitung Plugin-Ordner (plugin-anleitung.html): Text, Ordnerbaum, Beispiele */
+.howto {
+    p, li { margin: 0; line-height: 1.5; }
+    ul, ol { margin: 0; padding-left: 1.2rem; display: grid; gap: .3rem; }
+    .muted { color: var(--muted); font-size: var(--fs-200); }
+    a { color: var(--route); }
+    code { font-family: ui-monospace, monospace; font-size: .92em; padding: 0 .25rem; border-radius: .3rem; background: var(--surface); }
+    pre {
+        margin: 0; padding: .7rem .8rem; border-radius: .7rem; background: var(--surface);
+        overflow-x: auto; font-size: var(--fs-100, .8rem); line-height: 1.45;
+        code { padding: 0; background: none; }
+    }
+    table { border-collapse: collapse; font-size: var(--fs-200); }
+    th, td { text-align: start; vertical-align: top; padding: .3rem .5rem .3rem 0; border-bottom: 1px solid var(--line); }
+    .table-wrap { overflow-x: auto; }
+}
+
 /* Konto löschen (deleteKonto.html): Liste mit Symbolen, roter Knopf */
 .delete-konto {
     p { margin: 0; line-height: 1.5; }
@@ -29,13 +46,18 @@
         small { color: var(--muted); font-size: var(--fs-100); }
         input { flex-shrink: 0; }
     }
-    .settings-row { justify-content: flex-start; width: 100%; }
+    /* Lange Knopftexte umbrechen statt über den Rand zu ragen */
+    .settings-row { justify-content: flex-start; width: 100%; white-space: normal; text-align: left; height: auto; min-height: 2.6rem; }
+    section, section > * { min-width: 0; }
+    .button { max-width: 100%; white-space: normal; text-align: left; }
     .settings-hint { margin: 0; font-size: var(--fs-200); color: var(--muted); strong { color: var(--text-color, inherit); } }
     .settings-select {
         display: flex; align-items: center; justify-content: space-between; gap: 1rem;
         span { display: grid; gap: .1rem; }
         small { color: var(--muted); font-size: var(--fs-100); }
         select { flex-shrink: 0; font: inherit; padding: .3rem .5rem; border-radius: .5rem; border: 1px solid var(--line, rgb(0 0 0 / .15)); background: var(--bg-input, transparent); color: inherit; }
+        /* Handy: Auswahl unter die Beschriftung – sonst wird der Text sehr schmal */
+        @media (max-width: 480px) { flex-direction: column; align-items: stretch; gap: .4rem; select { width: 100%; padding: .45rem .5rem; } }
     }
     .settings-account {
         display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem;
@@ -44,6 +66,7 @@
         background: var(--surface);
         font-size: var(--fs-200);
         p { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; }
+        p > span:not(.msr) { flex: 1 1 12rem; }
         .settings-error { flex-wrap: nowrap; align-items: flex-start; color: var(--muted); .msr { flex-shrink: 0; } }
     }
     .settings-dev {
@@ -57,3 +80,27 @@
 }
 .survey-empty .spin { animation: spin 1s linear infinite; vertical-align: middle; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Sicherung & Abgleich (pages/sync.js) */
+.sync {
+    h3 { display: flex; align-items: center; gap: .4rem; .msr { color: var(--route); font-size: 1.25rem; } }
+    .sync-status {
+        display: flex; align-items: flex-start; gap: .45rem; margin: 0;
+        font-size: var(--fs-200);
+        > .msr { flex-shrink: 0; font-size: 1.15rem; color: var(--muted); }
+        &.busy > .msr { color: var(--route); animation: spin 1.2s linear infinite; }
+        &.warn > .msr { color: #e8590c; }
+        &.error { color: light-dark(#c92a2a, #ff8787); > .msr { color: inherit; } }
+    }
+    .sync-actions { display: flex; flex-wrap: wrap; gap: .5rem; .button { cursor: pointer; } }
+    .sync-tree {
+        font-size: var(--fs-200);
+        summary { cursor: pointer; color: var(--route); }
+        pre { margin: .4rem 0; padding: .6rem .7rem; border-radius: .6rem; background: var(--surface-2); overflow-x: auto; font-size: var(--fs-100); line-height: 1.5; }
+    }
+    .sync-note { display: flex; gap: .4rem; align-items: flex-start; .msr { font-size: 1.1rem; } }
+}
+.sync .sync-progress {
+    height: .4rem; border-radius: 999px; overflow: hidden; background: var(--surface-2);
+    i { display: block; height: 100%; background: var(--route); transition: width .3s; }
+}

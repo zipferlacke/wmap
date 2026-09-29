@@ -1,0 +1,5 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = "Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, löschen – nur im gewählten Ordner"
+permissions = ["allow-pick", "allow-info", "allow-list", "allow-read", "allow-write", "allow-remove", "allow-disconnect"]

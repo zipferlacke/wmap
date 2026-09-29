@@ -84,6 +84,9 @@ if (pipSupported()) {
 }
 
 let navDestination = '';
+/** Gerade navigierte geplante Tour (app.js, „?tour=“) – wird immer aufgezeichnet */
+let tourNavigated = null;
+export const navTour = { set: (t) => { tourNavigated = t; } };
 $('.start-nav').addEventListener('click', async () => {
   const r = current();
   if (!r) return;
@@ -92,8 +95,13 @@ $('.start-nav').addEventListener('click', async () => {
   suggest.hide();
   closeSheet();
   if (!SIMULATING) trips.start({ profile: state.profile, destination: navDestination });
-  if (!SIMULATING && historySetting.get() && !recorder.active) {
-    recorder.start({ kind: 'nav', profile: state.profile, name: navDestination ? `Nach ${navDestination.split(',')[0]}` : '', from: state.waypoints[0]?.label ?? '', to: navDestination });
+  // Fahrten merken (Einstellung, Standard aus) – eine geplante Tour immer
+  if (!SIMULATING && (historySetting.get() || tourNavigated) && !recorder.active) {
+    recorder.start({
+      kind: 'nav', profile: state.profile,
+      name: tourNavigated?.name ?? (navDestination ? `Nach ${navDestination.split(',')[0]}` : ''),
+      from: state.waypoints[0]?.label ?? '', to: navDestination, keep: !!tourNavigated,
+    });
   }
   nav.start(r, { profile: state.profile, highways: prefs.highways, targets: state.points.slice(1) });
 });

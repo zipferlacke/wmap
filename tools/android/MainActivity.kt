@@ -10,15 +10,23 @@ import android.util.Rational
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 /**
  * Bild in Bild: Während einer Navigation geht WMap beim Verlassen (Home,
  * Rauswischen) von selbst ins Mini-Fenster – die ganze App, also Karte und
- * Anweisung. Die Seite schaltet das über window.WMapAndroid (js/pip.js).
+ * Anweisung. Die Seite schaltet das über window.WMapAndroid (js/nav/pip.js).
+ *
+ * Ränder: Die App zeichnet bis unter Statusleiste und Gestenleiste
+ * (edge-to-edge). Das WebView meldet dafür kein env(safe-area-inset-*) –
+ * darum gehen die echten Maße an die Seite (WMapAndroid.insets() und
+ * window.wmapInsets, ausgewertet in js/core/theme.js).
  */
 class MainActivity : TauriActivity() {
   private var web: WebView? = null
   @Volatile private var pipWanted = false
+  @Volatile private var insetsJson = "null"
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
@@ -28,9 +36,21 @@ class MainActivity : TauriActivity() {
   override fun onWebViewCreate(webView: WebView) {
     web = webView
     webView.addJavascriptInterface(Bridge(), "WMapAndroid")
+    // Nicht verbrauchen – Tauri und das WebView sehen die Ränder weiter
+    ViewCompat.setOnApplyWindowInsetsListener(window.decorView) { view, insets ->
+      val b = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+      val d = resources.displayMetrics.density
+      insetsJson = "{\"top\":${b.top / d},\"bottom\":${b.bottom / d},\"left\":${b.left / d},\"right\":${b.right / d}}"
+      web?.post { web?.evaluateJavascript("window.wmapInsets && window.wmapInsets($insetsJson)", null) }
+      ViewCompat.onApplyWindowInsets(view, insets)
+    }
+    ViewCompat.requestApplyInsets(window.decorView)
   }
 
   inner class Bridge {
+    /** Ränder in CSS-Pixeln: {top, bottom, left, right} – oder null, solange unbekannt */
+    @JavascriptInterface fun insets(): String = insetsJson
+
     /** Navigation läuft: beim Verlassen ins Bild in Bild */
     @JavascriptInterface fun setPip(on: Boolean) {
       pipWanted = on

@@ -6,6 +6,7 @@
  *                    Benutzer und Passwort (bleibt nur auf diesem Gerät)
  *   addOwnFiles()    GeoJSON-Dateien – einzeln oder ein ganzer Ordner
  *                    (<input webkitdirectory>, auch Unterordner)
+ *   Plugin-Ordner (mehrere, gemerkt, mit wmap-plugin.json): data/plugin-folders.js
  *
  * Neue Ebenen liegen gleich auf der Hauptkarte (onMain).
  */
@@ -82,3 +83,4 @@ export async function addOwnFiles(fileList, { index = 0 } = {}) {
   }
   return { added, failed };
 }
+

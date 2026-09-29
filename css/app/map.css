@@ -19,7 +19,7 @@
         font-size: .75rem;
         font-weight: 700;
     }
-    &.dest, &.place {
+    &.dest, &.place, &.found {
         width: auto;
         height: auto;
         background: none;
@@ -28,6 +28,8 @@
         filter: drop-shadow(0 1px 2px rgb(0 0 0 / .4));
         .msr { font-size: 2.4rem; font-variation-settings: 'FILL' 1; }
     }
+    /* Suchtreffer im Planer (noch nicht übernommen): blau, nicht wie das Ziel */
+    &.found { color: var(--route); cursor: default; }
     &.place { cursor: default; }
 }
 
@@ -69,6 +71,7 @@
 
     &.context {
         gap: 0;
+        .popup-title { padding: .1rem .25rem .35rem; }
         button {
             display: flex;
             align-items: center;
@@ -93,6 +96,10 @@
 .maplibregl-ctrl-top-right {
     @media (min-width: 701px) { top: 3.4rem; }
 }
+
+/* Eigener Standort: ruhiger Punkt – MapLibre lässt ihn sonst dauernd pulsieren
+   (soll „wird laufend verfolgt“ heißen, wirkt aber wie ein Blinken) */
+.maplibregl-user-location-dot::before { animation: none; display: none; }
 
 .floating-pill {
     position: fixed;

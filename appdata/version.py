@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""
+Versionsnummer überall eintragen – aus dem obersten Eintrag im Changelog
+von appdata/messages.json:
+
+    python3 appdata/version.py           eintragen, zeigt was sich ändert
+    python3 appdata/version.py --pruefen nur prüfen (Rückgabe 1, wenn etwas abweicht)
+
+Ziele:
+    js/core/config.js           APP_VERSION (Anzeige, Neuigkeiten, minVersion)
+    src-tauri/tauri.conf.json   Version der App (Android: versionCode daraus)
+    src-tauri/Cargo.toml        Version des Rust-Pakets
+    src-tauri/Cargo.lock        dieselbe, damit Cargo nichts nachträgt
+
+git-release ruft das Skript vor dem Tag auf, wenn es da ist.
+"""
+import json
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def target_version():
+    log = json.loads((ROOT / 'appdata/messages.json').read_text(encoding='utf-8')).get('changelog') or []
+    if not log or not re.fullmatch(r'\d+\.\d+\.\d+', str(log[0].get('version', ''))):
+        sys.exit('messages.json: oberster Changelog-Eintrag ohne gültige Version (x.y.z)')
+    return log[0]['version']
+
+
+# Datei, Muster (Gruppe 1 = davor, Gruppe 2 = Version, Gruppe 3 = danach)
+TARGETS = [
+    ('js/core/config.js', r"(export const APP_VERSION = ')([^']+)(')"),
+    ('src-tauri/tauri.conf.json', r'(\n  "version": ")([^"]+)(")'),
+    ('src-tauri/Cargo.toml', r'(\[package\][^\[]*?\nversion = ")([^"]+)(")'),
+    ('src-tauri/Cargo.lock', r'(\nname = "wmap"\nversion = ")([^"]+)(")'),
+]
+
+
+def main():
+    check = '--pruefen' in sys.argv[1:]
+    version = target_version()
+    off = []
+    for rel, pattern in TARGETS:
+        path = ROOT / rel
+        if not path.exists():
+            continue
+        text = path.read_text(encoding='utf-8')
+        m = re.search(pattern, text)
+        if not m:
+            sys.exit(f'{rel}: Versionsstelle nicht gefunden')
+        if m.group(2) == version:
+            continue
+        off.append(f'{rel}: {m.group(2)} → {version}')
+        if not check:
+            path.write_text(text[:m.start(2)] + version + text[m.end(2):], encoding='utf-8')
+    if not off:
+        print(f'Version {version} steht überall.')
+        return 0
+    print(('Weicht ab:' if check else f'Version {version} eingetragen:') + '\n  ' + '\n  '.join(off))
+    return 1 if check else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

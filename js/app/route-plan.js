@@ -13,7 +13,7 @@ import { $, $$, afterLayout, current, debounce, map, markerEl, state } from './c
 import { placeWaypoint, removePlaceMarker } from './place.js';
 import { clearReach } from './reach.js';
 import { clearRoutes, computeRoutes, fitRoute, routeCtl } from './route-results.js';
-import { cancelSuggestions, keyNav, placeSuggestions, suggest } from './search.js';
+import { cancelSuggestions, keyNav, placeSuggestions, recentItems, savedItems, suggest, withSaved } from './search.js';
 import { back, closeAll, closeSheet, openSheet, remember, stack } from './views.js';
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -226,7 +226,7 @@ const updateRouteSuggestions = debounce(async (input, i) => {
   const onPlace = (f) => setWaypoint(i, placeWaypoint(f));
   const items = input.value.trim().length < 2
     ? [...extra, ...savedItems(onPlace), ...recentItems(onPlace, ['place'])]
-    : await placeSuggestions(input.value, onPlace, { withCategory: false, extra });
+    : withSaved(savedItems(onPlace, input.value), await placeSuggestions(input.value, onPlace, { withCategory: false, extra }));
   if (items && document.activeElement === input) suggest.show(items);
 }, 160);
 

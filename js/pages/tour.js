@@ -218,12 +218,37 @@ function renderMarkers() {
   hint.textContent = n === 0 ? 'Tippe in die Karte, um den Start zu setzen' : 'Und jetzt das nächste Ziel antippen';
 }
 
+/** Rundweg: Start und Ziel liegen aufeinander */
+const isRound = () => tour.points.length > 2 && distance(tour.points[0], tour.points.at(-1)) < 1;
+
+/**
+ * Punkt i zum Start: im Rundweg dreht sich die Runde (er wird Start und
+ * Ziel), sonst rückt er nach vorn und der Rest bleibt in seiner Folge.
+ */
+function makeStart(i) {
+  if (isRound()) {
+    const loop = tour.points.slice(0, -1);
+    const k = i % loop.length;
+    const r = loop.slice(k).concat(loop.slice(0, k));
+    tour.points = [...r, r[0].slice()];
+  } else {
+    const [p] = tour.points.splice(i, 1);
+    tour.points.unshift(p);
+  }
+}
+
+/** Menü am Punkt: entfernen, zum Start oder Ziel machen, Rundweg daraus */
 function pointPopup(i) {
   popup?.remove();
   const el = document.createElement('div');
   el.className = 'popup context';
+  const n = tour.points.length, round = isRound();
   const entries = [['delete', 'Punkt entfernen', () => change(() => tour.points.splice(i, 1))]];
-  if (i > 0) entries.push(['trip_origin', 'Hier starten', () => change(() => { tour.points = tour.points.slice(i).concat(tour.points.slice(0, i)); })]);
+  if (i === 0 && n > 1 && !round) entries.push(['sports_score', 'Auch als Ziel – Rundweg', () => change(() => tour.points.push(tour.points[0].slice()))]);
+  if (i > 0 && !(round && i === n - 1)) entries.push(['trip_origin', round ? 'Hier starten und enden' : 'Zum Start machen', () => change(() => makeStart(i))]);
+  if (i < n - 1 && !round) {
+    entries.push(['sports_score', 'Zum Ziel machen', () => change(() => { const [p] = tour.points.splice(i, 1); tour.points.push(p); })]);
+  }
   for (const [icon, text, fn] of entries) {
     const b = document.createElement('button');
     b.type = 'button';
@@ -238,6 +263,8 @@ map.on('click', (e) => {
   // Etappen-Modus: Tippen auf die Linie setzt ein Tagesende (auch bei geteilten Touren)
   if (stages.click(e)) return;
   if (readOnly || e.originalEvent?.target?.closest?.('.wp-marker')) return;
+  // Vorschau eines Suchtreffers offen: erst die schließen
+  if (found) { clearFound(); return; }
   // Nah an der Vorlage getippt: genau auf den Originalweg
   const p = snapPoint(e.lngLat.toArray(), e.point) ?? e.lngLat.toArray();
   // Auf die Linie getippt: dort einen Punkt einfügen statt hinten anhängen
@@ -252,24 +279,29 @@ map.on('click', (e) => {
   change(() => tour.points.push(p));
 });
 
-/* Ort suchen und als nächsten Punkt anhängen */
+/*
+ * Ort suchen: der Treffer kommt erst als Vorschau auf die Karte – mit Menü:
+ * anhängen, als Start, dort einfügen, wo er den kleinsten Umweg macht, oder
+ * verwerfen. Nichts landet ungefragt in der Tour.
+ */
 const searchInput = $('#tour-search');
 const results = $('.tour-search-results');
 let searchCtl = null;
+let found = null;           // { marker, popup } – der gerade gezeigte Treffer
 const runSearch = debounce(async () => {
   const q = searchInput.value.trim();
   searchCtl?.abort();
   if (q.length < 3) { results.hidden = true; return; }
   searchCtl = new AbortController();
   try {
-    const found = await geocode.search(q, { center: map.getCenter().toArray(), zoom: map.getZoom(), limit: 5, signal: searchCtl.signal });
-    results.innerHTML = found.map((f, i) => {
+    const hits = await geocode.search(q, { center: map.getCenter().toArray(), zoom: map.getZoom(), limit: 5, signal: searchCtl.signal });
+    results.innerHTML = hits.map((f, i) => {
       const d = geocode.describe(f);
-      return `<li><button type="button" class="button" data-i="${i}"><span class="msr">add_location_alt</span>
+      return `<li><button type="button" class="button" data-i="${i}"><span class="msr">location_on</span>
         <span><strong>${esc(d.title)}</strong>${d.subtitle ? `<small>${esc(d.subtitle)}</small>` : ''}</span></button></li>`;
     }).join('') || '<li class="muted">Nichts gefunden</li>';
     results.hidden = false;
-    results._found = found;
+    results._found = hits;
   } catch { /* abgebrochen */ }
 }, 300);
 searchInput.addEventListener('input', runSearch);
@@ -278,13 +310,61 @@ results.addEventListener('click', (e) => {
   const b = e.target.closest('button[data-i]');
   if (!b) return;
   const f = results._found[+b.dataset.i];
-  change(() => tour.points.push(f.geometry.coordinates.slice(0, 2)));
   searchInput.value = '';
   results.hidden = true;
-  toast(`„${geocode.describe(f).title}“ als ${tour.points.length === 1 ? 'Start' : `Punkt ${tour.points.length}`} gesetzt`);
-  // Zum gefundenen Ort, mittig im freien Teil der Karte
-  map.flyTo({ center: tour.points.at(-1), zoom: Math.max(map.getZoom(), 14), padding: viewPadding(), duration: 1200 });
+  showFound(f.geometry.coordinates.slice(0, 2), geocode.describe(f).title);
 });
+
+function clearFound() {
+  found?.popup.remove();
+  found?.marker.remove();
+  found = null;
+}
+
+/** Stelle mit dem kleinsten Umweg für einen neuen Punkt (zwischen zwei Punkten oder hinten) */
+function bestSlot(p) {
+  const pts = tour.points;
+  let best = pts.length, cost = pts.length ? distance(pts.at(-1), p) : 0;
+  for (let i = 1; i < pts.length; i += 1) {
+    const c = distance(pts[i - 1], p) + distance(p, pts[i]) - distance(pts[i - 1], pts[i]);
+    if (c < cost) { cost = c; best = i; }
+  }
+  return best;
+}
+
+function showFound(p, title) {
+  clearFound();
+  popup?.remove();
+  const el = document.createElement('div');
+  el.className = 'wp-marker found';
+  el.innerHTML = '<span class="msr">location_on</span>';
+  const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(p).addTo(map);
+  const box = document.createElement('div');
+  box.className = 'popup context';
+  const n = tour.points.length;
+  const entries = n === 0 ? [['trip_origin', 'Als Start setzen', () => tour.points.push(p)]] : [
+    ['add_location_alt', 'Als nächsten Punkt anhängen', () => tour.points.push(p)],
+    ...(n >= 2 && bestSlot(p) < n ? [['alt_route', 'Einfügen, wo es passt', () => tour.points.splice(bestSlot(p), 0, p)]] : []),
+    ['trip_origin', 'Als Start setzen', () => tour.points.unshift(p)],
+  ];
+  box.innerHTML = `<strong class="popup-title">${esc(title)}</strong>`;
+  for (const [icon, text, fn] of [...entries, ['close', 'Verwerfen', null]]) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = `<span class="msr">${icon}</span> ${esc(text)}`;
+    b.addEventListener('click', () => {
+      clearFound();
+      if (!fn) return;
+      change(fn);
+      toast(`„${title}“ in die Tour übernommen`);
+    });
+    box.append(b);
+  }
+  const pop = new maplibregl.Popup({ offset: 38, closeButton: false, closeOnClick: false }).setLngLat(p).setDOMContent(box).addTo(map);
+  found = { marker, popup: pop };
+  // Zum gefundenen Ort, mittig im freien Teil der Karte
+  map.flyTo({ center: p, zoom: Math.max(map.getZoom(), 14), padding: viewPadding(), duration: 1200 });
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    Route, Zahlen, Wege

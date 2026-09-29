@@ -1,197 +1,384 @@
 /**
- * Ordner verbinden: Wege und Touren liegen als GPX-Dateien in einem Ordner,
- * den ein Sync-Programm mit der Cloud abgleicht – Nextcloud, Proton Drive,
- * Google Drive, Syncthing … WMap braucht dafür kein Konto und keinen Server,
- * es liest und schreibt nur Dateien.
+ * Ordner verbinden: alles, was du in WMap anlegst, liegt als Datei in einem
+ * Ordner, den ein Sync-Programm abgleicht – Nextcloud, Proton Drive, Google
+ * Drive, Syncthing … Jede WMap, die denselben Ordner verbindet, liest ihn
+ * ein und gleicht mit ab: dieselben Daten auf mehreren Geräten, ohne Konto
+ * und ohne Server.
  *
- *   WMap/Geplant/Harzer Hexenstieg.gpx                                  geplant
- *   WMap/Abgeschlossen/2026/2026-09-27 Radtour am Samstagnachmittag.gpx  gefahren/gelaufen
- *   WMap/Gemerkt.json   Verbindungen mit Bus & Bahn, Zuhause/Arbeit, Lesezeichen
+ *   WMap/settings.json                     Einstellungen (Hell/dunkel, Navigation …)
+ *   WMap/Geplante Touren/Harzer Hexenstieg.gpx
+ *   WMap/Aufgezeichnete Touren/2026/09 September/2026-09-27 Radtour am Samstag….gpx
+ *   WMap/Bus & Bahn/2026-09-30 08.15 Göttingen → Kassel.json   je gemerkte Verbindung
+ *   WMap/Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen
  *
- * Heißt der verbundene Ordner selbst „WMap“, entfällt die Ebene.
- * Dieselbe Ordnung hat die Sicherung als ZIP (zipBackup).
+ * Heißt der verbundene Ordner selbst „WMap“, entfällt die Ebene. Dateien aus
+ * der alten Ordnung (Geplant/, Abgeschlossen/, Gemerkt.json) ziehen beim
+ * Abgleich um. Dieselbe Ordnung hat die Sicherung als ZIP (zipBackup).
  *
  * GPX-Dateien von woanders (Garmin, Komoot-Export …) dürfen irgendwo im
  * Ordner liegen: mit Zeiten werden sie ein Weg, sonst eine Tour.
  *
- * Abgleich (je Datei, erkannt am Stichwort „wmap:ID“ oder am Pfad):
+ * Abgleich (je Datei, erkannt am Stichwort „wmap:ID“, an der ID im JSON
+ * oder am Pfad):
  *   nur im Ordner       → übernehmen
  *   nur in WMap         → Datei schreiben – oder, wenn die Datei schon mal da
  *                         war und im Ordner gelöscht wurde, auch hier löschen
  *   beides geändert     → das Neuere gewinnt
  *   in WMap gelöscht    → Datei löschen
+ * Geändert heißt: andere Änderungszeit und anderer Inhalt als beim letzten
+ * Abgleich (manche Cloud-Ordner unter Android melden keine Zeit).
  *
- * Braucht die File System Access API (Chrome und Edge, am Rechner und unter
- * Android). Ohne sie bleiben GPX-Import und Teilen (siehe pages/wege.js).
+ * Zugang zum Ordner:
+ *   Browser   File System Access API (Chrome und Edge, Rechner und Android)
+ *   App       Tauri-Plugin „folder“ (src-tauri/plugins/folder): Android über
+ *             den Speicherzugriff des Systems, am Rechner ein Ordnerdialog –
+ *             das WebView der App kennt die API von Chrome nicht
+ * Ohne beides bleiben Einlesen, Teilen und die ZIP-Sicherung (pages/sync.js).
  */
 import { store } from './db.js';
 import { tracks, trackGpx, parseGpx, sameTrack, backup, restore } from './tracks.js';
 import { makeZip, readZip } from './zip.js';
 import { tours, toGpx, coordsOf, shapeOf, local } from './store.js';
 import { simplifyTo, distance } from '../core/geo.js';
-import { mergeSaved } from './saved.js';
+import { connections, mergePlaces, mergeSaved } from './saved.js';
 
 const kv = store('kv');
 const KEY = 'folder';
 const DELETED = 'wmap.folder.deleted';   // in WMap gelöscht, Datei noch löschen
+const AUTO = 'wmap.sync.auto';            // 'off' | 'start' (beim Öffnen und nach Änderungen) | 'every30' (dazu alle 30 min)
 
-const folderSupported = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+const core = typeof window !== 'undefined' ? window.__TAURI__?.core : null;
+const nativeHere = !!core;
+const browserHere = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 
-let conf = null;          // { id, handle, name, index: { pfad: { id, at } }, last, result }
+let conf = null;          // { id, native?, handle?, name, index: { pfad: { id, kind, at, hash, rev } }, last, result, error }
 let syncing = null;
-let testHandle = null;    // nur für Tests: ein Ordner im Speicher
-let autoSynced = false;   // beim Öffnen einer Seite einmal still abgleichen
+let testBackend = null;   // nur für Tests: ein Ordner im Speicher
 
 async function load() {
-  if (testHandle) return conf;
+  if (testBackend) return conf;
   conf = (await kv.get(KEY).catch(() => null)) ?? null;
+  // App: Ordner im Plugin gewählt, aber hier nie angekommen (die Antwort des
+  // Ordnerdialogs ging unterwegs verloren) – dann jetzt übernehmen
+  if (!conf && nativeHere) {
+    const i = await core.invoke('plugin:folder|info').catch(() => null);
+    if (i?.connected) {
+      conf = { id: KEY, native: true, name: i.name ?? 'Ordner', index: {}, last: null, result: null, error: null };
+      await kv.put(conf).catch(() => {});
+    }
+  }
+  // Eintrag ohne Ordner-Zugriff (z. B. aus einer Android-Sicherung wiederhergestellt –
+  // den Zugriff selbst stellt niemand wieder her): gilt als nicht verbunden
+  if (conf && !conf.native && typeof conf.handle?.entries !== 'function') {
+    conf = null;
+    await kv.remove(KEY).catch(() => {});
+  }
   return conf;
 }
-const persist = () => (testHandle ? null : kv.put(conf));
+const persist = () => (testBackend ? null : kv.put(conf));
 
-/* ── Verbinden, Rechte ────────────────────────────────────────────────────── */
+/* ── Zugang: Browser-API oder App-Plugin ──────────────────────────────────── */
+
+const call = (cmd, args = {}) => core.invoke(`plugin:folder|${cmd}`, args);
+
+/** In der App: das Plugin „folder“ */
+const nativeBackend = {
+  permission: async () => ((await call('info')).connected ? 'granted' : 'gone'),
+  list: async () => (await call('list')).files.map((f) => ({ path: f.path, lastModified: f.modified || 0 })),
+  read: async (path) => (await call('read', { path })).text,
+  write: async (path, text) => (await call('write', { path, text })).modified || 0,
+  remove: (path) => call('remove', { path }).catch(() => {}),
+};
+
+/** Im Browser: ein Ordner-Handle (File System Access API) */
+function handleBackend(root) {
+  const dirOf = async (path, create) => {
+    const parts = path.split('/');
+    const name = parts.pop();
+    let dir = root;
+    for (const p of parts) dir = await dir.getDirectoryHandle(p, { create });
+    return [dir, name];
+  };
+  return {
+    async permission(ask) {
+      if (!root?.queryPermission) return 'granted';
+      const opts = { mode: 'readwrite' };
+      let p = await root.queryPermission(opts);
+      if (p === 'prompt' && ask) p = await root.requestPermission(opts);
+      return p;
+    },
+    async list() {
+      const out = [];
+      const walk = async (dir, prefix, depth) => {
+        for await (const [name, h] of dir.entries()) {
+          if (name.startsWith('.')) continue;
+          const path = prefix + name;
+          if (h.kind === 'directory') { if (depth < 5) await walk(h, `${path}/`, depth + 1); }
+          else if (/\.(gpx|json)$/i.test(name)) out.push({ path, lastModified: (await h.getFile()).lastModified });
+        }
+      };
+      await walk(root, '', 0);
+      return out;
+    },
+    async read(path) {
+      const [dir, name] = await dirOf(path, false);
+      return (await (await dir.getFileHandle(name)).getFile()).text();
+    },
+    async write(path, text) {
+      const [dir, name] = await dirOf(path, true);
+      const fh = await dir.getFileHandle(name, { create: true });
+      const w = await fh.createWritable();
+      await w.write(text);
+      await w.close();
+      return (await fh.getFile()).lastModified;
+    },
+    async remove(path) {
+      try { const [dir, name] = await dirOf(path, false); await dir.removeEntry(name); } catch { /* schon weg */ }
+    },
+  };
+}
+
+const backendOf = (c) => testBackend ?? (c.native ? nativeBackend : handleBackend(c.handle));
+
+/* ── Verbinden, Stand ─────────────────────────────────────────────────────── */
 
 export const folder = {
-  supported: folderSupported,
+  /** Geht hier ein Ordner? (App immer, Browser nur Chrome/Edge) */
+  supported: nativeHere || browserHere,
 
-  /** Stand für die Anzeige: { connected, name, permission, last, result } */
+  /** Selbst abgleichen: 'off', 'start' (beim Öffnen und nach Änderungen, Standard), 'every30' (dazu alle 30 min) */
+  get auto() { const v = local.get(AUTO, 'start'); return v === true ? 'start' : v === false ? 'off' : v; },
+  set auto(v) { local.set(AUTO, v); },
+
+  /** Läuft gerade ein Abgleich? */
+  get busy() { return !!syncing; },
+
+  /** Stand für die Anzeige: { connected, name, permission, last, result, error } */
   async info() {
     const c = await load();
     if (!c) return { connected: false };
-    return { connected: true, name: c.name, permission: await permission(c.handle, false), last: c.last ?? null, result: c.result ?? null };
+    const permission = await backendOf(c).permission(false).catch(() => 'gone');
+    if (permission === 'gone') { await this.disconnect(); return { connected: false }; }
+    return { connected: true, name: c.name, permission, last: c.last ?? null, result: c.result ?? null, error: c.error ?? null };
   },
 
   /** Ordner auswählen (braucht einen Klick) und gleich abgleichen. */
   async connect() {
-    const handle = await window.showDirectoryPicker({ id: 'wmap', mode: 'readwrite', startIn: 'documents' });
-    conf = { id: KEY, handle, name: handle.name, index: {}, last: null, result: null };
+    if (nativeHere) {
+      let r;
+      try { r = await call('pick'); } catch (err) {
+        if (/abgebrochen|cancel/i.test(String(err))) throw Object.assign(new Error('abgebrochen'), { name: 'AbortError' });
+        throw new Error(String(err?.message ?? err));
+      }
+      conf = { id: KEY, native: true, name: r.name ?? 'Ordner', index: {}, last: null, result: null, error: null };
+    } else {
+      const handle = await window.showDirectoryPicker({ id: 'wmap', mode: 'readwrite', startIn: 'documents' });
+      conf = { id: KEY, handle, name: handle.name, index: {}, last: null, result: null, error: null };
+    }
     await persist();
     local.set(DELETED, []);
     return this.sync({ interactive: true });
   },
 
   async disconnect() {
+    if (conf?.native || nativeHere) await call('disconnect').catch(() => {});
     conf = null;
     await kv.remove(KEY);
     local.set(DELETED, []);
+    dispatchEvent(new CustomEvent('wmap:folder', { detail: { disconnected: true } }));
   },
 
   /**
    * Abgleichen. Ohne `interactive` nur, wenn das Recht noch gilt – sonst
    * { needsPermission: true } (der Browser fragt nur nach einem Klick).
-   * → { imported, written, removed } oder null (nicht verbunden)
+   * → { imported, written, removed, moved } oder null (nicht verbunden)
    */
   async sync({ interactive = false } = {}) {
     if (syncing) return syncing;
     syncing = run(interactive).finally(() => { syncing = null; });
+    dispatchEvent(new CustomEvent('wmap:folder', { detail: { busy: true } }));
     return syncing;
   },
 
-  /** Tests: Ordner im Speicher statt echtem Ordner */
-  _useHandle(handle) {
-    testHandle = handle;
-    conf = { id: KEY, handle, name: handle.name, index: {}, last: null, result: null };
+  /** Tests: Ordner im Speicher statt echtem Ordner ({ list, read, write, remove }) */
+  _useBackend(backend, name = 'Test') {
+    testBackend = backend;
+    conf = { id: KEY, name, index: {}, last: null, result: null, error: null };
   },
 };
-
-async function permission(handle, ask) {
-  if (!handle?.queryPermission) return 'granted';
-  const opts = { mode: 'readwrite' };
-  let p = await handle.queryPermission(opts);
-  if (p === 'prompt' && ask) p = await handle.requestPermission(opts);
-  return p;
-}
 
 /* ── Abgleich ─────────────────────────────────────────────────────────────── */
 
 async function run(interactive) {
   const c = await load();
   if (!c) return null;
-  if (await permission(c.handle, interactive) !== 'granted') return { needsPermission: true };
+  const be = backendOf(c);
+  if (await be.permission(interactive) !== 'granted') return { needsPermission: true };
+  try {
+    const out = await syncAll(c, be);
+    c.last = Date.now();
+    c.result = out;
+    c.error = null;
+    await persist();
+    if (out.imported || out.removed || out.settings === 'imported') dispatchEvent(new CustomEvent('wmap:folder', { detail: out }));
+    return out;
+  } catch (err) {
+    c.error = { at: Date.now(), message: String(err?.message ?? err) };
+    await persist();
+    dispatchEvent(new CustomEvent('wmap:folder', { detail: { error: c.error } }));
+    throw err;
+  }
+}
 
-  const files = await listGpx(c.handle);
-  const base = baseOf(c.handle);
+const rev = (item) => item.updated ?? item.created ?? 0;
+
+/** Kurzer Fingerabdruck des Inhalts (FNV-1a) */
+function hash(text) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(36);
+}
+
+async function syncAll(c, be) {
+  const base = baseOf(c.name);
+  const listed = await be.list();
+  const at = (path) => listed.find((f) => f.path === path) ?? null;
+
+  // Alte Ordnung: Gemerkt.json → Bus & Bahn/ und Lesezeichen.json
+  const legacy = at(`${base}Gemerkt.json`);
+  if (legacy) mergeSaved(await be.read(legacy.path).catch(() => null));
+
+  const files = listed.filter((f) => /\.gpx$/i.test(f.path) || CONN_DIR.test(f.path));
   const locals = new Map();
   for (const t of await tracks.all()) locals.set(t.id, { kind: 'track', item: t });
   for (const t of tours.all()) locals.set(t.id, { kind: 'tour', item: t });
+  for (const x of connections.all()) locals.set(x.id, { kind: 'conn', item: x });
   const deleted = new Set(local.get(DELETED, []));
   const index = c.index ?? {};
   const next = {};
   const seen = new Set();
-  const out = { imported: 0, written: 0, removed: 0 };
+  const used = new Set(files.map((f) => f.path.toLowerCase()));
+  const out = { imported: 0, written: 0, removed: 0, moved: 0 };
+
+  /**
+   * Schreiben und merken. Liegt eine WMap-Datei (`move`) nicht, wo sie
+   * hingehört, zieht sie um – fremde Dateien (Garmin-Export …) bleiben, wo sie sind.
+   */
+  const put = async (path, entry, text, move = true) => {
+    const want = pathOf(entry.kind, entry.item, base);
+    let target = path;
+    if (!path || (move && dirname(path) !== dirname(want))) {
+      target = freePath(want, used);
+      used.add(target.toLowerCase());
+    }
+    const modified = await be.write(target, text);
+    if (path && target !== path) { await be.remove(path); out.moved += 1; }
+    next[target] = { id: entry.item.id, kind: entry.kind, at: modified, hash: hash(text), rev: rev(entry.item), ours: true };
+    return target;
+  };
 
   for (const f of files) {
-    const id = f.wmapId ?? (index[f.path]?.id || null);
+    const known = index[f.path] ?? null;
+    const sameTime = known && f.lastModified && f.lastModified === known.at;
+    let text = null;
+    if (!sameTime) text = await be.read(f.path).catch(() => null);
+    if (!sameTime && text === null) continue;
+    const id = (text !== null ? idIn(f.path, text) : null) ?? known?.id ?? null;
+    // Von WMap geschrieben (mit ID) – nur solche Dateien ziehen um
+    const ours = text !== null ? !!idIn(f.path, text) : !!known?.ours;
     if (id && deleted.has(id)) {
-      await removeFile(c.handle, f.path);
+      await be.remove(f.path);
       out.removed += 1;
       continue;
     }
     if (id && seen.has(id)) continue;                 // Kopie derselben Datei
     const mine = id ? locals.get(id) : null;
+
     if (!mine) {
-      const got = await importFile(f, id);
+      const got = await importFile({ ...f, text }, id);
       if (got) {
-        next[f.path] = { id: got.id, at: f.lastModified, rev: got.rev };
         seen.add(got.id);
         if (!locals.has(got.id)) out.imported += 1;
+        const entry = await entryOf(got.id);
+        // Eigene Dateien (mit WMap-ID) ziehen in die neue Ordnung um
+        if (entry && ours && dirname(f.path) !== dirname(pathOf(entry.kind, entry.item, base))) {
+          await put(f.path, entry, serialize(entry));
+        } else next[f.path] = { id: got.id, kind: got.kind, at: f.lastModified, hash: hash(text), rev: got.rev, ours };
       }
       continue;
     }
     seen.add(id);
-    // Geändert heißt: seit dem letzten Abgleich – Datei an ihrer Zeit, WMap an „updated“.
-    // So stören abweichende Uhren (Handy ↔ Rechner) nicht; nur wenn beide geändert sind, zählt die Zeit.
-    const known = index[f.path]?.id === id ? index[f.path] : null;
     const r = rev(mine.item);
-    const fileNew = known ? f.lastModified !== known.at : f.lastModified > r + 60000;
-    const localNew = known ? r !== known.rev : r > f.lastModified + 60000;
+    const h = text === null ? known.hash : hash(text);
+    const mineText = serialize(mine);
+    let fileNew, localNew;
+    if (known) {
+      fileNew = h !== known.hash;
+      localNew = r !== known.rev;
+    } else {
+      // Noch nie abgeglichen (z. B. neues Gerät): gleich? Sonst zählt die Zeit
+      const same = h === hash(mineText);
+      fileNew = !same && f.lastModified > r + 60000;
+      localNew = !same && !fileNew;
+    }
     if (localNew && (!fileNew || r > f.lastModified)) {
-      next[f.path] = { id, at: await writeFile(c.handle, f.path, gpxOf(mine)), rev: r };
+      await put(f.path, mine, mineText, ours);
       out.written += 1;
     } else if (fileNew) {
       // Auf einem anderen Gerät geändert
-      const got = await importFile(f, id, mine.item);
-      next[f.path] = { id, at: f.lastModified, rev: got?.rev ?? r };
+      const got = await importFile({ ...f, text }, id, mine.item);
+      const entry = await entryOf(id);
+      if (entry && ours && dirname(f.path) !== dirname(pathOf(entry.kind, entry.item, base))) await put(f.path, entry, serialize(entry));
+      else next[f.path] = { id, kind: mine.kind, at: f.lastModified, hash: h, rev: got?.rev ?? r, ours };
       out.imported += 1;
-    } else next[f.path] = { id, at: f.lastModified, rev: r };
+    } else if (ours && dirname(f.path) !== dirname(pathOf(mine.kind, mine.item, base))) {
+      await put(f.path, mine, mineText);               // alte Ordnung → neue
+    } else next[f.path] = { id, kind: mine.kind, at: f.lastModified, hash: h, rev: r, ours };
   }
 
-  const used = new Set(Object.keys(next));
-  for (const [id, { kind, item }] of locals) {
+  for (const [id, entry] of locals) {
     if (seen.has(id)) continue;
-    const before = Object.entries(index).find(([, v]) => v.id === id);
-    if (before) {
+    if (Object.values(index).some((v) => v.id === id)) {
       // War schon im Ordner und ist dort weg: dort gelöscht
-      if (kind === 'track') await trackStore.remove(id); else tourRemoveQuiet(id);
+      if (entry.kind === 'track') await trackStore.remove(id);
+      else if (entry.kind === 'conn') connections.removeQuiet(id);
+      else tourRemoveQuiet(id);
       out.removed += 1;
       continue;
     }
-    const path = freePath(pathOf(kind, item, base), used, files);
-    used.add(path);
-    next[path] = { id, at: await writeFile(c.handle, path, gpxOf({ kind, item })), rev: rev(item) };
+    await put(null, entry, serialize(entry));
     out.written += 1;
   }
 
-  // Gemerkte Verbindungen, Zuhause/Arbeit, Lesezeichen: eine JSON-Datei
-  const savedPath = `${base}Gemerkt.json`;
-  let savedText = null;
-  try {
-    const [dir, name] = await dirOf(c.handle, savedPath, false);
-    savedText = await (await (await dir.getFileHandle(name)).getFile()).text();
-  } catch { /* noch keine Datei */ }
-  const merged = mergeSaved(savedText);
-  if (merged.changed) await writeFile(c.handle, savedPath, merged.text);
+  // Lesezeichen: eine Datei, je Eintrag gewinnt das Neuere
+  const bmPath = `${base}Lesezeichen.json`;
+  const bm = at(bmPath);
+  const merged = mergePlaces(bm ? await be.read(bmPath).catch(() => null) : null);
+  if (merged.changed) await be.write(bmPath, merged.text);
+
+  out.settings = await syncSettings(c, be, at(`${base}settings.json`), `${base}settings.json`);
+  if (legacy) await be.remove(legacy.path);
 
   c.index = next;
-  c.last = Date.now();
-  c.result = out;
   local.set(DELETED, []);
-  await persist();
-  if (out.imported || out.removed) dispatchEvent(new CustomEvent('wmap:folder', { detail: out }));
   return out;
 }
 
-const rev = (item) => item.updated ?? item.created ?? 0;
+/** Dateiinhalt → WMap-ID (GPX: Stichwort wmap:ID, Verbindung: id im JSON) */
+function idIn(path, text) {
+  if (!text) return null;
+  if (/\.json$/i.test(path)) { try { return JSON.parse(text).id ?? null; } catch { return null; } }
+  return text.match(/<keywords>[^<]*\bwmap:([\w-]+)/)?.[1] ?? null;
+}
+
+async function entryOf(id) {
+  const t = (await tracks.all()).find((x) => x.id === id);
+  if (t) return { kind: 'track', item: t };
+  const tour = tours.all().find((x) => x.id === id);
+  if (tour) return { kind: 'tour', item: tour };
+  const conn = connections.get(id);
+  return conn ? { kind: 'conn', item: conn } : null;
+}
 
 /* Löschen ohne Meldung (sonst merkt sich der Abgleich es als „in WMap gelöscht“) */
 const trackStore = store('tracks');
@@ -200,105 +387,132 @@ function tourRemoveQuiet(id) {
   local.set('wmap.tours', list);
 }
 
-/* ── Dateien ──────────────────────────────────────────────────────────────── */
+/* ── Einstellungen: settings.json ─────────────────────────────────────────── */
 
-/** Alle .gpx im Ordner (bis 4 Ebenen tief) → [{ path, handle, text, lastModified, wmapId }] */
-async function listGpx(dir, prefix = '', depth = 0, out = []) {
-  for await (const [name, h] of dir.entries()) {
-    if (name.startsWith('.')) continue;
-    const path = prefix + name;
-    if (h.kind === 'directory') {
-      if (depth < 4) await listGpx(h, `${path}/`, depth + 1, out);
-    } else if (/\.gpx$/i.test(name)) {
-      const file = await h.getFile();
-      const text = await file.text();
-      out.push({ path, text, lastModified: file.lastModified, wmapId: text.match(/<keywords>[^<]*\bwmap:([\w-]+)/)?.[1] ?? null });
-    }
+/** Was auf allen Geräten gleich sein soll – nicht: Konten, Verlauf, Kartenausschnitt */
+const SETTINGS = [
+  'wmap.theme', 'wmap.nav.zoom', 'wmap.nav.3d', 'wmap.voice', 'wmap.muted', 'wmap.offline', 'wmap.datasaver',
+  'wmap.contribute', 'wmap.osm.anon', 'wmap.history', 'wmap.routePrefs', 'wmap.profile', 'wmap.myname',
+  'wmap.lapsize', 'wmap.chart', 'wmap.tankerkoenig',
+];
+
+function snapshot() {
+  const v = {};
+  for (const k of SETTINGS) {
+    try { const raw = localStorage.getItem(k); if (raw !== null) v[k] = raw; } catch { /* gesperrt */ }
   }
-  return out;
+  return v;
 }
 
-async function dirOf(root, path, create) {
-  const parts = path.split('/');
-  const name = parts.pop();
-  let dir = root;
-  for (const p of parts) dir = await dir.getDirectoryHandle(p, { create });
-  return [dir, name];
-}
-
-/** Schreiben → Änderungszeit der Datei */
-async function writeFile(root, path, text) {
-  const [dir, name] = await dirOf(root, path, true);
-  const fh = await dir.getFileHandle(name, { create: true });
-  const w = await fh.createWritable();
-  await w.write(text);
-  await w.close();
-  return (await fh.getFile()).lastModified;
-}
-
-async function removeFile(root, path) {
-  try {
-    const [dir, name] = await dirOf(root, path, false);
-    await dir.removeEntry(name);
-  } catch { /* schon weg */ }
+/**
+ * Hier geändert (seit dem letzten Abgleich) → Datei schreiben; nur dort
+ * geändert → übernehmen. Beim ersten Abgleich eines Geräts gilt die Datei.
+ * → 'imported' | 'written' | null
+ */
+async function syncSettings(c, be, file, path) {
+  const mine = snapshot();
+  const mineJson = JSON.stringify(mine);
+  let theirs = null;
+  if (file) { try { theirs = JSON.parse(await be.read(path)); } catch { /* kaputt: neu schreiben */ } }
+  const localChanged = c.settingsSnap !== undefined && mineJson !== c.settingsSnap;
+  if (theirs?.values && theirs.updated !== c.settingsAt && !localChanged) {
+    for (const [k, v] of Object.entries(theirs.values)) {
+      if (SETTINGS.includes(k) && typeof v === 'string') { try { localStorage.setItem(k, v); } catch { /* gesperrt */ } }
+    }
+    c.settingsSnap = JSON.stringify(snapshot());
+    c.settingsAt = theirs.updated;
+    return 'imported';
+  }
+  if (!theirs?.values || localChanged) {
+    const updated = Date.now();
+    await be.write(path, JSON.stringify({ app: 'WMap', updated, values: mine }, null, 1));
+    c.settingsAt = updated;
+    c.settingsSnap = mineJson;
+    return 'written';
+  }
+  c.settingsSnap = mineJson;
+  return null;
 }
 
 /* ── Pfade ────────────────────────────────────────────────────────────────── */
 
 const clean = (s) => String(s || '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 80) || 'ohne Namen';
-const day = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const pad = (x) => String(x).padStart(2, '0');
+const day = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+const dirname = (p) => p.slice(0, p.lastIndexOf('/') + 1);
 
-const TOUR_DIR = /(^|\/)Geplant\//;
-const TRACK_DIR = /(^|\/)Abgeschlossen\//;
+// Neue und alte Ordnung (bis 1.0: Geplant/, Abgeschlossen/<Jahr>/)
+const TOUR_DIR = /(^|\/)(Geplante Touren|Geplant)\//;
+const TRACK_DIR = /(^|\/)(Aufgezeichnete Touren|Abgeschlossen)\//;
+const CONN_DIR = /(^|\/)Bus & Bahn\/[^/]+\.json$/i;
 
 /** Ordner „WMap“ im verbundenen Ordner – außer er heißt schon so */
-const baseOf = (handle) => (/^wmap$/i.test(handle?.name ?? '') ? '' : 'WMap/');
+const baseOf = (name) => (/^wmap$/i.test(name ?? '') ? '' : 'WMap/');
 
 function pathOf(kind, item, base = 'WMap/') {
-  if (kind === 'track') return `${base}Abgeschlossen/${new Date(item.start).getFullYear()}/${day(item.start)} ${clean(item.name || 'Weg')}.gpx`;
-  return `${base}Geplant/${clean(item.name || 'Tour')}.gpx`;
+  if (kind === 'track') {
+    const d = new Date(item.start);
+    return `${base}Aufgezeichnete Touren/${d.getFullYear()}/${pad(d.getMonth() + 1)} ${MONTHS[d.getMonth()]}/${day(item.start)} ${clean(item.name || 'Weg')}.gpx`;
+  }
+  if (kind === 'conn') {
+    const d = new Date(item.dep);
+    const name = [item.from?.label, item.to?.label].map((x) => String(x ?? '').split(',')[0]).join(' → ');
+    return `${base}Bus & Bahn/${day(item.dep)} ${pad(d.getHours())}.${pad(d.getMinutes())} ${clean(name)}.json`;
+  }
+  return `${base}Geplante Touren/${clean(item.name || 'Tour')}.gpx`;
 }
 
 /** Gleicher Name schon vergeben? → „… (2).gpx“ */
-function freePath(path, used, files) {
-  const taken = (p) => used.has(p) || files.some((f) => f.path.toLowerCase() === p.toLowerCase());
-  if (!taken(path)) return path;
+function freePath(path, used) {
+  if (!used.has(path.toLowerCase())) return path;
   for (let n = 2; ; n += 1) {
-    const p = path.replace(/\.gpx$/, ` (${n}).gpx`);
-    if (!taken(p)) return p;
+    const p = path.replace(/(\.\w+)$/, ` (${n})$1`);
+    if (!used.has(p.toLowerCase())) return p;
   }
 }
 
-/* ── GPX hin und her ──────────────────────────────────────────────────────── */
+/* ── Dateien hin und her ──────────────────────────────────────────────────── */
 
-function gpxOf({ kind, item }) {
-  return kind === 'track' ? trackGpx(item) : toGpx(item, coordsOf(item.shape), () => null);
+function serialize({ kind, item }) {
+  if (kind === 'track') return trackGpx(item);
+  if (kind === 'conn') return JSON.stringify({ app: 'WMap', kind: 'connection', ...item }, null, 1);
+  return toGpx(item, coordsOf(item.shape), () => null);
 }
 
 /**
- * Datei → Weg oder Tour. Unter Abgeschlossen/ immer ein Weg, unter Geplant/ eine Tour,
- * sonst: mit Zeitstempeln ein Weg. → { id, rev } oder null
+ * Datei → Weg, Tour oder Verbindung. Unter „Aufgezeichnete Touren/“ immer ein
+ * Weg, unter „Geplante Touren/“ eine Tour, unter „Bus & Bahn/“ eine
+ * Verbindung, sonst: mit Zeitstempeln ein Weg. → { id, kind, rev } oder null
  */
 async function importFile(f, id, before = null) {
-  const isTour = before ? !('start' in before) : TOUR_DIR.test(f.path) ? true : TRACK_DIR.test(f.path) ? false : !/<trkpt[^>]*>(?:(?!<\/trkpt>)[\s\S])*<time>/.test(f.text);
   try {
+    if (CONN_DIR.test(f.path)) {
+      const c = JSON.parse(f.text);
+      if (!c?.id || !Array.isArray(c.legs)) return null;
+      const { app: _a, kind: _k, ...conn } = c;
+      const item = { ...conn, updated: conn.updated ?? f.lastModified };
+      connections.putQuiet(item);
+      return { id: item.id, kind: 'conn', rev: item.updated };
+    }
+    const isTour = before ? !('start' in before) : TOUR_DIR.test(f.path) ? true : TRACK_DIR.test(f.path) ? false : !/<trkpt[^>]*>(?:(?!<\/trkpt>)[\s\S])*<time>/.test(f.text);
     if (isTour) {
       const t = tourFromGpx(f.text, f.path);
       if (!t) return null;
       // Ordner neu verbunden: dieselbe Tour nicht doppelt
       const twin = !before && !id && tours.all().find((x) => x.shape === t.shape);
-      if (twin) return { id: twin.id, rev: rev(twin) };
-      const tour = { ...t, id: id ?? before?.id ?? tours.newId(), created: before?.created ?? f.lastModified, updated: f.lastModified, preview: before?.shape === t.shape ? before.preview : null };
+      if (twin) return { id: twin.id, kind: 'tour', rev: rev(twin) };
+      const tour = { ...t, id: id ?? before?.id ?? tours.newId(), created: before?.created ?? f.lastModified, updated: f.lastModified || Date.now(), preview: before?.shape === t.shape ? before.preview : null };
       tours.put(tour);
-      return { id: tour.id, rev: tour.updated };
+      return { id: tour.id, kind: 'tour', rev: tour.updated };
     }
     const [t] = parseGpx(f.text);
     if (!t) return null;
     const twin = !before && !id && (await tracks.all()).find((x) => sameTrack(x, t));
-    if (twin) return { id: twin.id, rev: rev(twin) };
-    const track = { ...before, ...t, id: id ?? before?.id ?? t.id, updated: f.lastModified };
+    if (twin) return { id: twin.id, kind: 'track', rev: rev(twin) };
+    const track = { ...before, ...t, id: id ?? before?.id ?? t.id, updated: f.lastModified || Date.now() };
     await tracks.putQuiet(track);
-    return { id: track.id, rev: track.updated };
+    return { id: track.id, kind: 'track', rev: track.updated };
   } catch { return null; }
 }
 
@@ -343,18 +557,18 @@ addEventListener('wmap:data', (e) => {
   timer = setTimeout(async () => {
     await syncing?.catch(() => {});
     if (!await load()) { local.set(DELETED, []); return; }
-    folder.sync().catch(() => { /* beim nächsten Mal */ });
+    if (folder.auto !== 'off') folder.sync().catch(() => { /* steht als Fehler auf der Seite „Sicherung & Synchronisation“ */ });
   }, 2500);
 });
 
-/* ── Ohne Ordner-Zugriff (Firefox, Safari, App): Dateien laden und teilen ── */
+/* ── Ohne Ordner-Zugriff (Firefox, Safari): Dateien laden und teilen ──────── */
 
 /**
  * GPX-Dateien einlesen – einzeln oder ein ganzer Ordner (<input webkitdirectory>).
  * Was es schon gibt (gleiche WMap-ID oder gleicher Weg), bleibt einmal.
  * → { imported, skipped }
  */
-async function importLoose(fileList) {
+export async function importLoose(fileList) {
   const known = new Set([...(await tracks.all()).map((t) => t.id), ...tours.all().map((t) => t.id)]);
   const all = await tracks.all();
   const out = { imported: 0, skipped: 0 };
@@ -376,20 +590,22 @@ async function importLoose(fileList) {
 /* ── Sicherung als ZIP: dieselbe Ordnung wie im verbundenen Ordner ────────── */
 
 /**
- * WMap/Geplant/*.gpx, WMap/Abgeschlossen/<Jahr>/*.gpx und die vollständige
- * Sicherung (WMap/wmap-sicherung.json – mit allem, was GPX nicht fasst).
- * → Blob
+ * Geplante und aufgezeichnete Touren als GPX, Bus & Bahn und Lesezeichen als
+ * JSON, dazu die vollständige Sicherung (WMap/wmap-sicherung.json – mit allem,
+ * was die Dateien nicht fassen). → Blob
  */
 export async function zipBackup() {
   const used = new Set();
   const entry = (kind, item) => {
-    const path = freePath(pathOf(kind, item), used, []);
-    used.add(path);
-    return { path, data: gpxOf({ kind, item }), date: new Date(item.updated ?? item.created ?? item.start ?? Date.now()) };
+    const path = freePath(pathOf(kind, item), used);
+    used.add(path.toLowerCase());
+    return { path, data: serialize({ kind, item }), date: new Date(item.updated ?? item.created ?? item.start ?? Date.now()) };
   };
   const files = [
     ...tours.all().map((t) => entry('tour', t)),
     ...(await tracks.all()).map((t) => entry('track', t)),
+    ...connections.all().map((x) => entry('conn', x)),
+    { path: 'WMap/Lesezeichen.json', data: mergePlaces(null).text, date: new Date() },
     { path: 'WMap/wmap-sicherung.json', data: await backup(), date: new Date() },
   ];
   return makeZip(files);
@@ -411,105 +627,32 @@ export async function restoreZip(file) {
 }
 
 /** Alle Wege und Touren als GPX-Dateien teilen – am Handy z. B. „In Proton Drive speichern“. */
-async function shareAll() {
+export async function shareAll() {
   const files = [
     ...(await tracks.all()).map((t) => new File([trackGpx(t)], pathOf('track', t).split('/').pop(), { type: 'application/gpx+xml' })),
-    ...tours.all().map((t) => new File([gpxOf({ kind: 'tour', item: t })], pathOf('tour', t).split('/').pop(), { type: 'application/gpx+xml' })),
+    ...tours.all().map((t) => new File([serialize({ kind: 'tour', item: t })], pathOf('tour', t).split('/').pop(), { type: 'application/gpx+xml' })),
   ];
   if (!files.length) throw new Error('Noch keine Wege oder Touren');
-  if (!navigator.canShare?.({ files })) throw new Error('Teilen von Dateien geht in diesem Browser nicht – bitte „Sicherung speichern“ nehmen');
+  if (!navigator.canShare?.({ files })) throw new Error('Teilen von Dateien geht hier nicht – bitte „Sicherung speichern“ nehmen');
   await navigator.share({ files, title: 'WMap – Wege und Touren' });
   return files.length;
 }
 
-const canShareFiles = () => typeof navigator !== 'undefined' && !!navigator.canShare?.({ files: [new File([''], 'a.gpx', { type: 'application/gpx+xml' })] });
+export const canShareFiles = () => typeof navigator !== 'undefined' && !!navigator.canShare?.({ files: [new File([''], 'a.gpx', { type: 'application/gpx+xml' })] });
 
-/* ── Baustein für Einstellungen, Meine Wege, Touren ───────────────────────── */
-
-const TIME = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-
-function summary(r) {
+/** „3 übernommen, 2 gespeichert“ */
+export function syncSummary(r) {
   if (!r) return '';
-  const parts = [r.imported && `${r.imported} übernommen`, r.written && `${r.written} gespeichert`, r.removed && `${r.removed} gelöscht`].filter(Boolean);
+  const parts = [r.imported && `${r.imported} übernommen`, r.written && `${r.written} gespeichert`, r.removed && `${r.removed} gelöscht`,
+    r.moved && `${r.moved} umgezogen`, r.settings === 'imported' && 'Einstellungen übernommen'].filter(Boolean);
   return parts.length ? parts.join(', ') : 'alles aktuell';
 }
 
-/**
- * Ordner-Zeile: verbinden, abgleichen, trennen – oder, ohne Ordner-Zugriff,
- * GPX-Ordner einlesen und alles teilen. `compact`: nur Status + Knopf.
- */
-export function mountFolder(el, { toast: outer = null, compact = false } = {}) {
-  el.classList.add('folder-box');
-  let busy = false;
-  let note = '';
-  // Ohne Toast (z. B. im Dialog, der ihn verdecken würde) steht die Meldung im Baustein
-  const toast = (t) => { if (outer) outer(t); else { note = t; paint(); } };
-  const noteHtml = () => (note && !outer ? `<p class="folder-note">${esc(note)}</p>` : '');
-
-  async function paint() {
-    if (!folderSupported) {
-      el.innerHTML = `
-        <p class="folder-line"><span class="msr">folder_off</span><span>Ordner verbinden geht in Chrome und Edge. Hier kannst du einen Ordner mit GPX-Dateien einlesen${canShareFiles() ? ' und alles als Dateien teilen – z. B. in Proton Drive oder Nextcloud' : ''}.</span></p>
-        <div class="folder-actions">
-          <label class="button"><span class="msr">drive_folder_upload</span> Ordner einlesen<input type="file" webkitdirectory multiple hidden data-folder="read"></label>
-          ${canShareFiles() ? '<button type="button" class="button" data-folder="share"><span class="msr">ios_share</span> Alles teilen</button>' : ''}
-        </div>${noteHtml()}`;
-      return;
-    }
-    const i = await folder.info();
-    if (!i.connected) {
-      el.innerHTML = `
-        <p class="folder-line"><span class="msr">folder</span><span>${compact ? 'Wege und Touren in einem Ordner sichern' : 'Wege und Touren als GPX in einem Ordner – den gleicht dein Sync-Programm ab (Nextcloud, Proton Drive, Google Drive …). Am Handy wählst du den Ordner in der Drive-App aus.'}</span></p>
-        <div class="folder-actions"><button type="button" class="button${compact ? '' : ' primary'}" data-folder="connect"><span class="msr">create_new_folder</span> Ordner verbinden</button></div>${noteHtml()}`;
-      return;
-    }
-    const ask = i.permission !== 'granted';
-    el.innerHTML = `
-      <p class="folder-line"><span class="msr">${busy ? 'sync' : ask ? 'folder_managed' : 'folder_open'}</span><span>
-        Ordner <strong>${esc(i.name)}</strong>${busy ? ' – gleiche ab …' : ask ? ' – Zugriff erneut erlauben' : i.last ? ` · ${TIME.format(i.last)}: ${summary(i.result)}` : ''}</span></p>
-      <div class="folder-actions">
-        <button type="button" class="button${ask ? ' primary' : ''}" data-folder="sync" ${busy ? 'disabled' : ''}><span class="msr">sync</span> ${ask ? 'Erlauben und abgleichen' : 'Abgleichen'}</button>
-        ${compact ? '' : '<button type="button" class="button" data-folder="disconnect"><span class="msr">link_off</span> Trennen</button>'}
-      </div>${noteHtml()}`;
-  }
-
-  async function sync(interactive) {
-    busy = true; paint();
-    try {
-      const r = await folder.sync({ interactive });
-      if (r?.needsPermission) { if (interactive) toast('Ohne Zugriff kein Abgleich'); } else if (r && interactive) toast(`Abgeglichen – ${summary(r)}`);
-    } catch (err) { toast(`Abgleich ging nicht: ${err.message}`); }
-    busy = false; paint();
-  }
-
-  el.addEventListener('click', async (e) => {
-    const act = e.target.closest('[data-folder]')?.dataset.folder;
-    if (act) note = '';
-    if (act === 'connect') {
-      try { busy = true; paint(); const r = await folder.connect(); toast(`Ordner verbunden – ${summary(r)}`); } catch (err) { if (err.name !== 'AbortError') toast(err.message); }
-      busy = false; paint();
-    }
-    if (act === 'sync') sync(true);
-    if (act === 'disconnect') { await folder.disconnect(); toast('Ordner getrennt – die Dateien bleiben, wo sie sind'); paint(); }
-    if (act === 'share') { try { await shareAll(); } catch (err) { if (err.name !== 'AbortError') toast(err.message); } }
-  });
-  el.addEventListener('change', async (e) => {
-    const inp = e.target.closest('[data-folder="read"]');
-    if (!inp?.files?.length) return;
-    try {
-      const r = await importLoose(inp.files);
-      toast(r.imported ? `${r.imported} übernommen${r.skipped ? `, ${r.skipped} gab es schon` : ''}` : r.skipped ? 'Alles schon da' : 'Keine GPX-Dateien gefunden');
-    } catch (err) { toast(err.message); }
-    inp.value = '';
-  });
-
-  paint();
-  // Beim Öffnen still abgleichen, wenn das Recht noch gilt
-  if (folderSupported && !autoSynced) {
-    autoSynced = true;
-    folder.info().then((i) => { if (i.connected && i.permission === 'granted') sync(false); });
-  }
-  addEventListener('wmap:folder', () => { if (el.isConnected) paint(); });
-  return { paint };
+/** Still abgleichen – wenn verbunden, erlaubt und je nach Einstellung (`periodic`: der 30-Minuten-Takt) */
+export async function autoFolderSync({ periodic = false } = {}) {
+  const mode = folder.auto;
+  if (!folder.supported || mode === 'off' || (periodic && mode !== 'every30')) return null;
+  const i = await folder.info().catch(() => null);
+  if (!i?.connected || i.permission !== 'granted') return null;
+  return folder.sync().catch(() => null);
 }

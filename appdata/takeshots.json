@@ -156,7 +156,7 @@
       "steps": [
         [
           "wait",
-          20000
+          45000
         ],
         [
           "shot"
@@ -539,7 +539,7 @@
             {
               "type": "text",
               "style": "body",
-              "text": "Als Web-App, für Android und Linux – deine Touren liegen bei dir, auf Wunsch in deinem Ordner abgeglichen.",
+              "text": "Als Web-App und für Android, Windows, macOS und Linux – deine Touren liegen bei dir und sind über deinen Ordner auf allen Geräten gleich.",
               "size": 3.8
             }
           ]
@@ -868,7 +868,7 @@
             {
               "type": "text",
               "style": "body",
-              "text": "Als Web-App, für Android und Linux – deine Touren liegen bei dir, auf Wunsch in deinem Ordner abgeglichen.",
+              "text": "Als Web-App und für Android, Windows, macOS und Linux – deine Touren liegen bei dir und sind über deinen Ordner auf allen Geräten gleich.",
               "size": 2.8
             }
           ]

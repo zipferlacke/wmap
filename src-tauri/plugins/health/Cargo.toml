@@ -1,0 +1,14 @@
+[package]
+name = "tauri-plugin-health"
+version = "0.1.0"
+description = "WMap: Trainings und Routen aus Health Connect (Android) lesen"
+edition = "2021"
+rust-version = "1.77.2"
+links = "tauri-plugin-health"
+publish = false
+
+[dependencies]
+tauri = { version = "2.11.3", features = [] }
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

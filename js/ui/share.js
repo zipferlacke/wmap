@@ -15,6 +15,10 @@ import { esc } from '../core/geo.js';
 import { PUBLIC_URL } from '../core/config.js';
 
 const NAME_KEY = 'wmap.myname';
+// Android-App: das WebView hat weder navigator.share noch eine verlässliche
+// Zwischenablage – beides über das Plugin „browser“
+const core = window.__TAURI__?.core;
+const androidApp = !!core && /Android/i.test(navigator.userAgent);
 const web = /^https?:$/.test(location.protocol) && location.hostname !== 'tauri.localhost';
 const base = () => {
   if (web) return `${location.origin}${location.pathname.replace(/[^/]*$/, '')}index.html`;
@@ -23,6 +27,8 @@ const base = () => {
   return `${PUBLIC_URL}index.html`;
 };
 const r5 = (v) => +v.toFixed(5);
+/** Öffentliche Adresse einer Seite von WMap (z. B. „wege.html“) – auch aus der App */
+export const pageUrl = (page) => base().replace(/index\.html$/, page);
 
 export const placeUrl = ([lon, lat], name = '', { at = null } = {}) => {
   // Komma bleibt lesbar – URLSearchParams machte daraus %2C
@@ -54,7 +60,7 @@ export async function share({ title, text = '', url: make }, toast) {
   let url;
   try { url = typeof make === 'function' ? await make() : make; } catch (err) { toast?.(err.message); return null; }
   const full = text ? `${text}\n${url}` : url;
-  const system = !!navigator.share;
+  const system = androidApp || !!navigator.share;
   const choice = await ask({
     icon: 'share', title, className: 'stacked',
     html: `<div class="share-preview">${text ? `<p>${esc(text)}</p>` : ''}<span class="share-url">${esc(url)}</span></div>`,
@@ -66,7 +72,11 @@ export async function share({ title, text = '', url: make }, toast) {
     ],
   });
   if (choice === 'share') {
-    try { await navigator.share({ title, text, url }); return 'shared'; } catch (err) {
+    try {
+      if (androidApp) await core.invoke('plugin:browser|share', { title, text: full });
+      else await navigator.share({ title, text, url });
+      return 'shared';
+    } catch (err) {
       if (err.name === 'AbortError') return null;             // selbst abgebrochen
       return copy(full, 'Text mit Link kopiert', title, toast);
     }
@@ -79,7 +89,8 @@ export async function share({ title, text = '', url: make }, toast) {
 /** In die Zwischenablage – geht das nicht, zum Markieren und selbst Kopieren. */
 async function copy(value, done, title, toast) {
   try {
-    await navigator.clipboard.writeText(value);
+    if (androidApp) await core.invoke('plugin:browser|copy', { title, text: value });
+    else await navigator.clipboard.writeText(value);
     toast?.(`${done} – jetzt einfügen und senden`);
   } catch {
     await ask({ icon: 'content_copy', title, text: 'Kopieren ging nicht – bitte selbst markieren und kopieren:',

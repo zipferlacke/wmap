@@ -4,10 +4,12 @@
  * Autofahrt ≈ 300 Punkte ≈ 3 KB, ein Jahr mit 500 Wegen ≈ 1,5 MB). Auf ein
  * anderes Gerät kommen sie per Sicherungsdatei oder GPX.
  *
- * Weg: { id, kind: 'nav'|'rec'|'gpx', profile, name, start, end (ms),
+ * Weg: { id, kind: 'nav'|'rec'|'gpx'|'health', profile, name, start, end (ms),
  *        length (m), moving (s), top (m/s), shape (Polyline5),
- *        times [s ab Start je Punkt], hr [Puls je Punkt] (aus GPX, falls da),
- *        bbox, from, to }
+ *        times [s ab Start je Punkt], und je Punkt, falls da (GPX, Health
+ *        Connect): hr [Puls], cad [Schritt- bzw. Trittfrequenz je min],
+ *        pow [Leistung in W] – null, wo nichts gemessen wurde,
+ *        bbox, from, to, source? { health, app, type } }
  *
  * Aufgezeichnet wird während der Navigation (abschaltbar) und über
  * „Aufzeichnen“ – beides mit dem Recorder unten, der nach einem Absturz
@@ -19,9 +21,12 @@ import { encodePolyline, decodePolyline, simplify, distance, bbox } from '../cor
 
 const SETTING = 'wmap.history';
 
-/** Fahrten und Aufzeichnungen merken? Standard: ja. */
+/**
+ * Navigierte Fahrten merken? Standard: nein. Geplante Touren (Meine Touren →
+ * Tour starten) und „Aufzeichnen“ landen immer unter Aufgezeichnete Touren.
+ */
 export const historySetting = {
-  get: () => local.get(SETTING, true) !== false,
+  get: () => local.get(SETTING, false) === true,
   set: (on) => local.set(SETTING, !!on),
 };
 
@@ -55,7 +60,24 @@ const TOLERANCE = { car: 8, bike: 4 };           // Meter; sonst 3
  * Rohpunkte [[lon, lat, ms], …] → Weg (oder null, wenn zu kurz).
  * Stehzeiten zählen nicht zur Bewegungszeit.
  */
-function buildTrack(points, { kind, profile, name, from = '', to = '' }) {
+/** Messwert an Stelle i jedes Punkts → { [key]: [...] }, leer ohne Werte */
+const perPoint = (pts, i, key) => (pts.some((p) => p[i] > 0) ? { [key]: pts.map((p) => (p[i] > 0 ? Math.round(p[i]) : null)) } : {});
+
+/**
+ * Ausgedünnt bleibt nur, was die Form braucht – auf geraden Stücken gingen
+ * so Tempo- und Pulswechsel verloren. Darum mindestens alle `ms` einen Punkt.
+ */
+function keepEvery(points, kept, ms) {
+  const set = new Set(kept);
+  let last = -Infinity;
+  return points.filter((p) => {
+    if (set.has(p) || p[2] - last >= ms) { last = p[2]; return true; }
+    return false;
+  });
+}
+
+/** Punkte [lon, lat, ms, puls?, frequenz?, leistung?] → Weg (null unter 200 m) */
+export function buildTrack(points, { kind, profile, name, from = '', to = '' }) {
   if (points.length < 2) return null;
   let length = 0, moving = 0, top = 0;
   for (let i = 1; i < points.length; i += 1) {
@@ -70,7 +92,8 @@ function buildTrack(points, { kind, profile, name, from = '', to = '' }) {
     }
   }
   if (length < 200) return null;
-  const kept = simplify(points, TOLERANCE[profile] ?? 3);
+  const kept = keepEvery(points, simplify(points, TOLERANCE[profile] ?? 3),
+    points.some((p) => p[3] > 0 || p[4] > 0 || p[5] > 0) ? 30000 : 60000);
   const t0 = points[0][2];
   return {
     id: `w${t0.toString(36)}${Math.random().toString(36).slice(2, 5)}`,
@@ -79,8 +102,8 @@ function buildTrack(points, { kind, profile, name, from = '', to = '' }) {
     length: Math.round(length), moving: Math.round(moving), top: Math.round(top * 10) / 10,
     shape: encodePolyline(kept.map(([x, y]) => [x, y]), 5),
     times: kept.map((p) => Math.round((p[2] - t0) / 1000)),
-    // Puls (GPX-Erweiterung) – nur, wenn es welchen gibt
-    ...(kept.some((p) => p[3] > 0) ? { hr: kept.map((p) => (p[3] > 0 ? Math.round(p[3]) : null)) } : {}),
+    // Puls, Frequenz, Leistung (GPX-Erweiterungen) – nur, wenn es welche gibt
+    ...perPoint(kept, 3, 'hr'), ...perPoint(kept, 4, 'cad'), ...perPoint(kept, 5, 'pow'),
     bbox: bbox(kept).map((v) => +v.toFixed(5)),
   };
 }
@@ -111,8 +134,9 @@ class Recorder {
   get points() { return this.#live?.points ?? []; }
   get info() { return this.#live; }
 
-  start({ kind, profile, name = '', from = '', to = '' }) {
-    this.#live = { kind, profile, name, from, to, started: Date.now(), paused: false, points: [] };
+  /** `keep`: auch als Navigation behalten, wenn „Fahrten merken“ aus ist (geplante Tour) */
+  start({ kind, profile, name = '', from = '', to = '', keep = false }) {
+    this.#live = { kind, profile, name, from, to, keep, started: Date.now(), paused: false, points: [] };
     this.#save();
   }
 
@@ -139,7 +163,7 @@ class Recorder {
     local.set(LIVE, null);
     this.onChange?.();
     if (!l) return null;
-    if (l.kind === 'nav' && !historySetting.get()) return null;
+    if (l.kind === 'nav' && !l.keep && !historySetting.get()) return null;
     const t = buildTrack(l.points, { ...l, name: name ?? l.name });
     if (t) await tracks.put(t);
     return t;
@@ -190,9 +214,10 @@ export function parseGpx(text, profile = null) {
     const points = pts.map((p) => {
       const t = Date.parse(p.querySelector('time')?.textContent ?? '');
       fake += 1000;
-      // Puls aus Garmin-/Strava-Erweiterungen (gpxtpx:hr, ns3:hr …)
-      const hr = [...p.getElementsByTagName('*')].find((e) => e.localName === 'hr')?.textContent;
-      return [+p.getAttribute('lon'), +p.getAttribute('lat'), Number.isFinite(t) ? t : fake, hr ? Number(hr) : 0];
+      // Puls, Frequenz, Leistung aus Garmin-/Strava-Erweiterungen (gpxtpx:hr, ns3:cad, power …)
+      const ext = [...p.getElementsByTagName('*')];
+      const val = (name) => Number(ext.find((e) => e.localName === name)?.textContent) || 0;
+      return [+p.getAttribute('lon'), +p.getAttribute('lat'), Number.isFinite(t) ? t : fake, val('hr'), val('cad'), val('power')];
     }).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
     const name = trk.querySelector(':scope > name')?.textContent?.trim() || fileName || 'Importierter Weg';
     const type = trk.querySelector(':scope > type')?.textContent?.trim();
@@ -205,8 +230,13 @@ export function parseGpx(text, profile = null) {
 export function trackGpx(t) {
   const coords = trackCoords(t);
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const hr = (i) => (t.hr?.[i] > 0 ? `<extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>${t.hr[i]}</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>` : '');
-  const pts = coords.map(([lon, lat], i) => `      <trkpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}"><time>${new Date(t.start + (t.times?.[i] ?? 0) * 1000).toISOString()}</time>${hr(i)}</trkpt>`).join('\n');
+  // Puls und Frequenz wie Garmin (TrackPointExtension), Leistung als <power> daneben
+  const ext = (i) => {
+    const tpx = `${t.hr?.[i] > 0 ? `<gpxtpx:hr>${t.hr[i]}</gpxtpx:hr>` : ''}${t.cad?.[i] > 0 ? `<gpxtpx:cad>${t.cad[i]}</gpxtpx:cad>` : ''}`;
+    const pw = t.pow?.[i] > 0 ? `<power>${t.pow[i]}</power>` : '';
+    return tpx || pw ? `<extensions>${pw}${tpx ? `<gpxtpx:TrackPointExtension>${tpx}</gpxtpx:TrackPointExtension>` : ''}</extensions>` : '';
+  };
+  const pts = coords.map(([lon, lat], i) => `      <trkpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}"><time>${new Date(t.start + (t.times?.[i] ?? 0) * 1000).toISOString()}</time>${ext(i)}</trkpt>`).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="WMap" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
   <metadata><name>${esc(t.name)}</name><time>${new Date(t.start).toISOString()}</time><keywords>wmap:${esc(t.id)}</keywords></metadata>
@@ -240,7 +270,7 @@ export async function restore(text) {
 /* ── Auswertung ───────────────────────────────────────────────────────────── */
 
 /** Importierte Wege ohne Angabe: am Tempo erkennen, womit man unterwegs war. */
-function guessProfile(t) {
+export function guessProfile(t) {
   const v = t.moving ? t.length / t.moving : 0;
   return { ...t, profile: v > 9 ? 'car' : v > 3.2 ? 'bike' : 'foot' };
 }

@@ -1,6 +1,7 @@
 /**
  * Übersicht (Dashboard): Kacheln zu allen Ansichten – mit Zahlen, wo es
- * welche gibt –, darunter was auf dem Gerät liegt und sich löschen lässt,
+ * welche gibt, „Sicherung & Synchronisation“ mit dem letzten Stand –, darunter was
+ * auf dem Gerät liegt und sich löschen lässt,
  * ganz unten der Dank an die Anbieter.
  */
 import { mountAppBar } from '../ui/appbar.js';
@@ -10,7 +11,9 @@ import { tours, recent } from '../data/store.js';
 import { layers } from '../map/layers.js';
 import { areas } from '../data/offline-areas.js';
 import { creditList } from '../core/credits.js';
-import { mountFolder } from '../data/folder.js';
+import { folder } from '../data/folder.js';
+import { healthAvailable, healthSync } from '../services/health.js';
+import { autoSync } from '../data/auto-sync.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { esc } from '../core/geo.js';
 import { APP_VERSION } from '../core/config.js';
@@ -24,8 +27,18 @@ const n = (x, one, many) => `${x.toLocaleString('de-DE')} ${x === 1 ? one : many
 
 /* ── Kacheln ──────────────────────────────────────────────────────────────── */
 
+/** Kurzer Stand für die Kachel „Sicherung & Synchronisation“ */
+async function syncCount() {
+  const i = await folder.info().catch(() => null);
+  if (i?.error) return 'Fehler beim Abgleich';
+  if (i?.connected) return `Ordner ${i.name}${i.last ? ` · ${DAY.format(i.last)}` : ''}`;
+  const h = healthAvailable ? healthSync.last() : null;
+  if (h?.error) return 'Fehler bei Health Connect';
+  return h?.at ? `Health Connect · ${DAY.format(h.at)}` : '';
+}
+
 async function paintTiles() {
-  const [ws, ls, xs] = await Promise.all([tracks.all().catch(() => []), layers.all().catch(() => []), extensions.all()]);
+  const [ws, ls, xs, sc] = await Promise.all([tracks.all().catch(() => []), layers.all().catch(() => []), extensions.all(), syncCount()]);
   const ps = tours.all();
   const year = new Date().getFullYear();
   const thisYear = ws.filter((t) => new Date(t.start).getFullYear() === year);
@@ -34,20 +47,21 @@ async function paintTiles() {
   const as = areas.all();
   const tiles = [
     { href: './index.html', icon: 'map', title: 'Karte', text: 'Suchen, Route planen, navigieren, aufzeichnen', main: true },
-    { href: './wege.html?tab=geplant', icon: 'route', title: 'Meine Touren', text: 'Geplant – zum Losfahren oder -laufen', count: ps.length ? n(ps.length, 'Tour', 'Touren') : 'noch keine' },
-    { href: './wege.html', icon: 'timeline', title: 'Aufgezeichnet', text: 'Was du gefahren und gelaufen bist', count: ws.length ? `${n(ws.length, 'Weg', 'Wege')}${thisYear.length ? ` · ${year}: ${km(thisYear.reduce((a, t) => a + t.length, 0))}` : ''}` : 'noch keine' },
+    { href: './wege.html?tab=geplant', icon: 'route', title: 'Geplante Touren', text: 'Zum Losfahren oder -laufen', count: ps.length ? n(ps.length, 'Tour', 'Touren') : 'noch keine' },
+    { href: './wege.html', icon: 'timeline', title: 'Aufgezeichnete Touren', text: 'Was du gefahren und gelaufen bist', count: ws.length ? `${n(ws.length, 'Weg', 'Wege')}${thisYear.length ? ` · ${year}: ${km(thisYear.reduce((a, t) => a + t.length, 0))}` : ''}` : 'noch keine' },
     { href: './entdecken.html', icon: 'explore', title: 'Entdecken', text: 'Wander- und Radwege, Touren von anderen' },
     { href: './plugins.html', icon: 'extension', title: 'Plugins', text: 'Luftbilder, Geologie, eigene Daten, Erweiterungen', count: active ? `${active} aktiv` : '' },
     { href: './offline.html', icon: 'download_for_offline', title: 'Offline-Karten', text: 'Gebiete aufs Gerät laden – für unterwegs ohne Netz', count: as.length ? `${n(as.length, 'Gebiet', 'Gebiete')} · ${mb(areas.bytes())}` : '' },
     { href: './index.html?action=survey', icon: 'edit_location_alt', title: 'Mitmachen', text: 'Kurze Fragen, die OpenStreetMap verbessern' },
+    { href: './sync.html', icon: 'sync', title: 'Sicherung & Synchronisation', text: 'Ordner (Nextcloud, Drive …), Health Connect, Sicherung', count: sc, warn: /Fehler/.test(sc) },
     { href: './settings.html', icon: 'settings', title: 'Einstellungen', text: 'Hell/dunkel, Navigation, Offline, Konto' },
   ];
 
   $('.dash-tiles').innerHTML = tiles.map((t) => `
-    <a class="dash-tile${t.main ? ' main' : ''}" href="${t.href}">
+    <a class="dash-tile${t.main ? ' main' : ''}${t.warn ? ' warn' : ''}" href="${t.href}">
       <span class="msr dash-bg" aria-hidden="true">${t.icon}</span>
       <span class="msr dash-icon">${t.icon}</span>
-      <strong>${t.title}</strong>
+      <strong>${esc(t.title)}</strong>
       <small>${t.text}</small>
       ${t.count ? `<em>${esc(t.count)}</em>` : ''}
     </a>`).join('');
@@ -108,9 +122,7 @@ async function paintStore() {
       <div><strong>Suchverlauf</strong><small>${others.length ? n(others.length, 'Eintrag', 'Einträge') : 'Leer'}</small></div>
       ${others.length ? '<button type="button" class="button" data-do="history"><span class="msr">delete</span> Löschen</button>' : ''}
     </div>
-    ${est?.usage ? `<p class="muted">Insgesamt belegt WMap ${mb(est.usage)} auf diesem Gerät${est.quota ? ` (erlaubt: ${mb(est.quota)})` : ''}.</p>` : ''}
-    <div class="dash-folder"></div>`;
-  mountFolder($('.dash-folder'), { toast });
+    ${est?.usage ? `<p class="muted">Insgesamt belegt WMap ${mb(est.usage)} auf diesem Gerät${est.quota ? ` (erlaubt: ${mb(est.quota)})` : ''}.</p>` : ''}`;
 }
 
 /** Letzte Route auf der Karte wieder öffnen – mit Punkten, „Mein Standort“ bleibt offen */
@@ -151,3 +163,4 @@ $('.dash-version').addEventListener('click', () => showChangelog());
 paintTiles();
 paintStore();
 addEventListener('wmap:folder', paintTiles);
+autoSync();

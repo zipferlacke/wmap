@@ -196,11 +196,17 @@ body.readonly {
     background: var(--surface);
     box-shadow: 0 1px 0 var(--line);
 
+    /* Mehr Reiter als Platz: sie scrollen in sich – das Panel bleibt so breit wie der Bildschirm */
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
     a {
         display: inline-flex; align-items: center; gap: .35rem;
+        flex: none;
         padding: .65rem .9rem;
         color: var(--muted);
         font-weight: 600;
+        white-space: nowrap;
         text-decoration: none;
         border-bottom: 3px solid transparent;
         .msr { font-size: 1.2rem; }
@@ -236,14 +242,26 @@ body.readonly {
     small { color: var(--muted); font-size: var(--fs-200); }
 }
 
+/* Oben in Meine Touren: Tour planen / Aufzeichnen und GPX importieren */
 .wege-tools {
     display: flex;
     flex-wrap: wrap;
     gap: .5rem;
-    padding-top: .5rem;
-    border-top: 1px solid var(--line);
-    > .button { flex: 1 1 12rem; justify-content: center; cursor: pointer; }
-    .muted { flex-basis: 100%; color: var(--muted); font-size: var(--fs-200); }
+    > .button { flex: 1 1 9rem; justify-content: center; cursor: pointer; background: var(--surface-2); }
+}
+/* Unten: Hinweis auf „Sicherung & Abgleich“ */
+.wege-sync-hint {
+    display: flex; align-items: center; gap: .6rem;
+    margin-top: .25rem;
+    padding: .65rem .75rem;
+    border: 1px dashed var(--line);
+    border-radius: .8rem;
+    color: var(--muted);
+    font-size: var(--fs-200);
+    text-decoration: none;
+    > .msr { flex-shrink: 0; color: var(--route); }
+    strong { color: var(--route); }
+    &:hover { background: var(--surface-2); }
 }
 
 /* ── Geplant: Leiste, bekannte Touren ─────────────────────────────────────── */
@@ -265,6 +283,28 @@ body.readonly {
     .muted { color: var(--muted); font-size: var(--fs-200); }
     .known-kinds .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; }
     .known-status .spin { animation: spin 1s linear infinite; vertical-align: -.25rem; }
+}
+
+/* ── Seitenleiste am Handy (userDialog-sheet aus wuefl-libs) ──────────────── */
+
+/* Höherer Griff, und eingeklappt bleibt er über der Gestenleiste von Android
+   stehen (--safe-bottom, siehe core/theme.js) – sonst fängt das System das
+   Hochziehen ab. Der Inhalt fängt erst unter dem Griff an: der liegt obenauf
+   und schluckte sonst die Knöpfe ← und ✕ (.wege-panel setzt sein eigenes
+   padding, das die Regel aus wuefl-libs überstimmt) */
+@media screen and (max-width: 700px) {
+    .userDialog.uD-sheet:is(:not([data-pos-mobile]), [data-pos-mobile="bottom"]) {
+        padding-top: calc(var(--uD-grip) + .25rem);
+        padding-bottom: var(--safe-bottom);
+        &.uD-collapsed { translate: 0 calc(100% - var(--uD-grip) - var(--safe-bottom)); }
+    }
+}
+@media screen and (min-width: 701px) {
+    .wege-panel.uD-sheet[data-pos="left"] { padding-right: calc(var(--uD-grip) + .5rem); }
+    .wege-panel.uD-sheet[data-pos="right"] { padding-left: calc(var(--uD-grip) + .5rem); }
+}
+@media screen and (max-width: 700px) and (pointer: coarse) {
+    .userDialog.uD-sheet:is(:not([data-pos-mobile]), [data-pos-mobile="bottom"]) { --uD-grip: 2.2rem; }
 }
 
 /* ── Offline-Karten ───────────────────────────────────────────────────────── */
@@ -395,15 +435,30 @@ body.wege-page { overflow: hidden; }
 
 .wege-search { position: sticky; top: 0; z-index: 2; box-shadow: 0 0 0 .4rem var(--surface); }
 
+/* Jahr (bzw. Gruppe) als Aufklapp-Zeile – mit Pfeil, damit man sieht, dass sie aufgeht */
 .wege-year {
+    & + .wege-year { margin-top: .4rem; }
     summary {
         display: flex; align-items: center; gap: .5rem;
-        padding: .45rem .25rem;
+        padding: .55rem .6rem;
+        border-radius: .7rem;
+        background: var(--surface-2);
         cursor: pointer;
         list-style: none;
+        user-select: none;
         i { width: .8rem; height: .8rem; border-radius: 50%; flex-shrink: 0; }
+        strong { font-size: var(--fs-400); }
         small { color: var(--muted); font-size: var(--fs-100); margin-left: auto; }
+        &::after {
+            content: "expand_more";
+            font-family: 'Material Symbols Rounded';
+            font-size: 1.4rem; line-height: 1;
+            color: var(--muted);
+            transition: rotate .2s;
+        }
+        &:hover { background: color-mix(in srgb, var(--route) 10%, var(--surface-2)); }
     }
+    &[open] > summary { border-radius: .7rem .7rem 0 0; &::after { rotate: 180deg; } }
     summary::-webkit-details-marker { display: none; }
 }
 
@@ -441,6 +496,41 @@ body.wege-page { overflow: hidden; }
     &[hidden] { display: none; }
 }
 
+/* Diagramm umschalten (Höhe, Tempo, Puls …) und Runden – pages/wege.js */
+.weg-chart-tabs, .weg-laps .chip-row {
+    flex-wrap: wrap; overflow: visible;
+    &[hidden] { display: none; }
+    .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; .msr { color: #fff; } }
+}
+.weg-laps {
+    display: grid; gap: .4rem;
+    &[hidden] { display: none; }
+    .laps-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem; }
+    h3 { display: flex; align-items: center; gap: .35rem; margin: 0; font-size: var(--fs-400); .msr { color: var(--route); } }
+}
+.laps-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-200);
+    font-variant-numeric: tabular-nums;
+    th { color: var(--muted); font-weight: 600; text-align: right; padding: .3rem .4rem; }
+    th:first-child, td:first-child { text-align: left; }
+    td { padding: .4rem; text-align: right; border-top: 1px solid var(--line); vertical-align: top; }
+    td small { color: var(--muted); }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover, tbody tr:focus-visible { background: var(--surface-2); outline: none; }
+    tr.shown { background: color-mix(in srgb, #fab005 22%, transparent) !important; }
+    tr.fast td:nth-child(3) { color: light-dark(#2b8a3e, #69db7c); font-weight: 700; }
+    tr.slow td:nth-child(3) { color: light-dark(#c92a2a, #ff8787); font-weight: 700; }
+    .lap-badge {
+        display: flex; justify-content: flex-end; align-items: center; gap: .15rem;
+        font-size: var(--fs-100); font-weight: 600;
+        .msr { font-size: .95rem; }
+        &.fast { color: light-dark(#2b8a3e, #69db7c); }
+        &.slow { color: light-dark(#c92a2a, #ff8787); }
+    }
+}
+
 .wege-panel .ent-tabs small { color: var(--muted); font-size: var(--fs-100); font-weight: 400; margin-left: .15rem; }
 .wege-panel .tab-hint { margin-top: -.25rem; }
 .wege-panel .tour-text { white-space: pre-line; }
@@ -448,6 +538,8 @@ body.wege-page { overflow: hidden; }
 /* ── Entdecken ────────────────────────────────────────────────────────────── */
 
 .ent-tabs { position: static; padding: 0; margin: 0 -.25rem .5rem; box-shadow: 0 1px 0 var(--line); background: none; a { padding: .5rem .6rem; font-size: var(--fs-200); } }
+@media (max-width: 480px) { .ent-tabs a { padding: .5rem .4rem; gap: .2rem; .msr { font-size: 1.05rem; } } }
+.wege-panel .wege-content, .wege-panel .wege-content > * { min-width: 0; }
 .ent-tabs[hidden], .ent-tabs a[hidden] { display: none; }
 /* Wegzeichen von Waymarked Trails (SVG) */
 .wmt-symbol { width: 1.6rem; height: 1.6rem; object-fit: contain; vertical-align: middle; }
@@ -583,3 +675,13 @@ body.readonly .tour-panel .save-state { width: auto; padding-inline: .8rem; gap:
     .transit-badge { min-width: 0; padding: .05rem .35rem; font-size: var(--fs-100); }
 }
 .conn-legs { list-style: none; margin: .5rem 0; padding: 0; display: grid; gap: .15rem; }
+
+/* Meine Touren → Orte: Lesezeichen in Listen (pages/wege.js) */
+.orte-list-actions { display: flex; flex-wrap: wrap; gap: .25rem 1rem; padding: .35rem .5rem 0; font-size: var(--fs-200);
+    .link-button { display: inline-flex; align-items: center; gap: .25rem; .msr { font-size: 1rem; } } }
+.orte-shared {
+    display: grid; gap: .5rem; padding: .7rem; border: 1px solid #e03131; border-radius: .8rem;
+    p { display: flex; align-items: center; gap: .4rem; margin: 0; font-size: var(--fs-200); .msr { color: #e03131; } }
+    .orte-shared-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+}
+.wege-table .w-num .button[data-place-route] { color: var(--route); }

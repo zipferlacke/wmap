@@ -25,15 +25,15 @@ gewollt?“) und als Grundlage für Erklärungen in der App.
 7. [3D, Gelände und Höhen](#7-3d-gelände-und-höhen)
 8. [Tastatur und Fliegen](#8-tastatur-und-fliegen)
 9. [Übersicht (Dashboard)](#9-übersicht-dashboard)
-10. [Meine Touren: Geplant und Aufgezeichnet](#10-meine-touren-geplant-und-aufgezeichnet)
+10. [Meine Touren: Geplant, Aufgezeichnet, Bus & Bahn, Orte](#10-meine-touren-geplant-aufgezeichnet-bus--bahn-orte)
 11. [Tour planen](#11-tour-planen)
 12. [Aufzeichnen](#12-aufzeichnen)
 13. [Entdecken](#13-entdecken)
 14. [Plugins und eigene Ebenen](#14-plugins-und-eigene-ebenen)
-15. [Ordner verbinden (Nextcloud, Proton Drive …)](#15-ordner-verbinden)
+15. [Sicherung & Synchronisation: Ordner, Health Connect, ZIP](#15-sicherung--synchronisation-ordner-health-connect-zip)
 16. [Teilen, Standort anfragen, Bild in Bild](#16-teilen-standort-anfragen-bild-in-bild)
 17. [Mitmachen bei OpenStreetMap, Meldungen](#17-mitmachen-bei-openstreetmap-meldungen)
-18. [WMap-Konto (Passkey) und Server](#18-wmap-konto-passkey-und-server)
+18. [WMap-Konto (OpenStreetMap) und Server](#18-wmap-konto-openstreetmap-und-server)
 19. [Einstellungen](#19-einstellungen)
 20. [Offline und Datenverbrauch](#20-offline-und-datenverbrauch)
 21. [Was wo gespeichert wird](#21-was-wo-gespeichert-wird)
@@ -182,14 +182,19 @@ Man startet immer mit der Karte.
   (Flächen, Linien, seltene Kategorien). Restaurants zeigen auch Imbisse.
 - **Ortskarte:** Name, Art, Öffnungszeiten, Adresse, Bild und Kurztext aus
   Wikipedia/Commons, an Bahnhöfen die Abfahrten, an Tankstellen die Preise
-  (mit eigenem Tankerkönig-Schlüssel). Knöpfe: Route, Als Start,
-  Erreichbar, Merken, Teilen, Bearbeiten (OSM) bzw. am freien Punkt „Hier
-  eintragen“.
-- **Merken:** ein Knopf für alles – ein Tipp legt ein **Lesezeichen** an
-  (Ort, Adresse, Haltestelle), noch einer („Gemerkt“) nimmt es weg. Die
-  Meldung danach bietet „Zuhause / Arbeit“ an. Lesezeichen stehen in der
-  Suche und in den Feldern der Routenplanung ganz oben (bei Bus & Bahn die
-  Haltestellen zuerst).
+  (mit eigenem Tankerkönig-Schlüssel). Knöpfe: **Route**, Teilen,
+  Erreichbar, Merken, Bearbeiten (OSM) bzw. am freien Punkt „Hier
+  eintragen“ („Als Start“ gibt es in der Routenplanung).
+- **Merken:** ein Tipp legt ein **Lesezeichen** in der Liste „Allgemein“ an
+  (Ort, Adresse, Haltestelle); die Meldung bietet „Ändern“: eigener Name
+  („Oma“, „Verein“ …), eine andere oder neue **Liste** („Hannover Urlaub“),
+  Zuhause oder Arbeit. „Gemerkt“ antippen öffnet denselben Dialog mit
+  „Entfernen“.
+- **In der Suche** (und in den Feldern der Routenplanung): ohne Eingabe
+  Zuhause und Arbeit ganz oben; beim Tippen dazu die Lesezeichen, deren
+  Name, Ort oder Liste passt – im Abschnitt „Lesezeichen“ vor den
+  Suchergebnissen (bei Bus & Bahn gemerkte Haltestellen zuerst).
+- **Listen ansehen und teilen:** Meine Touren → Orte.
 - **Zuletzt gesucht:** WMap merkt sich Orte, Kategorien und Routen; löschbar
   in den Einstellungen und in der Übersicht.
 
@@ -328,6 +333,21 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
   Schalter „auf der Karte“. Darunter nur ein Knopf **Verwalten** → Plugin-
   Seite: Plugins holen, eigene Quelle (Kacheln, WMS, GeoJSON – auf Wunsch mit
   Benutzer und Passwort), Deckkraft.
+- **Plugin-Ordner** (`js/data/plugin-folders.js`, Anleitung für Nutzer:
+  `plugin-anleitung.html`, verlinkt auf der Plugin-Seite): mehrere lokale
+  Ordner, gemerkt und mit „Neu einlesen“ aktualisierbar. Lose `.geojson` →
+  Ebene, lose `.js` → Erweiterung; ein Unterordner mit `wmap-plugin.json`
+  ist ein Plugin: GeoJSON-Ebene (`data`, `color`, `colorBy`, `description`,
+  `operator`, `attribution`), Kartenkacheln (`tiles`, `minzoom`, `maxzoom`,
+  `opacity`) oder Erweiterung (`type: "extension"`, `script`; der Code läuft
+  als Blob-Modul, erst nach dem Aktivieren). Neu einlesen ersetzt, was aus
+  dem Ordner kam, und behält „auf der Karte“ bzw. „aktiv“.
+  App: Plugin `folder` mit je einem Platz (`slot` „layers“, „layers2“ …);
+  Chrome/Edge: File System Access, der Zugriff liegt in IndexedDB (nach
+  einem Neustart fragt der Browser beim Neu-Einlesen einmal nach);
+  Firefox/Safari: nur einmal einlesen (`<input webkitdirectory>`) – beide
+  bieten `showDirectoryPicker` nicht an (Mozilla hält dauerhaften
+  Ordnerzugriff für Webseiten für zu riskant).
 
 ## 7. 3D, Gelände und Höhen
 
@@ -336,9 +356,17 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
   neigt oder das Gelände schaltet, behält seine Wahl.
 - **Höhendaten:** Mapterhorn, in Deutschland bis Zoom 16 – das sind
   **≈ 0,75 m je Pixel**, gerechnet aus den amtlichen 1-m-Geländemodellen der
-  Länder. Die **normale Karte nutzt diese volle Auflösung**. In der
-  **Navigation** reicht Zoom 13 (≈ 6 m): weniger Daten, und die Straße liegt
-  ruhiger, weil kleine Höhenfehler sie sonst wellen.
+  Länder. Die **Schummerung nutzt diese volle Auflösung**, das **Gelände**
+  Zoom 14 (≈ 3 m): Die Kacheln mit den Häusern gehen nur bis Zoom 14, und mit
+  feinerem Gelände rechnet MapLibre die Höhe der 3D-Häuser falsch – sie
+  schweben dann neben ihrem Grundriss. In der **Navigation** reicht Zoom 13
+  (≈ 6 m): weniger Daten, und die Straße liegt ruhiger, weil kleine
+  Höhenfehler sie sonst wellen.
+- **Warnungen:** Der Grundstil wird vor dem ersten Zeichnen gerichtet –
+  fehlende Gebäudehöhen gelten als 0, Zahlenvergleiche in Filtern bekommen
+  ein `has`, fehlende Symbole des Grundstils (`atm`, `gate` …) werden leer
+  nachgeliefert. Sonst meldet MapLibre das je Kachel in der Konsole.
+- **Eigener Standort:** ein ruhiger Punkt – das Pulsieren von MapLibre ist aus.
 - **Überhöhung:** weit draußen 1,5-fach, ab Zoom 12 1,25, ab Zoom 14 1-fach.
 - **Relief (Schummerung):** Schatten an Hängen, damit Berge und Täler auch
   flach von oben sichtbar sind – kräftig bis Zoom 12, nah heran schwächer
@@ -390,27 +418,38 @@ ansteigend bis zum **Sechsfachen nach 2,5 s**.
 Zweiter Hauptbildschirm (`dashboard.html`), ohne Karte, mit Navigationsleiste.
 
 - **Kacheln** nur für Ansichten, mit großem blassem Symbol, Titel, einem Satz
-  und – wo es passt – einer Zahl: Karte (groß), Meine Touren (Anzahl
-  geplant), Aufgezeichnet (Anzahl, km in diesem Jahr), Entdecken, Plugins
-  (Anzahl aktiv), Mitmachen, Einstellungen. Tour planen, Aufzeichnen,
-  Fliegen und Erreichbarkeit gibt es in Karte bzw. Touren.
+  und – wo es passt – einer Zahl: Karte (groß), Geplante Touren (Anzahl),
+  Aufgezeichnete Touren (Anzahl, km in diesem Jahr), Entdecken, Plugins
+  (Anzahl aktiv), Offline-Karten, Mitmachen, **Sicherung & Synchronisation**
+  (verbundener Ordner und letzter Abgleich, rot bei einem Fehler),
+  Einstellungen. Tour planen, Aufzeichnen, Fliegen und Erreichbarkeit gibt
+  es in Karte bzw. Touren.
 - **Gespeichert auf diesem Gerät:**
   - Karten für die Navigation: jede vorgeladene Navigation mit Datum, Anzahl
     Kacheln und wie viele Tage sie noch bleibt; dazu Kacheln angesehener
     Gegenden – alles löschen
   - Letzte Routen – einzeln (✕) oder alle löschen; antippen öffnet sie
   - Suchverlauf – löschen
-  - Speicher insgesamt, Ordner verbinden
+  - Speicher insgesamt
 - **Danke-Banner** (grün, Hand mit Herz) mit allen Anbietern und dem Knopf
   „Entwicklung unterstützen“ (paypal.me/wuefl), darunter Version und Impressum.
 
-## 10. Meine Touren: Geplant, Aufgezeichnet, Bus & Bahn
+## 10. Meine Touren: Geplant, Aufgezeichnet, Bus & Bahn, Orte
 
-Eine Seite, drei Reiter (`wege.html`). Der
-dritte, **Bus & Bahn** (`?tab=bahn`), zeigt gemerkte Verbindungen: kommende
+Eine Seite, vier Reiter (`wege.html`; am Handy scrollen die Reiter in sich).
+**Bus & Bahn** (`?tab=bahn`) zeigt gemerkte Verbindungen: kommende
 oben, **vergangene zugeklappt** darunter; im Detail alle Abschnitte zum
 Aufklappen, auf der Karte jede Fahrt in ihrer Farbe; Knöpfe Neu suchen,
-Ticket bei der Bahn, Löschen. Die ersten zwei:
+Ticket bei der Bahn, Löschen.
+
+**Orte** (`?tab=orte`): die Lesezeichen – Zuhause & Arbeit, dann je Liste
+(„Allgemein“, „Hannover Urlaub“ …) mit Farbe; auf der Karte alle als Punkte
+mit Namen. Je Liste „Liste teilen“ (Link `wege.html?liste=…`, alle Orte
+gepackt in der Adresse, ohne Server) und „Auf der Karte“; je Ort Route
+dorthin. Ein geteilter Link zeigt die Liste rot zur Vorschau mit
+„Als Liste übernehmen“ bzw. „Verwerfen“.
+
+Die ersten zwei:
 
 | | Geplant | Aufgezeichnet |
 |---|---|---|
@@ -419,19 +458,38 @@ Ticket bei der Bahn, Löschen. Die ersten zwei:
 | Gruppen | Zu Fuß · Rad · Auto | Jahre (je Jahr eine Farbe) |
 | Zahlen | Strecke, Anstieg | Strecke, Zeit in Bewegung, Tempo, Puls |
 
-- **Liste:** Suche oben (Name, Ort, Jahr, Monat, Profil …), darunter je Gruppe
-  eine Tabelle. Überfahren einer Zeile hebt die Linie auf der Karte hervor.
-  Auf der Karte liegt nur der aktive Reiter.
+- **Oben:** Tour planen bzw. Aufzeichnen und GPX importieren (doppelte Wege
+  werden erkannt), darunter die Suche (Name, Ort, Jahr, Monat, Profil …),
+  dann je Gruppe eine Tabelle – Jahre bzw. Gruppen als Aufklapp-Zeile mit
+  Pfeil. Überfahren einer Zeile hebt die Linie auf der Karte hervor.
+- **Karte:** nur der aktive Reiter. Weit herausgezoomt (unter Zoom 9) je
+  Tour ein Punkt am Start, nahe beieinander zusammengefasst mit der Anzahl
+  (antippen zoomt hinein); näher die Linien. Die gewählte Tour trägt
+  **Kilometermarken** 1, 2, 3 … (lange Touren alle 5 bzw. 10 km); der Punkt
+  aus dem Diagramm liegt über der Linie.
+- **Unten:** ein Hinweis auf „Sicherung & Synchronisation“ (Ordner, Health
+  Connect, ZIP) – die Knöpfe dafür stehen nur noch dort.
 - **Detail** (Zeile oder Linie antippen): Name oben, ← zurück zur Liste.
   - Aufgezeichnet: Name änderbar, Datum und Uhrzeit, Strecke, Zeit in
-    Bewegung, Ø und max. km/h, Anstieg, Ø/max. Puls (aus GPX), Höhenprofil;
-    die Linie ist nach Tempo gefärbt (langsam orange → schnell grün).
+    Bewegung, Ø und max. km/h, Anstieg, Ø/max. Puls, Ø Frequenz und
+    Leistung (aus GPX oder Health Connect); die Linie ist nach Tempo
+    gefärbt (langsam orange → schnell grün).
+    **Diagramm** mit Umschalter: Höhe, Tempo, Puls, Schritt- bzw.
+    Trittfrequenz, Leistung – nur, was gemessen wurde; Zeiger im Diagramm
+    und auf der Linie zeigen dieselbe Stelle.
+    **Runden** zu 1, 2 oder 5 km (gemerkt): Zeit, Tempo (zu Fuß als min/km),
+    Ø Puls, Anstieg; die schnellste grün, die langsamste rot, eine Runde
+    antippen hebt sie auf der Karte hervor (`js/data/track-stats.js`).
     Knöpfe: Als Tour speichern, Als Tour teilen, GPX, Löschen.
+    Puls, Frequenz und Leistung stehen je Punkt am Weg und gehen als
+    GPX-Erweiterung (gpxtpx:hr/cad, power) mit in den verbundenen Ordner;
+    beim Ausdünnen bleibt mindestens alle 30 s ein Punkt.
   - Geplant: Profil, Strecke, Dauer, Anstieg/Abstieg, Beschreibung,
-    Höhenprofil. Knöpfe: Im Planer öffnen, Teilen, GPX, Löschen.
-- **Unten:** Tour planen bzw. Aufzeichnen, GPX
-  importieren (doppelte Wege werden erkannt), Sicherung speichern/laden,
-  Ordner verbinden.
+    Höhenprofil. Knöpfe: **Tour starten** (Karte mit den Punkten der Tour
+    als Route, Profil passend – Wandern → zu Fuß, Rennrad → Rad –, die
+    Navigation startet von selbst: `index.html?tour=ID&start`; sie wird
+    immer unter Aufgezeichnete Touren gespeichert), Im Planer öffnen,
+    Teilen, GPX, Löschen.
 
 ## 11. Tour planen
 
@@ -466,6 +524,14 @@ Ticket bei der Bahn, Löschen. Die ersten zwei:
     Verlauf. Liegt ein Punkt daneben, wird dorthin normal geroutet.
   - **So übernehmen:** der ganze Weg auf einen Klick als fester Verlauf
     (auch Rundwege). **Neu planen** leert die eigenen Punkte.
+- **Ort suchen:** ein Treffer landet nicht gleich in der Tour, sondern
+  erscheint als blaue Nadel mit Menü: „Als nächsten Punkt anhängen“,
+  „Einfügen, wo es passt“ (kleinster Umweg), „Als Start setzen“,
+  „Verwerfen“. Tippen in die Karte schließt die Vorschau.
+- **Punkt antippen:** Punkt entfernen; am Start „Auch als Ziel – Rundweg“;
+  an anderen Punkten „Zum Start machen“ (im Rundweg „Hier starten und
+  enden“: die Runde dreht sich, der Punkt wird Start und Ziel) und „Zum Ziel
+  machen“.
 - **Touren entdecken** (bei den Werkzeugen) → Entdecken.
 - **Etappen – in Tagestouren teilen** (ab 5 km): „Etappen“ an, dann setzt ein
   Tipp auf die Linie ein Tagesende (Fähnchen mit Nummer, antippen entfernt
@@ -487,8 +553,9 @@ Ticket bei der Bahn, Löschen. Die ersten zwei:
   **4 m** bewegt hat. Stehzeiten zählen nicht zur Bewegungszeit.
 - Nach Absturz oder Neuladen geht es weiter (bis 12 Stunden).
 - Beim Stopp einen Namen geben oder verwerfen. Gespeichert wird nur auf dem
-  Gerät. Auch Navigationen werden aufgezeichnet (abschaltbar: Einstellungen →
-  Fahrten merken).
+  Gerät. Navigationen einer geplanten Tour (Meine Touren → Tour starten)
+  werden immer aufgezeichnet, andere Navigationen nur mit Einstellungen →
+  „Jede Navigation merken“ (Standard: aus).
 - Browser zeichnen im Hintergrund nicht auf – der Bildschirm bleibt an.
 
 ## 13. Entdecken
@@ -575,45 +642,96 @@ ansehen“) – GeoJSON auf heller Karte (z. B. aus QGIS).
 - **Als Plugin:** hochladen (bis 2 MB), privat oder öffentlich.
 - Alles liegt nur im Browser (IndexedDB).
 
-## 15. Ordner verbinden
+**Health Connect** (nur Android-App): Sicherung & Synchronisation → „Trainings
+holen“ übernimmt neue Trainings mit Route als Wege (Name aus dem Training
+oder „Rudern am …“, Profil aus der Art, sonst am Tempo erkannt), dazu Puls,
+Tempo, Frequenz und Leistung je Punkt. Jeder Weg behält Art und App: Symbol
+und „Rudern · Zepp“ in Liste und Detail, auch in der Suche. Schon
+Übernommenes kommt nicht doppelt. Indoor-Trainings (Rudergerät, Workout,
+Laufband …) haben keine Strecke – hängt eine App trotzdem eine Route mit
+Rückfrage an (Zepp), wird sie still übergangen. Routen fremder Apps gibt Health Connect
+nur mit „Immer erlauben“ ohne Rückfrage heraus – lehnt man eine Rückfrage
+ab, fragt der Import für den Rest nicht mehr, übernimmt aber alles andere
+(`js/services/health.js`, Plugin in `src-tauri/plugins/health`).
+Automatisch holen: siehe Abschnitt 15.
 
-Wege und Touren als GPX-Dateien in einem Ordner, den ein Sync-Programm mit der
-Cloud abgleicht – **Nextcloud, Proton Drive, Google Drive, Syncthing**. WMap
-braucht dafür kein Konto, es liest und schreibt nur Dateien.
+**Berechtigungen** (nur Android-App, `js/ui/permissions.js`): Nach dem
+Willkommen beim ersten Start erklärt ein Dialog Standort und Health Connect –
+je Recht wofür, der Zustand und darunter der Knopf (erlauben bzw. in die
+Einstellungen von Android oder Health Connect zum Ändern und Widerrufen).
+Derselbe Dialog kommt, wenn etwas den Standort oder Health Connect braucht,
+das noch nicht erlaubt ist (Standort-Knopf, Navigation, Aufzeichnen, Route
+ab „Mein Standort“), und unter Einstellungen → Berechtigungen. Beim Start
+der Karte wird nicht gefragt – ohne Freigabe bleibt die letzte Ansicht.
+
+## 15. Sicherung & Synchronisation: Ordner, Health Connect, ZIP
+
+Eigene Seite `sync.html` (Kachel in der Übersicht; Einstellungen → Daten und
+unten in Meine Touren verweisen dorthin). Drei Teile, je mit letztem
+Abgleich, Fehler (rot, auch auf der Kachel) und **Automatisch**: aus / beim
+Öffnen von WMap / beim Öffnen und alle 30 Minuten (`js/data/auto-sync.js`).
+
+### Ordner
+
+Alles, was man in WMap anlegt, als Dateien in einem Ordner, den ein
+Sync-Programm abgleicht – **Nextcloud, Proton Drive, Google Drive,
+Syncthing**. Jede WMap, die denselben Ordner verbindet, liest ihn ein und
+gleicht mit ab: dieselben Daten auf allen Geräten, bewusst lokal, ohne Konto
+und ohne Server.
 
 ```
-WMap/Geplant/Harzer Hexenstieg.gpx
-WMap/Abgeschlossen/2026/2026-09-20 Radtour am Samstagnachmittag.gpx
-WMap/Gemerkt.json
+WMap/
+├─ settings.json                     Einstellungen (hell/dunkel, Navigation, Stimme …)
+├─ Geplante Touren/Harzer Hexenstieg.gpx
+├─ Aufgezeichnete Touren/2026/09 September/2026-09-20 Radtour am Samstagnachmittag.gpx
+├─ Bus & Bahn/2026-09-30 08.15 Göttingen → Kassel.json   je gemerkte Verbindung
+└─ Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen mit Listen
 ```
 
-`Gemerkt.json` hält gemerkte Verbindungen (Bus & Bahn), Zuhause, Arbeit und
-Lesezeichen (data/saved.js): je Eintrag gewinnt das Neuere, Gelöschtes steht ein
-Jahr lang in `deleted`, damit es nicht von einem anderen Gerät zurückkommt.
-
-Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene.
-
-- Zu finden in Einstellungen → Daten, Meine Touren (unten) und Übersicht.
-- **Abgleich** beim Öffnen einer Seite, nach jeder Aufzeichnung und nach dem
-  Speichern im Planer (2,5 s nach der letzten Änderung):
+- Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene. Dateien
+  aus der alten Ordnung (`Geplant/`, `Abgeschlossen/<Jahr>/`, `Gemerkt.json`)
+  ziehen beim ersten Abgleich um.
+- **Abgleich** beim Öffnen und 2,5 s nach jeder Änderung (je nach
+  Automatik), sonst mit „Jetzt abgleichen“:
   - nur im Ordner → übernehmen; nur in WMap → Datei schreiben
   - im Ordner gelöscht → auch in WMap weg; in WMap gelöscht → Datei weg
-  - beides geändert → das Neuere gewinnt
-- Erkannt wird eine Datei am Stichwort `wmap:ID` in der GPX-Datei; fremde
-  GPX (Garmin, Komoot-Export …) dürfen irgendwo im Ordner liegen – mit Zeiten
-  werden sie ein Weg, sonst eine Tour. Puls bleibt erhalten.
-- **Wo es geht:** Chrome und Edge (Rechner und Android). Am Handy wählt man den
-  Ordner in der Drive-App aus – ob Proton Drive dort Ordner anbietet, hängt
-  von der Proton-App ab. Der Browser fragt nach einem Neustart ggf. erneut
-  nach dem Zugriff („Erlauben und abgleichen“).
-- **Sicherung als ZIP** (Meine Touren unten): dieselbe Ordnung
-  (`WMap/Geplant/…`, `WMap/Abgeschlossen/<Jahr>/…`) als GPX, dazu
-  `WMap/wmap-sicherung.json` mit allem für die Wiederherstellung. „Sicherung
-  laden“ nimmt das ZIP (oder eine alte `.json`); ein ZIP ohne JSON, etwa ein
-  gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
-- **Ohne Ordner-Zugriff** (Firefox, Safari, App): „Ordner einlesen“ holt alle
-  GPX eines Ordners herein; „Alles teilen“ schickt alle GPX an das
-  Teilen-Menü (z. B. „In Proton Drive speichern“).
+  - beides geändert → das Neuere gewinnt; geändert heißt: andere Zeit und
+    anderer Inhalt als beim letzten Abgleich (manche Cloud-Ordner unter
+    Android melden keine Zeit)
+  - `Lesezeichen.json`: je Eintrag das Neuere, Gelöschtes steht ein Jahr in
+    `deleted`, damit es nicht von einem anderen Gerät zurückkommt
+  - `settings.json`: hier geändert → schreiben, nur dort geändert →
+    übernehmen; beim ersten Abgleich eines Geräts gilt die Datei. Nicht
+    dabei: Konten, Verlauf, Kartenausschnitt.
+- Erkannt wird eine Datei am Stichwort `wmap:ID` (GPX) bzw. an der `id`
+  (JSON). Fremde GPX (Garmin, Komoot-Export …) dürfen irgendwo im Ordner
+  liegen – mit Zeiten werden sie ein Weg, sonst eine Tour; sie bleiben, wo
+  sie sind. Puls, Frequenz, Leistung bleiben erhalten.
+- **Wo es geht:**
+  - **WMap-App** (Android, Linux, macOS, Windows): eigenes Plugin
+    `src-tauri/plugins/folder` – Android wählt den Ordner über den
+    Speicherzugriff des Systems (auch Nextcloud, Drive …), am Rechner ein
+    Ordnerdialog. Die App liest und schreibt nur in diesem Ordner.
+  - **Chrome und Edge** (File System Access API); der Browser fragt nach
+    einem Neustart ggf. erneut („Erlauben und abgleichen“).
+  - **Firefox, Safari:** kein fester Ordner – „GPX aus Ordner einlesen“ holt
+    einmalig alle GPX herein (auch bei leerem Ordner mit Meldung), „Alles
+    teilen“ schickt sie ans Teilen-Menü.
+
+### Health Connect (Android-App)
+
+„Trainings holen“ übernimmt neue Trainings mit Route – der Fortschritt steht
+am Knopf, am Ende nur eine Meldung „x importiert“. Routen, für die Health
+Connect einzeln fragt, bleiben beim automatischen Holen liegen (Hinweis:
+in Health Connect WMap → Trainingsrouten „Immer erlauben“). Dazu
+„Berechtigungen“ (Dialog aus Abschnitt 14).
+
+### Sicherung als ZIP
+
+Dieselbe Ordnung wie im Ordner (GPX, Bus & Bahn, `Lesezeichen.json`), dazu
+`WMap/wmap-sicherung.json` mit allem für die Wiederherstellung. „Sicherung
+laden“ nimmt das ZIP (oder eine alte `.json`); ein ZIP ohne JSON, etwa ein
+gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
 
 ## 16. Teilen, Standort anfragen, Bild in Bild
 
@@ -622,6 +740,13 @@ Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene.
   Tour (`tour.html#t=…`), in der Navigation die Ankunftszeit.
 - **Standort anfragen:** Link schicken; wer ihn öffnet, schickt seinen
   Standort zurück.
+- **Teilen-Dialog:** Teilen-Menü des Geräts, Text mit Link kopieren oder nur
+  den Link. Die Android-App öffnet das Teilen-Menü von Android und kopiert
+  über das System (Plugin `browser`) – das WebView kann beides nicht.
+- **Weblinks in der App** (Website eines Orts, Quellen …, `js/core/links.js`):
+  nicht im Fenster von WMap, sondern darüber mit einer Leiste – ✕ links
+  schließt, rechts „Im Browser öffnen“. Android: Custom Tab des Systems,
+  Rechner: eigenes Fenster. Im Browser wie gewohnt ein neuer Tab.
 - **Bild in Bild** während der Navigation:
   - **Android-App:** Wischt man die App weg (oder drückt Home), geht sie von
     selbst ins Mini-Fenster – die ganze App, also Karte und Anweisung; Knöpfe,
@@ -641,28 +766,83 @@ Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene.
   Vorbeigehen (≤ 30 m), mit dem Auto nur, wo man angehalten hat. Öffnungszeiten
   mit Wochen-Editor, „Rund um die Uhr“ und „Gibt es nicht mehr“.
 - Hochladen mit OSM-Konto direkt in die Karte, sonst anonym als Hinweis.
-  Die Anmeldung braucht eine OAuth-Client-ID (Einstellungen → Für
-  Entwickler); fehlt sie, sagt der Dialog das.
+  Das OSM-Konto ist zugleich das WMap-Konto (Abschnitt 18).
+  Die Anmeldung braucht eine **OAuth-Client-ID** in `OSM_AUTH` in
+  `js/core/config.js` und dieselbe in `OSM_CLIENT_ID` in `bEnd/config.php`
+  (Einstellungen → Für Entwickler kann sie im Browser überschreiben – dann
+  nur Karte bearbeiten, kein WMap-Konto). Einmal anlegen: openstreetmap.org
+  → Mein Konto → OAuth 2 Anwendungen → „Neue Anwendung“, Weiterleitungs-URL
+  `https://app.wuefl.de/wmap/oauth.html`, **nicht vertraulich** (PKCE – ohne
+  diesen Haken will OSM ein Client-Geheimnis, das eine App nicht geheim
+  halten kann), Rechte „Benutzereinstellungen lesen“, „Karte bearbeiten“,
+  „Notizen bearbeiten“, „Melde dich mit OpenStreetMap an“ (`openid`).
+  Die Client-ID ist nicht geheim und steht im Repository; ein
+  Client-Geheimnis gehört nirgends hin.
+  Alle WMaps (Browser, App, lokal) nutzen diese eine Weiterleitung:
+  `oauth.html` reicht den Code an die WMap weiter, von der die Anmeldung
+  kam (steht im `state`). In der App läuft die Anmeldung im selben Fenster
+  statt im Popup; danach geht es zurück auf die Seite, von der sie kam
+  (`osm/login-return.js`, geladen von `theme.js`, Ereignis `wmap:login`).
 - Die Aufzeichnung dafür bleibt 14 Tage auf dem Gerät, abschaltbar.
 - **Gezählt** (`osm/stats.js`): jeder hochgeladene Beitrag – Ja/Nein-Frage,
   Ort bearbeitet, Ort neu; direkt in die Karte oder als Hinweis. Auf dem Gerät
   (Einstellungen → Mitmachen: „Du hast über WMap …“) und anonym auf dem Server.
 - **Orte bearbeiten und eintragen** (osm/edit.js): in der Ortskarte
-  **Bearbeiten** (Name, Öffnungszeiten, Telefon, Website eines Orts aus OSM);
-  lange drücken → **Hier eintragen** legt ein Unternehmen oder einen
-  Veranstaltungsort an (Art, Name, Öffnungszeiten, Kontakt, Adresse aus der
-  Rückwärtssuche). Mit OSM-Konto geht es direkt in die Karte (ein Changeset,
+  **Bearbeiten** (Name, Beschreibung – `description`, kurz und sachlich –,
+  Öffnungszeiten, Telefon, Website, Veranstaltungen – `website:events`, wie
+  WMap sie für Programme nutzt –, Bild eines Orts aus OSM; neben jedem Feld
+  steht klein der OSM-Schlüssel). Bild: ein Link zu einem freien Foto
+  (`image`); ein Link auf Wikimedia Commons wird zu
+  `wikimedia_commons=File:…`.
+  **Merkmale** (aufklappbar): Lieferdienst, Zum Mitnehmen, Bio, Vegan,
+  Vegetarisch, Draußen sitzen, WLAN, Drive-in, Rollstuhl – je Ja/Nur/Nein.
+  Die Ortskarte zeigt sie wie bei Google unter dem Namen („Bäckerei ·
+  Lieferdienst · Bio“), darunter die Beschreibung (ui/poi-info.js `TRAITS`).
+  **Alle Tags** (aufklappbar): die Rohdaten, eine Zeile `Schlüssel=Wert` –
+  ändern, ergänzen, Zeile löschen = Tag entfernen; was man oben in den
+  Feldern ändert, läuft dort gleich mit und gilt vorrangig. Beim Eintragen
+  heißt der Block „Weitere Tags“ und kommt zu den Angaben dazu.
+  Die **Öffnungszeiten** als aufklappbarer Block (osm/hours-editor.js):
+  Montag bis Sonntag und Feiertage untereinander, rechts die Zeiten (mehrere
+  je Tag, schmale Felder fürs Handy), „+ Zeit“, bei Feiertagen „wie
+  Sonntag“; unten „Montag für Di–Fr“, „24/7 geöffnet“, „Dauerhaft
+  geschlossen“ (geht immer als Hinweis) und „Als Text“ – zurück aus dem Text
+  wird gelesen, was dasteht, nie Platzhalterzeiten. Verschachteltes
+  (Monate, Schulferien) bleibt als Text, Unverändertes bleibt genau so
+  stehen.
+  Lange drücken → **Hier eintragen** legt einen Ort an: Art aus einer
+  gruppierten Auswahl mit Suche (Einkaufen – Supermarkt, Bäckerei,
+  Getränkemarkt, Drogerie … –, Essen & Trinken, Dienstleistung, Kultur &
+  Freizeit; wuefl-libs selectpicker), bei Läden und Ketten die **Marke**
+  (`brand`) mit Vorschlägen passend zur Art (EDEKA, REWE … bzw. Getränke
+  Hoffmann, trinkgut …), Name, Öffnungszeiten, Kontakt, Adresse aus der
+  Rückwärtssuche. Mit OSM-Konto geht es direkt in die Karte (ein Changeset,
   Konflikte werden erkannt). Ohne Konto erklärt ein Dialog, wozu es gebraucht
-  wird: **Konto verbinden** führt zu Einstellungen → OpenStreetMap
+  wird: **Konto verbinden** führt zu Einstellungen → Konto
   (`settings.html#osm`), **Als Hinweis senden** schickt es anonym als Hinweis.
 - **Meldungen unterwegs** (Stau, Unfall, Baustelle) mit kurzer Rückfrage für
   andere („Baustelle noch da? Ja/Nein“). Autobahn-Verkehrslage aus den offenen
   Daten der Autobahn GmbH.
 
-## 18. WMap-Konto (Passkey) und Server
+## 18. WMap-Konto (OpenStreetMap) und Server
 
-- Nur nötig zum **Veröffentlichen, Bewerten und für Plugins**. Anmeldung mit
-  **Passkey** (Fingerabdruck, Gesicht, Geräte-PIN) – kein Passwort.
+- Nur nötig zum **Eintragen in OSM, Veröffentlichen, Bewerten und für
+  Plugins**. Das Konto ist das **OpenStreetMap-Konto** – bei WMap gibt es
+  kein Passwort. Eine Anmeldung gilt für beides (Karte bearbeiten und
+  WMap-Konto), Abmelden ebenso (`services/konto.js`).
+- Ablauf: Anmelden bei OSM mit Recht `openid` → OSM schickt mit dem
+  Zugangstoken ein **id_token** → `auth/osm` auf dem WMap-Server prüft es
+  (`bEnd/osm_login.php`: Signatur RS256 mit den öffentlichen Schlüsseln von
+  OSM, zwischengespeichert in `bEnd/data/osm-jwks.json`; Aussteller
+  `https://www.openstreetmap.org`; `aud` = `OSM_CLIENT_ID`; Ablauf) → Konto
+  zur OSM-Nutzernummer (`Users.osm_id`) anlegen oder wiederfinden, Name wie
+  bei OSM → eigenes WMap-Token (180 Tage). Mit dem OSM-Testserver gibt es
+  kein WMap-Konto.
+- **Konten aus der Passkey-Zeit:** Wer noch damit angemeldet ist, bekommt
+  sein Konto bei der ersten OSM-Anmeldung übernommen (mit Touren, Plugins,
+  Bewertungen). Nicht mehr angemeldete Passkey-Konten bleiben in der
+  Datenbank, sind aber nicht mehr erreichbar (Tabellen `Credentials`,
+  `Challenges` und Spalte `handle` nur noch in alten Datenbanken).
 - Server: `bEnd/api.php` (PHP, SQLite in `bEnd/data/`, von außen gesperrt).
 - **Statistik** (Tabelle `Statistics`, `bEnd/api_stats.php`): eine Zeile je
   Ereignis mit Zeit (UTC), `event`, `frage` (1 = Ja/Nein-Frage, 0 = bewusst
@@ -674,11 +854,11 @@ Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene.
   nur für dich, aber auf allen deinen Geräten. Löschen kann jeder nur Eigenes.
 - **Konto löschen:** `deleteKonto.html` (auch ohne App erreichbar, für den
   Play Store: `https://app.wuefl.de/wmap/deleteKonto.html`; Knopf in den
-  Einstellungen). Bestätigt wird mit dem Passkey selbst (`auth/delete_options`,
-  `auth/delete`) – das Token allein reicht nicht. Gelöscht werden in einem
-  Rutsch Name, Passkeys, Sitzungen, alle Touren (samt Bewertungen anderer
-  dazu), alle Plugins und die eigenen Bewertungen. Ohne Passkey: per E-Mail
-  an contact@wuefl.de.
+  Einstellungen). Nicht angemeldet: erst mit OSM anmelden, dann löschen
+  (`auth/delete`). Gelöscht werden in einem Rutsch Name, OSM-Nutzernummer,
+  Sitzungen, alle Touren (samt Bewertungen anderer dazu), alle Plugins und
+  die eigenen Bewertungen; das OSM-Konto selbst bleibt. Anmelden geht nicht:
+  per E-Mail an contact@wuefl.de.
 
 ## 19. Einstellungen
 
@@ -686,15 +866,19 @@ Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene.
 Kachel in der Übersicht).
 Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 
-- **Darstellung:** hell oder dunkel – wie das System (Standard), Hell, Dunkel.
+- **Darstellung:** hell oder dunkel – wie das System (Standard), Hell, Dunkel;
+  in der Android-App „Berechtigungen“. Am Handy stehen Auswahlfelder unter
+  ihrer Beschriftung, lange Knopftexte brechen um.
 - **Unterwegs:** Karte für die Navigation offline speichern, Zoom in der
   Navigation (Automatisch/Näher/Mehr Überblick), 3D in der Navigation,
   Datensparmodus, Stimme, Spritpreise.
-- **Mitmachen:** Weg aufzeichnen und danach fragen, anonym als Hinweis,
-  OSM-Konto.
-- **WMap-Konto:** wer angemeldet ist, Knopf „Konto löschen“ (→ `deleteKonto.html`).
-- **Daten:** Fahrten merken, Ordner verbinden, aufgezeichnete Wege,
-  Suchverlauf löschen.
+- **Konto** (`#osm`): Anmelden mit OpenStreetMap (zugleich WMap-Konto), wer
+  angemeldet ist, Abmelden, „Konto löschen“ (→ `deleteKonto.html`), für
+  Entwickler Server und Client-ID.
+- **Mitmachen:** Weg aufzeichnen und danach fragen, anonym als Hinweis.
+- **Daten:** Jede Navigation merken (Standard: aus – geplante Touren und
+  „Aufzeichnen“ werden immer gespeichert), Sicherung & Synchronisation,
+  aufgezeichnete Wege, Suchverlauf löschen.
 
 ## 20. Offline und Datenverbrauch
 
@@ -730,7 +914,8 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 | Eigene Ebenen, Plugins, Zugangsdaten | IndexedDB / layers | nur „Als Plugin“ |
 | Verbundener Ordner | IndexedDB / kv | nein |
 | Aktive Erweiterungen | IndexedDB / kv „extensions“ | nein (der Code kommt vom Anbieter) |
-| Gemerkte Verbindungen, Zuhause/Arbeit, Lesezeichen | localStorage `wmap.saved` | nur per Ordner (`Gemerkt.json`) |
+| Gemerkte Verbindungen, Zuhause/Arbeit, Lesezeichen mit Listen | localStorage `wmap.saved` | nur per Ordner (`Bus & Bahn/`, `Lesezeichen.json`) oder geteilte Liste |
+| Einstellungen (Auswahl) | localStorage `wmap.*` | nur per Ordner (`settings.json`) |
 | Offline-Gebiete | localStorage `wmap.areas`, Kacheln im Cache `wmap-area-…` | nein |
 | Verlauf, Einstellungen, Ansicht | localStorage `wmap.*` | nein |
 | Veröffentlichte Touren, Bewertungen, Plugins | Server (SQLite) | ja, gewollt |
@@ -769,6 +954,11 @@ takeshots wmap --eigener-server # ohne Docker
   ruft vor jedem Bauen `tools/android-einbinden.py` des Projekts auf (bei
   WMap: Standortrechte, App-Symbol, Bild in Bild und – für `release` – die
   Upload-Signatur).
+- **App-Symbol:** `python3 tools/android-symbole.py` baut
+  `appdata/icons/android/` aus `appdata/wmap-1024.png` – das Logo so klein,
+  dass es in jeder Maske (rund, eckig, Tropfen) ganz bleibt, auf dem
+  Hintergrund des maskierbaren Web-Symbols. Nicht `cargo tauri icon` dafür
+  nehmen: das legt das Logo randlos hin, dann fehlen die Ecken.
 - **Release fürs Hochladen:** braucht einmalig den Upload-Schlüssel in
   `.secrets/` (weder in Git noch per FTP auf dem Server). Wie er angelegt
   und für GitHub Actions hochgeladen wird, steht in
@@ -873,6 +1063,11 @@ takeshots wmap --eigener-server # ohne Docker
   | `changelog` | nach einem Update: alle Versionen seit der zuletzt gesehenen bis zur laufenden; in der Übersicht über die Versionsnummer alles. Oberster Eintrag = neueste Version – daraus macht `git-release` den Tag und GitHub den Release-Text |
   | `messages` | Nachrichten als Dialog, jede einmal (gemerkt über `id`); `from`/`until` (Datum) optional, `text` HTML erlaubt |
   | `minVersion` | ist die laufende Version älter: Banner „Aktualisieren“ auf jeder Seite – verwirft die gespeicherten App-Dateien und lädt neu (in der App wieder von der Webversion) |
+
+  **Neue Version:** oben im `changelog` eintragen, dann
+  `python3 appdata/version.py` – trägt die Nummer in `js/core/config.js`,
+  `src-tauri/tauri.conf.json`, `Cargo.toml` und `Cargo.lock` ein
+  (`--pruefen` nur prüfen; `git-release` prüft das vor dem Tag).
 
   Die Dialoge kommen nur beim normalen Start der Karte, nicht wenn ein Link
   etwas öffnet – dann beim nächsten Mal (so auch nicht auf den Screenshots).

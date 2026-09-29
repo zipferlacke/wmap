@@ -108,13 +108,13 @@ export class SurveyView {
         <div class="quest-options">
           <button type="button" class="button primary" data-answer="yes"><span class="msr">check</span> Stimmt noch</button>
           <button type="button" class="button" data-act="edit"><span class="msr">edit_calendar</span> Andere Zeiten</button>
-          <button type="button" class="button" data-answer="gone"><span class="msr">store_off</span> Gibt es nicht mehr</button>
+          <button type="button" class="button" data-answer="gone"><span class="msr">block</span> Gibt es nicht mehr</button>
         </div>`;
     } else if (def.kind === 'hours' || def.kind === 'hours-new') {
       // Erst die schnellen Antworten, dann die Woche zum Ausfüllen
       body = `<div class="quest-options quest-quick">
           <button type="button" class="button" data-answer="24/7"><span class="msr">all_inclusive</span> Rund um die Uhr</button>
-          <button type="button" class="button" data-answer="gone"><span class="msr">store_off</span> Gibt es nicht mehr</button>
+          <button type="button" class="button" data-answer="gone"><span class="msr">block</span> Gibt es nicht mehr</button>
         </div>
         ${this.#editor(q)}`;
     } else {

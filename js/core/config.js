@@ -111,7 +111,7 @@ export const TANKERKOENIG_KEY = '';
 export const MAX_ROUTES = 5;
 
 /** Steht im Changeset (created_by) – bei neuen Versionen mitziehen. */
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '2.0.0';
 
 /**
  * Öffentliche Adresse der Web-App (mit / am Ende). Geteilte Links zeigen im
@@ -135,7 +135,7 @@ export const OSM_AUTH = {
     label: 'OpenStreetMap',
     web: 'https://www.openstreetmap.org',
     api: 'https://api.openstreetmap.org/api/0.6',
-    clientId: '',
+    clientId: 'jv-baCEuub6hnMq3q9FlzYyaAuZI0Vqj_3kY3QkDDfQ',
   },
   dev: {
     label: 'OSM-Testserver',

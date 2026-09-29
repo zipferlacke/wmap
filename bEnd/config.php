@@ -2,15 +2,12 @@
 /**
  * Einstellungen der WMap-API.
  *
- * ORIGINS: Von wo aus Passkeys gelten (WebAuthn prüft die Herkunft). Die
- * Domain ohne Port ist zugleich die „Relying Party“ (rpId).
+ * OSM_ISSUER / OSM_CLIENT_ID: Angemeldet wird mit dem OpenStreetMap-Konto.
+ * Die Client-ID ist dieselbe wie in js/core/config.js (OSM_AUTH.live) – sie
+ * ist nicht geheim. Ein Client-Geheimnis gehört weder hierher noch in die App.
  */
-const ORIGINS = [
-    "https://app.wuefl.de",
-    "http://localhost:8080",
-    "http://localhost:8765",
-    "http://127.0.0.1:8765",
-];
+const OSM_ISSUER = "https://www.openstreetmap.org";
+const OSM_CLIENT_ID = "jv-baCEuub6hnMq3q9FlzYyaAuZI0Vqj_3kY3QkDDfQ";
 const SESSION_DAYS = 180;
 const MAX_SHAPE = 250000;          // Zeichen – reicht für ~1500 km Tour
 const MAX_PLUGIN_DATA = 2000000;   // Bytes GeoJSON je hochgeladenem Plugin

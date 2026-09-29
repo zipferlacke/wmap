@@ -19,6 +19,12 @@ pub fn run() {
   // Handy: GPS über das Gerät (js/core/native.js nutzt es, sobald es da ist)
   #[cfg(mobile)]
   let builder = builder.plugin(tauri_plugin_geolocation::init());
+  // Android: Trainings und Routen aus Health Connect (js/services/health.js)
+  let builder = builder.plugin(tauri_plugin_health::init());
+  // Ordner verbinden (js/data/folder.js) – das WebView kennt die Ordner-API von Chrome nicht
+  let builder = builder.plugin(tauri_plugin_folder::init());
+  // Weblinks über der App (js/core/links.js): Custom Tab bzw. eigenes Fenster
+  let builder = builder.plugin(tauri_plugin_browser::init());
   builder
     .setup(|app| {
       if cfg!(debug_assertions) {

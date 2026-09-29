@@ -9,6 +9,12 @@
  *   Ereignis „wmap:theme“     { dark } – bei jedem Wechsel, auch wenn das
  *                             System umschaltet oder ein anderer Tab wählt
  */
+// Weblinks in der App über WMap öffnen (jede Seite lädt theme.js)
+import './links.js';
+
+// Zurück von der OSM-Anmeldung (ohne Popup): auf dieser Seite einlösen
+try { if (localStorage.getItem('wmap.osm.return')) import('../osm/login-return.js'); } catch { /* gesperrt */ }
+
 const KEY = 'wmap.theme';
 const system = matchMedia('(prefers-color-scheme: dark)');
 let last = null;
@@ -41,6 +47,25 @@ function apply(choice = theme.get()) {
   const first = last === null;
   last = dark;
   if (!first) dispatchEvent(new CustomEvent('wmap:theme', { detail: { dark } }));
+}
+
+/*
+ * Android-App: Das WebView reicht bis unter Status- und Gestenleiste, meldet
+ * aber kein env(safe-area-inset-*). Die Maße kommen aus der MainActivity
+ * (tools/android/MainActivity.kt) und setzen --safe-top/--safe-bottom –
+ * sonst lägen eingeklappte Sheets unter der Gestenleiste.
+ */
+function applyInsets(i) {
+  if (!i) return;
+  const root = document.documentElement.style;
+  root.setProperty('--safe-top', `max(env(safe-area-inset-top, 0px), ${i.top}px)`);
+  root.setProperty('--safe-bottom', `max(env(safe-area-inset-bottom, 0px), ${i.bottom}px)`);
+  // Was aus Maßen rechnet (Karte, Kartenknöpfe unter der Suche), soll es mitbekommen
+  requestAnimationFrame(() => dispatchEvent(new Event('resize')));
+}
+if (window.WMapAndroid?.insets) {
+  try { applyInsets(JSON.parse(window.WMapAndroid.insets())); } catch { /* ältere App ohne Ränder */ }
+  window.wmapInsets = applyInsets;
 }
 
 system.addEventListener('change', () => apply());

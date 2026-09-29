@@ -16,8 +16,8 @@
 
 <!--
   Konto löschen: auch ohne App erreichbar (Play Store verlangt eine Adresse
-  dafür). Bestätigt wird mit dem Passkey – dessen Konto wird mit allem
-  gelöscht, was dazugehört. Ohne Passkey: per E-Mail.
+  dafür). Angemeldet wird mit dem OpenStreetMap-Konto – dessen WMap-Konto
+  wird mit allem gelöscht, was dazugehört. Ohne Anmeldung: per E-Mail.
 -->
 <body class="dash-page settings-page">
     <header class="dash-head">
@@ -28,13 +28,14 @@
         <section>
             <h3>Was ist ein WMap-Konto?</h3>
             <p>WMap geht ohne Konto. Ein Konto brauchst du nur, um Touren oder Plugins zu teilen und Touren zu bewerten.
-               Es besteht aus einem Namen und einem Passkey – ohne Passwort und ohne E-Mail-Adresse.</p>
+               Angemeldet wirst du mit deinem OpenStreetMap-Konto; WMap speichert davon nur deinen OSM-Namen und deine OSM-Nutzernummer –
+               kein Passwort und keine E-Mail-Adresse.</p>
         </section>
 
         <section>
             <h3>Was gelöscht wird</h3>
             <ul class="delete-list">
-                <li><span class="msr">badge</span> dein Name und deine Passkeys (öffentliche Schlüssel) auf dem WMap-Server</li>
+                <li><span class="msr">badge</span> dein Name und deine OSM-Nutzernummer auf dem WMap-Server</li>
                 <li><span class="msr">route</span> alle Touren, die du gespeichert hast – private und veröffentlichte – samt Bewertungen anderer dazu</li>
                 <li><span class="msr">extension</span> alle Plugins, die du angelegt hast – private und veröffentlichte, mit hochgeladenen Daten</li>
                 <li><span class="msr">star</span> deine Bewertungen und Kommentare zu Touren anderer</li>
@@ -43,21 +44,21 @@
             <p>Gelöscht wird sofort und endgültig; auf dem Server bleibt davon nichts zurück.</p>
             <p class="muted">Nicht auf dem Server liegen: aufgezeichnete Wege, gemerkte Orte, Offline-Karten und Einstellungen.
                Sie bleiben auf deinem Gerät, bis du die App bzw. die Website-Daten im Browser löschst.
-               Den Passkey selbst entfernst du in der Passwort- bzw. Passkey-Verwaltung deines Geräts.</p>
+               Dein OpenStreetMap-Konto und alles, was du dort eingetragen hast, bleibt – das verwaltest du auf openstreetmap.org.</p>
         </section>
 
         <section class="delete-now">
             <h3>Jetzt löschen</h3>
             <div class="delete-status"><p><span class="msr spin">progress_activity</span> Einen Moment …</p></div>
-            <button type="button" class="button danger delete-button"><span class="msr">delete_forever</span> Konto mit Passkey bestätigen und löschen</button>
-            <p class="muted">Dein Gerät fragt nach dem Passkey (Fingerabdruck, Gesicht oder PIN). Gelöscht wird das Konto, zu dem dieser Passkey gehört.</p>
+            <button type="button" class="button danger delete-button"><span class="msr">delete_forever</span> Konto endgültig löschen</button>
+            <p class="muted">Gelöscht wird das WMap-Konto, das zu dem OpenStreetMap-Konto gehört, mit dem du angemeldet bist.</p>
         </section>
 
         <section>
-            <h3>Kein Passkey mehr?</h3>
+            <h3>Anmelden geht nicht?</h3>
             <p>Wenn du dich nicht mehr anmelden kannst, schreib an
                <a href="mailto:contact@wuefl.de?subject=WMap-Konto%20l%C3%B6schen">contact@wuefl.de</a>
-               mit deinem Kontonamen und – wenn möglich – dem Namen einer deiner Touren oder Plugins.
+               mit deinem OpenStreetMap-Namen und – wenn möglich – dem Namen einer deiner Touren oder Plugins.
                Wir löschen das Konto dann von Hand, spätestens innerhalb von 30 Tagen, und bestätigen es dir.</p>
         </section>
     </main>

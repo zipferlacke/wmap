@@ -16,8 +16,11 @@ was Tauri zum Verpacken braucht. Nichts davon wird auf den Server geladen
 | `build.rs` | von Tauri vorgegeben |
 | `capabilities/default.json` | Rechte der Web-App im Fenster (nur Standard) – auch für `https://app.wuefl.de/*` |
 | `capabilities/mobile.json` | Handy-Apps: zusätzlich Standort über das Gerät – auch für die Webversion |
+| `plugins/health/` | eigenes Plugin: Trainings und Routen aus Health Connect (Android, Kotlin) – siehe unten |
+| `plugins/folder/` | eigenes Plugin: Ordner verbinden (Android: Speicherzugriff des Systems, Kotlin; Rechner: Ordnerdialog, Rust) – siehe unten |
+| `plugins/browser/` | eigenes Plugin: Weblinks über der App (Android: Custom Tab; Rechner: Fenster mit Leiste), Android: teilen, Zwischenablage |
 | `tauri-start.js` | wechselt beim Start zur Webversion, wenn sie erreichbar ist (s. u.) |
-| `icons/` | App-Icons, erzeugt mit `cargo tauri icon ../appdata/wmap-512.png` |
+| `icons/` | App-Icons, erzeugt mit `cargo tauri icon ../appdata/wmap-512.png` (Android: `tools/android-symbole.py`, mit Rand zum Maskieren) |
 | `web-kopieren.sh` | kopiert die Web-Dateien vor jedem Build nach `web/` und bindet `tauri-start.js` in deren `index.html` ein |
 
 Generiert, nicht in Git:
@@ -87,3 +90,81 @@ Standard-Karten-App:
 schon, gibt `tauri-plugin-single-instance` den Link ans offene Fenster
 (Rechner). Selbst zur Standard-App macht sich WMap nicht
 (`register_all()` fehlt mit Absicht) – das entscheidet, wer sie nutzt.
+
+## Debug-Build: eingepackte Dateien
+
+`web-kopieren.sh` bindet `tauri-start.js` nur in Release-Builds ein. Der
+Debug-Build (`tauri-android wmap`) bleibt bei den eingepackten Dateien –
+so lässt sich Neues auf dem Handy testen, bevor es auf dem Server liegt.
+
+## Health Connect (`plugins/health`)
+
+Eigenes Tauri-Plugin, nur Android tut etwas: Die Befehle stehen in Kotlin
+(`android/src/main/java/HealthPlugin.kt`), Tauri leitet
+`invoke('plugin:health|…')` direkt dorthin; Rust registriert nur.
+
+| Befehl | Was |
+|---|---|
+| `status` | gibt es Health Connect, was ist freigegeben |
+| `request_access` | Freigabe-Dialog von Health Connect |
+| `sessions { days }` | alle Trainings: Art, Zeit, App, Route ja/nein/Nachfrage |
+| `route { id }` | Punkte [lon, lat, Höhe, Zeit]; fremde Routen ohne Dauerfreigabe fragt Health Connect einzeln |
+| `open_settings { target }` | `health`: Health Connect – die Seite einer App direkt dürfen nur System-Apps öffnen, dort WMap antippen (Routen „Immer erlauben“, widerrufen); `app`: App-Info (Standort); `location`: Standort am Gerät |
+
+- Rechte (Manifest des Plugins): nur lesen – `READ_EXERCISE`,
+  `READ_EXERCISE_ROUTES`, `READ_HEALTH_DATA_HISTORY` (sonst nur 30 Tage).
+- `RationaleActivity` erklärt, wofür – ohne sie zeigt Health Connect den
+  Freigabe-Dialog nicht (Android 13: Aktion, ab 14: Alias).
+- minSdk 26 (`bundle.android.minSdkVersion`, `tools/android-einbinden.py`
+  überträgt es ins erzeugte Projekt).
+- In der Web-App: `js/services/health.js`, Knopf „Trainings holen“ auf der
+  Seite Sicherung & Synchronisation (nur in der Android-App); Freigaben erklärt
+  `js/ui/permissions.js` (auch den Standort – dafür stehen
+  `geolocation:allow-check-permissions` und `…-request-permissions` in
+  `capabilities/mobile.json`).
+- **Play Store:** Gesundheitsdaten brauchen dort eine eigene Erklärung
+  (Formular „Health Connect“ in der Play Console) und in der
+  Datensicherheit „Fitness“ – erhoben, nur auf dem Gerät, nicht geteilt.
+
+
+## Ordner verbinden (`plugins/folder`)
+
+Das WebView der App kennt die File System Access API von Chrome nicht –
+darum wählt das System den Ordner, und die App liest und schreibt nur darin
+(`js/data/folder.js`, Seite „Sicherung & Synchronisation“). Ein zweiter
+Ordner für eigene Ebenen (Plugins-Seite, `js/ui/own-source.js`) läuft über
+`slot: "layers"` – jeder Befehl nimmt `slot`, leer ist der Ordner für die
+Synchronisation.
+
+| Befehl | Was |
+|---|---|
+| `pick` | Ordner wählen → `{ connected, name }` |
+| `info` | `{ connected, name }` |
+| `list` | `.gpx`/`.json`/`.geojson`/`.js` bis 5 Ebenen tief → `{ files: [{ path, modified }] }` |
+| `read { path }` / `write { path, text }` / `remove { path }` | Pfade relativ zum Ordner mit „/“; `..` und absolute Pfade lehnt das Plugin ab; `write` legt fehlende Ordner an |
+| `disconnect` | Ordner vergessen (Android: Freigabe zurückgeben) |
+
+- **Android** (`FolderPlugin.kt`): `ACTION_OPEN_DOCUMENT_TREE`, die Freigabe
+  bleibt über Neustarts (`takePersistableUriPermission`); Dateien über
+  `DocumentsContract` – geht auch mit Nextcloud, Google Drive, Proton Drive,
+  wenn deren App Ordner anbietet. Manche melden keine Änderungszeit; der
+  Abgleich vergleicht dann den Inhalt.
+- **Rechner** (`desktop.rs`): Ordnerdialog über `rfd`, der Pfad steht in
+  `ordner.json` (bzw. `ordner-<slot>.json`) im Konfigurationsordner der App.
+- **Android:** je Ordner ein Eintrag in den SharedPreferences `wmap_folder`
+  (`tree`, `tree.layers`); die Freigabe wird erst zurückgegeben, wenn kein
+  anderer Eintrag denselben Ordner nutzt.
+- **Der Ordnerdialog ist System-Oberfläche** – ein eigenes ✕ lässt sich dort
+  nicht einbauen; abbrechen geht mit der Zurück-Geste (in Unterordnern
+  mehrmals) bzw. „Abbrechen“ im Dialog am Rechner.
+
+## Weblinks, Teilen (`plugins/browser`)
+
+| Befehl | Was |
+|---|---|
+| `open { url, external }` | Link über der App: Android Custom Tab (✕ links, „Im Browser öffnen“ rechts), Rechner Fenster „link“ mit eingeblendeter Leiste; `external`: gleich im Standardbrowser |
+| `share { title, text }` | nur Android: Teilen-Menü des Systems |
+| `copy { text }` | nur Android: Zwischenablage |
+
+`js/core/links.js` fängt in der App Klicks auf fremde http(s)-Links ab;
+`js/ui/share.js` nutzt `share`/`copy` in der Android-App.

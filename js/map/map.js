@@ -61,7 +61,6 @@ export function createMap(container, {
       for (const [prefix, auth] of AUTH) if (url.startsWith(prefix)) return { url, headers: { Authorization: auth } };
       return undefined;
     },
-    style,
     center,
     zoom,
     pitch,
@@ -80,6 +79,11 @@ export function createMap(container, {
     pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
     canvasContextAttributes: { antialias: (window.devicePixelRatio || 1) < 2, preserveDrawingBuffer: snapshot },
   });
+  // Stil erst hier: so lässt er sich vor dem ersten Kachel-Zeichnen anpassen
+  map.setStyle(style, { transformStyle: (prev, next) => fixStyle(next) });
+  // Fehlende Symbole gleich von Anfang an nachliefern (Kategorien, Spurpfeile,
+  // Lücken im Grundstil) – sonst warnt MapLibre für die ersten Kacheln
+  map.on('styleimagemissing', (e) => addCategoryIcon(map, e.id));
 
   /*
    * Kommen Höhendaten später als die Gebäude (langsames Netz), standen Häuser
@@ -121,12 +125,17 @@ export function createMap(container, {
     showUserHeading: true,
   });
   map.addControl(geolocate, 'top-right');
+  guardGeolocate(map, geolocate);
 
   map.on('load', () => {
     // Mapterhorn liefert in Deutschland bis Zoom 16, darüber gibt es nur 404 –
     // ohne Obergrenze fragt MapLibre bis Zoom 18 nach (Fehler, Daten, Strom).
     // Die Kacheladresse direkt statt TileJSON spart außerdem eine Anfrage beim Start.
-    map.addSource('terrain', { ...DEM_SOURCE });
+    // Gelände höchstens so fein wie die Kacheln mit den Häusern (OpenMapTiles:
+    // Zoom 14) – feiner rechnet MapLibre die Höhe der 3D-Häuser falsch, sie
+    // schweben dann neben ihrem Grundriss („elevation maxzoom > source.maxzoom“).
+    // Die Schummerung darunter bleibt bei Zoom 16.
+    map.addSource('terrain', { ...DEM_SOURCE, maxzoom: 14 });
     // In der Navigation reicht gröberes Gelände (Zoom 13, ≈ 6 m): weniger Daten,
     // und die Straße liegt ruhiger – feine Höhenfehler lassen sie sonst wellen
     map.addSource('terrain-lo', { ...DEM_SOURCE, maxzoom: 13 });
@@ -167,7 +176,8 @@ const TERRAIN_EXAGGERATION = 1.5;
 /*
  * Höhen: Mapterhorn liefert in Deutschland bis Zoom 16 – bei 512er Kacheln
  * ≈ 0,75 m je Pixel, aus den amtlichen 1-m-Geländemodellen der Länder. Die
- * normale Karte nutzt das volle Maß, die Navigation 'terrain-lo'.
+ * Schummerung nutzt das volle Maß, das Gelände Zoom 14 (wegen der 3D-Häuser),
+ * die Navigation 'terrain-lo'.
  */
 const DEM_SOURCE = {
   type: 'raster-dem', tiles: [TERRAIN_TILES], tileSize: 512, maxzoom: 16, encoding: 'terrarium',
@@ -351,6 +361,32 @@ function germanLabels(map) {
  * sonst warme Töne, die mit der Höhe dunkler werden. So heben sich Hochhäuser
  * ab, ohne dass die Karte bunt wird.
  */
+/**
+ * Grundstil vor dem ersten Zeichnen richten: Er rechnet mit Werten, die nicht
+ * jedes Objekt hat (Gebäudehöhe, Rang eines Ortes, Verwaltungsebene). Fehlt
+ * einer, warnt MapLibre je Kachel „Expected value to be of type number, but
+ * found null“. Höhen bekommen 0, Vergleiche in Filtern vorher ein „has“ –
+ * Objekte ohne Wert fallen dann wie bisher heraus, nur ohne Warnung.
+ */
+const COMPARE = new Set(['<', '<=', '>', '>=']);
+function guardCompare(e) {
+  if (!Array.isArray(e)) return e;
+  const out = e.map(guardCompare);
+  const get = out.find((a, i) => i > 0 && Array.isArray(a) && a[0] === 'get' && typeof a[1] === 'string' && a.length === 2);
+  return COMPARE.has(out[0]) && get ? ['all', ['has', get[1]], out] : out;
+}
+function fixStyle(style) {
+  for (const l of style.layers ?? []) {
+    if (Array.isArray(l.filter)) l.filter = guardCompare(l.filter);
+  }
+  const b = style.layers?.find((l) => l.id === 'building-3d');
+  if (b?.paint) {
+    b.paint['fill-extrusion-height'] = ['coalesce', ['get', 'render_height'], 0];
+    b.paint['fill-extrusion-base'] = ['coalesce', ['get', 'render_min_height'], 0];
+  }
+  return style;
+}
+
 function colorBuildings(map) {
   // Wände: helle, warme Töne mit leichter Streuung je Gebäude, hohe Häuser
   // etwas kühler – eine Stadt, kein Einheitsgrau. Das OSM-Tag „colour“ bleibt
@@ -833,7 +869,6 @@ function addLayers(map) {
    * Linien (Parkplatzfläche, Fluss) sind schon farbig hervorgehoben; dort
    * steht nur der Name, kein zusätzliches Symbol.
    */
-  map.on('styleimagemissing', (e) => addCategoryIcon(map, e.id));
   for (const [src, prefix] of [['highlight-points', 'hl'], ['pois', 'poi']]) {
     map.addLayer({
       id: `${prefix}-dot`, type: 'symbol', source: src,
@@ -907,7 +942,10 @@ function addLaneIcon(map, id) {
 
 function addCategoryIcon(map, id) {
   if (id.startsWith('lane-')) { addLaneIcon(map, id); return; }
-  if (!id.startsWith('cat-') || map.hasImage(id)) return;
+  if (map.hasImage(id)) return;
+  // Symbole, die dem Grundstil fehlen (swimming_pool, atm, gate …): leer
+  // eintragen – gezeichnet wurde dort ohnehin nichts, nur jedes Mal gewarnt
+  if (!id.startsWith('cat-')) { map.addImage(id, { width: 1, height: 1, data: new Uint8Array(4) }); return; }
   const traffic = EXTRA_ICONS[id.slice(4)];
   const cat = byId(id.slice(4));
   const color = traffic?.[1] ?? cat?.color ?? '#e8590c';
@@ -1060,6 +1098,27 @@ export function showNavRoad(map, features = []) {
 }
 
 export function showHover(map, lngLat) {
-  whenReady(map, () => src(map, 'hover').setData(lngLat
-    ? fc([{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: lngLat } }]) : EMPTY));
+  whenReady(map, () => {
+    // Obenauf – Seiten legen ihre Linien (Meine Touren, Planer) erst später an
+    if (lngLat && map.getLayer('hover')) map.moveLayer('hover');
+    src(map, 'hover').setData(lngLat
+      ? fc([{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: lngLat } }]) : EMPTY);
+  });
+}
+
+/**
+ * Android-App: Der Standort-Knopf fragt erst über den Dialog zu den
+ * Berechtigungen (ui/permissions.js) – ohne Freigabe täte er sonst nichts.
+ */
+function guardGeolocate(map, geolocate) {
+  if (!window.__TAURI__ || !/Android/i.test(navigator.userAgent)) return;
+  let ok = false;
+  map.getContainer().addEventListener('click', (e) => {
+    if (ok || !e.target.closest('.maplibregl-ctrl-geolocate')) return;
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    import('../ui/permissions.js')
+      .then(({ locationAccess }) => locationAccess())
+      .then((yes) => { if (yes) { ok = true; geolocate.trigger(); } });
+  }, true);
 }

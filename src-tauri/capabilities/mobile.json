@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/mobile-schema.json",
   "identifier": "mobile",
-  "description": "Handy-Apps: Standort über das Gerät – auch für die Webversion, die die App lädt",
+  "description": "Handy-Apps: Standort über das Gerät und Health Connect (Android) – auch für die Webversion, die die App lädt",
   "platforms": [
     "android",
     "iOS"
@@ -11,7 +11,12 @@
   ],
   "permissions": [
     "core:default",
-    "geolocation:default"
+    "geolocation:default",
+    "geolocation:allow-check-permissions",
+    "geolocation:allow-request-permissions",
+    "health:default",
+    "folder:default",
+    "browser:default"
   ],
   "remote": {
     "urls": [

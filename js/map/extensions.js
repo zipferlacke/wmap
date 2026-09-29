@@ -2,7 +2,8 @@
  * Erweiterungen: JavaScript-Plugins, die auf der Karte wirklich etwas tun –
  * eigene Ebenen zeichnen, Menüpunkte anbieten, auf Klicks reagieren.
  *
- * Eine Erweiterung ist ein ES-Modul unter einer https-Adresse:
+ * Eine Erweiterung ist ein ES-Modul unter einer https-Adresse – oder aus
+ * einem Plugin-Ordner (data/plugin-folders.js; dann steht der Code in `code`):
  *
  *   export function activate(wmap) {
  *     wmap.onMapReady((map) => map.addLayer({ … }));
@@ -23,7 +24,7 @@ const kv = store('kv');
 const KEY = 'extensions';
 
 export const extensions = {
-  /** → [{ id, name, url, operator, pluginId, active }] */
+  /** → [{ id, name, url | code, operator, pluginId, folder, path, active }] */
   async all() { return (await kv.get(KEY).catch(() => null))?.list ?? []; },
   async save(list) { await kv.put({ id: KEY, list }); },
   async set(ext) {
@@ -51,7 +52,8 @@ export async function runExtensions({ map, toast, appNav }) {
       },
     });
     try {
-      const mod = await import(/* @vite-ignore */ x.url);
+      const url = x.code ? URL.createObjectURL(new Blob([x.code], { type: 'text/javascript' })) : x.url;
+      const mod = await import(/* @vite-ignore */ url);
       await mod.activate?.(api);
     } catch (err) {
       toast(`Erweiterung „${x.name}“ ließ sich nicht starten: ${err.message}`);

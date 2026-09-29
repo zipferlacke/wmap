@@ -11,6 +11,9 @@ aufgerufen von `tauri-android wmap` (wuefl_products/tools) vor jedem Bauen:
   tools/android/MainActivity.kt → Bild in Bild während der Navigation
                              (beim Rauswischen von selbst, siehe js/nav/pip.js)
   supportsPictureInPicture → an die <activity>
+  minSdk                   → app/build.gradle.kts aus tauri.conf.json
+                             (bundle.android.minSdkVersion; Health Connect
+                             braucht 26 – ein früher erzeugtes Projekt hat 24)
   Upload-Signatur          → app/build.gradle.kts, wenn es die Schlüssel-
                              datei gibt (für `tauri-android wmap release`)
 
@@ -76,6 +79,19 @@ BERECHTIGUNGEN = [
 ]
 
 
+def min_sdk() -> None:
+    import json
+    conf = json.loads((PROJEKT / "src-tauri/tauri.conf.json").read_text(encoding="utf-8"))
+    wert = conf.get("bundle", {}).get("android", {}).get("minSdkVersion")
+    if not wert:
+        return
+    datei = APP / "build.gradle.kts"
+    text = datei.read_text(encoding="utf-8")
+    neu = re.sub(r"minSdk = \d+", f"minSdk = {wert}", text, count=1)
+    if neu != text:
+        datei.write_text(neu, encoding="utf-8")
+
+
 def main() -> int:
     if not APP.is_dir():
         print(f"{APP} fehlt – erst `cargo tauri android init`.", file=sys.stderr)
@@ -99,6 +115,7 @@ def main() -> int:
     ziel = next((APP / "src/main/java").rglob("MainActivity.kt"), None)
     if ziel:
         shutil.copyfile(PROJEKT / "tools/android/MainActivity.kt", ziel)
+    min_sdk()
     signatur()
     print("==> WMap-Teile eingesetzt (Symbol, Standort, Bild in Bild"
           + (", Upload-Signatur)" if SIGNATUR.is_file() else ")"))

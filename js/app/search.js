@@ -1,12 +1,13 @@
 /**
- * Suche oben: Vorschläge, Zuletzt genutzt, Gemerkt (Lesezeichen, Zuhause/Arbeit).
+ * Suche oben: Vorschläge, Zuletzt genutzt, Lesezeichen (Zuhause, Arbeit, eigene
+ * Namen) – die stehen immer ganz oben, beim Tippen die passenden.
  */
 import { PROFILES } from '../core/config.js';
 import * as geocode from '../services/geocode.js';
 import { byId, matchCategory } from '../core/categories.js';
 import { recent } from '../data/store.js';
 import { isStop } from '../services/transit.js';
-import { places, PLACE_KINDS } from '../data/saved.js';
+import { places, PLACE_KINDS, DEFAULT_LIST } from '../data/saved.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { esc } from '../core/geo.js';
 import { runCategory } from './category.js';
@@ -116,53 +117,100 @@ export async function placeSuggestions(text, onPick, { withCategory = true, extr
 /* ── Zuletzt genutzt ──────────────────────────────────────────────────────── */
 
 const RECENT_SECTION = 'Zuletzt genutzt';
-const SAVED_SECTION = 'Gemerkt';
+const SAVED_SECTION = 'Lesezeichen';
+
+const fold = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ß/g, 'ss');
 
 /**
- * Zuhause, Arbeit und Lesezeichen als Vorschläge – ganz oben. Bei Bus & Bahn
- * kommen die gemerkten Haltestellen vor die übrigen Lesezeichen.
+ * Gemerktes als Vorschläge – ganz oben. Ohne Eingabe nur Zuhause und Arbeit;
+ * mit Eingabe dazu die Lesezeichen, deren Name (oder Ort, Liste) passt. Bei
+ * Bus & Bahn kommen gemerkte Haltestellen vor die übrigen.
  */
-function savedItems(onPlace) {
+export function savedItems(onPlace, text = '') {
   const order = PROFILES[state.profile]?.transit && state.mode === 'route' ? ['home', 'work', 'stop', 'fav'] : ['home', 'work', 'fav', 'stop'];
-  return places.all().sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind)).slice(0, 8).map((p) => ({
+  const words = fold(text).split(/\s+/).filter(Boolean);
+  const hit = (p) => words.every((w) => fold(`${p.name} ${p.label} ${p.list ?? ''} ${PLACE_KINDS[p.kind]?.label ?? ''}`).includes(w));
+  const fixedKind = (p) => p.kind === 'home' || p.kind === 'work';
+  return places.all().filter((p) => (words.length ? hit(p) : fixedKind(p)))
+    .sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind)).slice(0, 6).map((p) => ({
     section: SAVED_SECTION, icon: PLACE_KINDS[p.kind]?.icon ?? 'star', title: p.name,
-    subtitle: [p.kind === 'home' || p.kind === 'work' ? '' : PLACE_KINDS[p.kind]?.label, p.label].filter(Boolean).join(' · '),
+    subtitle: [fixedKind(p) ? '' : p.list && p.list !== DEFAULT_LIST ? p.list : PLACE_KINDS[p.kind]?.label, p.label].filter(Boolean).join(' · '),
     run: () => onPlace({ type: 'Feature', geometry: { type: 'Point', coordinates: p.point }, properties: { name: p.name } }),
   }));
 }
 
 /**
- * Merken: ein Tipp legt ein Lesezeichen an, noch einer nimmt es weg – für
- * Orte und Haltestellen gleich. Haltestellen stehen bei Bus & Bahn zuerst.
- * Die Meldung bietet an, das Lesezeichen als Zuhause oder Arbeit zu nehmen.
+ * Merken: ein Tipp legt ein Lesezeichen in „Allgemein“ an – die Meldung
+ * bietet „Ändern“ (Name, Liste, Zuhause/Arbeit). Schon gemerkt: derselbe
+ * Dialog, dazu „Entfernen“.
  */
 export function togglePlace(f, point, title, subtitle) {
   const had = places.find(point);
-  if (had) { places.remove(had.id); toast('Lesezeichen entfernt'); paintPlaceActions(); return; }
+  if (had) { editBookmark(point, title); return; }
   const tags = f.properties._tags;
   places.save({ kind: tags && isStop(tags) ? 'stop' : 'fav', name: title, label: subtitle, point, ifopt: tags?.['ref:IFOPT'] ?? '' });
   paintPlaceActions();
-  toast('Als Lesezeichen gemerkt – steht in Suche und Routenplanung ganz oben', {
-    action: {
-      label: 'Zuhause / Arbeit',
-      run: async () => {
-        const v = await ask({
-          icon: 'bookmark', title: 'Lesezeichen als …', text: title,
-          buttons: [{ value: 'home', label: 'Zuhause', icon: 'home' }, { value: 'work', label: 'Arbeit', icon: 'work', primary: true }],
-        });
-        if (!v) return;
-        const mine = places.find(point);
-        if (mine) places.remove(mine.id);
-        places.save({ kind: v, name: PLACE_KINDS[v].label, label: title, point });
-        toast(`Als „${PLACE_KINDS[v].label}“ gemerkt`);
-        paintPlaceActions();
-      },
-    },
-  });
+  toast(`In „${DEFAULT_LIST}“ gemerkt`, { action: { label: 'Ändern', run: () => editBookmark(point, title) } });
 }
 
+/** Lesezeichen bearbeiten: Name, Liste (auch neu), Zuhause/Arbeit, entfernen */
+export async function editBookmark(point, title) {
+  const mine = places.find(point);
+  if (!mine) return;
+  const lists = places.lists();
+  const fixedKind = mine.kind === 'home' || mine.kind === 'work';
+  const v = await ask({
+    icon: 'bookmark', title: 'Lesezeichen', className: 'stacked bookmark-edit',
+    html: `<label class="bm-field"><span>Name</span><input type="text" name="bm-name" value="${esc(mine.name)}" maxlength="60" placeholder="z. B. Oma, Verein, Lieblingsbäcker"></label>
+      ${fixedKind ? '' : `<label class="bm-field"><span>Liste</span><select name="bm-list">
+        ${lists.map((l) => `<option ${l === (mine.list || DEFAULT_LIST) ? 'selected' : ''}>${esc(l)}</option>`).join('')}
+        <option value="__new">Neue Liste …</option></select></label>
+      <label class="bm-field bm-new" hidden><span>Neue Liste</span><input type="text" name="bm-new" maxlength="40" placeholder="z. B. Hannover Urlaub"></label>`}
+      <p class="muted">${esc(title)}</p>`,
+    buttons: [
+      { value: 'save', label: 'Speichern', icon: 'check', primary: true },
+      ...(mine.kind !== 'home' ? [{ value: 'home', label: 'Als Zuhause', icon: 'home' }] : []),
+      ...(mine.kind !== 'work' ? [{ value: 'work', label: 'Als Arbeit', icon: 'work' }] : []),
+      { value: 'remove', label: 'Entfernen', icon: 'bookmark_remove' },
+    ],
+    read: (dlg) => {
+      const sel = dlg.querySelector('[name="bm-list"]');
+      const list = sel?.value === '__new' ? dlg.querySelector('[name="bm-new"]').value.trim() : sel?.value;
+      return { name: dlg.querySelector('[name="bm-name"]').value.trim(), list: list || DEFAULT_LIST };
+    },
+    setup(dlg) {
+      const sel = dlg.querySelector('[name="bm-list"]');
+      sel?.addEventListener('change', () => {
+        dlg.querySelector('.bm-new').hidden = sel.value !== '__new';
+        if (sel.value === '__new') dlg.querySelector('[name="bm-new"]').focus();
+      });
+    },
+  });
+  if (!v) return;
+  if (v === 'remove') {
+    places.remove(mine.id);
+    toast('Lesezeichen entfernt');
+  } else if (v === 'home' || v === 'work') {
+    places.remove(mine.id);
+    places.save({ kind: v, name: PLACE_KINDS[v].label, label: title, point });
+    toast(`Als „${PLACE_KINDS[v].label}“ gemerkt`);
+  } else if (typeof v === 'object') {
+    // Der eigene Name steht oben, der eigentliche Ort darunter
+    places.update(mine.id, { name: v.name || mine.name, label: mine.label || (v.name && v.name !== title ? title : ''), ...(fixedKind ? {} : { list: v.list }) });
+    toast(fixedKind ? `Gemerkt als „${v.name || mine.name}“` : `In „${v.list}“ gemerkt`);
+  }
+  paintPlaceActions();
+}
+
+/** Passende Lesezeichen vor die Suchergebnisse – die bekommen dann eine eigene Überschrift */
+export function withSaved(saved, found) {
+  if (!found) return saved.length ? saved : found;
+  return saved.length ? [...saved, ...found.map((x) => ({ ...x, section: x.section ?? 'Suchergebnisse' }))] : found;
+}
+
+
 /** Einträge aus dem Verlauf als Vorschläge. `onPlace` bekommt das Photon-Feature. */
-function recentItems(onPlace, kinds = ['place', 'category', 'route']) {
+export function recentItems(onPlace, kinds = ['place', 'category', 'route']) {
   return recent.list(kinds).slice(0, 7).map((e) => {
     if (e.kind === 'place') {
       return { section: RECENT_SECTION, icon: e.icon ?? 'history', title: e.title, subtitle: e.subtitle, run: () => onPlace(e.feature) };
@@ -209,7 +257,7 @@ const updateSearchSuggestions = debounce(async () => {
   const text = q.value.trim();
   const items = text.length < 2
     ? [...savedItems((f) => showPlace(f)), ...discoverItems(), ...recentItems((f) => showPlace(f))]
-    : await placeSuggestions(q.value, (f) => showPlace(f));
+    : withSaved(savedItems((f) => showPlace(f), text), await placeSuggestions(q.value, (f) => showPlace(f)));
   if (items && document.activeElement === q) suggest.show(items);
 }, 160);
 

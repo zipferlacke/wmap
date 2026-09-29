@@ -1,6 +1,6 @@
 /**
- * Einstellungen (settings.html): Hell/dunkel, Offline-Karten, Datensparmodus,
- * Mitmachen bei OSM samt Konto, WMap-Konto (löschen), Stimme, Spritpreise, Verlauf. Eine eigene
+ * Einstellungen (settings.html): Hell/dunkel, Berechtigungen (Android-App), Offline-Karten, Datensparmodus,
+ * Konto (OpenStreetMap, zugleich WMap-Konto; löschen), Mitmachen bei OSM, Stimme, Spritpreise, Verlauf. Eine eigene
  * Seite ohne Karte – alles bleibt in diesem Browser, die Karte liest es beim
  * nächsten Öffnen.
  */
@@ -12,7 +12,6 @@ import { OSM_AUTH } from '../core/config.js';
 import { esc } from '../core/geo.js';
 import { navSettings } from '../nav/navigation.js';
 import { historySetting } from '../data/tracks.js';
-import { mountFolder } from '../data/folder.js';
 import { theme } from '../core/theme.js';
 import { mountAppBar } from '../ui/appbar.js';
 import { dataSaver } from '../map/map.js';
@@ -22,6 +21,7 @@ import { local, recent } from '../data/store.js';
 import { konto } from '../services/konto.js';
 import { myOsmStats, allOsmStats, statsText } from '../osm/stats.js';
 import { toast } from '../ui/dialogs.js';
+import { permissionsHere, showPermissions } from '../ui/permissions.js';
 
 const root = document.querySelector('.settings');
 // Browser am Rechner (Firefox, Chrome, Edge): WMap für „geo:“-Links anmelden.
@@ -32,7 +32,8 @@ let loginError = '';   // an Ort und Stelle zeigen, nicht nur kurz als Meldung
 let jumped = false;    // #osm: einmal hinscrollen, nicht bei jedem Neuzeichnen
 const render = () => {
   const user = account.user();
-  const wmapUser = konto.loggedIn() ? konto.user() : null;
+  // Testserver: nur Karte bearbeiten, ein WMap-Konto gibt es dort nicht
+  const osmIn = account.loggedIn(), wmapIn = konto.loggedIn() || account.server() !== 'live';
   root.innerHTML = `
     <section>
       <h3>Darstellung</h3>
@@ -43,6 +44,7 @@ const render = () => {
         </select>
       </label>
       ${geoHandler ? `<button type="button" class="button settings-row" data-act="geo"><span class="msr">pin_drop</span> Karten-Links (geo:) mit WMap öffnen</button>` : ''}
+      ${permissionsHere ? `<button type="button" class="button settings-row" data-act="perms"><span class="msr">verified_user</span> Berechtigungen – Standort, Health Connect</button>` : ''}
     </section>
 
     <section>
@@ -63,25 +65,23 @@ const render = () => {
     </section>
 
     <section id="osm">
-      <h3>Mitmachen bei OpenStreetMap</h3>
-      ${toggle('contribute', 'Weg aufzeichnen und danach fragen',
-        'WMap merkt sich auf diesem Gerät, wo du warst (14 Tage), und fragt danach kurz nach – z. B. ob ein Parkplatz etwas kostet. Nichts verlässt das Gerät, bevor du antwortest und hochlädst.',
-        contribute.get())}
-      <button type="button" class="button settings-row" data-act="clear-trace"><span class="msr">delete</span> Aufzeichnung löschen</button>
-      ${toggle('anon', 'Ohne Konto als Hinweis senden',
-        'Ohne OSM-Konto gehen deine Antworten anonym als Hinweis an OpenStreetMap – Mapper tragen sie dann ein. Mit Konto direkt in die Karte.',
-        anonNotes.get())}
-      <p class="settings-hint osm-stats">${statsLine()}</p>
+      <h3>Konto</h3>
+      <p class="settings-hint">WMap nimmt dein OpenStreetMap-Konto – zum Eintragen und Verbessern von Orten, zum Teilen und Bewerten von Touren und für eigene Plugins. Bei WMap gibt es kein eigenes Passwort; alles andere geht ohne Konto.</p>
       <div class="settings-account">
-        ${account.loggedIn()
-          ? `<p><span class="msr">account_circle</span> Angemeldet als <strong>${esc(user?.name ?? '?')}</strong></p>
+        ${osmIn && wmapIn
+          ? `<p><span class="msr">account_circle</span> Angemeldet als <strong>${esc(user?.name ?? konto.user()?.name ?? '?')}</strong></p>
              <button type="button" class="button" data-act="logout">Abmelden</button>`
-          : account.clientId()
-            ? `<p>Antworten landen bei OpenStreetMap unter deinem Namen. ${queue.size() ? `${queue.size()} warten aufs Hochladen.` : ''}</p>
-               <button type="button" class="button primary" data-act="login"><span class="msr">login</span> Bei OpenStreetMap anmelden</button>`
-            : `<p class="settings-error"><span class="msr">info</span> Die Anmeldung ist hier noch nicht eingerichtet: WMap braucht eine OAuth-Client-ID von ${esc(account.conf().web.replace(/^https:\/\//, ''))} (siehe „Für Entwickler“). Bis dahin kannst du Antworten anonym als Hinweis senden (Schalter oben).</p>`}
+          : !account.clientId()
+            ? `<p class="settings-error"><span class="msr">info</span> Die Anmeldung ist hier noch nicht eingerichtet: WMap braucht eine OAuth-Client-ID von ${esc(account.conf().web.replace(/^https:\/\//, ''))} (siehe „Für Entwickler“). Bis dahin kannst du Antworten anonym als Hinweis senden.</p>`
+            : osmIn || wmapIn
+              ? `<p><span class="msr">sync_problem</span> <span>${osmIn ? `Bei OpenStreetMap angemeldet als <strong>${esc(user?.name ?? '?')}</strong>, das WMap-Konto fehlt noch` : 'Die Anmeldung bei OpenStreetMap fehlt'} – bitte einmal neu anmelden.</span></p>
+                 <button type="button" class="button primary" data-act="login"><span class="msr">login</span> Neu anmelden</button>
+                 <button type="button" class="button" data-act="logout">Abmelden</button>`
+              : `<p>${queue.size() ? `${queue.size()} Antworten warten aufs Hochladen.` : 'Noch kein Konto? Das legst du bei der Anmeldung auf openstreetmap.org an.'}</p>
+                 <button type="button" class="button primary" data-act="login"><span class="msr">login</span> Mit OpenStreetMap anmelden</button>`}
         ${loginError ? `<p class="settings-error"><span class="msr">error</span> ${esc(loginError)}</p>` : ''}
       </div>
+      <a class="button settings-row" href="./deleteKonto.html"><span class="msr">delete_forever</span> Konto löschen – mit Touren, Plugins und Bewertungen</a>
       <details class="settings-dev" ${account.clientId() ? '' : 'open'}>
         <summary>Für Entwickler</summary>
         <label>Server
@@ -91,33 +91,43 @@ const render = () => {
           <input type="text" data-act="client" value="${esc(account.clientId())}" placeholder="bei ${esc(account.conf().web.replace(/^https:\/\//, ''))} registrieren" spellcheck="false">
         </label>
         <p>Weiterleitungs-URL: <code>${esc(account.redirectUri())}</code></p>
+        <p>Das WMap-Konto geht nur mit openstreetmap.org und der Client-ID von WMap; auf dem Testserver kannst du nur Karte bearbeiten ausprobieren.</p>
       </details>
     </section>
 
     <section>
-      <h3>WMap-Konto</h3>
-      <p class="settings-hint">${wmapUser
-        ? `Angemeldet als <strong>${esc(wmapUser.name)}</strong> – zum Teilen und Bewerten von Touren und Plugins.`
-        : 'Kein WMap-Konto angemeldet. Es wird nur zum Teilen und Bewerten gebraucht (Entdecken, Plugins).'}</p>
-      <a class="button settings-row" href="./deleteKonto.html"><span class="msr">delete_forever</span> Konto löschen – mit Touren, Plugins und Bewertungen</a>
+      <h3>Mitmachen bei OpenStreetMap</h3>
+      ${toggle('contribute', 'Weg aufzeichnen und danach fragen',
+        'WMap merkt sich auf diesem Gerät, wo du warst (14 Tage), und fragt danach kurz nach – z. B. ob ein Parkplatz etwas kostet. Nichts verlässt das Gerät, bevor du antwortest und hochlädst.',
+        contribute.get())}
+      <button type="button" class="button settings-row" data-act="clear-trace"><span class="msr">delete</span> Aufzeichnung löschen</button>
+      ${toggle('anon', 'Ohne Konto als Hinweis senden',
+        'Ohne Konto gehen deine Antworten anonym als Hinweis an OpenStreetMap – Mapper tragen sie dann ein. Mit Konto direkt in die Karte.',
+        anonNotes.get())}
+      <p class="settings-hint osm-stats">${statsLine()}</p>
     </section>
 
     <section>
       <h3>Daten</h3>
-      ${toggle('history', 'Fahrten merken',
-        'Navigierte Strecken landen unter Meine Touren → Aufgezeichnet – nur auf diesem Gerät, über Jahre. Mit Sicherungsdatei auf ein anderes Gerät.',
+      ${toggle('history', 'Jede Navigation merken',
+        'Auch normale Navigationen landen unter Aufgezeichnete Touren. Geplante Touren, die du startest, und „Aufzeichnen“ werden immer gespeichert.',
         historySetting.get())}
-      <div class="settings-folder"></div>
+      <a class="button settings-row" href="./sync.html"><span class="msr">sync</span> Sicherung &amp; Synchronisation – Ordner, Health Connect, ZIP</a>
       <a class="button settings-row" href="./wege.html"><span class="msr">timeline</span> Aufgezeichnete Wege ansehen</a>
       <button type="button" class="button settings-row" data-act="history"><span class="msr">history</span> Suchverlauf löschen</button>
     </section>`;
-  mountFolder(root.querySelector('.settings-folder'), { toast });
   // Aus „Ort eintragen/bearbeiten“ ohne Konto: gleich zum OSM-Konto
   if (location.hash === '#osm' && !jumped) {
     jumped = true;
     requestAnimationFrame(() => root.querySelector('#osm')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   }
 };
+
+// Zurück von der Anmeldung (App): osm/login-return.js löst ein, hier neu zeichnen
+addEventListener('wmap:login', (e) => {
+  loginError = e.detail.wmapError ? `Bei OpenStreetMap angemeldet, aber das WMap-Konto ging nicht: ${e.detail.wmapError}` : '';
+  render();
+});
 
 root.addEventListener('change', (e) => {
   const t = e.target;
@@ -141,6 +151,7 @@ root.addEventListener('click', async (e) => {
   if (!b) return;
   const act = b.dataset.act;
   if (act === 'voice') openVoiceDialog();
+  if (act === 'perms') showPermissions();
   if (act === 'fuel') setFuelKey();
   if (act === 'geo') {
     try {
@@ -150,12 +161,13 @@ root.addEventListener('click', async (e) => {
   }
   if (act === 'history') { recent.clear(); toast('Suchverlauf gelöscht'); }
   if (act === 'clear-trace') { trace.clear(); toast('Aufzeichnung gelöscht'); }
-  if (act === 'logout') { account.logout(); render(); }
+  if (act === 'logout') { await konto.logout(); render(); }
   if (act === 'login') {
     loginError = '';
     try {
       const user = await login();
-      toast(`Angemeldet als ${user.name}`);
+      if (user.wmapError) loginError = `Bei OpenStreetMap angemeldet, aber das WMap-Konto ging nicht: ${user.wmapError}`;
+      else toast(`Angemeldet als ${user.name}`);
     } catch (err) { loginError = err.message; }
     render();
   }
