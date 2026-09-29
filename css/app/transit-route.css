@@ -183,3 +183,25 @@
     > :nth-child(3) { grid-column: span 1; }
     > :nth-child(4) { grid-column: span 3; }
 }
+
+/* Angaben je Art im Bearbeiten (osm/edit.js factsBlock) */
+.osm-facts {
+    display: grid; gap: .5rem; margin: 0; padding: .6rem .7rem .7rem;
+    border: 1px solid var(--line); border-radius: .8rem;
+    > legend { display: flex; align-items: center; gap: .4rem; padding: 0 .3rem; font-weight: 600; font-size: var(--fs-200); .msr { color: var(--route); font-size: 1.2rem; } }
+    .osm-field select { width: 100%; min-height: 2.5rem; }
+}
+.osm-flags {
+    display: flex; flex-wrap: wrap; gap: .3rem .9rem; margin: 0; padding: 0; border: 0; font-size: var(--fs-200);
+    > legend { width: 100%; padding: 0 0 .2rem; color: var(--muted); }
+    label { display: inline-flex; align-items: center; gap: .3rem; cursor: pointer; }
+}
+.osm-sockets {
+    display: grid; grid-template-columns: minmax(6rem, 1fr) 4.5rem minmax(6rem, 1fr); align-items: center; gap: .25rem .5rem;
+    margin: 0; padding: 0; border: 0; font-size: var(--fs-200);
+    > legend { padding: 0 0 .2rem; color: var(--muted); }
+    > small { color: var(--muted); font-size: var(--fs-100); }
+    input { width: 100%; min-width: 0; }
+}
+.osm-focus { outline: 2px solid var(--route); outline-offset: 3px; border-radius: .5rem; }
+.osm-flags .osm-tag, .osm-sockets .osm-tag, .osm-facts .osm-tag { font-size: var(--fs-100); padding: 0 .3rem; border-radius: .3rem; background: var(--surface-2); color: var(--muted); }

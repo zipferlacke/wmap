@@ -15,6 +15,16 @@
                 "Apps holen die Oberfläche jetzt von app.wuefl.de – Neues kommt ohne App-Update, bis zum nächsten Update läuft alles aus dem Speicher, auch ohne Netz",
                 "Neue Version verfügbar: WMap fragt, ob du jetzt aktualisieren willst – ausgelassene Versionen werden übersprungen, danach siehst du alles Neue. Nötige Updates kommen zwingend, bei App-Updates vorher Sicherung in deinen Ordner oder als ZIP",
                 "Exportieren als ZIP und GPX speichern in den Apps über den Speichern-Dialog",
+                "Orte bearbeiten je nach Art: alles aus der Ortskarte lässt sich ändern – z. B. Stecker und Ladepunkte an Ladesäulen, Stellplätze, Gebühr, Belag, Kraftstoffe, Bezahlung",
+                "Tipp auf eine Angabe in der Ortskarte – auch auf „unbekannt“ – öffnet das Bearbeiten direkt an dieser Stelle",
+                "Fix: Website und Telefon ändern den vorhandenen Eintrag (contact:website) statt einen zweiten anzulegen – beim Bearbeiten von Orten",
+                "Fix: Bei geteilten Touren lief der Knopf „Übernehmen“ aus dem Rahmen – jetzt ein Speichern-Symbol mit Ausrufezeichen, solange die Tour noch nicht bei dir gespeichert ist"
+            ]
+        },
+        {
+            "version": "2.0.1",
+            "date": "2026-09-29",
+            "changes": [
                 "Sicherung & Synchronisation vereinfacht und bessere Performance.",
                 "Bessere Fortschrittsanzeige beim Synchronisieren – mit Prozent und Restzeit und läuft im Hintergrund ab jetzt",
                 "Standard beim Synchronisieren geändert zu „beim App-Start synchronisieren“ – auch für Health Connect",

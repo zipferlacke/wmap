@@ -108,7 +108,12 @@ const descInput = $('#tour-desc');
 nameInput.value = tour.name;
 descInput.value = tour.description ?? '';
 nameInput.readOnly = descInput.readOnly = readOnly;
-if (readOnly) { $('.save-label').textContent = 'Übernehmen'; $('#save .msr').textContent = 'library_add'; }
+// Geteilte Tour: noch nicht bei mir – Speichern mit Ausrufezeichen, Erklärung im Tooltip
+if (readOnly) {
+  $('#save').classList.add('unsaved');
+  $('#save').title = 'In meine Touren übernehmen – diese Tour ist noch nicht gespeichert';
+  $('#save').setAttribute('aria-label', $('#save').title);
+}
 
 function paintTitle() {
   document.title = `${tour.name || 'Neue Tour'} – WMap`;
@@ -895,6 +900,9 @@ function adopt() {
   readOnly = false;
   document.body.classList.remove('readonly');
   nameInput.readOnly = descInput.readOnly = false;
+  $('#save').classList.remove('unsaved');
+  $('#save').title = 'Tour speichern';
+  $('#save').removeAttribute('aria-label');
   tour.id = null;
   saveState('new');
   history.replaceState(null, '', './tour.html');

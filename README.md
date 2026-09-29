@@ -827,7 +827,18 @@ gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
   WMap sie für Programme nutzt –, Bild eines Orts aus OSM; neben jedem Feld
   steht klein der OSM-Schlüssel). Bild: ein Link zu einem freien Foto
   (`image`); ein Link auf Wikimedia Commons wird zu
-  `wikimedia_commons=File:…`.
+  `wikimedia_commons=File:…`. Telefon und Website ändern den Tag, den es
+  schon gibt (`contact:phone`, `contact:website`), statt einen zweiten
+  anzulegen.
+  **Angaben** – je Art dieselben Felder wie in der Ortskarte
+  (`SCHEMA` in ui/poi-info.js, `editFields()`): Zahl (Stellplätze,
+  Ladepunkte, Höhe …), Auswahl (Gebühr, Belag, Zugang, Art …), Häkchen
+  (Kraftstoffe `fuel:…`, Bezahlung `payment:…` – abhaken entfernt ein
+  „yes“), an Ladesäulen je Stecker Anzahl und Leistung (`socket:type2`,
+  `socket:type2:output` …). Beim Eintragen passen sich die Angaben der
+  gewählten Art an. **Tipp auf eine Angabe in der Ortskarte** (auch auf
+  „unbekannt“, dort mit Stift) öffnet das Bearbeiten direkt an diesem Feld
+  (`data-edit`, app/place.js).
   **Merkmale** (aufklappbar): Lieferdienst, Zum Mitnehmen, Bio, Vegan,
   Vegetarisch, Draußen sitzen, WLAN, Drive-in, Rollstuhl – je Ja/Nur/Nein.
   Die Ortskarte zeigt sie wie bei Google unter dem Namen („Bäckerei ·

@@ -665,7 +665,16 @@ body.stage-mode #map canvas { cursor: crosshair; }
     .sheet-head { position: sticky; top: 0; margin-inline: 0; padding: .35rem 0; }
     .tour-more { padding-top: .25rem; border-top: 1px solid var(--line); }
 }
-body.readonly .tour-panel .save-state { width: auto; padding-inline: .8rem; gap: .3rem; }
+/* Geteilte Tour, noch nicht gespeichert: Speichern mit Ausrufezeichen (pages/tour.js) */
+.save-state.unsaved {
+    position: relative; overflow: visible;
+    &::after {
+        content: '!'; position: absolute; top: -.2rem; right: -.2rem;
+        width: 1.05rem; height: 1.05rem; border-radius: 50%;
+        background: #e8590c; color: #fff; border: 2px solid var(--surface);
+        font: 700 .7rem/1.05rem system-ui, sans-serif; text-align: center;
+    }
+}
 .tour-page .tour-hint { top: calc(.75rem + var(--safe-top)); }
 @media (min-width: 701px) { .tour-page .tour-hint { left: calc(50% + 12rem); } }
 

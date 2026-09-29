@@ -78,10 +78,12 @@ with Browser(width=420, height=900) as b:
     b.open('dashboard.html', wait=3)
     b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '2.0.0', messages: [] })); window.__alt = 1;")
     b.js("const s = document.createElement('script'); s.type = 'module'; s.textContent = \"import('./js/ui/news.js').then((m) => m.applyUpdate())\"; document.head.append(s);")
-    news = b.wait("return !window.__alt && document.querySelector('dialog.news[open] h2')?.innerText.trim()", 60)
-    print('Nach dem Aktualisieren:', news)
+    news = b.wait("return !window.__alt && document.querySelector('dialog.news[open] h2') && [...document.querySelectorAll('dialog.news[open] .news-release h3')].map((h) => h.innerText.match(/\d+\.\d+\.\d+/)?.[0])", 60)
+    print('Nach dem Aktualisieren – Versionen im Dialog:', news)
     b.shot('update-neu')
-    ok_news = bool(news) and '2.1.0' in news
+    # alle Versionen seit der gesehenen (2.0.0) bis zur laufenden
+    log = [v['version'] for v in json.load(open('../appdata/messages.json'))['changelog']]
+    ok_news = bool(news) and news == log[:log.index('2.0.0')]
 
     print('Service Worker stimmt:', ok_sw, '· Popups:', ok, '· Neues danach:', ok_news)
     if not (ok_sw and ok and ok_news):

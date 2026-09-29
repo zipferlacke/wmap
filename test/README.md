@@ -21,7 +21,7 @@ WMAP_URL=https://app.wuefl.de/wmap/ .venv/bin/python smoke.py   # gegen den Serv
 | `news.py` | Willkommen, Neues nach Update, nichts bei Link-Aufruf, „Was ist neu“ |
 | `offline_areas.py` | Offline-Karten: Größe, freie Form laden, Kachel ohne Kartenversion, löschen |
 | `freeform.py` | freie Form: an der Kante einfügen, markieren + Entf, Doppeltipp |
-| `edit_tags.py` | Ort bearbeiten: Beschreibung, Merkmale, alle Tags (Tag entfernen), was hochgeladen würde (OSM im Browser nachgestellt); Ortskarte mit Merkmalen |
+| `edit_tags.py` | Ort bearbeiten: Beschreibung, Merkmale, alle Tags (Tag entfernen), was hochgeladen würde (OSM im Browser nachgestellt); Ortskarte mit Merkmalen; Ladesäule: Angaben je Art (Stecker mit Anzahl und Leistung, Ladepunkte, Gebühr, Bezahlung), am Feld geöffnet, `contact:website` bleibt; Ortskarte mit antippbaren Angaben |
 | `sync_progress.py` | Abgleich mit Fortschritt: Abbruch mittendrin (Seitenwechsel), der nächste liest nur den Rest; Seite zeigt „x von n (… %)“, Sicherung klappt mit Ordner zu. Standort in der App: eine gemeinsame Abfrage für Navigation und Aufzeichnung, jede Sekunde |
 | `update.py` | Updates über `127.0.0.1` (cache first): Service Worker lädt die Version vorab; „Neue Version verfügbar“ mit Später; `minVersion` zwingend (Escape schließt nicht); `minAppVersion` sperrt (sichern, Download-Seite); Aktualisieren zeigt alles Neue seit der gesehenen Version |
 | `plugin_folders.py` | Plugin-Ordner: lose GeoJSON/JS, `wmap-plugin.json` (Ebene, Kacheln, Erweiterung), kaputte Datei, neu einlesen behält Schalter, Erweiterung startet; Firefox nur einmal einlesen; Anleitung |

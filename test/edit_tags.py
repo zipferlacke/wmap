@@ -63,5 +63,39 @@ with Browser(width=420, height=900) as b:
     print('Ortskarte:', card)
     if not card or 'Lieferdienst' not in (card[0] or '') or 'Nur Bio' not in (card[0] or ''):
         b.errors.append(('karte', 'Merkmale fehlen'))
+    # Ladesäule: Angaben je Art – direkt an den Steckern geöffnet (Tipp auf „unbekannt“ in der Karte)
+    CHARGE = {'amenity': 'charging_station', 'name': 'Ladesäule Test', 'contact:website': 'https://alt.example'}
+    card = b.d.execute_async_script("""const done = arguments[arguments.length - 1];
+      import('./js/ui/poi-info.js').then((m) => {
+        const el = document.createElement('div'); el.innerHTML = m.poiCard(m.describePoi(arguments[0]), { editable: true });
+        done([...el.querySelectorAll('.poi-facts [data-edit]')].map((x) => [x.dataset.edit, x.classList.contains('unknown')]));
+      });""", CHARGE)
+    print('Ortskarte Ladesäule (antippbar):', card)
+    if ['socket:', True] not in card or ['capacity', True] not in card:
+        b.errors.append(('karte', 'Stecker/Ladepunkte nicht antippbar'))
+    b.d.execute_async_script('const done = arguments[arguments.length - 1]; (async () => {' + SETUP.replace(
+        "title: tags.name }", "title: tags.name, focus: 'socket:' }") + '})().then(done, (e) => done(String(e)))', CHARGE)
+    time.sleep(.8)
+    print('Angaben:', b.js("return [...document.querySelectorAll('dialog .osm-facts > .osm-field > span, dialog .osm-facts > fieldset > legend')].map((s) => s.innerText.split('\\n')[0].trim())"))
+    print('Angesprungen:', b.js("return document.querySelector('dialog .osm-focus')?.dataset.edit"))
+    b.js("""const d = document.querySelector('dialog');
+      const set = (sel, v) => { const e = d.querySelector(sel); e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); };
+      set('input[name="socket:type2"]', '2');
+      set('input[name="socket:type2:output"]', '22 kW');
+      set('input[name=capacity]', '2');
+      set('select[name=fee]', 'no');
+      const app = d.querySelector('input[name="payment:app"]'); app.checked = true; app.dispatchEvent(new Event('change', { bubbles: true }));
+      set('input[name="contact:website"]', 'https://neu.example');""")
+    b.shot('bearbeiten-ladesaeule')
+    b.js("[...document.querySelectorAll('dialog button')].find((x) => /Speichern/.test(x.innerText)).click()")
+    b.wait('return window.__done', 10)
+    up = [s for s in b.js('return window.__sent') if s['u'].endswith('/upload')]
+    body = up[-1]['body'] if up else ''
+    ok2 = all(x in body for x in ['k="socket:type2" v="2"', 'k="socket:type2:output" v="22 kW"', 'k="capacity" v="2"', 'k="fee" v="no"',
+                                  'k="payment:app" v="yes"', 'k="contact:website" v="https://neu.example"']) and 'k="website"' not in body
+    print('Ladesäule hochgeladen stimmt:', ok2)
+    if not ok2:
+        print(body)
+        b.errors.append(('ladesäule', 'falscher Inhalt'))
     b.js("localStorage.removeItem('wmap.osm.token.live'); localStorage.removeItem('wmap.osm.user.live')")
     sys.exit(b.report())

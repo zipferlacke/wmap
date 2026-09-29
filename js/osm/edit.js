@@ -2,8 +2,11 @@
  * Orte in OpenStreetMap eintragen und bearbeiten – direkt aus dem Ort-Sheet.
  *
  *   Bearbeiten     Name, Beschreibung, Öffnungszeiten, Telefon, Website, Bild,
+ *                  dazu je Art die Angaben aus der Ortskarte (ui/poi-info.js
+ *                  editFields: Stellplätze, Stecker, Gebühr, Belag …) und
  *                  Merkmale (Lieferdienst, Bio …) eines Orts aus OSM; unter
- *                  „Alle Tags“ die Rohdaten zum direkten Ändern
+ *                  „Alle Tags“ die Rohdaten zum direkten Ändern. Ein Tipp auf
+ *                  ein Feld der Ortskarte öffnet den Dialog dort (`focus`)
  *                  (Öffnungszeiten je Tag statt als Text: osm/hours-editor.js;
  *                  „Dauerhaft geschlossen“ geht immer als Hinweis – in OSM
  *                  trägt man einen Ort so nicht über die Zeiten aus)
@@ -21,7 +24,7 @@ import { countOsm } from './stats.js';
 import { esc } from '../core/geo.js';
 import { hoursField, mountHours } from './hours-editor.js';
 import { openLink } from '../core/links.js';
-import { TRAITS } from '../ui/poi-info.js';
+import { TRAITS, editFields, EDIT_SOCKETS } from '../ui/poi-info.js';
 // Auswahl mit Suche für <select data-sp-picker> (legt sich selbst an)
 import '../../libs/wuefl-libs/selectpicker/selectpicker.js';
 
@@ -115,7 +118,7 @@ const ADDRESS = [
 const DESCRIPTION = ['description', 'Beschreibung – kurz und sachlich, keine Werbung', 'textarea', 'z. B. Bio-Bäckerei mit Café, Brot aus eigenem Sauerteig'];
 
 /** Feld mit dem OSM-Schlüssel klein daneben – damit klar ist, was wo landet */
-const field = ([k, label, type, ph], v = '', { tag = true } = {}) => `<label class="osm-field"><span>${label}${tag ? ` <code class="osm-tag">${esc(k)}</code>` : ''}</span>
+const field = ([k, label, type, ph], v = '', { tag = true } = {}) => `<label class="osm-field" data-edit="${esc(k)}"><span>${label}${tag ? ` <code class="osm-tag">${esc(k)}</code>` : ''}</span>
   ${type === 'textarea'
     ? `<textarea name="${esc(k)}" rows="2" maxlength="255" placeholder="${esc(ph)}">${esc(v)}</textarea>`
     : `<input type="text" inputmode="${type}" name="${esc(k)}" value="${esc(v)}" placeholder="${esc(ph)}" autocomplete="off">`}</label>`;
@@ -135,10 +138,69 @@ const traitsBlock = (tags = {}) => `<details class="osm-more"${EDIT_TRAITS.some(
     const cur = tags[k] ?? '';
     const opts = [['', '–'], ...[...vals, 'no'].map((v) => [v, WORD[v]])];
     if (cur && !opts.some(([v]) => v === cur)) opts.push([cur, cur]);
-    return `<label class="osm-trait"><span>${esc(label)} <code class="osm-tag">${esc(k)}</code></span>
+    return `<label class="osm-trait" data-edit="${esc(k)}"><span>${esc(label)} <code class="osm-tag">${esc(k)}</code></span>
       <select name="${esc(k)}">${opts.map(([v, l]) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`;
   }).join('')}</div>
 </details>`;
+
+/* ── Angaben je Art (wie in der Ortskarte) ─────────────────────────────────── */
+
+// Öffnungszeiten und Telefon haben eigene Felder, Rollstuhl und Außenplätze stehen bei den Merkmalen
+const OWN = new Set(['opening_hours', 'phone', ...EDIT_TRAITS.map(([k]) => k)]);
+
+/** Auswahl: gleiche Beschriftungen nur einmal (z. B. yes/public = öffentlich), der jetzige Wert immer */
+function choice(key, options, cur) {
+  const seen = new Set();
+  const opts = [['', '–'], ...options.filter(([v, l]) => (v === cur || !seen.has(l)) && seen.add(l))];
+  if (cur && !opts.some(([v]) => v === cur)) opts.push([cur, cur]);
+  return `<select name="${esc(key)}">${opts.map(([v, l]) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+}
+
+function factField({ label, edit: e }, tags) {
+  const tag = (k) => `<code class="osm-tag">${esc(k)}</code>`;
+  if (e.kind === 'number' || e.kind === 'text') return field([e.key, label, e.kind === 'number' ? 'numeric' : 'text', e.ph ?? ''], tags[e.key] ?? '');
+  if (e.kind === 'choice') {
+    return `<label class="osm-field" data-edit="${esc(e.key)}"><span>${esc(label)} ${tag(e.key)}</span>${choice(e.key, e.options, tags[e.key] ?? '')}</label>`;
+  }
+  if (e.kind === 'flags') {
+    // Häkchen = …=yes; ein vorher gesetztes „yes“ abhaken entfernt den Tag
+    return `<fieldset class="osm-flags" data-edit="${esc(e.key)}"><legend>${esc(label)} ${tag(`${e.key}…`)}</legend>${e.options.map(([v, l]) => {
+      const k = `${e.key}${v}`;
+      return `<label><input type="checkbox" name="${esc(k)}" data-orig="${esc(tags[k] ?? '')}"${tags[k] === 'yes' ? ' checked' : ''}> ${esc(l)}</label>`;
+    }).join('')}</fieldset>`;
+  }
+  if (e.kind === 'sockets') {
+    return `<fieldset class="osm-sockets" data-edit="socket:"><legend>${esc(label)} ${tag('socket:…')}</legend>
+      <span></span><small>Anzahl</small><small>Leistung</small>
+      ${Object.entries(EDIT_SOCKETS).map(([k, name]) => `<span>${esc(name)}</span>
+        <input type="text" inputmode="numeric" name="socket:${esc(k)}" value="${esc(tags[`socket:${k}`] ?? '')}" placeholder="–" autocomplete="off">
+        <input type="text" name="socket:${esc(k)}:output" value="${esc(tags[`socket:${k}:output`] ?? '')}" placeholder="z. B. 22 kW" autocomplete="off">`).join('')}
+    </fieldset>`;
+  }
+  return '';
+}
+
+/** Block „Angaben“ – die Felder dieser Art (leer, wenn es keine gibt) */
+function factsBlock(tags, fields = editFields(tags)) {
+  const list = fields.filter((f) => !OWN.has(f.edit.key));
+  if (!list.length) return '';
+  return `<fieldset class="osm-facts"><legend><span class="msr">tune</span> Angaben</legend>${list.map((f) => factField(f, tags)).join('')}</fieldset>`;
+}
+
+/** Dialog an einem Feld öffnen: aufklappen, hinscrollen, markieren */
+function focusField(dlg, key) {
+  if (!key) return;
+  const el = key === 'opening_hours' ? dlg.querySelector('.oh-block')
+    : dlg.querySelector(`[data-edit="${CSS.escape(key)}"]`) ?? dlg.querySelector(`[data-edit="${CSS.escape(`contact:${key}`)}"]`);
+  if (!el) return;
+  el.closest('details')?.setAttribute('open', '');
+  if (el.tagName === 'DETAILS') el.open = true;
+  el.classList.add('osm-focus');
+  requestAnimationFrame(() => {
+    el.scrollIntoView({ block: 'center' });
+    el.querySelector('input:not([type=hidden]), select, textarea')?.focus({ preventScroll: true });
+  });
+}
 
 /** Rohdaten: eine Zeile je Tag. Neu anlegen: leer, für weitere Tags. */
 const RAW = '_raw';
@@ -155,8 +217,9 @@ function syncRaw(dlg) {
   const update = (e) => {
     const el = e.target;
     if (!raw || !el.name || [RAW, 'gone', 'image'].includes(el.name)) return;
+    const value = inputValue(el);
     const lines = raw.value.split('\n').filter((l) => l.trim() && !l.startsWith(`${el.name}=`));
-    if (el.value.trim()) lines.push(`${el.name}=${el.value.trim()}`);
+    if (value) lines.push(`${el.name}=${value}`);
     raw.value = lines.sort().join('\n');
   };
   dlg.addEventListener('input', update);
@@ -182,7 +245,9 @@ function imageTags(set) {
   return { ...rest, wikimedia_commons: decodeURIComponent(m[1]).replace(/_/g, ' ') };
 }
 
-const valuesOf = (dlg) => Object.fromEntries([...dlg.querySelectorAll('input[name], select[name], textarea[name]')].map((i) => [i.name, i.value.trim()]));
+/** Häkchen: gesetzt = yes; ein abgehaktes „yes“ = entfernen, sonst bleibt der alte Wert (z. B. no) */
+const inputValue = (i) => (i.type === 'checkbox' ? (i.checked ? 'yes' : (i.dataset.orig === 'yes' ? '' : i.dataset.orig ?? '')) : i.value.trim());
+const valuesOf = (dlg) => Object.fromEntries([...dlg.querySelectorAll('input[name], select[name], textarea[name]')].map((i) => [i.name, inputValue(i)]));
 
 /**
  * Ohne Konto: erklären, was es braucht. → 'account' | 'note' | null
@@ -221,19 +286,23 @@ async function send({ edits = [], creates = [], note = null }, comment, toast, k
  * @param osm   { type: 'node'|'way'|'relation', id }
  * @param tags  aktuelle Tags
  */
-export async function editPlace({ osm, tags, point, title }, { toast }) {
+export async function editPlace({ osm, tags, point, title, focus = null }, { toast }) {
   const mode = account.loggedIn() ? 'edit' : await withoutAccount('Deine Änderung');
   if (mode !== 'edit' && mode !== 'note') return;
   // Bild von Commons: als Link zeigen – geändert gilt nur, was davon abweicht
   const shown = { ...tags, image: tags.image ?? (tags.wikimedia_commons ? `https://commons.wikimedia.org/wiki/${tags.wikimedia_commons.replace(/ /g, '_')}` : '') };
+  // Telefon, Website: den Tag ändern, den es schon gibt (contact:website statt eines zweiten website)
+  const alias = (k) => ((k === 'phone' || k === 'website') && !tags[k] && tags[`contact:${k}`] ? `contact:${k}` : k);
   const vals = await ask({
     icon: 'edit_location_alt', title: `${title || 'Ort'} bearbeiten`, className: 'osm-edit',
-    html: `<div class="osm-form">${field(FIELDS[0], tags.name ?? '')}${field(DESCRIPTION, tags.description ?? '')}${hoursField(tags.opening_hours ?? '')}${FIELDS.slice(1).map((f) => field(f, shown[f[0]] ?? '')).join('')}
+    html: `<div class="osm-form">${field(FIELDS[0], tags.name ?? '')}${field(DESCRIPTION, tags.description ?? '')}${hoursField(tags.opening_hours ?? '')}
+        ${factsBlock(tags)}
+        ${FIELDS.slice(1).map(([k, ...rest]) => field([alias(k), ...rest], shown[alias(k)] ?? '')).join('')}
         ${traitsBlock(tags)}${rawBlock(tags, 'Was du oben in den Feldern änderst, gilt vor dem, was hier steht. Zeile löschen = Tag entfernen.')}</div>
       <p class="muted">Nur eintragen, was du selbst weißt – z. B. vom Schild vor Ort.</p>`,
     buttons: [{ value: 'cancel', label: 'Abbrechen' }, { value: 'ok', label: mode === 'note' ? 'Hinweis senden' : 'Speichern', primary: true }],
     read: valuesOf,
-    setup(dlg) { mountHours(dlg); syncRaw(dlg); },
+    setup(dlg) { mountHours(dlg); syncRaw(dlg); focusField(dlg, focus); },
   });
   if (!vals || typeof vals !== 'object') return;
   const { gone, [RAW]: raw, ...form } = vals;
@@ -275,7 +344,9 @@ export async function addPlace(point, { address = {}, toast }) {
         <label class="osm-field"><span>Was ist hier?</span><select name="type" data-sp-picker="Was ist hier?">${PLACE_TYPES.map(([group, list]) => `<optgroup label="${esc(group)}">${list.map(([id, label]) => `<option value="${id}">${esc(label)}</option>`).join('')}</optgroup>`).join('')}</select></label>
         <label class="osm-field osm-brand" hidden><span>Marke / Kette <code class="osm-tag">brand</code></span>
           <input type="text" name="brand" list="osm-brands" placeholder="z. B. EDEKA – leer lassen, wenn es keine Kette ist" autocomplete="off"><datalist id="osm-brands"></datalist></label>
-        ${field(FIELDS[0])}${field(DESCRIPTION)}${hoursField('', { gone: false })}${FIELDS.slice(1).map((f) => field(f)).join('')}
+        ${field(FIELDS[0])}${field(DESCRIPTION)}${hoursField('', { gone: false })}
+        <div class="osm-facts-slot"></div>
+        ${FIELDS.slice(1).map((f) => field(f)).join('')}
         <div class="osm-addr">${ADDRESS.map((f) => field(f, addr[f[0]])).join('')}</div>
         ${traitsBlock()}${rawBlock(null, 'Kommt zu den Angaben oben dazu.')}
       </div>
@@ -287,7 +358,10 @@ export async function addPlace(point, { address = {}, toast }) {
       // Marken passend zur Art vorschlagen
       const sel = dlg.querySelector('select[name="type"]');
       const brand = dlg.querySelector('.osm-brand');
+      const slot = dlg.querySelector('.osm-facts-slot');
       const pick = () => {
+        // Angaben passend zur Art (Tankstelle: Kraftstoffe, Bezahlung …)
+        slot.innerHTML = factsBlock({}, editFields(TYPE_LIST.find(([id]) => id === sel.value)?.[2] ?? {}));
         const list = BRANDS[sel.value] ?? [];
         brand.hidden = !list.length && !/^(shop|craft)$/.test(sel.value) && !TYPE_LIST.find(([id]) => id === sel.value)?.[2].shop;
         dlg.querySelector('#osm-brands').innerHTML = list.map((b) => `<option value="${esc(b)}"></option>`).join('');
