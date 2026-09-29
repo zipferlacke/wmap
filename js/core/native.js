@@ -4,8 +4,9 @@
  * das jeweilige Plugin da ist. Die Webversion verliert dadurch nichts.
  *
  * Bisher: Standort. Das Tauri-Plugin „geolocation“ liefert auf dem Handy
- * dieselben Daten wie der Browser, läuft aber als echte App weiter, wenn
- * der Bildschirm aus ist. Fehlt dort die Freigabe, kommt vorher der Dialog
+ * dieselben Daten wie der Browser. Wie dort ruht es, solange die App im
+ * Hintergrund bzw. der Bildschirm aus ist (das Plugin beendet die Abfrage
+ * in onPause, onResume startet sie neu). Fehlt die Freigabe, kommt vorher der Dialog
  * zu den Berechtigungen (ui/permissions.js); mit `ask: false` in den
  * Optionen (Start der Karte) wird still abgelehnt.
  */
@@ -20,6 +21,43 @@ const allowed = async (options) => {
   return locationAccess({ ask: options.ask !== false });
 };
 
+/*
+ * Das Plugin hat nur einen Empfänger: Jede neue Abfrage ersetzt die vorige
+ * (Navigation und Aufzeichnung zugleich ginge nicht). Und es nimmt `timeout`
+ * als Abstand zwischen zwei Meldungen – 10 s wären für die Navigation viel zu
+ * selten. Darum hier eine gemeinsame Abfrage, jede Sekunde, für alle.
+ */
+const INTERVAL_MS = 1000;
+const listeners = new Set();
+let shared = null;        // { channel } der laufenden Abfrage
+let stopTimer = null;
+
+function startShared(options) {
+  clearTimeout(stopTimer);
+  if (shared) return;
+  const channel = new core.Channel();
+  shared = { channel };
+  channel.onmessage = (p) => {
+    for (const l of listeners) (p?.coords ? l.ok(p) : l.fail?.({ code: 2, message: String(p) }));
+  };
+  core.invoke('plugin:geolocation|watch_position', { options: { ...toNative(options), timeout: INTERVAL_MS }, channel })
+    .catch((err) => {
+      if (shared?.channel === channel) shared = null;
+      const e = { code: /denied|permission/i.test(String(err)) ? 1 : 2, message: String(err) };
+      for (const l of listeners) l.fail?.(e);
+    });
+}
+
+/** Erst kurz warten: Wer neu startet (Navigation nach Stille), bekommt dieselbe Abfrage */
+function stopShared() {
+  clearTimeout(stopTimer);
+  stopTimer = setTimeout(() => {
+    if (listeners.size || !shared) return;
+    core.invoke('plugin:geolocation|clear_watch', { channelId: shared.channel.id }).catch(() => {});
+    shared = null;
+  }, 500);
+}
+
 /** Positionsmeldung wie bei navigator.geolocation: { coords, timestamp } */
 export const geo = {
   native: nativeGeo,
@@ -27,14 +65,12 @@ export const geo = {
   /** → Kennung zum Beenden */
   watch(ok, fail, options = {}) {
     if (!nativeGeo) return navigator.geolocation.watchPosition(ok, fail, options);
-    const channel = new core.Channel();
-    channel.onmessage = (p) => (p?.coords ? ok(p) : fail?.({ code: 2, message: String(p) }));
-    const id = { channel, native: true, cleared: false };
-    allowed(options).then((ok) => {
+    const id = { ok, fail, native: true, cleared: false };
+    allowed(options).then((yes) => {
       if (id.cleared) return;
-      if (!ok) { fail?.(DENIED); return; }
-      core.invoke('plugin:geolocation|watch_position', { options: toNative(options), channel })
-        .catch((err) => fail?.({ code: /denied|permission/i.test(String(err)) ? 1 : 2, message: String(err) }));
+      if (!yes) { fail?.(DENIED); return; }
+      listeners.add(id);
+      startShared(options);
     });
     return id;
   },
@@ -43,7 +79,8 @@ export const geo = {
     if (id === null || id === undefined) return;
     if (!id?.native) { navigator.geolocation.clearWatch(id); return; }
     id.cleared = true;
-    core.invoke('plugin:geolocation|clear_watch', { channelId: id.channel.id }).catch(() => {});
+    listeners.delete(id);
+    stopShared();
   },
 
   once(ok, fail, options = {}) {

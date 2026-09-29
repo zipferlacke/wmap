@@ -4,9 +4,24 @@
         "Alles beruht auf offenen Daten von OpenStreetMap. Du brauchst kein Konto, und deine Wege bleiben auf deinem Gerät.",
         "Tippe oben einen Ort, eine Adresse oder einfach „Bäckerei“ ein – oder auf <span class=\"msr\">directions</span>, um eine Route zu planen."
     ],
-    "minVersion": "2.0.0",
+    "minVersion": "2.0.1",
     "messages": [],
     "changelog": [
+        {
+            "version": "2.0.1",
+            "date": "2026-09-29",
+            "changes": [
+                "Sicherung & Synchronisation vereinfacht und besser Performance.",
+                "Bessere Fortschrittsanzeige beim Synchronisieren – mit Prozent und Restzeit und läft im Hintegrund ab jetzt",
+                "Standard beim Synchronisieren geändert zu „beim App-Start synchronisieren“ – auch für Health Connect",
+                "Fix: „Meine Touren“ und „Entdecken“ blieben schwarz – in den Apps für Android, Windows, macOS und Linux",
+                "Fix: Standort in der Navigation kam nur alle 10 s oder gar nicht mehr – in der Android-App",
+                "Fix: Standort in der Navigation setzte immer wieder aus und kam verspätet – in der Web-App",
+                "Fix: Aufzeichnen während der Navigation bekam keine Punkte – in der Android-App",
+                "Fix: Ordner-Abgleich brach beim Wechsel der Seite ab, „Letzter Abgleich“ blieb auf „noch nie“ – in den Apps und in Chrome/Edge",
+                "Fix: „Gleiche ab …“ blieb stehen, wenn sich nichts geändert hatte – auf „Sicherung & Synchronisation“"
+            ]
+        },
         {
             "version": "2.0.0",
             "date": "2026-09-29",

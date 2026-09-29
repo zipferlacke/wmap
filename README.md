@@ -240,6 +240,18 @@ Start mit **Los** unter einer Route. Die Karte wechselt in die Fahreransicht.
   (Breite in Metern, Pfeile auf dem Asphalt, Übergänge über 50 m weich). Der
   Pfeil fährt dann in seiner Spur rechts der Mitte.
 
+**Standort** (`js/core/native.js`, `#startGps` in `js/nav/navigation.js`)
+
+- Im Browser `watchPosition`. Nach 6 s ohne Meldung steht „GPS-Signal
+  schwach“; neu gestartet wird erst nach **20 s** Stille (ein Neustart
+  braucht selbst Sekunden bis zur ersten Position), nach einer
+  Zeitüberschreitung gar nicht – die Abfrage läuft laut Standard weiter.
+- In der Handy-App das Tauri-Plugin `geolocation`. Es kennt nur **einen**
+  Empfänger (jede neue Abfrage ersetzt die vorige) und nimmt `timeout` als
+  Abstand zwischen zwei Meldungen. Darum eine gemeinsame Abfrage mit **1 s**
+  Abstand für alle (Navigation, Aufzeichnung); sie endet erst 0,5 s nach dem
+  letzten Empfänger, ein Neustart der Navigation nutzt dieselbe weiter.
+
 **Kamera** – feste Stufen statt ständigem Nachregeln; eher von schräg oben
 als aus Fahrersicht, damit Häuser Straße und Abzweig nicht verdecken:
 
@@ -664,12 +676,23 @@ das noch nicht erlaubt ist (Standort-Knopf, Navigation, Aufzeichnen, Route
 ab „Mein Standort“), und unter Einstellungen → Berechtigungen. Beim Start
 der Karte wird nicht gefragt – ohne Freigabe bleibt die letzte Ansicht.
 
-## 15. Sicherung & Synchronisation: Ordner, Health Connect, ZIP
+## 15. Sicherung & Synchronisation: Ordner, Health Connect
 
 Eigene Seite `sync.html` (Kachel in der Übersicht; Einstellungen → Daten und
-unten in Meine Touren verweisen dorthin). Drei Teile, je mit letztem
+unten in Meine Touren verweisen dorthin). Zwei Teile, je mit letztem
 Abgleich, Fehler (rot, auch auf der Kachel) und **Automatisch**: aus / beim
 Öffnen von WMap / beim Öffnen und alle 30 Minuten (`js/data/auto-sync.js`).
+
+**Knöpfe der Ordner-Kachel:**
+
+| Zustand | Knöpfe |
+|---|---|
+| kein Ordner | **Ordner synchronisieren** · Aus Ordner importieren · Exportieren (ZIP) |
+| Ordner verbunden | Jetzt abgleichen · Ordner ändern · Exportieren (ZIP) · Trennen – dazu „Synchronisiert mit *Name*“ |
+| Firefox, Safari | Aus Ordner importieren · Exportieren (ZIP) |
+
+Darunter „Export als ZIP wieder einspielen: ZIP wählen“ (nicht bei
+verbundenem Ordner – der hat ja schon alles).
 
 ### Ordner
 
@@ -691,6 +714,12 @@ WMap/
 - Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene. Dateien
   aus der alten Ordnung (`Geplant/`, `Abgeschlossen/<Jahr>/`, `Gemerkt.json`)
   ziehen beim ersten Abgleich um.
+- **Fortschritt:** „Gleiche ab … 40 von 96 (42 %) · noch etwa 1 Min.“ mit
+  Balken, in der Übersicht „Gleiche ab …“ auf der Kachel. Alle 2 s wird der
+  Stand gespeichert (`pending`) und schon Übernommenes gemeldet (Meine
+  Touren zeigt es sofort). Wer die Seite wechselt, bricht den Abgleich ab –
+  die nächste Seite mit `autoSync()` macht dort weiter (auch bei Automatik
+  „Aus“) und liest nur, was noch nicht im Stand war.
 - **Abgleich** beim Öffnen und 2,5 s nach jeder Änderung (je nach
   Automatik), sonst mit „Jetzt abgleichen“:
   - nur im Ordner → übernehmen; nur in WMap → Datei schreiben
@@ -714,23 +743,28 @@ WMap/
     Ordnerdialog. Die App liest und schreibt nur in diesem Ordner.
   - **Chrome und Edge** (File System Access API); der Browser fragt nach
     einem Neustart ggf. erneut („Erlauben und abgleichen“).
-  - **Firefox, Safari:** kein fester Ordner – „GPX aus Ordner einlesen“ holt
-    einmalig alle GPX herein (auch bei leerem Ordner mit Meldung), „Alles
-    teilen“ schickt sie ans Teilen-Menü.
+  - **Firefox, Safari:** kein fester Ordner – nur importieren und
+    exportieren.
+- **Aus Ordner importieren** (`importFolder`): liest einen Ordner einmal ein,
+  ohne ihn zu verbinden – in der App über das Plugin (eigener Platz
+  `import`, danach wieder freigegeben), im Browser über die Ordnerauswahl.
+  Liegt eine `wmap-sicherung.json` darin (ausgepackter Export), kommt alles
+  daraus, sonst die GPX-Dateien (Doppelte werden erkannt).
 
 ### Health Connect (Android-App)
 
+Standard: automatisch beim Öffnen – ohne Freigabe still, ohne Fehler.
 „Trainings holen“ übernimmt neue Trainings mit Route – der Fortschritt steht
 am Knopf, am Ende nur eine Meldung „x importiert“. Routen, für die Health
 Connect einzeln fragt, bleiben beim automatischen Holen liegen (Hinweis:
 in Health Connect WMap → Trainingsrouten „Immer erlauben“). Dazu
 „Berechtigungen“ (Dialog aus Abschnitt 14).
 
-### Sicherung als ZIP
+### Export als ZIP
 
 Dieselbe Ordnung wie im Ordner (GPX, Bus & Bahn, `Lesezeichen.json`), dazu
-`WMap/wmap-sicherung.json` mit allem für die Wiederherstellung. „Sicherung
-laden“ nimmt das ZIP (oder eine alte `.json`); ein ZIP ohne JSON, etwa ein
+`WMap/wmap-sicherung.json` mit allem für die Wiederherstellung. „ZIP wählen“
+nimmt das ZIP (oder eine alte `.json`); ein ZIP ohne JSON, etwa ein
 gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
 
 ## 16. Teilen, Standort anfragen, Bild in Bild
@@ -944,7 +978,7 @@ Zentral für alle Projekte unter `wuefl_products` – die Skripte liegen neben
 
 ```bash
 tauri-android wmap              # bauen, aufs Handy, Protokoll
-tauri-android wmap bauen        # nur bauen (auch: sauber, install, log)
+tauri-android wmap build        # nur bauen (auch: clean, install, log, connect)
 tauri-android wmap release      # signiertes AAB (Play Store) + APKs → src-tauri/target/android-release/
 takeshots wmap                  # Screenshots nach appdata/images/
 takeshots wmap --eigener-server # ohne Docker

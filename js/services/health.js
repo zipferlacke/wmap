@@ -276,7 +276,7 @@ const AUTO = 'wmap.health.auto';     // 'off' | 'start' | 'every30'
 
 export const healthSync = {
   /** Automatisch: aus, beim Öffnen von WMap, beim Öffnen und alle 30 Minuten */
-  get auto() { const v = local.get(AUTO, 'off'); return v === true ? 'start' : v === false ? 'off' : v; },
+  get auto() { const v = local.get(AUTO, 'start'); return v === true ? 'start' : v === false ? 'off' : v; },
   set auto(v) { local.set(AUTO, v); },
   /** Letzter Abgleich: { at, added, denied, error } oder null */
   last: () => local.get(LAST, null),
@@ -323,5 +323,8 @@ export async function autoHealthSync({ periodic = false } = {}) {
   const mode = healthSync.auto;
   if (!healthAvailable || mode === 'off' || (periodic && mode !== 'every30')) return null;
   if (!periodic && Date.now() - (healthSync.last()?.at ?? 0) < 5 * 60000) return null;
+  // Noch nicht freigegeben: still bleiben (kein Fehler bei jedem Öffnen)
+  const st = await healthStatus().catch(() => null);
+  if (!st?.available || !st.read) return null;
   return syncHealth({ quiet: true }).catch(() => null);
 }

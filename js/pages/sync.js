@@ -1,20 +1,22 @@
 /**
  * Sicherung & Synchronisation (sync.html) – Kachel in der Übersicht:
  *
- *   Ordner          verbinden, jetzt abgleichen, trennen; automatisch: aus,
- *                   beim Öffnen, beim Öffnen und alle 30 Minuten; letzter
- *                   Abgleich, Fehler, was im Ordner liegt (data/folder.js) –
- *                   ohne Ordner-Zugriff (Firefox, Safari): GPX einlesen, teilen
+ *   Ordner          ohne Ordner: synchronisieren (verbinden), einmal
+ *                   importieren, als ZIP exportieren; mit Ordner: welcher,
+ *                   jetzt abgleichen, ändern, exportieren, trennen; automatisch:
+ *                   aus, beim Öffnen, beim Öffnen und alle 30 Minuten; letzter
+ *                   Abgleich, Fehler, Ordnerstruktur erklärt (data/folder.js) –
+ *                   ohne Ordner-Zugriff (Firefox, Safari): nur importieren
+ *                   und exportieren
  *   Health Connect  Trainings holen (Fortschritt am Knopf, am Ende nur eine
  *                   Meldung), automatisch wie oben, Freigaben (nur Android-App)
- *   Sicherung       alles als ZIP speichern bzw. einspielen
  */
 import { mountAppBar } from '../ui/appbar.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { esc } from '../core/geo.js';
 import { download } from '../data/store.js';
 import { restore } from '../data/tracks.js';
-import { folder, zipBackup, restoreZip, importLoose, shareAll, canShareFiles, syncSummary } from '../data/folder.js';
+import { folder, zipBackup, restoreZip, importFolder, syncSummary } from '../data/folder.js';
 import { healthAvailable, healthStatus, healthSync, syncHealth, healthSyncing } from '../services/health.js';
 import { showPermissions } from '../ui/permissions.js';
 import { autoSync } from '../data/auto-sync.js';
@@ -23,7 +25,9 @@ const root = document.querySelector('.sync');
 const WHEN = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const when = (ms) => (ms ? WHEN.format(ms) : 'noch nie');
 let connecting = false;
+let importing = false;
 let progress = null;        // Health Connect: { i, n }
+const nativeHere = !!window.__TAURI__?.core;
 
 const AUTO = [['off', 'Aus – nur von Hand'], ['start', 'Beim Öffnen von WMap'], ['every30', 'Beim Öffnen und alle 30 Minuten']];
 const autoSelect = (name, value, hint) => `<label class="settings-select">
@@ -33,9 +37,24 @@ const autoSelect = (name, value, hint) => `<label class="settings-select">
 
 const status = (icon, text, cls = '') => `<p class="sync-status ${cls}"><span class="msr">${icon}</span><span>${text}</span></p>`;
 
+/** „Gleiche ab … 40 von 96 (42 %) · noch etwa 1 Min.“ */
+function progressText(p) {
+  if (!p?.n) return 'Gleiche ab …';
+  const pct = Math.floor((p.i / p.n) * 100);
+  const took = Date.now() - p.since;
+  let rest = '';
+  if (p.i >= 3 && took > 2000 && p.i < p.n) {
+    const s = Math.round(((p.n - p.i) * took) / p.i / 1000);
+    rest = s < 20 ? ' · gleich fertig' : s < 90 ? ` · noch etwa ${Math.round(s / 10) * 10} s` : ` · noch etwa ${Math.round(s / 60)} Min.`;
+  }
+  return `Gleiche ab … ${p.i} von ${p.n} (${pct} %)${rest}`;
+}
+const progressBar = (p) => `<div class="sync-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${p?.n ?? 0}" aria-valuenow="${p?.i ?? 0}">
+    <i style="width:${p?.n ? Math.round((p.i / p.n) * 100) : 5}%"></i></div>`;
+
 /* ── Ordner ───────────────────────────────────────────────────────────────── */
 
-const TREE = `<details class="sync-tree"><summary>Was im Ordner liegt</summary><pre>WMap/
+const TREE = `<details class="sync-tree"><summary>Ordnerstruktur erklärt</summary><pre>WMap/
 ├─ settings.json            Einstellungen
 ├─ Geplante Touren/         je Tour eine GPX-Datei
 ├─ Aufgezeichnete Touren/
@@ -45,17 +64,26 @@ const TREE = `<details class="sync-tree"><summary>Was im Ordner liegt</summary><
   <p class="settings-hint">Jede WMap, die denselben Ordner verbindet, liest ihn ein und gleicht mit ab. Heißt der Ordner selbst „WMap“, entfällt die Ebene.
     GPX-Dateien von woanders (Garmin, Komoot …) dürfen irgendwo darin liegen.</p></details>`;
 
+/*
+ * Knöpfe: Importieren liest einen Ordner einmal ein (App: Ordnerdialog,
+ * Browser: Ordnerauswahl), eine ausgepackte ZIP mit wmap-sicherung.json ganz;
+ * „ZIP einspielen“ nimmt den Export direkt. Exportieren gibt alles als ZIP.
+ */
+const importButton = () => (nativeHere
+  ? `<button type="button" class="button" data-act="import" ${importing ? 'disabled' : ''}><span class="msr">drive_folder_upload</span> Aus Ordner importieren</button>`
+  : '<label class="button"><span class="msr">drive_folder_upload</span> Aus Ordner importieren<input type="file" webkitdirectory multiple hidden data-file="folder"></label>');
+const exportButton = '<button type="button" class="button" data-act="backup"><span class="msr">folder_zip</span> Exportieren (ZIP)</button>';
+const zipLink = `<p class="settings-hint sync-zip">Export als ZIP wieder einspielen:
+    <label class="sync-link">ZIP wählen<input type="file" accept=".zip,.json,application/zip,application/json" hidden data-file="restore"></label></p>`;
+
 async function folderHtml() {
   if (!folder.supported) {
     return `<section>
       <h3><span class="msr">folder</span> Ordner</h3>
-      ${status('folder_off', 'Dieser Browser darf nicht in einen Ordner schreiben – fest verbinden und abgleichen geht in der <strong>WMap-App</strong> '
-        + '(Android, Linux, macOS, Windows) und in Chrome bzw. Edge.', 'warn')}
-      <p class="settings-hint">Hier kannst du einmalig GPX-Dateien aus einem Ordner übernehmen${canShareFiles() ? ' und alles als Dateien teilen – z. B. in Proton Drive oder Nextcloud' : ''}.</p>
-      <div class="sync-actions">
-        <label class="button"><span class="msr">drive_folder_upload</span> GPX aus Ordner einlesen<input type="file" webkitdirectory multiple hidden data-file="folder"></label>
-        ${canShareFiles() ? '<button type="button" class="button" data-act="share"><span class="msr">ios_share</span> Alles teilen</button>' : ''}
-      </div>
+      ${status('folder_off', 'Dauerhaft synchronisieren geht in der <strong>WMap-App</strong> (Android, Linux, macOS, Windows) und in Chrome bzw. Edge. '
+        + 'Hier kannst du einmal importieren oder alles als ZIP exportieren.', 'warn')}
+      <div class="sync-actions">${importButton()}${exportButton}</div>
+      ${zipLink}
       ${TREE}
     </section>`;
   }
@@ -64,24 +92,35 @@ async function folderHtml() {
     return `<section>
       <h3><span class="msr">folder</span> Ordner</h3>
       ${connecting ? status('sync', 'Ordner wird verbunden …', 'busy')
-        : status('folder', 'Kein Ordner verbunden. Verbinde einen Ordner, den dein Sync-Programm abgleicht (Nextcloud, Proton Drive, Google Drive, Syncthing …) – '
-          + 'dann haben alle deine Geräte dieselben Touren, Wege, Verbindungen, Lesezeichen und Einstellungen.')}
+        : importing ? status('sync', 'Importiere …', 'busy')
+          : status('folder', 'Kein Ordner synchronisiert. Nimm einen Ordner, den dein Sync-Programm abgleicht (Nextcloud, Proton Drive, Google Drive, Syncthing …) – '
+            + 'dann haben alle deine Geräte dieselben Touren, Wege, Verbindungen, Lesezeichen und Einstellungen.')}
       ${i.error ? status('error', `Fehler: ${esc(i.error.message)}`, 'error') : ''}
-      <div class="sync-actions"><button type="button" class="button primary" data-act="connect" ${connecting ? 'disabled' : ''}><span class="msr">create_new_folder</span> Ordner verbinden</button></div>
+      <div class="sync-actions">
+        <button type="button" class="button primary" data-act="connect" ${connecting ? 'disabled' : ''}><span class="msr">sync</span> Ordner synchronisieren</button>
+        ${importButton()}
+        ${exportButton}
+      </div>
+      ${zipLink}
       ${TREE}
     </section>`;
   }
   const again = i.permission !== 'granted';
   const busy = folder.busy || connecting;
+  const p = folder.progress;
   return `<section>
     <h3><span class="msr">folder_open</span> Ordner</h3>
-    ${status('folder_open', `Verbunden mit <strong>${esc(i.name)}</strong>`)}
-    ${busy ? status('sync', 'Gleiche ab …', 'busy')
+    ${status('folder_open', `Synchronisiert mit <strong>${esc(i.name)}</strong>`)}
+    ${busy ? `<div class="folder-progress">${status('sync', progressText(p), 'busy')}${progressBar(p)}</div>`
       : again ? status('folder_managed', 'Der Browser braucht wieder deine Erlaubnis für den Ordner.', 'warn')
-        : status('schedule', `Letzter Abgleich: ${when(i.last)}${i.last ? ` – ${esc(syncSummary(i.result))}` : ''}`)}
+        : i.pending ? status('sync_problem', 'Der letzte Abgleich wurde unterbrochen – er läuft beim nächsten Öffnen einer Seite weiter.', 'warn')
+          : status('schedule', `Letzter Abgleich: ${when(i.last)}${i.last ? ` – ${esc(syncSummary(i.result))}` : ''}`)}
+    ${busy ? '<p class="settings-hint">Du kannst WMap weiter benutzen. Wechselst du die Seite, macht die nächste dort weiter, wo dieser Abgleich aufgehört hat.</p>' : ''}
     ${i.error && !busy ? status('error', `Fehler am ${when(i.error.at)}: ${esc(i.error.message)}`, 'error') : ''}
     <div class="sync-actions">
       <button type="button" class="button${again ? ' primary' : ''}" data-act="sync" ${busy ? 'disabled' : ''}><span class="msr">sync</span> ${again ? 'Erlauben und abgleichen' : 'Jetzt abgleichen'}</button>
+      <button type="button" class="button" data-act="change" ${busy ? 'disabled' : ''}><span class="msr">drive_file_move</span> Ordner ändern</button>
+      ${exportButton}
       <button type="button" class="button" data-act="disconnect"><span class="msr">link_off</span> Trennen</button>
     </div>
     ${autoSelect('folder-auto', folder.auto, 'Beim Öffnen gleicht WMap ab und kurz nach jeder Änderung; auf Wunsch zusätzlich alle 30 Minuten, solange WMap offen ist.')}
@@ -99,8 +138,7 @@ async function healthHtml() {
   const line = !st.available ? status('block', esc(st.reason), 'warn')
     : !st.read ? status('favorite', 'Noch nicht freigegeben – WMap darf Health Connect noch nicht lesen.', 'warn')
       : status('check_circle', `Freigegeben${st.routes ? ', Routen immer' : ', Routen mit Rückfrage'}${st.values ? ', mit Puls &amp; Co.' : ''}`);
-  const bar = busy ? `<div class="sync-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${progress?.n ?? 0}" aria-valuenow="${progress?.i ?? 0}">
-      <i style="width:${progress?.n ? Math.round((progress.i / progress.n) * 100) : 5}%"></i></div>` : '';
+  const bar = busy ? progressBar(progress) : '';
   return `<section>
     <h3><span class="msr">favorite</span> Health Connect</h3>
     ${line}
@@ -117,34 +155,30 @@ async function healthHtml() {
   </section>`;
 }
 
-/* ── Sicherung ────────────────────────────────────────────────────────────── */
-
-const backupHtml = () => `<section>
-    <h3><span class="msr">folder_zip</span> Sicherung</h3>
-    <p class="settings-hint">Alles in einer ZIP-Datei – dieselbe Ordnung wie im Ordner, dazu eine vollständige Sicherung. Zum Mitnehmen auf ein anderes Gerät oder fürs Archiv.</p>
-    <div class="sync-actions">
-      <button type="button" class="button" data-act="backup"><span class="msr">folder_zip</span> Sicherung speichern (ZIP)</button>
-      <label class="button"><span class="msr">settings_backup_restore</span> Sicherung laden<input type="file" accept=".zip,.json,application/zip,application/json" hidden data-file="restore"></label>
-    </div>
-  </section>`;
-
 let painting = null;
 async function render() {
   // Mehrere Anlässe kurz nacheinander: einmal zeichnen
   painting ??= (async () => {
     await null;
-    root.innerHTML = `${await folderHtml()}${await healthHtml()}${backupHtml()}
+    root.innerHTML = `${await folderHtml()}${await healthHtml()}
       <p class="settings-hint sync-note"><span class="msr">lock</span> Alles bleibt auf deinen Geräten – WMap hat dafür keinen Server. Was im Ordner liegt, gleicht nur dein eigenes Sync-Programm ab.</p>`;
   })().finally(() => { painting = null; });
   return painting;
 }
+
+const importText = (r) => (r.imported ? `${r.imported} übernommen${r.skipped ? `, ${r.skipped} gab es schon` : ''}` : r.skipped ? 'Alles schon da' : 'Keine GPX-Dateien im Ordner');
 
 /* ── Knöpfe ───────────────────────────────────────────────────────────────── */
 
 root.addEventListener('click', async (e) => {
   const act = e.target.closest('button[data-act]')?.dataset.act;
   if (!act) return;
-  if (act === 'connect') {
+  if (act === 'connect' || act === 'change') {
+    if (act === 'change') {
+      const v = await ask({ icon: 'drive_file_move', title: 'Anderen Ordner nehmen?', text: 'WMap gleicht danach mit dem neuen Ordner ab und schreibt alles hinein. Der alte Ordner bleibt, wie er ist.',
+        buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Ordner wählen', primary: true }] });
+      if (v !== 'yes') return;
+    }
     connecting = true; render();
     try {
       const r = await folder.connect();
@@ -169,7 +203,11 @@ root.addEventListener('click', async (e) => {
     toast('Ordner getrennt – die Dateien bleiben, wo sie sind');
     render();
   }
-  if (act === 'share') { try { await shareAll(); } catch (err) { if (err.name !== 'AbortError') toast(err.message); } }
+  if (act === 'import') {
+    importing = true; render();
+    try { toast(importText(await importFolder())); } catch (err) { if (err.name !== 'AbortError') toast(`Importieren ging nicht: ${err.message}`); }
+    importing = false; render();
+  }
   if (act === 'health') {
     progress = null;
     const p = syncHealth({ onProgress: (i, n) => { progress = { i, n }; render(); } });
@@ -204,8 +242,7 @@ root.addEventListener('change', async (e) => {
   if (!inp.files?.length) { toast(inp.dataset.file === 'folder' ? 'In dem Ordner sind keine Dateien' : 'Keine Datei gewählt'); return; }
   try {
     if (inp.dataset.file === 'folder') {
-      const r = await importLoose(inp.files);
-      toast(r.imported ? `${r.imported} übernommen${r.skipped ? `, ${r.skipped} gab es schon` : ''}` : r.skipped ? 'Alles schon da' : 'Keine GPX-Dateien im Ordner');
+      toast(importText(await importFolder(inp.files)));
     } else {
       const f = inp.files[0];
       const n = /\.zip$/i.test(f.name) || f.type === 'application/zip' ? await restoreZip(f) : await restore(await f.text());
@@ -218,6 +255,12 @@ root.addEventListener('change', async (e) => {
 root.addEventListener('cancel', (e) => { if (e.target.matches?.('[data-file="folder"]')) toast('Kein Ordner gewählt'); }, true);
 
 addEventListener('wmap:folder', () => render());
+addEventListener('wmap:folder-progress', (e) => {
+  // Fortschritt: nur Zeile und Balken, nicht die ganze Seite neu
+  const box = root.querySelector('.folder-progress');
+  if (e.detail?.done || !box) { render(); return; }
+  box.innerHTML = `${status('sync', progressText(e.detail), 'busy')}${progressBar(e.detail)}`;
+});
 /** Verbunden, aber noch nie abgeglichen (z. B. gerade aus dem Ordnerdialog zurück): jetzt */
 async function firstSync() {
   const i = await folder.info().catch(() => null);

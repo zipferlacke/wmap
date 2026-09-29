@@ -8,7 +8,7 @@ wenn es welche gab.
 ```sh
 cd test
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # einmal
-./alle.sh                      # alle nacheinander
+./alle.sh                      # alle nacheinander, Log in out/all.log (tail -f zum Mitlesen)
 .venv/bin/python smoke.py      # einzeln
 WMAP_URL=https://app.wuefl.de/wmap/ .venv/bin/python smoke.py   # gegen den Server
 ```
@@ -22,6 +22,7 @@ WMAP_URL=https://app.wuefl.de/wmap/ .venv/bin/python smoke.py   # gegen den Serv
 | `offline_areas.py` | Offline-Karten: Größe, freie Form laden, Kachel ohne Kartenversion, löschen |
 | `freeform.py` | freie Form: an der Kante einfügen, markieren + Entf, Doppeltipp |
 | `edit_tags.py` | Ort bearbeiten: Beschreibung, Merkmale, alle Tags (Tag entfernen), was hochgeladen würde (OSM im Browser nachgestellt); Ortskarte mit Merkmalen |
+| `sync_progress.py` | Abgleich mit Fortschritt: Abbruch mittendrin (Seitenwechsel), der nächste liest nur den Rest; Seite zeigt „x von n (… %)“, Sicherung klappt mit Ordner zu. Standort in der App: eine gemeinsame Abfrage für Navigation und Aufzeichnung, jede Sekunde |
 | `plugin_folders.py` | Plugin-Ordner: lose GeoJSON/JS, `wmap-plugin.json` (Ebene, Kacheln, Erweiterung), kaputte Datei, neu einlesen behält Schalter, Erweiterung startet; Firefox nur einmal einlesen; Anleitung |
 | `konto_osm.py` | Konto über OpenStreetMap: id_token prüfen (Testschlüssel statt OSM), Konto anlegen/übernehmen/löschen; im Browser Rückkehr von OSM, Einstellungen, Abmelden, Konto löschen |
 

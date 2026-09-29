@@ -22,6 +22,7 @@ import { reverse } from '../services/geocode.js';
 const OFF_ROUTE_M = 40;
 const OFF_ROUTE_FIXES = 3;
 const REROUTE_PAUSE_MS = 10000;
+const GPS_RESTART_MS = 20000;         // so lange ohne Position: Standortabfrage neu starten
 
 /* ── Sprache ──────────────────────────────────────────────────────────────── */
 
@@ -330,8 +331,10 @@ export class Navigation {
       },
       (err) => {
         if (err.code === 1) { this.#gpsState('denied'); return; }
-        // Zeitüberschreitung oder kein Signal: gleich neu versuchen
         this.#gpsState('weak');
+        // Zeitüberschreitung: die Abfrage läuft weiter, nur gerade kein Signal.
+        // Neu starten hieße, wieder bei null anzufangen (erste Position dauert).
+        if (err.code === 3) return;
         setTimeout(() => { if (this.#route) this.#startGps(); }, 1500);
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 },
@@ -341,10 +344,9 @@ export class Navigation {
   #checkGps() {
     if (!this.#route || document.visibilityState !== 'visible') return;
     const silent = Date.now() - this.#rawAt;
-    if (silent > 6000) {
-      this.#gpsState('weak');
-      this.#startGps();
-    }
+    if (silent > 6000) this.#gpsState('weak');
+    // Erst nach langer Stille neu starten – ein Neustart braucht selbst ein paar Sekunden
+    if (silent > GPS_RESTART_MS) this.#startGps();
   }
 
   /** Hinweis oben unter der Anweisung: schwaches Signal, nur ungefährer Standort, keine Freigabe. */

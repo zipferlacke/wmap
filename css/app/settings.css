@@ -104,3 +104,8 @@
     height: .4rem; border-radius: 999px; overflow: hidden; background: var(--surface-2);
     i { display: block; height: 100%; background: var(--route); transition: width .3s; }
 }
+.sync .folder-progress { display: flex; flex-direction: column; gap: .35rem; }
+.sync .sync-zip { margin: 0; display: block; }
+.sync .sync-link { display: inline; color: var(--route); text-decoration: underline; cursor: pointer; }
+.sync .sync-actions > .button { display: inline-flex; align-items: center; width: auto; flex: 0 0 auto; }
+.sync .sync-actions > .button:not(.primary) { border: 1px solid var(--line); background-color: var(--surface); }
