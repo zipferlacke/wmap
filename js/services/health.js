@@ -10,7 +10,9 @@
  *                      Health Connect), 'app' (App-Info), 'location'
  *   healthSessions()   Freigabe prüfen bzw. erfragen, dann alle Trainings
  *   importHealth(list) Routen holen und als Wege speichern – schon
- *                      übernommene (gleiche ID oder gleicher Weg) nicht doppelt
+ *                      übernommene (gleiche ID oder gleicher Weg) nicht doppelt;
+ *                      dazu die Messwerte (Puls, Frequenz, Leistung) je Punkt
+ *   fillHealthValues() Messwerte für früher übernommene Wege nachladen
  *
  * Routen fremder Apps gibt Health Connect nur mit „Immer erlauben“ ohne
  * Rückfrage heraus; sonst fragt es je Training nach. Lehnt man einmal ab,
@@ -24,6 +26,9 @@ export const healthAvailable = !!core && /Android/i.test(navigator.userAgent);
 const call = (cmd, args = {}) => core.invoke(`plugin:health|${cmd}`, args);
 const READ = 'android.permission.health.READ_EXERCISE';
 const ROUTES = 'android.permission.health.READ_EXERCISE_ROUTES';
+const VALUES = 'android.permission.health.READ_HEART_RATE';
+// Einmal von selbst nach den neuen Rechten (Messwerte) fragen – danach nur noch über den Dialog
+const ASKED = 'wmap.health.asked';
 
 /** Art des Trainings (Health Connect) → Profil in WMap; sonst am Tempo erkennen */
 const PROFILE = { biking: 'bike', hiking: 'hike', walking: 'walk', running: 'foot' };
@@ -79,13 +84,23 @@ export async function healthStatus() {
   if (!st.available) {
     return { available: false, reason: st.sdkStatus === 2 ? 'Health Connect muss erst aktualisiert werden' : 'Health Connect gibt es auf diesem Gerät nicht' };
   }
-  return { available: true, read: !!st.granted?.includes(READ), routes: !!st.granted?.includes(ROUTES) };
+  const has = (p) => !!st.granted?.includes(p);
+  return { available: true, read: has(READ), routes: has(ROUTES), values: has(VALUES) };
 }
 
 /** Freigabe-Dialog von Health Connect → wie healthStatus() */
 export async function healthRequest() {
   await call('request_access');
   return healthStatus();
+}
+
+/** Beim ersten Aufruf true (gemerkt in localStorage) */
+function once(key) {
+  try {
+    if (localStorage.getItem(key) === '2') return false;
+    localStorage.setItem(key, '2');
+    return true;
+  } catch { return false; }
 }
 
 export const healthSettings = (target = 'health') => call('open_settings', { target });
@@ -102,6 +117,9 @@ export async function healthSessions({ days = 3650 } = {}) {
     await showPermissions({ reason: 'health' });
     st = await healthStatus();
     if (!st.read) throw new Error('Ohne Freigabe für Trainings kann WMap nichts lesen');
+  } else if (!st.values && once(ASKED)) {
+    // Neu: Puls & Co. – einmal nachfragen, ablehnen ist in Ordnung
+    await call('request_access').catch(() => {});
   }
   const { sessions } = await call('sessions', { days });
   return sessions.sort((a, b) => b.start - a.start);
@@ -146,6 +164,7 @@ export async function importHealth(sessions, { onProgress } = {}) {
     if (!t) { out.empty += 1; continue; }
     if (!profile) t = guessProfile(t);
     t = { ...t, name: s.title || nameFor(s.type, t), source: { health: s.id, app: s.app, type: s.type } };
+    t = await withValues(t, s.end);
     if (have.some((x) => sameTrack(x, t))) { out.dup += 1; continue; }
     await tracks.put(t);
     have.push(t);
@@ -169,6 +188,67 @@ export async function fillHealthTypes(sessions) {
     if (t.source.type === type && name === t.name) continue;
     await tracks.put({ ...t, name, source: { ...t.source, type } });
     n += 1;
+  }
+  return n;
+}
+
+/* ── Messwerte: Puls, Frequenz, Leistung je Punkt des Wegs ────────────────── */
+
+/**
+ * Messreihe [[ms, wert], …] → Wert zu jeder Zeit in `times` (ms): der
+ * nächste Messwert höchstens `gap` entfernt, sonst null. Ohne Werte null.
+ */
+function sampleAt(series, times, gap = 60000) {
+  if (!series?.length) return null;
+  const s = [...series].sort((a, b) => a[0] - b[0]);
+  let j = 0;
+  const out = times.map((ms) => {
+    while (j + 1 < s.length && Math.abs(s[j + 1][0] - ms) <= Math.abs(s[j][0] - ms)) j += 1;
+    return Math.abs(s[j][0] - ms) <= gap && s[j][1] > 0 ? Math.round(s[j][1]) : null;
+  });
+  return out.some((v) => v !== null) ? out : null;
+}
+
+/**
+ * Messwerte aus Health Connect an den Weg hängen (hr, cad, pow). Gibt es für
+ * eine Art nichts, bleibt, was der Weg schon hatte. `end`: Ende des Trainings.
+ */
+async function withValues(t, end = t.end) {
+  let v;
+  try { v = await call('samples', { start: t.start - 60000, end: Math.max(end, t.end) + 60000 }); } catch { return t; }
+  const times = (t.times ?? []).map((x) => t.start + x * 1000);
+  const hr = sampleAt(v.hr, times);
+  // Schritte (Laufen, Gehen) oder Tritte (Rad) – was die App liefert
+  const cad = sampleAt(v.steps?.length ? v.steps : v.pedal, times);
+  const pow = sampleAt(v.power, times);
+  return {
+    ...t, ...(hr ? { hr } : {}), ...(cad ? { cad } : {}), ...(pow ? { pow } : {}),
+    source: { ...t.source, values: Date.now() },
+  };
+}
+
+/**
+ * Messwerte für einen früher übernommenen Weg nachladen und speichern (der
+ * verbundene Ordner bekommt die neue GPX-Datei). → Weg mit neuen Werten, sonst null
+ */
+export async function refreshHealthValues(t) {
+  const next = await withValues(t);
+  if (next === t) return null;
+  const found = ['hr', 'cad', 'pow'].some((k) => next[k] && next[k] !== t[k]);
+  // Nur mit neuen Werten als geändert melden – sonst nur merken, dass nachgesehen wurde
+  if (!found) { await tracks.putQuiet(next); return null; }
+  const saved = { ...next, updated: Date.now() };
+  await tracks.put(saved);
+  return saved;
+}
+
+/** Alle früher übernommenen Wege ohne Messwerte → Anzahl mit neuen Werten */
+export async function fillHealthValues({ onProgress } = {}) {
+  const todo = (await tracks.all()).filter((t) => t.source?.health && !t.source.values);
+  let n = 0;
+  for (const [i, t] of todo.entries()) {
+    onProgress?.(i, todo.length);
+    if (await refreshHealthValues(t)) n += 1;
   }
   return n;
 }

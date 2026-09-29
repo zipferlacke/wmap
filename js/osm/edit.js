@@ -2,6 +2,9 @@
  * Orte in OpenStreetMap eintragen und bearbeiten – direkt aus dem Ort-Sheet.
  *
  *   Bearbeiten     Name, Öffnungszeiten, Telefon, Website eines Orts aus OSM
+ *                  (Öffnungszeiten je Tag statt als Text: osm/hours-editor.js;
+ *                  „Dauerhaft geschlossen“ geht immer als Hinweis – in OSM
+ *                  trägt man einen Ort so nicht über die Zeiten aus)
  *   Hier eintragen ein Unternehmen oder einen Veranstaltungsort an einem
  *                  Punkt der Karte neu anlegen (Art, Name, Adresse …)
  *
@@ -14,6 +17,7 @@ import { ask } from '../ui/dialogs.js';
 import { account, upload, changesetUrl, noteUrl } from './api.js';
 import { countOsm } from './stats.js';
 import { esc } from '../core/geo.js';
+import { hoursField, mountHours } from './hours-editor.js';
 
 /** Arten zum Eintragen – Unternehmen und Veranstaltungsorte */
 const PLACE_TYPES = [
@@ -35,7 +39,6 @@ const PLACE_TYPES = [
 
 const FIELDS = [
   ['name', 'Name', 'text', 'z. B. Bäckerei Müller'],
-  ['opening_hours', 'Öffnungszeiten', 'text', 'Mo-Fr 08:00-18:00; Sa 08:00-13:00'],
   ['phone', 'Telefon', 'tel', '+49 …'],
   ['website', 'Website', 'url', 'https://…'],
   // Art steuert nur die Tastatur – alle Felder sehen gleich aus
@@ -91,14 +94,20 @@ export async function editPlace({ osm, tags, point, title }, { toast }) {
   const mode = account.loggedIn() ? 'edit' : await withoutAccount('Deine Änderung');
   if (mode !== 'edit' && mode !== 'note') return;
   const vals = await ask({
-    icon: 'edit_location_alt', title: `${title || 'Ort'} bearbeiten`,
-    html: `<div class="osm-form">${FIELDS.map((f) => field(f, tags[f[0]] ?? '')).join('')}</div>
+    icon: 'edit_location_alt', title: `${title || 'Ort'} bearbeiten`, className: 'osm-edit',
+    html: `<div class="osm-form">${field(FIELDS[0], tags.name ?? '')}${hoursField(tags.opening_hours ?? '')}${FIELDS.slice(1).map((f) => field(f, tags[f[0]] ?? '')).join('')}</div>
       <p class="muted">Nur eintragen, was du selbst weißt – z. B. vom Schild vor Ort.</p>`,
     buttons: [{ value: 'cancel', label: 'Abbrechen' }, { value: 'ok', label: mode === 'note' ? 'Hinweis senden' : 'Speichern', primary: true }],
     read: valuesOf,
+    setup: mountHours,
   });
   if (!vals || typeof vals !== 'object') return;
-  const set = Object.fromEntries(Object.entries(vals).filter(([k, v]) => (tags[k] ?? '') !== v && v));
+  const { gone, ...rest } = vals;
+  if (gone) {
+    await send({ note: { point, text: `„${title || 'Ort'}“ (${osm.type}/${osm.id}) ist dauerhaft geschlossen – gibt es an dieser Stelle nicht mehr (über WMap).` } }, '', toast, 'bearbeitet');
+    return;
+  }
+  const set = Object.fromEntries(Object.entries(rest).filter(([k, v]) => (tags[k] ?? '') !== v && v));
   if (!Object.keys(set).length) { toast('Nichts geändert'); return; }
   if (mode === 'note') {
     await send({ note: { point, text: noteText(`Bitte ändern bei „${title}“ (${osm.type}/${osm.id})`, set) } }, '', toast, 'bearbeitet');
@@ -118,18 +127,19 @@ export async function addPlace(point, { address = {}, toast }) {
   if (mode !== 'add' && mode !== 'note') return;
   const addr = { 'addr:street': address.street ?? '', 'addr:housenumber': address.housenumber ?? '', 'addr:postcode': address.postcode ?? '', 'addr:city': address.city ?? '' };
   const vals = await ask({
-    icon: 'add_business', title: 'Ort eintragen',
+    icon: 'add_business', title: 'Ort eintragen', className: 'osm-edit',
     html: `<div class="osm-form">
         <label class="osm-field"><span>Was ist hier?</span><select name="type">${PLACE_TYPES.map(([id, label]) => `<option value="${id}">${label}</option>`).join('')}</select></label>
-        ${FIELDS.map((f) => field(f)).join('')}
+        ${field(FIELDS[0])}${hoursField('', { gone: false })}${FIELDS.slice(1).map((f) => field(f)).join('')}
         <div class="osm-addr">${ADDRESS.map((f) => field(f, addr[f[0]])).join('')}</div>
       </div>
       <p class="muted">Der Punkt liegt dort, wo du lange gedrückt hast. Bitte nur, was es wirklich gibt – vor Ort gesehen.</p>`,
     buttons: [{ value: 'cancel', label: 'Abbrechen' }, { value: 'ok', label: mode === 'note' ? 'Hinweis senden' : 'Eintragen', primary: true }],
     read: valuesOf,
+    setup: mountHours,
   });
   if (!vals || typeof vals !== 'object') return;
-  const { type, ...rest } = vals;
+  const { type, gone: _, ...rest } = vals;
   if (!rest.name) { toast('Bitte einen Namen angeben'); return; }
   const kind = PLACE_TYPES.find(([id]) => id === type) ?? PLACE_TYPES[0];
   const tags = { ...kind[2], ...Object.fromEntries(Object.entries(rest).filter(([, v]) => v)) };

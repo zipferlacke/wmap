@@ -11,7 +11,13 @@ import androidx.health.connect.client.contracts.ExerciseRouteRequestContract
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ExerciseRoute
 import androidx.health.connect.client.records.ExerciseRouteResult
+import androidx.health.connect.client.records.CyclingPedalingCadenceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.PowerRecord
+import androidx.health.connect.client.records.Record
+import androidx.health.connect.client.records.SpeedRecord
+import androidx.health.connect.client.records.StepsCadenceRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import app.tauri.annotation.ActivityCallback
@@ -29,6 +35,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import kotlin.reflect.KClass
 
 @InvokeArg
 class SessionsArgs {
@@ -38,6 +45,12 @@ class SessionsArgs {
 @InvokeArg
 class RouteArgs {
     var id: String = ""
+}
+
+@InvokeArg
+class SamplesArgs {
+    var start: Long = 0
+    var end: Long = 0
 }
 
 @InvokeArg
@@ -55,6 +68,10 @@ class SettingsArgs {
  *   route { id }        Punkte [lon, lat, höhe|null, zeit] – fragt bei
  *                       fremden Routen einzeln nach, wenn es keine
  *                       Dauerfreigabe gibt
+ *   samples { start, end }
+ *                       Messwerte in der Zeit (ms): hr, speed (m/s), steps
+ *                       (Schritte/min), pedal (U/min), power (W) – je Liste
+ *                       [zeit, wert]; ohne Freigabe für eine Art bleibt sie leer
  *   open_settings { target }
  *                       "health": Health Connect (die Seite einer App direkt
  *                       – MANAGE_HEALTH_PERMISSIONS – dürfen nur System-Apps
@@ -74,6 +91,12 @@ class HealthPlugin(private val activity: Activity) : Plugin(activity) {
         "android.permission.health.READ_EXERCISE_ROUTES",
         // Auch Daten von vor der Freigabe (sonst nur die letzten 30 Tage)
         HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY,
+        // Messwerte zum Training: Diagramme und Runden
+        HealthPermission.getReadPermission(HeartRateRecord::class),
+        HealthPermission.getReadPermission(SpeedRecord::class),
+        HealthPermission.getReadPermission(StepsCadenceRecord::class),
+        HealthPermission.getReadPermission(CyclingPedalingCadenceRecord::class),
+        HealthPermission.getReadPermission(PowerRecord::class),
     )
 
     private fun client(invoke: Invoke): HealthConnectClient? {
@@ -189,6 +212,48 @@ class HealthPlugin(private val activity: Activity) : Plugin(activity) {
         val route = routeContract.parseResult(result.resultCode, result.data)
         if (route == null) invoke.reject("Route nicht freigegeben", "denied")
         else invoke.resolve(JSObject().put("points", points(route)))
+    }
+
+    @Command
+    fun samples(invoke: Invoke) {
+        val args = invoke.parseArgs(SamplesArgs::class.java)
+        val c = client(invoke) ?: return
+        val from = Instant.ofEpochMilli(args.start)
+        val to = Instant.ofEpochMilli(args.end)
+        scope.launch {
+            try {
+                val range = TimeRangeFilter.between(from, to)
+                val out = JSObject()
+                out.put("hr", series(c, HeartRateRecord::class, range, from, to) { r -> r.samples.map { it.time to it.beatsPerMinute.toDouble() } })
+                out.put("speed", series(c, SpeedRecord::class, range, from, to) { r -> r.samples.map { it.time to it.speed.inMetersPerSecond } })
+                out.put("steps", series(c, StepsCadenceRecord::class, range, from, to) { r -> r.samples.map { it.time to it.rate } })
+                out.put("pedal", series(c, CyclingPedalingCadenceRecord::class, range, from, to) { r -> r.samples.map { it.time to it.revolutionsPerMinute } })
+                out.put("power", series(c, PowerRecord::class, range, from, to) { r -> r.samples.map { it.time to it.power.inWatts } })
+                invoke.resolve(out)
+            } catch (e: Exception) {
+                invoke.reject(e.message ?: e.toString(), e)
+            }
+        }
+    }
+
+    /** Alle Messwerte einer Art in der Zeit – ohne Freigabe dafür leer */
+    private suspend fun <T : Record> series(
+        c: HealthConnectClient, type: KClass<T>, range: TimeRangeFilter, from: Instant, to: Instant,
+        pick: (T) -> List<Pair<Instant, Double>>,
+    ): JSArray {
+        val all = JSArray()
+        try {
+            var token: String? = null
+            do {
+                val res = c.readRecords(ReadRecordsRequest(type, range, pageToken = token))
+                for (r in res.records) for ((t, v) in pick(r)) {
+                    if (t.isBefore(from) || t.isAfter(to)) continue
+                    all.put(JSArray().put(t.toEpochMilli()).put(v))
+                }
+                token = res.pageToken
+            } while (token != null)
+        } catch (e: SecurityException) { /* nicht freigegeben */ }
+        return all
     }
 
     @Command

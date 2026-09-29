@@ -80,8 +80,9 @@ async function healthItem(reason) {
   if (!healthAvailable) return '';
   let st;
   try { st = await healthStatus(); } catch (err) { st = { available: false, reason: String(err?.message ?? err) }; }
-  const text = 'Liest Trainings anderer Apps – Fitbit, Strava, Samsung Health … – samt Route, damit du sie unter '
-    + 'Meine Touren als Wege siehst. WMap liest nur und schreibt nichts zurück.';
+  const text = 'Liest Trainings anderer Apps – Fitbit, Strava, Zepp, Samsung Health … – samt Route und Messwerten '
+    + '(Puls, Tempo, Schritt- und Trittfrequenz, Leistung), damit du sie unter Meine Touren als Wege mit Diagrammen '
+    + 'und Runden siehst. WMap liest nur und schreibt nichts zurück.';
   if (!st.available) return item({ id: 'health', icon: 'favorite', title: 'Health Connect', state: 'none', status: st.reason, text, wanted: reason === 'health' });
   if (!st.read) {
     return item({
@@ -93,11 +94,16 @@ async function healthItem(reason) {
     ? '<p class="perm-hint"><span class="msr">info</span> Zum Ändern oder Widerrufen öffnet sich Health Connect – dort WMap antippen (sonst unter „Weitere Gesundheits-Apps“).</p>'
     : `<p class="perm-hint"><span class="msr">info</span> Routen: Health Connect fragt noch bei jedem Training einzeln.
       In Health Connect <strong>WMap → Trainingsrouten</strong> auf „Immer erlauben“ stellen (WMap steht sonst unter „Weitere Gesundheits-Apps“) – dann kommen alle ohne Rückfrage.</p>`;
+  const values = st.values ? '' : `<p class="perm-hint"><span class="msr">info</span> Puls & Co. sind noch nicht freigegeben –
+      ohne sie gibt es zu den Wegen nur Tempo und Höhe.</p>`;
+  const all = st.routes && st.values;
   return item({
-    id: 'health', icon: 'favorite', title: 'Health Connect', state: st.routes ? 'granted' : 'coarse', wanted: reason === 'health',
-    status: st.routes ? 'Trainings und Routen erlaubt' : 'Trainings erlaubt, Routen mit Rückfrage',
-    text, extra: routes,
-    button: ['health', 'settings', st.routes ? 'In Health Connect ändern' : 'Health Connect öffnen', !st.routes],
+    id: 'health', icon: 'favorite', title: 'Health Connect', state: all ? 'granted' : 'coarse', wanted: reason === 'health',
+    status: all ? 'Trainings, Routen und Messwerte erlaubt'
+      : [st.routes ? 'Trainings und Routen erlaubt' : 'Trainings erlaubt, Routen mit Rückfrage', st.values ? 'Messwerte erlaubt' : 'Messwerte nicht'].join(' · '),
+    text, extra: routes + values,
+    button: !st.values ? ['health-request', 'favorite', 'Puls & Co. freigeben', true]
+      : ['health', 'settings', st.routes ? 'In Health Connect ändern' : 'Health Connect öffnen', !st.routes],
   });
 }
 

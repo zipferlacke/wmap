@@ -64,6 +64,73 @@
     > span { color: var(--muted); }
     input, select { width: 100%; }
 }
+/* Formular mit Öffnungszeiten: breiter, scrollt in sich */
+.dialog.confirm.osm-edit { width: min(32rem, 94vw); max-width: min(32rem, 94vw); max-height: 88dvh; overflow-y: auto; }
+
+/* Öffnungszeiten je Tag (osm/hours-editor.js) */
+.oh-block {
+    border: 1px solid var(--line);
+    border-radius: .8rem;
+    font-size: var(--fs-200);
+    > summary {
+        display: flex; align-items: center; gap: .4rem; flex-wrap: wrap;
+        padding: .6rem .7rem;
+        cursor: pointer;
+        font-weight: 600;
+        .msr { color: var(--route); font-size: 1.2rem; }
+        .oh-summary { flex-basis: 100%; color: var(--muted); font-weight: 400; padding-left: 1.6rem; }
+    }
+    &[open] > summary { border-bottom: 1px solid var(--line); }
+    .oh-body, .oh-quick { padding: .5rem .7rem; }
+    .oh-body { display: grid; gap: .5rem; }
+    .oh-week { display: grid; }
+    .oh-day {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: start;
+        gap: .5rem;
+        padding: .35rem 0;
+        border-bottom: 1px solid var(--line);
+        &.oh-ph { border-bottom: 0; }
+    }
+    .oh-name { display: grid; justify-items: start; gap: .25rem; font-weight: 600; }
+    .oh-times { display: flex; flex-direction: column; align-items: flex-end; gap: .3rem; }
+    .oh-span { display: inline-flex; align-items: center; gap: .2rem; i { color: var(--muted); font-style: normal; } }
+    input[type=time] {
+        min-width: 5.4rem;
+        padding: .3rem .4rem;
+        border: 1px solid var(--line);
+        border-radius: .5rem;
+        background: var(--surface-2, transparent);
+        color: inherit;
+        font: inherit;
+        font-variant-numeric: tabular-nums;
+    }
+    .oh-closed { color: var(--muted); font-style: italic; text-align: right; }
+    .oh-row-actions { display: flex; flex-wrap: wrap; gap: .25rem; font-weight: 400; }
+    .oh-add, .oh-del {
+        display: inline-flex; align-items: center; gap: .15rem;
+        padding: .25rem .5rem;
+        border: 1px dashed var(--line);
+        border-radius: 999px;
+        background: none;
+        color: var(--route);
+        font: inherit;
+        cursor: pointer;
+        .msr { font-size: 1rem; }
+    }
+    .oh-del { border: 0; padding: .2rem; color: var(--muted); }
+    .oh-copy { justify-self: start; display: inline-flex; align-items: center; gap: .3rem; color: var(--route); .msr { font-size: 1rem; } }
+    .oh-note { display: flex; gap: .4rem; align-items: flex-start; .msr { color: var(--route); } }
+    .oh-raw { width: 100%; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--surface); color: inherit; font: inherit; }
+    .oh-quick {
+        display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
+        border-top: 1px solid var(--line);
+        .button { background: var(--surface-2); }
+        .link-button { margin-left: auto; }
+    }
+}
+
 .osm-addr {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem;
     /* Straße | Nr. – PLZ | Ort */

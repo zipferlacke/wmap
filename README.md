@@ -424,9 +424,19 @@ Ticket bei der Bahn, Löschen. Die ersten zwei:
   Auf der Karte liegt nur der aktive Reiter.
 - **Detail** (Zeile oder Linie antippen): Name oben, ← zurück zur Liste.
   - Aufgezeichnet: Name änderbar, Datum und Uhrzeit, Strecke, Zeit in
-    Bewegung, Ø und max. km/h, Anstieg, Ø/max. Puls (aus GPX), Höhenprofil;
-    die Linie ist nach Tempo gefärbt (langsam orange → schnell grün).
+    Bewegung, Ø und max. km/h, Anstieg, Ø/max. Puls, Ø Frequenz und
+    Leistung (aus GPX oder Health Connect); die Linie ist nach Tempo
+    gefärbt (langsam orange → schnell grün).
+    **Diagramm** mit Umschalter: Höhe, Tempo, Puls, Schritt- bzw.
+    Trittfrequenz, Leistung – nur, was gemessen wurde; Zeiger im Diagramm
+    und auf der Linie zeigen dieselbe Stelle.
+    **Runden** zu 1, 2 oder 5 km (gemerkt): Zeit, Tempo (zu Fuß als min/km),
+    Ø Puls, Anstieg; die schnellste grün, die langsamste rot, eine Runde
+    antippen hebt sie auf der Karte hervor (`js/data/track-stats.js`).
     Knöpfe: Als Tour speichern, Als Tour teilen, GPX, Löschen.
+    Puls, Frequenz und Leistung stehen je Punkt am Weg und gehen als
+    GPX-Erweiterung (gpxtpx:hr/cad, power) mit in den verbundenen Ordner;
+    beim Ausdünnen bleibt mindestens alle 30 s ein Punkt.
   - Geplant: Profil, Strecke, Dauer, Anstieg/Abstieg, Beschreibung,
     Höhenprofil. Knöpfe: Im Planer öffnen, Teilen, GPX, Löschen.
 - **Unten:** Tour planen bzw. Aufzeichnen, GPX
@@ -673,6 +683,12 @@ Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene.
   (Einstellungen → Mitmachen: „Du hast über WMap …“) und anonym auf dem Server.
 - **Orte bearbeiten und eintragen** (osm/edit.js): in der Ortskarte
   **Bearbeiten** (Name, Öffnungszeiten, Telefon, Website eines Orts aus OSM);
+  die **Öffnungszeiten** als aufklappbarer Block (osm/hours-editor.js):
+  Montag bis Sonntag und Feiertage untereinander, rechts die Zeiten (mehrere
+  je Tag), „+ Zeit“, „Montag für Di–Fr übernehmen“, unten „24/7 geöffnet“,
+  „Dauerhaft geschlossen“ (geht immer als Hinweis) und „Als Text“;
+  Verschachteltes (Monate, Schulferien) bleibt als Text, Unverändertes
+  bleibt genau so stehen;
   lange drücken → **Hier eintragen** legt ein Unternehmen oder einen
   Veranstaltungsort an (Art, Name, Öffnungszeiten, Kontakt, Adresse aus der
   Rückwärtssuche). Mit OSM-Konto geht es direkt in die Karte (ein Changeset,

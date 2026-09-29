@@ -13,10 +13,12 @@ class RationaleActivity : Activity() {
         setContentView(TextView(this).apply {
             setPadding(pad, pad, pad, pad)
             textSize = 16f
-            text = "WMap liest aus Health Connect nur deine Trainings und ihre Routen, " +
-                "um sie unter „Meine Touren“ als Wege auf der Karte zu zeigen.\n\n" +
-                "Die Daten bleiben auf diesem Gerät – WMap lädt nichts hoch und " +
-                "schreibt nichts in Health Connect zurück.\n\n" +
+            text = "WMap liest aus Health Connect nur deine Trainings, ihre Routen und die " +
+                "Messwerte dazu (Puls, Tempo, Schritt- und Trittfrequenz, Leistung), um sie " +
+                "unter „Meine Touren“ als Wege mit Diagrammen und Runden zu zeigen.\n\n" +
+                "Die Daten bleiben auf diesem Gerät – WMap lädt nichts hoch und schreibt " +
+                "nichts in Health Connect zurück. Nur wenn du selbst einen Ordner verbindest " +
+                "(z. B. Nextcloud), legt WMap die Wege dort als GPX-Dateien ab.\n\n" +
                 "Die Freigabe lässt sich jederzeit in Health Connect zurücknehmen."
         })
     }

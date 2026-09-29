@@ -463,6 +463,41 @@ body.wege-page { overflow: hidden; }
     &[hidden] { display: none; }
 }
 
+/* Diagramm umschalten (Höhe, Tempo, Puls …) und Runden – pages/wege.js */
+.weg-chart-tabs, .weg-laps .chip-row {
+    flex-wrap: wrap; overflow: visible;
+    &[hidden] { display: none; }
+    .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; .msr { color: #fff; } }
+}
+.weg-laps {
+    display: grid; gap: .4rem;
+    &[hidden] { display: none; }
+    .laps-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem; }
+    h3 { display: flex; align-items: center; gap: .35rem; margin: 0; font-size: var(--fs-400); .msr { color: var(--route); } }
+}
+.laps-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-200);
+    font-variant-numeric: tabular-nums;
+    th { color: var(--muted); font-weight: 600; text-align: right; padding: .3rem .4rem; }
+    th:first-child, td:first-child { text-align: left; }
+    td { padding: .4rem; text-align: right; border-top: 1px solid var(--line); vertical-align: top; }
+    td small { color: var(--muted); }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover, tbody tr:focus-visible { background: var(--surface-2); outline: none; }
+    tr.shown { background: color-mix(in srgb, #fab005 22%, transparent) !important; }
+    tr.fast td:nth-child(3) { color: light-dark(#2b8a3e, #69db7c); font-weight: 700; }
+    tr.slow td:nth-child(3) { color: light-dark(#c92a2a, #ff8787); font-weight: 700; }
+    .lap-badge {
+        display: flex; justify-content: flex-end; align-items: center; gap: .15rem;
+        font-size: var(--fs-100); font-weight: 600;
+        .msr { font-size: .95rem; }
+        &.fast { color: light-dark(#2b8a3e, #69db7c); }
+        &.slow { color: light-dark(#c92a2a, #ff8787); }
+    }
+}
+
 .wege-panel .ent-tabs small { color: var(--muted); font-size: var(--fs-100); font-weight: 400; margin-left: .15rem; }
 .wege-panel .tab-hint { margin-top: -.25rem; }
 .wege-panel .tour-text { white-space: pre-line; }

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Health Connect: nur lesen – Trainings, ihre Routen und auch ältere Daten.
+<!-- Health Connect: nur lesen – Trainings, ihre Routen, die Messwerte dazu
+     (Puls, Tempo, Schritt-/Trittfrequenz, Leistung) und auch ältere Daten.
      Die Erklär-Activity braucht Health Connect, sonst zeigt es den
      Freigabe-Dialog gar nicht an (bis Android 13 über die Aktion,
      ab Android 14 über den Alias). -->
@@ -7,6 +8,10 @@
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
     <uses-permission android:name="android.permission.health.READ_EXERCISE_ROUTES" />
     <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_HISTORY" />
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
+    <uses-permission android:name="android.permission.health.READ_SPEED" />
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <uses-permission android:name="android.permission.health.READ_POWER" />
 
     <queries>
         <package android:name="com.google.android.apps.healthdata" />

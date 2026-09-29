@@ -331,6 +331,18 @@
           "markdownDescription": "Denies the route command without any pre-configured scope."
         },
         {
+          "description": "Enables the samples command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-samples",
+          "markdownDescription": "Enables the samples command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the samples command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-samples",
+          "markdownDescription": "Denies the samples command without any pre-configured scope."
+        },
+        {
           "description": "Enables the sessions command without any pre-configured scope.",
           "type": "string",
           "const": "allow-sessions",
@@ -355,10 +367,10 @@
           "markdownDescription": "Denies the status command without any pre-configured scope."
         },
         {
-          "description": "Health Connect: Status, Freigabe anfragen, Trainings und Routen lesen, Einstellungen öffnen\n#### This default permission set includes:\n\n- `allow-status`\n- `allow-request-access`\n- `allow-sessions`\n- `allow-route`\n- `allow-open-settings`",
+          "description": "Health Connect: Status, Freigabe anfragen, Trainings, Routen und Messwerte lesen, Einstellungen öffnen\n#### This default permission set includes:\n\n- `allow-status`\n- `allow-request-access`\n- `allow-sessions`\n- `allow-route`\n- `allow-samples`\n- `allow-open-settings`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Health Connect: Status, Freigabe anfragen, Trainings und Routen lesen, Einstellungen öffnen\n#### This default permission set includes:\n\n- `allow-status`\n- `allow-request-access`\n- `allow-sessions`\n- `allow-route`\n- `allow-open-settings`"
+          "markdownDescription": "Health Connect: Status, Freigabe anfragen, Trainings, Routen und Messwerte lesen, Einstellungen öffnen\n#### This default permission set includes:\n\n- `allow-status`\n- `allow-request-access`\n- `allow-sessions`\n- `allow-route`\n- `allow-samples`\n- `allow-open-settings`"
         }
       ]
     }

@@ -19,7 +19,8 @@ import { createMap, showHover } from '../map/map.js';
 import { heightsAlong } from '../services/routing.js';
 import { ElevationProfile } from '../ui/elevation.js';
 import { tracks, trackCoords, trackGpx, parseGpx, sameTrack, restore, PROFILE_GROUP } from '../data/tracks.js';
-import { tours, shapeOf, coordsOf, encodeShare, toGpx, download } from '../data/store.js';
+import { tours, shapeOf, coordsOf, encodeShare, toGpx, download, local } from '../data/store.js';
+import { metrics, laps, lapLine } from '../data/track-stats.js';
 import { PROFILES } from '../core/config.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { share } from '../ui/share.js';
@@ -28,7 +29,10 @@ import { mapPage } from '../ui/map-page.js';
 import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, esc, bbox } from '../core/geo.js';
 import { connections } from '../data/saved.js';
 import { legBadge, changesText, transitLegsHtml } from '../ui/transit-legs.js';
-import { healthAvailable, healthSessions, importHealth, knownHealthIds, fillHealthTypes, healthSettings, appName, typeName, typeIcon } from '../services/health.js';
+import {
+  healthAvailable, healthSessions, importHealth, knownHealthIds, fillHealthTypes, fillHealthValues, refreshHealthValues,
+  healthSettings, appName, typeName, typeIcon,
+} from '../services/health.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 
@@ -279,6 +283,9 @@ async function fromHealth() {
   } catch (err) { toast(String(err?.message ?? err)); return; }
   // Ältere Importe kannten die Art noch nicht – nachtragen
   if (await fillHealthTypes(list)) { await load(); showList(); }
+  // Puls & Co. für früher übernommene Wege nachladen (einmal je Weg)
+  const withValues = await fillHealthValues({ onProgress: (i, total) => { if (i % 10 === 0) toast(`Messwerte nachladen: ${i + 1} von ${total} …`); } });
+  if (withValues) { await load(); showList(); toast(`Puls & Co. für ${withValues} ${withValues === 1 ? 'Weg' : 'Wege'} nachgeladen`); }
   const known = await knownHealthIds();
   const n = (x) => x.toLocaleString('de-DE');
   const routed = list.filter((x) => x.route !== 'none');
@@ -395,6 +402,32 @@ content.addEventListener('change', async (e) => {
 
 let heights = null;
 let elevation = null;
+// Diagramm-Kilometer je Kilometer der Strecke (das Höhenprofil misst selbst)
+let chartScale = 1;
+
+/** Was das Diagramm zeigen kann – Höhe immer, der Rest, wenn gemessen */
+const CHARTS = {
+  ele: { name: 'Höhe', icon: 'landscape' },
+  speed: { name: 'Tempo', unit: 'km/h', icon: 'speed', color: 'light-dark(#1a73e8, #74a7f5)', decimals: 1 },
+  hr: { name: 'Puls', unit: 'bpm', icon: 'favorite', color: 'light-dark(#e03131, #ff8787)' },
+  cad: { name: 'Frequenz', unit: '/min', icon: 'autorenew', color: 'light-dark(#ae3ec9, #e599f7)' },
+  pow: { name: 'Leistung', unit: 'W', icon: 'bolt', color: 'light-dark(#e8590c, #ffa94d)' },
+};
+/** Frequenz heißt je nach Art anders */
+const cadName = (t) => (groupKey(t) === 'bike' ? 'Trittfrequenz' : groupKey(t) === 'foot' ? 'Schrittfrequenz' : 'Frequenz');
+const avg = (a) => { const v = (a ?? []).filter((x) => x > 0); return v.length ? Math.round(v.reduce((x, y) => x + y) / v.length) : null; };
+const top = (a) => { const v = (a ?? []).filter((x) => x > 0); return v.length ? Math.max(...v) : null; };
+
+const LAP_SIZES = [1000, 2000, 5000];
+/** Rundenlänge: gewählt (gemerkt) – sonst 5 km fürs Rad, 1 km zu Fuß und fürs Wasser */
+const lapSize = (t) => local.get('wmap.lapsize') ?? (groupKey(t) === 'foot' ? 1000 : 5000);
+/** „5:12“ bzw. „1:02:03“ */
+const clock = (sec) => {
+  const s = Math.round(sec), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+  return h ? `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}` : `${m}:${String(r).padStart(2, '0')}`;
+};
+/** Zu Fuß als Pace (min/km), sonst km/h */
+const tempo = (t, mps) => (!mps ? '–' : groupKey(t) === 'foot' ? `${clock(1000 / mps)} /km` : `${(mps * 3.6).toFixed(1).replace('.', ',')} km/h`);
 
 async function select(id, { push = false } = {}) {
   const t = all.find((x) => x.id === id);
@@ -402,6 +435,8 @@ async function select(id, { push = false } = {}) {
   tab = 'wege';
   selected = t;
   heights = null;
+  chartScale = 1;
+  showLap(null);
   if (push) history.pushState({ id }, '', `./wege.html?id=${encodeURIComponent(id)}`);
   document.title = `${t.name || 'Weg'} – WMap`;
   page.header(t.name || 'Weg', () => showList({ push: true }));
@@ -420,11 +455,15 @@ async function select(id, { push = false } = {}) {
       <div><strong>${mv ? (t.length / mv * 3.6).toFixed(1).replace('.', ',') : '–'}</strong><small>Ø km/h</small></div>
       <div><strong>${t.top ? Math.round(t.top * 3.6) : '–'}</strong><small>max. km/h</small></div>
       <div><strong class="st-up">…</strong><small>Anstieg</small></div>
-      ${hr.length ? `<div><strong>${Math.round(hr.reduce((a, b) => a + b) / hr.length)}</strong><small>Ø Puls</small></div>
-        <div><strong>${Math.max(...hr)}</strong><small>max. Puls</small></div>` : ''}
+      ${hr.length ? `<div><strong>${avg(hr)}</strong><small>Ø Puls</small></div>
+        <div><strong>${top(hr)}</strong><small>max. Puls</small></div>` : ''}
+      ${avg(t.cad) ? `<div><strong>${avg(t.cad)}</strong><small>Ø ${esc(cadName(t))}</small></div>` : ''}
+      ${avg(t.pow) ? `<div><strong>${avg(t.pow)} W</strong><small>Ø Leistung</small></div>` : ''}
     </div>
     <div class="track-legend" hidden><span>langsam</span><i></i><span>schnell</span></div>
+    <div class="chip-row weg-chart-tabs" role="group" aria-label="Diagramm" hidden></div>
     <div class="elevation"></div>
+    <section class="weg-laps" hidden></section>
     <div class="weg-actions">
       <button type="button" class="button primary" data-do="tour"><span class="msr">bookmark_add</span> Als Tour speichern</button>
       <button type="button" class="button" data-do="share"><span class="msr">share</span> Als Tour teilen</button>
@@ -434,15 +473,123 @@ async function select(id, { push = false } = {}) {
   page.open();
   paintMap();
   fitView();
-  showElevation(trackCoords(t), t, (h) => { $('.st-up', content).textContent = h ? `${h.ascent} m` : '–'; });
+  paintCharts(t);
+  paintLaps(t);
+  showElevation(trackCoords(t), t, (h) => {
+    $('.st-up', content).textContent = h ? `${h.ascent} m` : '–';
+    paintCharts(t);
+    paintLaps(t);
+  });
+  // Aus Health Connect übernommen, aber noch ohne Puls & Co.: nachladen
+  if (t.kind === 'health' && healthAvailable && !t.source?.values) {
+    refreshHealthValues(t).then(async (next) => {
+      if (!next) return;
+      await load();
+      if (selected?.id === t.id) select(t.id);
+    }).catch(() => {});
+  }
 }
+
+/** Umschalter über dem Diagramm: Höhe, Tempo, Puls … – nur, was es gibt */
+let metricCache = { id: null, m: {} };
+function paintCharts(t) {
+  const bar = $('.weg-chart-tabs', content);
+  if (!bar || !elevation) return;
+  if (metricCache.id !== t.id) metricCache = { id: t.id, m: metrics(t) };
+  const m = metricCache.m;
+  const kinds = ['ele', ...['speed', 'hr', 'cad', 'pow'].filter((k) => m[k]?.length)];
+  const want = local.get('wmap.chart') ?? 'ele';
+  const kind = kinds.includes(want) && (want !== 'ele' || heights?.elevation?.length) ? want
+    : heights?.elevation?.length ? 'ele' : kinds.find((k) => k !== 'ele') ?? 'ele';
+  bar.hidden = kinds.length < 2;
+  bar.innerHTML = kinds.map((k) => `<button type="button" class="chip" data-chart="${k}" aria-pressed="${k === kind}">
+      <span class="msr">${CHARTS[k].icon}</span> ${esc(k === 'cad' ? cadName(t) : CHARTS[k].name)}</button>`).join('');
+  const len = cumulative(trackCoords(t)).at(-1);
+  if (kind === 'ele') {
+    chartScale = heights?.length ? heights.length / len : 1;
+    if (heights?.elevation?.length) elevation.show(heights);
+    return;
+  }
+  chartScale = 1;
+  const c = CHARTS[kind];
+  const vals = m[kind].map(([, v]) => v);
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  elevation.showMetric({
+    ...c, name: kind === 'cad' ? cadName(t) : c.name, points: m[kind], length: len,
+    chips: [['functions', Math.round(mean * 10) / 10, 'Durchschnitt'], ['vertical_align_top', Math.max(...vals), 'Höchstwert']],
+  });
+}
+
+/** Runden zu 1, 2 oder 5 km – schnellste grün, langsamste rot; antippen zeigt sie auf der Karte */
+function paintLaps(t) {
+  const box = $('.weg-laps', content);
+  if (!box) return;
+  const size = lapSize(t);
+  const r = laps(t, size, heights);
+  box.hidden = !r || r.list.length < 2;
+  if (box.hidden) return;
+  const hasHr = r.list.some((l) => l.hr), hasUp = r.list.some((l) => l.up !== null);
+  const badge = (l) => (l.n === r.fastest ? '<span class="lap-badge fast"><span class="msr">bolt</span> schnellste</span>'
+    : l.n === r.slowest ? '<span class="lap-badge slow"><span class="msr">hourglass_bottom</span> langsamste</span>' : '');
+  box.innerHTML = `<div class="laps-head">
+      <h3><span class="msr">flag</span> Runden</h3>
+      <div class="chip-row" role="group" aria-label="Länge einer Runde">${LAP_SIZES.map((x) => `
+        <button type="button" class="chip" data-lap-size="${x}" aria-pressed="${x === size}">${x / 1000} km</button>`).join('')}</div>
+    </div>
+    <table class="laps-table">
+      <thead><tr><th>Runde</th><th>Zeit</th><th>Tempo</th>${hasHr ? '<th>Ø Puls</th>' : ''}${hasUp ? '<th>Anstieg</th>' : ''}</tr></thead>
+      <tbody>${r.list.map((l) => `
+        <tr data-lap="${l.n}" tabindex="0" class="${l.n === r.fastest ? 'fast' : l.n === r.slowest ? 'slow' : ''}">
+          <td>${l.n}${l.dist < size - 1 ? ` <small>${fmtDistance(l.dist)}</small>` : ''}</td>
+          <td>${clock(l.time)}</td>
+          <td>${tempo(t, l.speed)}${badge(l)}</td>
+          ${hasHr ? `<td>${l.hr ?? '–'}</td>` : ''}${hasUp ? `<td>${l.up ?? '–'} m</td>` : ''}
+        </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+/** Runde auf der Karte hervorheben (null: aus) */
+let lapShown = null;
+function showLap(line) {
+  lapShown = line;
+  if (!map.getSource('lap-sel')) {
+    if (!line || !map.getSource('wege')) return;
+    map.addSource('lap-sel', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    const w = (a, b) => ['interpolate', ['linear'], ['zoom'], 6, a, 14, b];
+    map.addLayer({ id: 'lap-sel-casing', type: 'line', source: 'lap-sel', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#fff', 'line-width': w(8, 15) } });
+    map.addLayer({ id: 'lap-sel', type: 'line', source: 'lap-sel', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#fab005', 'line-width': w(5, 9) } });
+  }
+  map.getSource('lap-sel').setData(line ? { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } } : { type: 'FeatureCollection', features: [] });
+  if (line) map.fitBounds(bbox(line), { padding: page.padding(), maxZoom: 16, duration: 600 });
+}
+
+content.addEventListener('click', (e) => {
+  const t = selected;
+  if (!t || !('start' in t)) return;
+  const chart = e.target.closest('[data-chart]')?.dataset.chart;
+  if (chart) { local.set('wmap.chart', chart); paintCharts(t); return; }
+  const size = e.target.closest('[data-lap-size]')?.dataset.lapSize;
+  if (size) { local.set('wmap.lapsize', Number(size)); showLap(null); paintLaps(t); return; }
+  const row = e.target.closest('tr[data-lap]');
+  if (row) {
+    const on = !row.classList.contains('shown');
+    content.querySelectorAll('tr[data-lap].shown').forEach((x) => x.classList.remove('shown'));
+    const lap = on && laps(t, lapSize(t), heights)?.list.find((l) => l.n === Number(row.dataset.lap));
+    row.classList.toggle('shown', !!lap);
+    showLap(lap ? lapLine(t, lap) : null);
+    if (!lap) fitView();
+  }
+});
+content.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.matches('tr[data-lap]')) e.target.click();
+});
 
 /** Höhenprofil unter den Zahlen; `done(h)` bekommt die Höhen (oder null) */
 async function showElevation(coords, item, done) {
   elevation = new ElevationProfile($('.elevation', content), {
     onHover(kmv) {
       const cum = cumulative(coords);
-      showHover(map, kmv === null ? null : pointAt(coords, cum, kmv * 1000 * (cum.at(-1) / (heights?.length || cum.at(-1)))));
+      showHover(map, kmv === null ? null : pointAt(coords, cum, kmv * 1000 / chartScale));
     },
   });
   try {
@@ -450,7 +597,11 @@ async function showElevation(coords, item, done) {
     if (selected !== item) return;
     heights = { ...h, length: h.elevation.at(-1)?.[0] * 1000 || cumulative(coords).at(-1) };
     done(h);
-    if (h.elevation.length) elevation.show(heights);
+    // Touren: gleich das Höhenprofil; Wege wählen es über paintCharts
+    if (!('start' in item)) {
+      chartScale = heights.length / (cumulative(coords).at(-1) || 1);
+      if (h.elevation.length) elevation.show(heights);
+    }
   } catch { done(null); }
 }
 
@@ -630,11 +781,11 @@ async function paintMap() {
     map.on('mousemove', 'wege-line', (e) => { map.getCanvas().style.cursor = 'pointer'; hover(e.features[0].properties.id); });
     map.on('mouseleave', 'wege-line', () => { map.getCanvas().style.cursor = ''; hover(null); });
     map.on('mousemove', 'weg-sel', (e) => {
-      if (!selected || !heights) return;
+      if (!selected || !elevation) return;
       const c = 'start' in selected ? trackCoords(selected) : coordsOf(selected.shape), cum = cumulative(c);
       const p = nearestOnLine(c, cum, e.lngLat.toArray());
       showHover(map, p.point);
-      elevation?.showAt(p.along / 1000 * (heights.length / cum.at(-1)));
+      elevation.showAt(p.along / 1000 * chartScale);
     });
     map.on('mouseleave', 'weg-sel', () => { showHover(map, null); elevation?.showAt(null); });
   } else map.getSource('wege').setData(fc);
@@ -673,6 +824,8 @@ async function paintMap() {
   } else {
     map.getSource('weg-sel').setData({ type: 'FeatureCollection', features: [] });
   }
+  // Runde gehört zum gewählten Weg – sonst weg damit
+  if (lapShown && !(selected && 'start' in selected)) showLap(null);
 }
 
 function hover(id) {

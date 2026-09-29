@@ -1,6 +1,6 @@
 ## Default Permission
 
-Health Connect: Status, Freigabe anfragen, Trainings und Routen lesen, Einstellungen öffnen
+Health Connect: Status, Freigabe anfragen, Trainings, Routen und Messwerte lesen, Einstellungen öffnen
 
 #### This default permission set includes the following:
 
@@ -8,6 +8,7 @@ Health Connect: Status, Freigabe anfragen, Trainings und Routen lesen, Einstellu
 - `allow-request-access`
 - `allow-sessions`
 - `allow-route`
+- `allow-samples`
 - `allow-open-settings`
 
 ## Permission Table
@@ -93,6 +94,32 @@ Enables the route command without any pre-configured scope.
 <td>
 
 Denies the route command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`health:allow-samples`
+
+</td>
+<td>
+
+Enables the samples command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`health:deny-samples`
+
+</td>
+<td>
+
+Denies the samples command without any pre-configured scope.
 
 </td>
 </tr>

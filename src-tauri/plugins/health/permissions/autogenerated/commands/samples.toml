@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-samples"
+description = "Enables the samples command without any pre-configured scope."
+commands.allow = ["samples"]
+
+[[permission]]
+identifier = "deny-samples"
+description = "Denies the samples command without any pre-configured scope."
+commands.deny = ["samples"]

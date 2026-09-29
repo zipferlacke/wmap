@@ -4,6 +4,9 @@
  * Ohne Kachel, grüne Fläche mit Verlauf, Kilometer als X-Achse. Oben stehen
  * die Höhenmeter als Chips hinter einem Berg-Icon. Fährt der Zeiger über das
  * Profil, meldet `onHover` die Stelle in Kilometern – die Karte markiert sie.
+ *
+ * Mit `showMetric` zeigt dasselbe Diagramm andere Werte über die Strecke:
+ * Tempo, Puls, Frequenz, Leistung eines Wegs (pages/wege.js).
  */
 import * as echarts from '../../libs/echarts/echarts.esm.min.js';
 import { Diagramm, setIcons } from '../../libs/wuefl-libs/diagramm/diagramm.js';
@@ -93,6 +96,33 @@ export class ElevationProfile {
     tools?.prepend(Object.assign(document.createElement('span'), {
       className: 'msr elev-mountain', textContent: 'landscape', title: 'Höhenmeter',
     }));
+  }
+
+  /**
+   * Andere Messreihe über die Strecke.
+   * @param m { name, unit, icon, color, points: [[km, wert]], length (m), decimals?, chips: [[icon, wert, titel]] }
+   */
+  showMetric({ name, unit, icon, color, points, length, decimals = 0, chips = [] }) {
+    this.#host.hidden = !points?.length;
+    if (this.#host.hidden) return;
+    this.#points = thin(points);
+    const vals = this.#points.map(([, v]) => v);
+    const lo = Math.min(...vals), hi = Math.max(...vals), pad = Math.max(1, (hi - lo) * 0.1);
+    this.#diagram.setConfig({
+      card: false,
+      fullscreen: false,
+      zoom: false,
+      legend: { hidden: true },
+      x_axis: { type: 'value', unit: 'km', decimals: length < 5000 ? 1 : 0 },
+      y_axes: [{ unit, min: Math.max(0, Math.floor(lo - pad)), max: Math.ceil(hi + pad), split_number: 3 }],
+      chips: chips.map(([ic, value, title]) => ({
+        value, unit, decimals, color, label: `<span class="msr" title="${title}">${ic}</span>`,
+      })),
+      series: [{ key: name, name, data: this.#points, color, fill: 'gradient', smooth: true, decimals, unit }],
+    });
+    const mark = Object.assign(document.createElement('span'), { className: 'msr elev-mountain', textContent: icon, title: name });
+    mark.style.color = color;
+    this.#host.querySelector('.dg_tools')?.prepend(mark);
   }
 
   /** Stelle von außen zeigen, z. B. wenn die Maus über der Route auf der Karte steht. */
