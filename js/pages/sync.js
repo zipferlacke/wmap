@@ -218,10 +218,18 @@ root.addEventListener('change', async (e) => {
 root.addEventListener('cancel', (e) => { if (e.target.matches?.('[data-file="folder"]')) toast('Kein Ordner gewählt'); }, true);
 
 addEventListener('wmap:folder', () => render());
+/** Verbunden, aber noch nie abgeglichen (z. B. gerade aus dem Ordnerdialog zurück): jetzt */
+async function firstSync() {
+  const i = await folder.info().catch(() => null);
+  if (i?.connected && !i.last && !folder.busy && i.permission === 'granted') {
+    folder.sync().then((r) => { if (r) toast(`Ordner verbunden – ${syncSummary(r)}`); }).catch((err) => toast(`Abgleich ging nicht: ${err.message}`));
+  }
+}
 addEventListener('wmap:health', () => render());
 // Aus den Einstellungen von Android bzw. Health Connect zurück: Stand neu
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') render(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { render(); firstSync(); } });
 
 mountAppBar();
 await render();
+firstSync();
 autoSync();

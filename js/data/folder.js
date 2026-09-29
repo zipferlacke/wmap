@@ -58,6 +58,15 @@ let testBackend = null;   // nur für Tests: ein Ordner im Speicher
 async function load() {
   if (testBackend) return conf;
   conf = (await kv.get(KEY).catch(() => null)) ?? null;
+  // App: Ordner im Plugin gewählt, aber hier nie angekommen (die Antwort des
+  // Ordnerdialogs ging unterwegs verloren) – dann jetzt übernehmen
+  if (!conf && nativeHere) {
+    const i = await core.invoke('plugin:folder|info').catch(() => null);
+    if (i?.connected) {
+      conf = { id: KEY, native: true, name: i.name ?? 'Ordner', index: {}, last: null, result: null, error: null };
+      await kv.put(conf).catch(() => {});
+    }
+  }
   // Eintrag ohne Ordner-Zugriff (z. B. aus einer Android-Sicherung wiederhergestellt –
   // den Zugriff selbst stellt niemand wieder her): gilt als nicht verbunden
   if (conf && !conf.native && typeof conf.handle?.entries !== 'function') {
