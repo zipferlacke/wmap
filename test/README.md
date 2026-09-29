@@ -21,6 +21,7 @@ WMAP_URL=https://app.wuefl.de/wmap/ .venv/bin/python smoke.py   # gegen den Serv
 | `news.py` | Willkommen, Neues nach Update, nichts bei Link-Aufruf, „Was ist neu“ |
 | `offline_areas.py` | Offline-Karten: Größe, freie Form laden, Kachel ohne Kartenversion, löschen |
 | `freeform.py` | freie Form: an der Kante einfügen, markieren + Entf, Doppeltipp |
+| `konto_osm.py` | Konto über OpenStreetMap: id_token prüfen (Testschlüssel statt OSM), Konto anlegen/übernehmen/löschen; im Browser Rückkehr von OSM, Einstellungen, Abmelden, Konto löschen |
 
 Screenshots landen in `test/out/`. `common.py` hat die Hilfen (`Browser`,
 `open`, `js`, `wait`, `shot`, `theme`).

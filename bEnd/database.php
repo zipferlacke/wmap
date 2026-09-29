@@ -28,37 +28,16 @@ class DB_Helper{
     private function createTables(){
         $tables = [
             // ===================================
-            // Nutzer – nur ein Name, angemeldet wird per Passkey
-            // id - name - time
+            // Nutzer – verknüpft mit dem OpenStreetMap-Konto, Name wie dort
+            // id - osm_id - name - time
+            // (ältere Datenbanken haben noch „handle“ und die Tabellen
+            //  Credentials/Challenges aus der Passkey-Zeit – ungenutzt)
             // ===================================
             "CREATE TABLE IF NOT EXISTS Users (
                 id                  INTEGER     PRIMARY KEY AUTOINCREMENT,
-                handle              TEXT        UNIQUE,
+                osm_id              INTEGER,
                 name                TEXT,
                 time                DATETIME    DEFAULT CURRENT_TIMESTAMP
-            )",
-
-            // ===================================
-            // Passkeys (WebAuthn) – öffentlicher Schlüssel je Gerät
-            // id (Credential-ID, base64url) - user_id - public_key (PEM) - sign_count - time
-            // ===================================
-            "CREATE TABLE IF NOT EXISTS Credentials (
-                id                  TEXT        PRIMARY KEY,
-                user_id             INTEGER     REFERENCES Users(id) ON DELETE CASCADE,
-                public_key          TEXT,
-                sign_count          INTEGER     DEFAULT 0,
-                time                DATETIME    DEFAULT CURRENT_TIMESTAMP
-            )",
-
-            // ===================================
-            // Einmal-Herausforderungen für Passkeys (5 Minuten gültig)
-            // challenge - purpose - data (JSON) - time
-            // ===================================
-            "CREATE TABLE IF NOT EXISTS Challenges (
-                challenge           TEXT        PRIMARY KEY,
-                purpose             TEXT,
-                data                TEXT,
-                time                INTEGER
             )",
 
             // ===================================
@@ -149,7 +128,13 @@ class DB_Helper{
             $result = $this->execSql($sql, [], "openDatabase");
             if($result[0] == 1)                     {return($result);}
         }
-        return [0];
+        // Aus der Passkey-Zeit: Users ohne osm_id → Spalte nachrüsten
+        $cols = array_column($this->execSql("PRAGMA table_info(Users)", [], "openDatabase")[1], "name");
+        if (!in_array("osm_id", $cols, true)) {
+            $result = $this->execSql("ALTER TABLE Users ADD COLUMN osm_id INTEGER", [], "openDatabase");
+            if($result[0] == 1)                     {return($result);}
+        }
+        return $this->execSql("CREATE UNIQUE INDEX IF NOT EXISTS UsersOsm ON Users (osm_id)", [], "openDatabase");
     }
 
     public function execSql($sql, $input, $action){

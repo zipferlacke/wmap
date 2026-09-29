@@ -1,72 +1,42 @@
 /**
- * WMap-Konto per Passkey – kein Passwort, keine E-Mail. Man legt einmal einen
- * Passkey an (Fingerabdruck, Gesicht, Geräte-PIN oder Sicherheitsschlüssel);
- * danach reicht „Anmelden“. Gebraucht wird das Konto nur zum Veröffentlichen,
- * Bewerten und für private Plugins – alles andere geht ohne.
+ * WMap-Konto = dein OpenStreetMap-Konto. Angemeldet wird bei OSM
+ * (osm/api.js, mit dem Recht „openid“); der WMap-Server prüft das id_token
+ * und gibt ein eigenes Token fürs Veröffentlichen, Bewerten und private
+ * Plugins. Bei WMap gibt es kein Passwort. Eine Anmeldung gilt für beides:
+ * Karte bearbeiten und WMap-Konto; Abmelden ebenso.
  */
 import { api, token } from './api.js';
 import { local } from '../data/store.js';
 import { ask } from '../ui/dialogs.js';
 import { esc } from '../core/geo.js';
+import { account, login } from '../osm/api.js';
 
 const USER = 'wmap.user';
-
-const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const unb64 = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 
 export const konto = {
   user: () => local.get(USER),
   loggedIn: () => !!token.get() && !!local.get(USER),
-  supported: () => !!window.PublicKeyCredential && !!navigator.credentials,
 
-  /** Neuen Passkey anlegen. */
-  async register(name) {
-    const o = await api(['auth', 'register_options'], { name });
-    const cred = await navigator.credentials.create({ publicKey: {
-      ...o, challenge: unb64(o.challenge), user: { ...o.user, id: unb64(o.user.id) },
-    } });
-    return done(await api(['auth', 'register'], {
-      challenge: o.challenge, id: cred.id,
-      clientDataJSON: b64(cred.response.clientDataJSON), attestationObject: b64(cred.response.attestationObject),
-    }));
+  /** id_token von OSM beim WMap-Server einlösen (osm/api.js nach der Anmeldung). */
+  async connect(idToken, name) {
+    return done(await api(['auth', 'osm'], { id_token: idToken, name }));
   },
 
-  /** Mit vorhandenem Passkey anmelden – das Gerät fragt, welcher. */
-  async login() {
-    const o = await api(['auth', 'login_options']);
-    const cred = await navigator.credentials.get({ publicKey: { ...o, challenge: unb64(o.challenge) } });
-    return done(await api(['auth', 'login'], {
-      challenge: o.challenge, id: cred.id,
-      clientDataJSON: b64(cred.response.clientDataJSON), authenticatorData: b64(cred.response.authenticatorData),
-      signature: b64(cred.response.signature),
-    }));
-  },
-
-  /** Was zum angemeldeten Konto gehört → { user, tours, public_tours, plugins, public_plugins, ratings, passkeys } */
+  /** Was zum angemeldeten Konto gehört → { user, tours, public_tours, plugins, public_plugins, ratings } */
   summary: () => api(['auth', 'summary']),
 
-  /**
-   * Konto mit allen Touren, Plugins und Bewertungen löschen. Bestätigt wird mit
-   * dem Passkey selbst – das Gerät fragt, welcher; dessen Konto wird gelöscht.
-   * → was gelöscht wurde (wie summary, dazu name)
-   */
+  /** Konto mit allen Touren, Plugins und Bewertungen löschen → was gelöscht wurde (wie summary, dazu name) */
   async remove() {
-    const o = await api(['auth', 'delete_options']);
-    const cred = await navigator.credentials.get({ publicKey: { ...o, challenge: unb64(o.challenge) } });
-    const gone = await api(['auth', 'delete'], {
-      challenge: o.challenge, id: cred.id,
-      clientDataJSON: b64(cred.response.clientDataJSON), authenticatorData: b64(cred.response.authenticatorData),
-      signature: b64(cred.response.signature),
-    });
-    token.set(null);
-    local.set(USER, null);
+    const gone = await api(['auth', 'delete']);
+    forget();
+    account.logout();
     return gone;
   },
 
   async logout() {
     try { await api(['auth', 'logout']); } catch { /* egal */ }
-    token.set(null);
-    local.set(USER, null);
+    forget();
+    account.logout();
   },
 };
 
@@ -76,32 +46,35 @@ function done({ token: t, user }) {
   return user;
 }
 
+function forget() {
+  token.set(null);
+  local.set(USER, null);
+}
+
 /**
  * Sicherstellen, dass man angemeldet ist – sonst fragen. → Nutzer oder null.
+ * In der App verlässt die Anmeldung die Seite; zurück kommt man auf dieselbe
+ * Seite (osm/login-return.js), der Aufruf hier endet dann nicht.
  * @param why  wofür, z. B. „Zum Bewerten“
  */
 export async function ensureLogin(why = 'Dafür') {
-  if (konto.loggedIn()) return konto.user();
-  if (!konto.supported()) {
-    await ask({ icon: 'key_off', title: 'Passkeys gehen hier nicht', text: 'Dieser Browser kann keine Passkeys. Mit einem aktuellen Browser klappt es.', buttons: [{ value: 'ok', label: 'OK', primary: true }] });
+  if (konto.loggedIn() && account.loggedIn()) return konto.user();
+  if (!account.clientId()) {
+    await ask({ icon: 'info', title: 'Anmeldung nicht eingerichtet', text: 'Für diese WMap fehlt noch die OpenStreetMap-Client-ID (Einstellungen → Konto → Für Entwickler).', buttons: [{ value: 'ok', label: 'OK', primary: true }] });
     return null;
   }
   const v = await ask({
-    icon: 'passkey', title: 'Mit Passkey anmelden',
-    html: `<p>${esc(why)} brauchst du ein WMap-Konto. Das geht ohne Passwort und ohne E-Mail – mit Fingerabdruck, Gesicht oder der PIN deines Geräts.</p>
-      <p class="muted">Neu hier? Gib einen Namen an, er steht bei deinen Touren und Bewertungen.</p>
-      <input type="text" class="konto-name" maxlength="40" placeholder="Name (nur beim ersten Mal)" autocomplete="nickname">`,
-    buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'login', label: 'Ich habe schon einen' }, { value: 'new', label: 'Passkey anlegen', primary: true }],
-    read: (dlg) => ({ name: dlg.querySelector('.konto-name').value.trim() }),
+    icon: 'account_circle', title: 'Mit OpenStreetMap anmelden',
+    html: `<p>${esc(why)} brauchst du ein Konto. WMap nimmt dafür dein OpenStreetMap-Konto – bei WMap gibt es kein eigenes Passwort.</p>
+      <p class="muted">Noch keins? Das legst du bei der Anmeldung auf openstreetmap.org an. Damit kannst du auch Orte in der Karte eintragen und verbessern.</p>`,
+    buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Anmelden', primary: true }],
   });
+  if (v !== 'yes') return null;
   try {
-    if (v === 'login') return await konto.login();
-    if (v?.name !== undefined) {
-      if (!v.name) { await ask({ icon: 'badge', title: 'Name fehlt', text: 'Für einen neuen Passkey braucht es einen Namen.', buttons: [{ value: 'ok', label: 'OK', primary: true }] }); return null; }
-      return await konto.register(v.name);
-    }
+    const user = await login();
+    if (!konto.loggedIn()) throw new Error(user.wmapError ?? 'Der WMap-Server hat die Anmeldung nicht angenommen');
+    return konto.user();
   } catch (err) {
-    if (err.name === 'NotAllowedError') return null;           // selbst abgebrochen
     await ask({ icon: 'error', title: 'Anmelden ging nicht', text: err.message, buttons: [{ value: 'ok', label: 'OK', primary: true }] });
   }
   return null;

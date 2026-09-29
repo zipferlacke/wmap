@@ -57,13 +57,12 @@ geolocate.on('geolocate', (pos) => trace.add({
   point: [pos.coords.longitude, pos.coords.latitude], accuracy: pos.coords.accuracy,
 }));
 
-// Rückkehr von der OSM-Anmeldung ohne Popup
+// Rückkehr von der OSM-Anmeldung ohne Popup (Meldung: osm/login-return.js)
 finishLogin().then((user) => {
   if (!user) return;
-  toast(`Angemeldet als ${user.name}`);
   openSurvey();
   survey.sync({ loud: true });
-}).catch((err) => toast(err.message));
+}).catch(() => { /* gemeldet von login-return.js */ });
 
 // Beim Start: Liegengebliebenes hochladen und nach neuen Fragen sehen
 setTimeout(() => { survey.sync(); survey.refresh(); }, 4000);

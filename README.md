@@ -33,7 +33,7 @@ gewollt?“) und als Grundlage für Erklärungen in der App.
 15. [Sicherung & Abgleich: Ordner, Health Connect, ZIP](#15-sicherung--abgleich-ordner-health-connect-zip)
 16. [Teilen, Standort anfragen, Bild in Bild](#16-teilen-standort-anfragen-bild-in-bild)
 17. [Mitmachen bei OpenStreetMap, Meldungen](#17-mitmachen-bei-openstreetmap-meldungen)
-18. [WMap-Konto (Passkey) und Server](#18-wmap-konto-passkey-und-server)
+18. [WMap-Konto (OpenStreetMap) und Server](#18-wmap-konto-openstreetmap-und-server)
 19. [Einstellungen](#19-einstellungen)
 20. [Offline und Datenverbrauch](#20-offline-und-datenverbrauch)
 21. [Was wo gespeichert wird](#21-was-wo-gespeichert-wird)
@@ -741,16 +741,23 @@ gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
   Vorbeigehen (≤ 30 m), mit dem Auto nur, wo man angehalten hat. Öffnungszeiten
   mit Wochen-Editor, „Rund um die Uhr“ und „Gibt es nicht mehr“.
 - Hochladen mit OSM-Konto direkt in die Karte, sonst anonym als Hinweis.
+  Das OSM-Konto ist zugleich das WMap-Konto (Abschnitt 18).
   Die Anmeldung braucht eine **OAuth-Client-ID** in `OSM_AUTH` in
-  `js/core/config.js` (oder Einstellungen → Für Entwickler); fehlt sie, sagt
-  der Dialog das. Einmal anlegen: openstreetmap.org → Mein Konto →
-  OAuth 2 Anwendungen → „Neue Anwendung“, Weiterleitungs-URL
-  `https://app.wuefl.de/wmap/oauth.html`, **nicht vertraulich** (PKCE), Rechte
-  „Benutzereinstellungen lesen“, „Karte bearbeiten“, „Notizen bearbeiten“.
+  `js/core/config.js` und dieselbe in `OSM_CLIENT_ID` in `bEnd/config.php`
+  (Einstellungen → Für Entwickler kann sie im Browser überschreiben – dann
+  nur Karte bearbeiten, kein WMap-Konto). Einmal anlegen: openstreetmap.org
+  → Mein Konto → OAuth 2 Anwendungen → „Neue Anwendung“, Weiterleitungs-URL
+  `https://app.wuefl.de/wmap/oauth.html`, **nicht vertraulich** (PKCE – ohne
+  diesen Haken will OSM ein Client-Geheimnis, das eine App nicht geheim
+  halten kann), Rechte „Benutzereinstellungen lesen“, „Karte bearbeiten“,
+  „Notizen bearbeiten“, „Melde dich mit OpenStreetMap an“ (`openid`).
+  Die Client-ID ist nicht geheim und steht im Repository; ein
+  Client-Geheimnis gehört nirgends hin.
   Alle WMaps (Browser, App, lokal) nutzen diese eine Weiterleitung:
   `oauth.html` reicht den Code an die WMap weiter, von der die Anmeldung
   kam (steht im `state`). In der App läuft die Anmeldung im selben Fenster
-  statt im Popup.
+  statt im Popup; danach geht es zurück auf die Seite, von der sie kam
+  (`osm/login-return.js`, geladen von `theme.js`, Ereignis `wmap:login`).
 - Die Aufzeichnung dafür bleibt 14 Tage auf dem Gerät, abschaltbar.
 - **Gezählt** (`osm/stats.js`): jeder hochgeladene Beitrag – Ja/Nein-Frage,
   Ort bearbeitet, Ort neu; direkt in die Karte oder als Hinweis. Auf dem Gerät
@@ -777,16 +784,31 @@ gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
   Hoffmann, trinkgut …), Name, Öffnungszeiten, Kontakt, Adresse aus der
   Rückwärtssuche. Mit OSM-Konto geht es direkt in die Karte (ein Changeset,
   Konflikte werden erkannt). Ohne Konto erklärt ein Dialog, wozu es gebraucht
-  wird: **Konto verbinden** führt zu Einstellungen → OpenStreetMap
+  wird: **Konto verbinden** führt zu Einstellungen → Konto
   (`settings.html#osm`), **Als Hinweis senden** schickt es anonym als Hinweis.
 - **Meldungen unterwegs** (Stau, Unfall, Baustelle) mit kurzer Rückfrage für
   andere („Baustelle noch da? Ja/Nein“). Autobahn-Verkehrslage aus den offenen
   Daten der Autobahn GmbH.
 
-## 18. WMap-Konto (Passkey) und Server
+## 18. WMap-Konto (OpenStreetMap) und Server
 
-- Nur nötig zum **Veröffentlichen, Bewerten und für Plugins**. Anmeldung mit
-  **Passkey** (Fingerabdruck, Gesicht, Geräte-PIN) – kein Passwort.
+- Nur nötig zum **Eintragen in OSM, Veröffentlichen, Bewerten und für
+  Plugins**. Das Konto ist das **OpenStreetMap-Konto** – bei WMap gibt es
+  kein Passwort. Eine Anmeldung gilt für beides (Karte bearbeiten und
+  WMap-Konto), Abmelden ebenso (`services/konto.js`).
+- Ablauf: Anmelden bei OSM mit Recht `openid` → OSM schickt mit dem
+  Zugangstoken ein **id_token** → `auth/osm` auf dem WMap-Server prüft es
+  (`bEnd/osm_login.php`: Signatur RS256 mit den öffentlichen Schlüsseln von
+  OSM, zwischengespeichert in `bEnd/data/osm-jwks.json`; Aussteller
+  `https://www.openstreetmap.org`; `aud` = `OSM_CLIENT_ID`; Ablauf) → Konto
+  zur OSM-Nutzernummer (`Users.osm_id`) anlegen oder wiederfinden, Name wie
+  bei OSM → eigenes WMap-Token (180 Tage). Mit dem OSM-Testserver gibt es
+  kein WMap-Konto.
+- **Konten aus der Passkey-Zeit:** Wer noch damit angemeldet ist, bekommt
+  sein Konto bei der ersten OSM-Anmeldung übernommen (mit Touren, Plugins,
+  Bewertungen). Nicht mehr angemeldete Passkey-Konten bleiben in der
+  Datenbank, sind aber nicht mehr erreichbar (Tabellen `Credentials`,
+  `Challenges` und Spalte `handle` nur noch in alten Datenbanken).
 - Server: `bEnd/api.php` (PHP, SQLite in `bEnd/data/`, von außen gesperrt).
 - **Statistik** (Tabelle `Statistics`, `bEnd/api_stats.php`): eine Zeile je
   Ereignis mit Zeit (UTC), `event`, `frage` (1 = Ja/Nein-Frage, 0 = bewusst
@@ -798,11 +820,11 @@ gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
   nur für dich, aber auf allen deinen Geräten. Löschen kann jeder nur Eigenes.
 - **Konto löschen:** `deleteKonto.html` (auch ohne App erreichbar, für den
   Play Store: `https://app.wuefl.de/wmap/deleteKonto.html`; Knopf in den
-  Einstellungen). Bestätigt wird mit dem Passkey selbst (`auth/delete_options`,
-  `auth/delete`) – das Token allein reicht nicht. Gelöscht werden in einem
-  Rutsch Name, Passkeys, Sitzungen, alle Touren (samt Bewertungen anderer
-  dazu), alle Plugins und die eigenen Bewertungen. Ohne Passkey: per E-Mail
-  an contact@wuefl.de.
+  Einstellungen). Nicht angemeldet: erst mit OSM anmelden, dann löschen
+  (`auth/delete`). Gelöscht werden in einem Rutsch Name, OSM-Nutzernummer,
+  Sitzungen, alle Touren (samt Bewertungen anderer dazu), alle Plugins und
+  die eigenen Bewertungen; das OSM-Konto selbst bleibt. Anmelden geht nicht:
+  per E-Mail an contact@wuefl.de.
 
 ## 19. Einstellungen
 
@@ -816,9 +838,10 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 - **Unterwegs:** Karte für die Navigation offline speichern, Zoom in der
   Navigation (Automatisch/Näher/Mehr Überblick), 3D in der Navigation,
   Datensparmodus, Stimme, Spritpreise.
-- **Mitmachen:** Weg aufzeichnen und danach fragen, anonym als Hinweis,
-  OSM-Konto.
-- **WMap-Konto:** wer angemeldet ist, Knopf „Konto löschen“ (→ `deleteKonto.html`).
+- **Konto** (`#osm`): Anmelden mit OpenStreetMap (zugleich WMap-Konto), wer
+  angemeldet ist, Abmelden, „Konto löschen“ (→ `deleteKonto.html`), für
+  Entwickler Server und Client-ID.
+- **Mitmachen:** Weg aufzeichnen und danach fragen, anonym als Hinweis.
 - **Daten:** Jede Navigation merken (Standard: aus – geplante Touren und
   „Aufzeichnen“ werden immer gespeichert), Sicherung & Abgleich,
   aufgezeichnete Wege, Suchverlauf löschen.

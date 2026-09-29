@@ -1,10 +1,9 @@
 /**
  * Konto löschen (deleteKonto.html): zeigt, was zum angemeldeten Konto gehört,
- * und löscht es nach Rückfrage – bestätigt mit dem Passkey (konto.remove).
- * Geht auch ohne Anmeldung: das Gerät fragt nach dem Passkey, und dessen
- * Konto wird gelöscht.
+ * und löscht es nach Rückfrage (konto.remove). Das Konto ist das
+ * OpenStreetMap-Konto – nicht angemeldet: erst mit OSM anmelden, dann löschen.
  */
-import { konto } from '../services/konto.js';
+import { konto, ensureLogin } from '../services/konto.js';
 import { ask } from '../ui/dialogs.js';
 import { esc } from '../core/geo.js';
 import { mountAppBar } from '../ui/appbar.js';
@@ -19,31 +18,43 @@ const what = (x) => [
   x.ratings ? n(x.ratings, 'Bewertung', 'Bewertungen') : '',
 ].filter(Boolean);
 
+const LABEL = {
+  login: '<span class="msr">login</span> Mit OpenStreetMap anmelden',
+  delete: '<span class="msr">delete_forever</span> Konto endgültig löschen',
+};
+
 async function paint() {
-  if (!konto.supported()) {
-    status.innerHTML = '<p><span class="msr">key_off</span> Dieser Browser kann keine Passkeys. Öffne die Seite mit einem aktuellen Browser auf dem Gerät mit deinem Passkey – oder schreib uns (unten).</p>';
-    button.disabled = true;
-    return;
-  }
+  button.disabled = false;
   if (!konto.loggedIn()) {
-    status.innerHTML = '<p><span class="msr">passkey</span> Du bist hier nicht angemeldet. Das macht nichts: Beim Löschen fragt dein Gerät nach dem Passkey.</p>';
+    status.innerHTML = '<p><span class="msr">account_circle</span> Du bist hier nicht angemeldet. Melde dich mit dem OpenStreetMap-Konto an, zu dem dein WMap-Konto gehört – danach kannst du es löschen.</p>';
+    button.innerHTML = LABEL.login;
+    button.dataset.act = 'login';
     return;
   }
+  button.innerHTML = LABEL.delete;
+  button.dataset.act = 'delete';
   try {
     const s = await konto.summary();
     const list = what(s);
     status.innerHTML = `<p><span class="msr">account_circle</span> Angemeldet als <strong>${esc(s.user.name)}</strong>.</p>
       <p>${list.length ? `Dazu gehören ${esc(list.join(', '))}.` : 'Zu diesem Konto gehören keine Touren, Plugins oder Bewertungen.'}</p>`;
   } catch (err) {
-    // Abgelaufene Anmeldung: Löschen geht trotzdem, per Passkey
-    status.innerHTML = `<p><span class="msr">info</span> ${esc(err.message)} – Löschen geht trotzdem, dein Gerät fragt nach dem Passkey.</p>`;
+    // Abgelaufene Anmeldung: neu anmelden
+    await konto.logout();
+    status.innerHTML = `<p><span class="msr">info</span> ${esc(err.message)} – bitte neu anmelden.</p>`;
+    button.innerHTML = LABEL.login;
+    button.dataset.act = 'login';
   }
 }
 
 button.addEventListener('click', async () => {
+  if (button.dataset.act === 'login') {
+    if (await ensureLogin('Zum Löschen')) paint();
+    return;
+  }
   const v = await ask({
     icon: 'delete_forever', title: 'Konto wirklich löschen?',
-    text: 'Dein Konto, alle deine Touren, Plugins und Bewertungen werden sofort und endgültig gelöscht. Das lässt sich nicht rückgängig machen.',
+    text: 'Dein WMap-Konto, alle deine Touren, Plugins und Bewertungen werden sofort und endgültig gelöscht. Das lässt sich nicht rückgängig machen. Dein OpenStreetMap-Konto bleibt, wie es ist.',
     buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Endgültig löschen', primary: true }],
   });
   if (v !== 'yes') return;
@@ -52,14 +63,16 @@ button.addEventListener('click', async () => {
     const gone = await konto.remove();
     const list = what(gone);
     status.innerHTML = `<p><span class="msr">check_circle</span> Das Konto <strong>${esc(gone.name)}</strong> ist gelöscht${list.length ? ` – mit ${esc(list.join(', '))}` : ''}.</p>
-      <p class="muted">Den Passkey kannst du jetzt in der Passkey-Verwaltung deines Geräts entfernen.</p>`;
+      <p class="muted">Die Freigabe für WMap kannst du auf openstreetmap.org unter Einstellungen → OAuth 2-Anwendungen → Autorisierte Anwendungen widerrufen.</p>`;
     button.hidden = true;
   } catch (err) {
     button.disabled = false;
-    if (err.name === 'NotAllowedError') return;                // selbst abgebrochen
     await ask({ icon: 'error', title: 'Löschen ging nicht', text: err.message, buttons: [{ value: 'ok', label: 'OK', primary: true }] });
   }
 });
+
+// Zurück von der Anmeldung in der App (osm/login-return.js)
+addEventListener('wmap:login', paint);
 
 mountAppBar();
 paint();

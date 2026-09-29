@@ -12,6 +12,9 @@
 // Weblinks in der App über WMap öffnen (jede Seite lädt theme.js)
 import './links.js';
 
+// Zurück von der OSM-Anmeldung (ohne Popup): auf dieser Seite einlösen
+try { if (localStorage.getItem('wmap.osm.return')) import('../osm/login-return.js'); } catch { /* gesperrt */ }
+
 const KEY = 'wmap.theme';
 const system = matchMedia('(prefers-color-scheme: dark)');
 let last = null;

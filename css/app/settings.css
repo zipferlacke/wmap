@@ -49,6 +49,7 @@
         background: var(--surface);
         font-size: var(--fs-200);
         p { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; }
+        p > span:not(.msr) { flex: 1 1 12rem; }
         .settings-error { flex-wrap: nowrap; align-items: flex-start; color: var(--muted); .msr { flex-shrink: 0; } }
     }
     .settings-dev {

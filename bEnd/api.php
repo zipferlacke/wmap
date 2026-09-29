@@ -4,7 +4,7 @@
  *   request  JSON-Pfad, z. B. ["tours","list"]
  *   data     JSON-Objekt mit den Werten
  * Antwort: [0, Ergebnis] oder [1, Meldung].
- * Angemeldet wird per Passkey; das Token kommt im Kopf „Authorization: Bearer …“.
+ * Angemeldet wird mit dem OpenStreetMap-Konto; das Token kommt im Kopf „Authorization: Bearer …“.
  */
 require_once(__DIR__."/config.php");
 
@@ -18,7 +18,7 @@ header("Content-Type: application/json; charset=utf-8");
 if (($_SERVER["REQUEST_METHOD"] ?? "") === "OPTIONS") exit;
 
 require_once(__DIR__."/database.php");
-require_once(__DIR__."/webauthn.php");
+require_once(__DIR__."/osm_login.php");
 require_once(__DIR__."/api_auth.php");
 require_once(__DIR__."/api_tours.php");
 require_once(__DIR__."/api_plugins.php");
@@ -56,7 +56,7 @@ function current_user(){
     global $db_helper;
     $h = auth_header();
     if (!preg_match('/^Bearer\s+([A-Za-z0-9_-]{20,})$/', $h, $m)) return null;
-    $r = $db_helper->execSql("SELECT u.id, u.name FROM Sessions s JOIN Users u ON u.id = s.user_id WHERE s.token = ? AND s.expires > ?", [hash('sha256', $m[1]), time()], "user");
+    $r = $db_helper->execSql("SELECT u.id, u.name, u.osm_id FROM Sessions s JOIN Users u ON u.id = s.user_id WHERE s.token = ? AND s.expires > ?", [hash('sha256', $m[1]), time()], "user");
     return ($r[0] == 0 && count($r[1])) ? $r[1][0] : null;
 }
 

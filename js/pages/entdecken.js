@@ -9,7 +9,7 @@
  *                Waymarked Trails (~1 s), sonst Overpass. Antippen in der
  *                Karte: die Wege an dieser Stelle.
  *   Von anderen  Touren, die WMap-Nutzer geteilt haben – mit Sternen und
- *                Kommentaren; bewerten braucht ein Konto (Passkey)
+ *                Kommentaren; bewerten braucht ein Konto (OpenStreetMap)
  *
  * Kopfzeile wie überall (ui/map-page.js): ← Übersicht bzw. Liste, ✕ zur Karte.
  */
@@ -62,20 +62,22 @@ function showTab(t) {
 function kontoRow() {
   const u = konto.user();
   return `<div class="ent-konto">
-    <span class="msr">passkey</span>
-    <span>${konto.loggedIn() ? `Angemeldet als <strong>${esc(u.name)}</strong>` : 'Zum Bewerten, Veröffentlichen und Anbieten brauchst du ein WMap-Konto – mit Passkey, ohne Passwort.'}</span>
+    <span class="msr">account_circle</span>
+    <span>${konto.loggedIn() ? `Angemeldet als <strong>${esc(u.name)}</strong>` : 'Zum Bewerten, Veröffentlichen und Anbieten brauchst du ein Konto – dein OpenStreetMap-Konto.'}</span>
     <button type="button" class="button" data-konto>${konto.loggedIn() ? 'Abmelden' : 'Anmelden'}</button>
   </div>`;
 }
 content.addEventListener('click', async (e) => {
   if (!e.target.closest('[data-konto]')) return;
   if (konto.loggedIn()) {
-    const v = await ask({ icon: 'logout', title: `Abmelden, ${konto.user().name}?`, text: 'Deine Touren und Bewertungen bleiben erhalten.',
+    const v = await ask({ icon: 'logout', title: `Abmelden, ${konto.user().name}?`, text: 'Deine Touren und Bewertungen bleiben erhalten. Abgemeldet bist du dann auch fürs Bearbeiten der Karte.',
       buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Abmelden', primary: true }] });
     if (v === 'yes') await konto.logout();
   } else await ensureLogin('Zum Bewerten und Veröffentlichen');
   showTab(tab);
 });
+// Zurück von der Anmeldung in der App (osm/login-return.js)
+addEventListener('wmap:login', () => showTab(tab));
 
 /* ── Karte: Wegenetz, Linien ──────────────────────────────────────────────── */
 

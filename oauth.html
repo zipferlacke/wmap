@@ -24,8 +24,14 @@
             window.close();
         } else {
             // Kein Popup (installierte App, gesperrte Fenster): über den Speicher
-            try { localStorage.setItem('wmap.osm.return', JSON.stringify(data)); } catch { /* egal */ }
-            location.replace('./index.html');
+            // zurück auf die Seite, von der die Anmeldung kam
+            let to = './index.html';
+            try {
+                localStorage.setItem('wmap.osm.return', JSON.stringify(data));
+                const from = JSON.parse(localStorage.getItem('wmap.osm.pkce') || 'null')?.from;
+                if (from && new URL(from).origin === location.origin) to = from;
+            } catch { /* egal */ }
+            location.replace(to);
         }
     </script>
 </body>

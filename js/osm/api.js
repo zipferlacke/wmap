@@ -1,5 +1,7 @@
 /**
  * OpenStreetMap-Konto: Anmelden (OAuth 2.0 mit PKCE) und Antworten hochladen.
+ * Dieselbe Anmeldung ist auch das WMap-Konto: Mit dem Recht „openid“ kommt
+ * ein id_token mit, das der WMap-Server prüft (services/konto.js).
  *
  * Hochgeladen wird immer im Namen des Nutzers, nur was er selbst beantwortet
  * hat, gebündelt in einem Changeset mit source=survey. Das ist die Art, wie
@@ -22,7 +24,7 @@ const PENDING = 'wmap.osm.pkce';
 // die Anmeldung kam (steht im „state“ hinter „~“).
 const REDIRECT = 'https://app.wuefl.de/wmap/oauth.html';
 const inApp = () => !!window.__TAURI__;
-const SCOPE = 'read_prefs write_api write_notes';
+const SCOPE = 'read_prefs write_api write_notes openid';
 
 export const account = {
   server: () => (OSM_AUTH[local.get(SERVER_KEY)] ? local.get(SERVER_KEY) : 'live'),
@@ -46,9 +48,9 @@ const random = (n) => b64url(crypto.getRandomValues(new Uint8Array(n)));
 /**
  * Anmeldefenster öffnen. oauth.html meldet den Code zurück – per
  * postMessage an dieses Fenster oder (ohne Fenster: App, installierte
- * Web-App, gesperrte Popups) über den Speicher und ein Neuladen, siehe
- * finishLogin(). In der App gibt es keine Popups – dort im selben Fenster.
- * → Promise<{ name }>
+ * Web-App, gesperrte Popups) über den Speicher und zurück auf diese Seite,
+ * siehe finishLogin(). In der App gibt es keine Popups – dort im selben Fenster.
+ * → Promise<{ name, id, wmapError? }>
  */
 export async function login() {
   const conf = account.conf();
@@ -59,7 +61,7 @@ export async function login() {
   const home = location.href.split(/[?#]/)[0].replace(/[^/]*$/, '');
   const state = `${random(16)}~${b64url(new TextEncoder().encode(home))}`;
   const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
-  local.set(PENDING, { verifier, state, server: account.server(), at: Date.now() });
+  local.set(PENDING, { verifier, state, server: account.server(), at: Date.now(), from: location.href });
 
   const url = new URL(`${conf.web}/oauth2/authorize`);
   Object.entries({
@@ -80,12 +82,19 @@ export async function login() {
   });
 }
 
-/** Nach der Rückkehr ohne Popup: Code aus dem Speicher einlösen. */
-export async function finishLogin() {
-  const back = local.get('wmap.osm.return');
-  if (!back) return null;
-  local.set('wmap.osm.return', null);
-  return exchange(back);
+/**
+ * Nach der Rückkehr ohne Popup: Code aus dem Speicher einlösen – einmal je
+ * Seite, auch wenn mehrere fragen (osm/login-return.js, Mitmachen).
+ * → Promise<Nutzer | null>
+ */
+let finishing = null;
+export function finishLogin() {
+  return finishing ??= (async () => {
+    const back = local.get('wmap.osm.return');
+    if (!back) return null;
+    local.set('wmap.osm.return', null);
+    return exchange(back);
+  })();
 }
 
 async function exchange({ code, state, error }) {
@@ -109,7 +118,16 @@ async function exchange({ code, state, error }) {
   const me = await api('/user/details.json').then((r) => r.json());
   const user = { name: me.user?.display_name ?? '?', id: me.user?.id };
   local.set(userKey(pending.server), user);
-  return user;
+  // Dieselbe Anmeldung als WMap-Konto – klappt das nicht (Server weg,
+  // Testserver), bleibt man trotzdem bei OSM angemeldet
+  let wmapError;
+  try {
+    if (!data.id_token) throw new Error('OpenStreetMap hat keine Anmeldung fürs WMap-Konto mitgeschickt');
+    const { konto } = await import('../services/konto.js');
+    await konto.connect(data.id_token, user.name);
+  } catch (err) { wmapError = err.message; }
+  dispatchEvent(new CustomEvent('wmap:login', { detail: { ...user, wmapError } }));
+  return { ...user, wmapError };
 }
 
 async function api(path, { method = 'GET', body, type } = {}) {

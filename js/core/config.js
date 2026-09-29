@@ -135,7 +135,7 @@ export const OSM_AUTH = {
     label: 'OpenStreetMap',
     web: 'https://www.openstreetmap.org',
     api: 'https://api.openstreetmap.org/api/0.6',
-    clientId: '',
+    clientId: 'jv-baCEuub6hnMq3q9FlzYyaAuZI0Vqj_3kY3QkDDfQ',
   },
   dev: {
     label: 'OSM-Testserver',
