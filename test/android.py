@@ -26,11 +26,14 @@ def adb(*args):
 
 
 def socket():
+    # Nach vorn holen – im Hintergrund friert Android die App ein, dann
+    # antwortet ihr WebView nicht
+    adb('shell', 'monkey', '-p', PAKET, '-c', 'android.intent.category.LAUNCHER', '1')
     for _ in range(20):
-        m = re.search(r'webview_devtools_remote_\d+', adb('shell', 'cat', '/proc/net/unix'))
-        if m:
-            return m.group(0)
-        adb('shell', 'monkey', '-p', PAKET, '-c', 'android.intent.category.LAUNCHER', '1')
+        pid = adb('shell', 'pidof', PAKET).strip()
+        name = f'webview_devtools_remote_{pid}'
+        if pid and name in adb('shell', 'cat', '/proc/net/unix'):
+            return name
         time.sleep(2)
     sys.exit('Kein WebView zum Debuggen – läuft die Debug-App?')
 

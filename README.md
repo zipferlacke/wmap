@@ -576,12 +576,27 @@ ansehen“) – GeoJSON auf heller Karte (z. B. aus QGIS).
 - Alles liegt nur im Browser (IndexedDB).
 
 **Health Connect** (nur Android-App): Meine Touren → Aufgezeichnet → „Aus
-Health Connect“ zeigt erst, was da ist – Trainings nach App und Art, mit
-oder ohne Route –, dann werden die Routen als Wege übernommen (Name aus dem
-Training oder „Radtour am …“, Profil aus der Art, sonst am Tempo erkannt).
-Schon Übernommenes kommt nicht doppelt. Routen fremder Apps gibt Health
-Connect ab Android 15 mit Dauerfreigabe heraus, sonst fragt es je Training
-(`js/services/health.js`, Plugin in `src-tauri/plugins/health`).
+Health Connect“ zeigt erst, was da ist – Trainings nach Art und App, mit
+oder ohne Route, schon übernommen –, dann werden die Routen als Wege
+übernommen (Name aus dem Training oder „Rudern am …“, Profil aus der Art,
+sonst am Tempo erkannt). Jeder Weg behält Art und App: Symbol und
+„Rudern · Fitbit“ in Liste und Detail, auch in der Suche. Schon
+Übernommenes kommt nicht doppelt; danach sagt ein Dialog, was aus welchem
+Grund fehlt (schon da, gleicher Weg, zu kurz, nicht freigegeben). Routen
+fremder Apps gibt Health Connect nur mit „Immer erlauben“ ohne Rückfrage
+heraus – lehnt man eine Rückfrage ab, fragt der Import für den Rest nicht
+mehr, übernimmt aber alles andere; der Knopf „Health Connect öffnen“ führt
+zur Seite von WMap dort (`js/services/health.js`, Plugin in
+`src-tauri/plugins/health`).
+
+**Berechtigungen** (nur Android-App, `js/ui/permissions.js`): Nach dem
+Willkommen beim ersten Start erklärt ein Dialog Standort und Health Connect –
+je Recht wofür, der Zustand und darunter der Knopf (erlauben bzw. in die
+Einstellungen von Android oder Health Connect zum Ändern und Widerrufen).
+Derselbe Dialog kommt, wenn etwas den Standort oder Health Connect braucht,
+das noch nicht erlaubt ist (Standort-Knopf, Navigation, Aufzeichnen, Route
+ab „Mein Standort“), und unter Einstellungen → Berechtigungen. Beim Start
+der Karte wird nicht gefragt – ohne Freigabe bleibt die letzte Ansicht.
 
 ## 15. Ordner verbinden
 
@@ -777,6 +792,11 @@ takeshots wmap --eigener-server # ohne Docker
   ruft vor jedem Bauen `tools/android-einbinden.py` des Projekts auf (bei
   WMap: Standortrechte, App-Symbol, Bild in Bild und – für `release` – die
   Upload-Signatur).
+- **App-Symbol:** `python3 tools/android-symbole.py` baut
+  `appdata/icons/android/` aus `appdata/wmap-1024.png` – das Logo so klein,
+  dass es in jeder Maske (rund, eckig, Tropfen) ganz bleibt, auf dem
+  Hintergrund des maskierbaren Web-Symbols. Nicht `cargo tauri icon` dafür
+  nehmen: das legt das Logo randlos hin, dann fehlen die Ecken.
 - **Release fürs Hochladen:** braucht einmalig den Upload-Schlüssel in
   `.secrets/` (weder in Git noch per FTP auf dem Server). Wie er angelegt
   und für GitHub Actions hochgeladen wird, steht in

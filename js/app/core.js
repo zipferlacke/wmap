@@ -56,14 +56,15 @@ export const afterLayout = (fn) => requestAnimationFrame(() => requestAnimationF
 
 geolocate.on('geolocate', (pos) => { state.position = [pos.coords.longitude, pos.coords.latitude]; });
 
-export function myPosition() {
+/** `ask: false`: ohne Freigabe nicht nachfragen (Start der Karte) */
+export function myPosition({ ask = true } = {}) {
   return new Promise((resolve, reject) => {
     if (!geo.available()) { reject(new Error('Standort wird nicht unterstützt')); return; }
     geo.once(
       (p) => { state.position = [p.coords.longitude, p.coords.latitude]; resolve(state.position); },
       (err) => (state.position ? resolve(state.position)
         : reject(new Error(err.code === 1 ? 'Standortfreigabe verweigert' : 'Standort nicht verfügbar'))),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000, ask },
     );
   });
 }

@@ -8,11 +8,12 @@
  *   „dialog confirm“ dazu (z. B. „stacked“: Knöpfe untereinander).
  * Mit `read(dlg)` liefert der
  *   Hauptknopf (primary) stattdessen dessen Ergebnis – z. B. ein Eingabefeld;
- *   Enter im Feld drückt den Hauptknopf.
+ *   Enter im Feld drückt den Hauptknopf. `setup(dlg, done)` läuft nach dem
+ *   Öffnen – für eigene Knöpfe im Text; `done(v)` schließt mit Wert v.
  */
 import { esc } from '../core/geo.js';
 
-export function ask({ icon = 'help', title, text = '', html = '', buttons, read = null, className = '' }) {
+export function ask({ icon = 'help', title, text = '', html = '', buttons, read = null, className = '', setup = null }) {
   return new Promise((resolve) => {
     const dlg = document.createElement('dialog');
     dlg.className = `dialog confirm ${className}`.trim();
@@ -37,6 +38,7 @@ export function ask({ icon = 'help', title, text = '', html = '', buttons, read 
     dlg.addEventListener('cancel', () => done(null));
     dlg.showModal();
     dlg.querySelector('input:not([readonly])')?.focus();
+    setup?.(dlg, done);
   });
 }
 

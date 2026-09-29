@@ -1,5 +1,5 @@
 /**
- * Einstellungen (settings.html): Hell/dunkel, Offline-Karten, Datensparmodus,
+ * Einstellungen (settings.html): Hell/dunkel, Berechtigungen (Android-App), Offline-Karten, Datensparmodus,
  * Mitmachen bei OSM samt Konto, WMap-Konto (löschen), Stimme, Spritpreise, Verlauf. Eine eigene
  * Seite ohne Karte – alles bleibt in diesem Browser, die Karte liest es beim
  * nächsten Öffnen.
@@ -22,6 +22,7 @@ import { local, recent } from '../data/store.js';
 import { konto } from '../services/konto.js';
 import { myOsmStats, allOsmStats, statsText } from '../osm/stats.js';
 import { toast } from '../ui/dialogs.js';
+import { permissionsHere, showPermissions } from '../ui/permissions.js';
 
 const root = document.querySelector('.settings');
 // Browser am Rechner (Firefox, Chrome, Edge): WMap für „geo:“-Links anmelden.
@@ -43,6 +44,7 @@ const render = () => {
         </select>
       </label>
       ${geoHandler ? `<button type="button" class="button settings-row" data-act="geo"><span class="msr">pin_drop</span> Karten-Links (geo:) mit WMap öffnen</button>` : ''}
+      ${permissionsHere ? `<button type="button" class="button settings-row" data-act="perms"><span class="msr">verified_user</span> Berechtigungen – Standort, Health Connect</button>` : ''}
     </section>
 
     <section>
@@ -141,6 +143,7 @@ root.addEventListener('click', async (e) => {
   if (!b) return;
   const act = b.dataset.act;
   if (act === 'voice') openVoiceDialog();
+  if (act === 'perms') showPermissions();
   if (act === 'fuel') setFuelKey();
   if (act === 'geo') {
     try {

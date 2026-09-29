@@ -271,12 +271,19 @@ body.readonly {
 
 /* Höherer Griff, und eingeklappt bleibt er über der Gestenleiste von Android
    stehen (--safe-bottom, siehe core/theme.js) – sonst fängt das System das
-   Hochziehen ab */
+   Hochziehen ab. Der Inhalt fängt erst unter dem Griff an: der liegt obenauf
+   und schluckte sonst die Knöpfe ← und ✕ (.wege-panel setzt sein eigenes
+   padding, das die Regel aus wuefl-libs überstimmt) */
 @media screen and (max-width: 700px) {
     .userDialog.uD-sheet:is(:not([data-pos-mobile]), [data-pos-mobile="bottom"]) {
+        padding-top: calc(var(--uD-grip) + .25rem);
         padding-bottom: var(--safe-bottom);
         &.uD-collapsed { translate: 0 calc(100% - var(--uD-grip) - var(--safe-bottom)); }
     }
+}
+@media screen and (min-width: 701px) {
+    .wege-panel.uD-sheet[data-pos="left"] { padding-right: calc(var(--uD-grip) + .5rem); }
+    .wege-panel.uD-sheet[data-pos="right"] { padding-left: calc(var(--uD-grip) + .5rem); }
 }
 @media screen and (max-width: 700px) and (pointer: coarse) {
     .userDialog.uD-sheet:is(:not([data-pos-mobile]), [data-pos-mobile="bottom"]) { --uD-grip: 2.2rem; }

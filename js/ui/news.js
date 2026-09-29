@@ -10,6 +10,9 @@
  *   minVersion  ist diese App älter: Banner „Aktualisieren“ auf jeder Seite –
  *               lädt die neue Version über den Service Worker
  *
+ * In der Android-App folgt auf das Willkommen der Dialog zu den
+ * Berechtigungen (ui/permissions.js).
+ *
  * Gemerkt wird in localStorage „wmap.seen“: { version, messages: [ids] }.
  * Die Dialoge kommen nur auf der Karte beim normalen Start – öffnet ein Link
  * etwas (geteilter Ort, Route …), erst beim nächsten Mal. So bleiben auch
@@ -58,6 +61,8 @@ export async function appNews({ dialogs = false } = {}) {
   if (!seen) {
     save({ version: APP_VERSION, messages: [] });
     if (m.welcome?.length) await welcome(m);
+    const { permissionsHere, showPermissions } = await import('./permissions.js');
+    if (permissionsHere) await showPermissions();
   } else if (compareVersions(seen.version, APP_VERSION) < 0) {
     save({ ...seen, version: APP_VERSION });
     await showChangelog(m, { since: seen.version });

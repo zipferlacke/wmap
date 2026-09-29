@@ -12,6 +12,8 @@
   "permissions": [
     "core:default",
     "geolocation:default",
+    "geolocation:allow-check-permissions",
+    "geolocation:allow-request-permissions",
     "health:default"
   ],
   "remote": {

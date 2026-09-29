@@ -36,9 +36,12 @@ import './app/report.js';
 
 // Mit Link-Parametern (siehe fromUrl) bestimmt der Link, wohin es geht
 if (!freshView && !/[?&](view|q|from|to|reach|geo|ort)=/.test(location.search)) {
-  myPosition()
+  const flyHome = () => myPosition({ ask: false })
     .then((p) => map.flyTo({ center: p, zoom: 14, pitch: 0, duration: 1800 }))
     .catch(() => { /* ohne Standort bleibt die letzte bzw. die Startansicht */ });
+  flyHome();
+  // Gerade im Dialog zu den Berechtigungen erlaubt (erster Start): jetzt hin
+  addEventListener('wmap:location', flyHome, { once: true });
 }
 
 map.on('moveend', debounce(() => {

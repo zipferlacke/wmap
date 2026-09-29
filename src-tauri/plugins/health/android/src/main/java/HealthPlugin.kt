@@ -1,6 +1,10 @@
 package de.wuefl.wmap.health
 
 import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.activity.result.ActivityResult
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
@@ -37,6 +41,11 @@ class RouteArgs {
     var id: String = ""
 }
 
+@InvokeArg
+class SettingsArgs {
+    var target: String = "health"
+}
+
 /**
  * Health Connect lesen – für js/services/health.js:
  *
@@ -47,6 +56,11 @@ class RouteArgs {
  *   route { id }        Punkte [lon, lat, höhe|null, zeit] – fragt bei
  *                       fremden Routen einzeln nach, wenn es keine
  *                       Dauerfreigabe gibt
+ *   open_settings { target }
+ *                       "health": Freigaben von WMap in Health Connect
+ *                       (Routen „Immer erlauben“, widerrufen);
+ *                       "app": App-Info von WMap (Standort …);
+ *                       "location": Standort des Geräts an/aus
  */
 @TauriPlugin
 class HealthPlugin(private val activity: Activity) : Plugin(activity) {
@@ -175,6 +189,32 @@ class HealthPlugin(private val activity: Activity) : Plugin(activity) {
         val route = routeContract.parseResult(result.resultCode, result.data)
         if (route == null) invoke.reject("Route nicht freigegeben", "denied")
         else invoke.resolve(JSObject().put("points", points(route)))
+    }
+
+    @Command
+    fun openSettings(invoke: Invoke) {
+        val args = invoke.parseArgs(SettingsArgs::class.java)
+        val pkg = activity.packageName
+        val tries = when (args.target) {
+            "app" -> listOf(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", pkg, null)))
+            "location" -> listOf(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            else -> listOfNotNull(
+                // Ab Android 14 gleich die Seite von WMap in Health Connect
+                if (Build.VERSION.SDK_INT >= 34)
+                    Intent("android.health.connect.action.MANAGE_HEALTH_PERMISSIONS").putExtra(Intent.EXTRA_PACKAGE_NAME, pkg)
+                else null,
+                Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS),
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", pkg, null)),
+            )
+        }
+        for (intent in tries) {
+            try {
+                activity.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                invoke.resolve()
+                return
+            } catch (e: Exception) { /* nächste Möglichkeit */ }
+        }
+        invoke.reject("Einstellungen lassen sich nicht öffnen")
     }
 
     private fun points(r: ExerciseRoute): JSArray {

@@ -28,7 +28,7 @@ import { mapPage } from '../ui/map-page.js';
 import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, esc, bbox } from '../core/geo.js';
 import { connections } from '../data/saved.js';
 import { legBadge, changesText, transitLegsHtml } from '../ui/transit-legs.js';
-import { healthAvailable, healthSessions, importHealth, appName, TYPE_NAME } from '../services/health.js';
+import { healthAvailable, healthSessions, importHealth, knownHealthIds, fillHealthTypes, healthSettings, appName, typeName, typeIcon } from '../services/health.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 
@@ -39,6 +39,11 @@ const GROUP = {
 };
 const groupKey = (t) => PROFILE_GROUP[t.profile] ?? 'foot';
 const groupOf = (t) => GROUP[groupKey(t)];
+/** Symbol eines Wegs: aus Health Connect die Art (Rudern …), sonst die Gruppe */
+const iconOf = (t) => (t.source?.type ? typeIcon(t.source.type) : groupOf(t).icon);
+/** Herkunft in der Liste: „Navigation“, „GPX“, „Rudern · Fitbit“ */
+const originOf = (t) => (t.kind === 'nav' ? 'Navigation' : t.kind === 'gpx' ? 'GPX'
+  : t.kind === 'health' ? [t.source?.type ? typeName(t.source.type) : '', appName(t.source?.app)].filter(Boolean).join(' · ') : '');
 const YEAR_COLORS = ['#1a73e8', '#e8590c', '#2f9e44', '#ae3ec9', '#f59f00', '#0c8599', '#e64980', '#5c940d', '#495057'];
 const yearOf = (t) => new Date(t.start).getFullYear();
 
@@ -93,7 +98,7 @@ const norm = (s) => String(s ?? '').toLowerCase();
 function visible() {
   const q = norm(query.wege).trim();
   if (!q) return all;
-  return all.filter((t) => [t.name, t.from, t.to, yearOf(t), DATE.format(t.start), LONG.format(t.start), groupOf(t).label].some((x) => norm(x).includes(q)));
+  return all.filter((t) => [t.name, t.from, t.to, yearOf(t), DATE.format(t.start), LONG.format(t.start), groupOf(t).label, originOf(t)].some((x) => norm(x).includes(q)));
 }
 function visiblePlanned() {
   const q = norm(query.geplant).trim();
@@ -208,8 +213,8 @@ function paintGroups() {
           <small>${ts.length} ${ts.length === 1 ? 'Weg' : 'Wege'} · ${km(sum)} · ${fmtDuration(time)}</small></summary>
         <table class="wege-table"><tbody>${ts.map((t) => `
           <tr data-id="${esc(t.id)}" tabindex="0">
-            <td class="w-icon"><span class="msr" style="color:${groupOf(t).color}">${groupOf(t).icon}</span></td>
-            <td class="w-name"><strong>${esc(t.name || 'Weg')}</strong><small>${DATE.format(t.start)} · ${TIME.format(t.start)}${t.kind === 'nav' ? ' · Navigation' : t.kind === 'gpx' ? ' · GPX' : t.kind === 'health' ? ` · ${esc(appName(t.source?.app))}` : ''}</small></td>
+            <td class="w-icon"><span class="msr" style="color:${groupOf(t).color}">${iconOf(t)}</span></td>
+            <td class="w-name"><strong>${esc(t.name || 'Weg')}</strong><small>${esc([`${DATE.format(t.start)} · ${TIME.format(t.start)}`, originOf(t)].filter(Boolean).join(' · '))}</small></td>
             <td class="w-num">${fmtDistance(t.length)}<small>${fmtDuration(moving(t))}</small></td>
           </tr>`).join('')}</tbody></table>
       </details>`;
@@ -263,7 +268,8 @@ content.addEventListener('click', (e) => {
 });
 /**
  * Health Connect (Android-App): erst zeigen, was da ist – nach App und Art,
- * mit oder ohne Route –, dann die Routen als Wege übernehmen.
+ * mit oder ohne Route, schon übernommen –, dann die Routen als Wege
+ * übernehmen und sagen, was aus welchem Grund fehlt.
  */
 async function fromHealth() {
   let list;
@@ -271,41 +277,72 @@ async function fromHealth() {
     toast('Health Connect wird gelesen …');
     list = await healthSessions();
   } catch (err) { toast(String(err?.message ?? err)); return; }
+  // Ältere Importe kannten die Art noch nicht – nachtragen
+  if (await fillHealthTypes(list)) await load();
+  const known = await knownHealthIds();
+  const n = (x) => x.toLocaleString('de-DE');
   const routed = list.filter((x) => x.route !== 'none');
+  const fresh = routed.filter((x) => !known.has(x.id));
+  const consent = fresh.filter((x) => x.route === 'consent').length;
   const groups = new Map();
   for (const x of list) {
-    const key = `${appName(x.app)} · ${TYPE_NAME[x.type] ?? x.type}`;
-    const g = groups.get(key) ?? { n: 0, route: 0 };
+    const key = `${typeName(x.type)} · ${appName(x.app)}`;
+    const g = groups.get(key) ?? { n: 0, route: 0, icon: typeIcon(x.type) };
     g.n += 1;
     if (x.route !== 'none') g.route += 1;
     groups.set(key, g);
   }
   const rows = [...groups].sort((a, b) => b[1].n - a[1].n)
-    .map(([k, g]) => `<tr><td>${esc(k)}</td><td>${g.n}</td><td>${g.route}</td></tr>`).join('');
+    .map(([k, g]) => `<tr><td><span class="msr">${g.icon}</span> ${esc(k)}</td><td>${g.n}</td><td>${g.route}</td></tr>`).join('');
   const day = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
-  const recent = list.slice(0, 12).map((x) => `<tr><td>${day.format(x.start)}</td><td>${esc(TYPE_NAME[x.type] ?? x.type)}</td>
-      <td>${x.route === 'data' ? `${x.points.toLocaleString('de-DE')} Punkte` : x.route === 'consent' ? 'Route (Nachfrage)' : '–'}</td></tr>`).join('');
+  const recent = list.slice(0, 12).map((x) => `<tr><td>${day.format(x.start)}</td><td><span class="msr">${typeIcon(x.type)}</span> ${esc(typeName(x.type))}</td>
+      <td>${known.has(x.id) ? 'übernommen' : x.route === 'data' ? `${n(x.points)} Punkte` : x.route === 'consent' ? 'Route (Rückfrage)' : 'ohne Route'}</td></tr>`).join('');
   const v = await ask({
-    icon: 'favorite', title: 'Health Connect', className: 'news',
-    html: list.length ? `<p>${list.length.toLocaleString('de-DE')} Trainings, davon <strong>${routed.length.toLocaleString('de-DE')} mit Route</strong>.</p>
-      <table class="health-table"><thead><tr><th>App · Art</th><th>Trainings</th><th>mit Route</th></tr></thead><tbody>${rows}</tbody></table>
+    icon: 'favorite', title: 'Health Connect', className: consent ? 'news stacked' : 'news',
+    html: list.length ? `<p>${n(list.length)} Trainings, davon <strong>${n(routed.length)} mit Route</strong>
+        ${routed.length - fresh.length ? ` – ${n(routed.length - fresh.length)} schon übernommen` : ''}.</p>
+      <table class="health-table"><thead><tr><th>Art · App</th><th>Trainings</th><th>mit Route</th></tr></thead><tbody>${rows}</tbody></table>
       <h3>Zuletzt</h3>
       <table class="health-table"><tbody>${recent}</tbody></table>
-      ${list.some((x) => x.route === 'consent') ? '<p class="muted">„Nachfrage“: Health Connect fragt für diese Routen einzeln, ob WMap sie lesen darf.</p>' : ''}`
+      ${consent ? `<p class="perm-hint"><span class="msr">info</span> Für ${n(consent)} Routen fragt Health Connect einzeln nach.
+        Einfacher: in Health Connect bei WMap die Trainingsrouten auf „Immer erlauben“ stellen –
+        oder bei der ersten Rückfrage „Alle erlauben“ wählen.</p>` : ''}`
       : '<p>Health Connect hat keine Trainings – oder keine, die WMap lesen darf.</p>',
-    buttons: routed.length
-      ? [{ value: 'no', label: 'Abbrechen' }, { value: 'ok', label: `${routed.length.toLocaleString('de-DE')} Routen übernehmen`, icon: 'download', primary: true }]
-      : [{ value: 'no', label: 'OK', primary: true }],
+    buttons: [
+      ...(consent ? [{ value: 'settings', label: 'Health Connect öffnen', icon: 'settings' }] : []),
+      ...(fresh.length
+        ? [{ value: 'no', label: 'Abbrechen' }, { value: 'ok', label: `${n(fresh.length)} Routen übernehmen`, icon: 'download', primary: true }]
+        : [{ value: 'no', label: 'OK', primary: true }]),
+    ],
   });
+  if (v === 'settings') { healthSettings('health').catch((err) => toast(err.message ?? String(err))); return; }
   if (v !== 'ok') return;
+  let r;
   try {
-    const r = await importHealth(routed, { onProgress: (i, n) => { if (i % 5 === 0) toast(`Übernehme ${i + 1} von ${n} …`); } });
-    toast([`${r.added} ${r.added === 1 ? 'Weg' : 'Wege'} übernommen`, r.known ? `${r.known} gab es schon` : '',
-      r.empty ? `${r.empty} zu kurz` : '', r.denied ? 'eine Route nicht freigegeben – abgebrochen' : ''].filter(Boolean).join(' · '));
+    r = await importHealth(fresh, { onProgress: (i, total) => { if (i % 5 === 0) toast(`Übernehme ${i + 1} von ${total} …`); } });
   } catch (err) { toast(String(err?.message ?? err)); }
   await load();
   showList();
   fitView();
+  if (!r) return;
+  const why = [
+    r.known ? [r.known, 'schon übernommen'] : null,
+    r.dup ? [r.dup, 'gleicher Weg schon da (z. B. selbst aufgezeichnet oder aus einer anderen App)'] : null,
+    r.empty ? [r.empty, 'kürzer als 200 m oder ohne brauchbare Punkte'] : null,
+    r.denied ? [r.denied, 'Route nicht freigegeben – Rückfrage abgelehnt oder abgebrochen'] : null,
+  ].filter(Boolean);
+  const done = await ask({
+    icon: r.added ? 'task_alt' : 'info', title: `${n(r.added)} ${r.added === 1 ? 'Weg' : 'Wege'} übernommen`, className: 'news',
+    html: why.length ? `<p>Nicht übernommen:</p>
+      <table class="health-table"><tbody>${why.map(([k, t]) => `<tr><td>${esc(t)}</td><td>${n(k)}</td></tr>`).join('')}</tbody></table>
+      ${r.denied ? `<p class="perm-hint"><span class="msr">info</span> Stell in Health Connect bei WMap die Trainingsrouten auf „Immer erlauben“
+        und tippe dann noch einmal auf „Aus Health Connect“ – übernommen wird nur, was fehlt.</p>` : ''}` : '<p>Alles da.</p>',
+    buttons: [
+      ...(r.denied ? [{ value: 'settings', label: 'Health Connect öffnen', icon: 'settings' }] : []),
+      { value: 'ok', label: 'OK', primary: true },
+    ],
+  });
+  if (done === 'settings') healthSettings('health').catch((err) => toast(err.message ?? String(err)));
 }
 
 content.addEventListener('keydown', (e) => {
@@ -373,8 +410,9 @@ async function select(id, { push = false } = {}) {
   const hr = (t.hr ?? []).filter((x) => x > 0);
   content.innerHTML = `
     <label class="weg-name"><span class="msr">edit</span><input type="text" value="${esc(t.name ?? '')}" placeholder="Name" aria-label="Name des Wegs"></label>
-    <p class="weg-when"><span class="msr" style="color:${g.color}">${g.icon}</span>
+    <p class="weg-when"><span class="msr" style="color:${g.color}">${iconOf(t)}</span>
       ${LONG.format(t.start)}, ${TIME.format(t.start)}–${TIME.format(t.end)} Uhr
+      ${t.kind === 'health' ? `<br><span class="muted">${esc(originOf(t))} · aus Health Connect</span>` : ''}
       ${t.from || t.to ? `<br><span class="muted">${esc([t.from, t.to].filter(Boolean).map((x) => x.split(',')[0]).join(' → '))}</span>` : ''}</p>
     <div class="weg-stats">
       <div><strong>${fmtDistance(t.length)}</strong><small>Strecke</small></div>

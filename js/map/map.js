@@ -121,6 +121,7 @@ export function createMap(container, {
     showUserHeading: true,
   });
   map.addControl(geolocate, 'top-right');
+  guardGeolocate(map, geolocate);
 
   map.on('load', () => {
     // Mapterhorn liefert in Deutschland bis Zoom 16, darüber gibt es nur 404 –
@@ -1062,4 +1063,21 @@ export function showNavRoad(map, features = []) {
 export function showHover(map, lngLat) {
   whenReady(map, () => src(map, 'hover').setData(lngLat
     ? fc([{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: lngLat } }]) : EMPTY));
+}
+
+/**
+ * Android-App: Der Standort-Knopf fragt erst über den Dialog zu den
+ * Berechtigungen (ui/permissions.js) – ohne Freigabe täte er sonst nichts.
+ */
+function guardGeolocate(map, geolocate) {
+  if (!window.__TAURI__ || !/Android/i.test(navigator.userAgent)) return;
+  let ok = false;
+  map.getContainer().addEventListener('click', (e) => {
+    if (ok || !e.target.closest('.maplibregl-ctrl-geolocate')) return;
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    import('../ui/permissions.js')
+      .then(({ locationAccess }) => locationAccess())
+      .then((yes) => { if (yes) { ok = true; geolocate.trigger(); } });
+  }, true);
 }

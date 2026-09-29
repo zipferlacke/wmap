@@ -18,7 +18,7 @@ was Tauri zum Verpacken braucht. Nichts davon wird auf den Server geladen
 | `capabilities/mobile.json` | Handy-Apps: zusätzlich Standort über das Gerät – auch für die Webversion |
 | `plugins/health/` | eigenes Plugin: Trainings und Routen aus Health Connect (Android, Kotlin) – siehe unten |
 | `tauri-start.js` | wechselt beim Start zur Webversion, wenn sie erreichbar ist (s. u.) |
-| `icons/` | App-Icons, erzeugt mit `cargo tauri icon ../appdata/wmap-512.png` |
+| `icons/` | App-Icons, erzeugt mit `cargo tauri icon ../appdata/wmap-512.png` (Android: `tools/android-symbole.py`, mit Rand zum Maskieren) |
 | `web-kopieren.sh` | kopiert die Web-Dateien vor jedem Build nach `web/` und bindet `tauri-start.js` in deren `index.html` ein |
 
 Generiert, nicht in Git:
@@ -107,6 +107,7 @@ Eigenes Tauri-Plugin, nur Android tut etwas: Die Befehle stehen in Kotlin
 | `request_access` | Freigabe-Dialog von Health Connect |
 | `sessions { days }` | alle Trainings: Art, Zeit, App, Route ja/nein/Nachfrage |
 | `route { id }` | Punkte [lon, lat, Höhe, Zeit]; fremde Routen ohne Dauerfreigabe fragt Health Connect einzeln |
+| `open_settings { target }` | `health`: Seite von WMap in Health Connect (Routen „Immer erlauben“, widerrufen); `app`: App-Info (Standort); `location`: Standort am Gerät |
 
 - Rechte (Manifest des Plugins): nur lesen – `READ_EXERCISE`,
   `READ_EXERCISE_ROUTES`, `READ_HEALTH_DATA_HISTORY` (sonst nur 30 Tage).
@@ -115,7 +116,10 @@ Eigenes Tauri-Plugin, nur Android tut etwas: Die Befehle stehen in Kotlin
 - minSdk 26 (`bundle.android.minSdkVersion`, `tools/android-einbinden.py`
   überträgt es ins erzeugte Projekt).
 - In der Web-App: `js/services/health.js`, Knopf „Aus Health Connect“ unter
-  Meine Touren → Aufgezeichnet (nur in der Android-App).
+  Meine Touren → Aufgezeichnet (nur in der Android-App); Freigaben erklärt
+  `js/ui/permissions.js` (auch den Standort – dafür stehen
+  `geolocation:allow-check-permissions` und `…-request-permissions` in
+  `capabilities/mobile.json`).
 - **Play Store:** Gesundheitsdaten brauchen dort eine eigene Erklärung
   (Formular „Health Connect“ in der Play Console) und in der
   Datensicherheit „Fitness“ – erhoben, nur auf dem Gerät, nicht geteilt.
