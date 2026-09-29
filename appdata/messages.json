@@ -11,16 +11,16 @@
             "version": "2.0.1",
             "date": "2026-09-29",
             "changes": [
+                "Ordner-Kachel neu: Ordner synchronisieren, einmal aus einem Ordner importieren oder alles als ZIP exportieren – mit verbundenem Ordner siehst du, welcher es ist, und kannst ihn ändern",
+                "Abgleich mit Fortschritt, Prozent und Restzeit; beim ersten Mal deutlich schneller",
+                "Ein unterbrochener Abgleich macht auf der nächsten Seite weiter, übernommene Touren erscheinen sofort in „Meine Touren“",
+                "Health Connect gleicht standardmäßig beim Öffnen ab (wenn freigegeben)",
                 "Fix: „Meine Touren“ und „Entdecken“ blieben schwarz – in den Apps für Android, Windows, macOS und Linux",
                 "Fix: Standort in der Navigation kam nur alle 10 s oder gar nicht mehr – in der Android-App",
-                "Fix: Standort in der Navigation ruckelte und hing nach, wenn das Signal kurz schwach war – in der Web-App",
+                "Fix: Standort in der Navigation setzte immer wieder aus und kam verspätet – in der Web-App",
                 "Fix: Aufzeichnen während der Navigation bekam keine Punkte – in der Android-App",
                 "Fix: Ordner-Abgleich brach beim Wechsel der Seite ab, „Letzter Abgleich“ blieb auf „noch nie“ – in den Apps und in Chrome/Edge",
-                "Fix: „Gleiche ab …“ blieb stehen, wenn sich nichts geändert hatte – auf „Sicherung & Synchronisation“",
-                "Neu: Ordner-Abgleich mit Fortschritt, Prozent und Restzeit; beim ersten Mal deutlich schneller",
-                "Neu: Ein unterbrochener Abgleich macht auf der nächsten Seite weiter, übernommene Touren erscheinen sofort in „Meine Touren“",
-                "Neu: Health Connect gleicht standardmäßig beim Öffnen ab (wenn freigegeben)",
-                "Neu: Die ZIP-Sicherung klappt zu, sobald ein Ordner abgleicht – der Ordner hat schon alles"
+                "Fix: „Gleiche ab …“ blieb stehen, wenn sich nichts geändert hatte – auf „Sicherung & Synchronisation“"
             ]
         },
         {

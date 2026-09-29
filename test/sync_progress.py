@@ -1,5 +1,5 @@
 """Abgleich mit Fortschritt (data/folder.js, pages/sync.js): Fortschritt je Datei, Abbruch mittendrin →
-der nächste Abgleich liest nur den Rest, Seite zeigt „x von n (… %)“, Sicherung klappt mit Ordner zu.
+der nächste Abgleich liest nur den Rest, Seite zeigt „x von n (… %)“; Knöpfe mit Ordner (ändern, exportieren) und ohne (synchronisieren, importieren, exportieren).
 Standort in der App (core/native.js): eine gemeinsame Abfrage für alle, jede Sekunde statt alle 10 s."""
 import json
 import sys
@@ -62,7 +62,12 @@ const done = (v) => { window.__result = JSON.stringify(v); };
   out.count = (await tracks.all()).filter((t) => t.id.startsWith('prog')).length;
   out.pendingAfter = (await folder.info()).pending;
   await new Promise((r) => setTimeout(r, 300));
-  out.backup = !!document.querySelector('details.sync-backup');
+  const buttons = () => [...document.querySelectorAll('.sync-actions > .button')].map((x) => x.innerText.replace(/^\S+\s+/, '').trim());
+  out.withFolder = buttons();
+  out.backupSection = [...document.querySelectorAll('.sync h3')].some((h) => /Sicherung/.test(h.innerText));
+  await folder.disconnect();
+  await new Promise((r) => setTimeout(r, 300));
+  out.without = buttons();
   out.text = document.querySelector('.sync').innerText.slice(0, 200);
   for (let k = 0; k < 60; k += 1) await tracks.remove(`prog${k}`);
   return out;
@@ -114,7 +119,9 @@ with Browser(width=420, height=900) as b:
     print(json.dumps(r, ensure_ascii=False, indent=1))
     ok = isinstance(r, dict) and r['err'] == 'Seite gewechselt' and r['events'] > 5 and r['partial'] \
         and r['secondReads'] < 40 and r['count'] == 60 and r['done'] and r['pendingAfter'] is False \
-        and r['busyText'] and '%' in r['busyText'] and r['backup']
+        and r['busyText'] and '%' in r['busyText'] and not r['backupSection'] \
+        and r['withFolder'] == ['Jetzt abgleichen', 'Ordner ändern', 'Exportieren (ZIP)', 'Trennen'] \
+        and r['without'] == ['Ordner synchronisieren', 'Aus Ordner importieren', 'Exportieren (ZIP)']
     print('Abgleich stimmt:', ok)
     if not ok:
         b.errors.append(('abgleich', 'Ergebnis falsch'))

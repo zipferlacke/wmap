@@ -676,12 +676,23 @@ das noch nicht erlaubt ist (Standort-Knopf, Navigation, Aufzeichnen, Route
 ab „Mein Standort“), und unter Einstellungen → Berechtigungen. Beim Start
 der Karte wird nicht gefragt – ohne Freigabe bleibt die letzte Ansicht.
 
-## 15. Sicherung & Synchronisation: Ordner, Health Connect, ZIP
+## 15. Sicherung & Synchronisation: Ordner, Health Connect
 
 Eigene Seite `sync.html` (Kachel in der Übersicht; Einstellungen → Daten und
-unten in Meine Touren verweisen dorthin). Drei Teile, je mit letztem
+unten in Meine Touren verweisen dorthin). Zwei Teile, je mit letztem
 Abgleich, Fehler (rot, auch auf der Kachel) und **Automatisch**: aus / beim
 Öffnen von WMap / beim Öffnen und alle 30 Minuten (`js/data/auto-sync.js`).
+
+**Knöpfe der Ordner-Kachel:**
+
+| Zustand | Knöpfe |
+|---|---|
+| kein Ordner | **Ordner synchronisieren** · Aus Ordner importieren · Exportieren (ZIP) |
+| Ordner verbunden | Jetzt abgleichen · Ordner ändern · Exportieren (ZIP) · Trennen – dazu „Synchronisiert mit *Name*“ |
+| Firefox, Safari | Aus Ordner importieren · Exportieren (ZIP) |
+
+Darunter „Export als ZIP wieder einspielen: ZIP wählen“ (nicht bei
+verbundenem Ordner – der hat ja schon alles).
 
 ### Ordner
 
@@ -732,9 +743,13 @@ WMap/
     Ordnerdialog. Die App liest und schreibt nur in diesem Ordner.
   - **Chrome und Edge** (File System Access API); der Browser fragt nach
     einem Neustart ggf. erneut („Erlauben und abgleichen“).
-  - **Firefox, Safari:** kein fester Ordner – „GPX aus Ordner einlesen“ holt
-    einmalig alle GPX herein (auch bei leerem Ordner mit Meldung), „Alles
-    teilen“ schickt sie ans Teilen-Menü.
+  - **Firefox, Safari:** kein fester Ordner – nur importieren und
+    exportieren.
+- **Aus Ordner importieren** (`importFolder`): liest einen Ordner einmal ein,
+  ohne ihn zu verbinden – in der App über das Plugin (eigener Platz
+  `import`, danach wieder freigegeben), im Browser über die Ordnerauswahl.
+  Liegt eine `wmap-sicherung.json` darin (ausgepackter Export), kommt alles
+  daraus, sonst die GPX-Dateien (Doppelte werden erkannt).
 
 ### Health Connect (Android-App)
 
@@ -745,16 +760,12 @@ Connect einzeln fragt, bleiben beim automatischen Holen liegen (Hinweis:
 in Health Connect WMap → Trainingsrouten „Immer erlauben“). Dazu
 „Berechtigungen“ (Dialog aus Abschnitt 14).
 
-### Sicherung als ZIP
+### Export als ZIP
 
 Dieselbe Ordnung wie im Ordner (GPX, Bus & Bahn, `Lesezeichen.json`), dazu
-`WMap/wmap-sicherung.json` mit allem für die Wiederherstellung. „Sicherung
-laden“ nimmt das ZIP (oder eine alte `.json`); ein ZIP ohne JSON, etwa ein
+`WMap/wmap-sicherung.json` mit allem für die Wiederherstellung. „ZIP wählen“
+nimmt das ZIP (oder eine alte `.json`); ein ZIP ohne JSON, etwa ein
 gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
-
-Gleicht ein Ordner ab, ist der Teil zugeklappt („Sicherung als ZIP“): Der
-Ordner hat alles in derselben Ordnung und ist immer aktuell – die ZIP ist
-dann nur noch fürs Archiv oder für ein Gerät ohne Ordner.
 
 ## 16. Teilen, Standort anfragen, Bild in Bild
 

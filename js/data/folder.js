@@ -13,7 +13,7 @@
  *
  * Heißt der verbundene Ordner selbst „WMap“, entfällt die Ebene. Dateien aus
  * der alten Ordnung (Geplant/, Abgeschlossen/, Gemerkt.json) ziehen beim
- * Abgleich um. Dieselbe Ordnung hat die Sicherung als ZIP (zipBackup).
+ * Abgleich um. Dieselbe Ordnung hat der Export als ZIP (zipBackup).
  *
  * GPX-Dateien von woanders (Garmin, Komoot-Export …) dürfen irgendwo im
  * Ordner liegen: mit Zeiten werden sie ein Weg, sonst eine Tour.
@@ -633,7 +633,44 @@ export async function importLoose(fileList) {
   return out;
 }
 
-/* ── Sicherung als ZIP: dieselbe Ordnung wie im verbundenen Ordner ────────── */
+/**
+ * Einmal aus einem Ordner importieren, ohne ihn zu verbinden. Browser: die
+ * Dateien aus <input webkitdirectory>; App (ohne `fileList`): Ordnerdialog
+ * über das Plugin, eigener Platz „import“, danach wieder freigegeben.
+ * Liegt eine wmap-sicherung.json darin (ausgepackter Export), kommt alles
+ * daraus, sonst die GPX-Dateien. → { imported, skipped }
+ */
+export async function importFolder(fileList = null) {
+  if (fileList) return importFrom([...fileList]);
+  let picked;
+  try { picked = await call('pick', { slot: 'import' }); } catch (err) {
+    if (/abgebrochen|cancel/i.test(String(err))) throw Object.assign(new Error('abgebrochen'), { name: 'AbortError' });
+    throw new Error(String(err?.message ?? err));
+  }
+  try {
+    const { files } = await call('list', { slot: 'import' });
+    return await importFrom(files.map((f) => ({
+      name: f.path.split('/').pop(),
+      webkitRelativePath: `${picked.name ?? 'Ordner'}/${f.path}`,
+      lastModified: f.modified || Date.now(),
+      text: async () => (await call('read', { slot: 'import', path: f.path })).text,
+    })));
+  } finally {
+    await call('disconnect', { slot: 'import' }).catch(() => {});
+  }
+}
+
+async function importFrom(files) {
+  const full = files.find((f) => /^wmap-sicherung[^/]*\.json$/i.test(f.name));
+  if (full) {
+    const n = await restore(await full.text());
+    dispatchEvent(new CustomEvent('wmap:folder', { detail: { imported: n } }));
+    return { imported: n, skipped: 0 };
+  }
+  return importLoose(files);
+}
+
+/* ── Export als ZIP: dieselbe Ordnung wie im verbundenen Ordner ───────────── */
 
 /**
  * Geplante und aufgezeichnete Touren als GPX, Bus & Bahn und Lesezeichen als
@@ -671,20 +708,6 @@ export async function restoreZip(file) {
   }));
   return (await importLoose(gpx)).imported;
 }
-
-/** Alle Wege und Touren als GPX-Dateien teilen – am Handy z. B. „In Proton Drive speichern“. */
-export async function shareAll() {
-  const files = [
-    ...(await tracks.all()).map((t) => new File([trackGpx(t)], pathOf('track', t).split('/').pop(), { type: 'application/gpx+xml' })),
-    ...tours.all().map((t) => new File([serialize({ kind: 'tour', item: t })], pathOf('tour', t).split('/').pop(), { type: 'application/gpx+xml' })),
-  ];
-  if (!files.length) throw new Error('Noch keine Wege oder Touren');
-  if (!navigator.canShare?.({ files })) throw new Error('Teilen von Dateien geht hier nicht – bitte „Sicherung speichern“ nehmen');
-  await navigator.share({ files, title: 'WMap – Wege und Touren' });
-  return files.length;
-}
-
-export const canShareFiles = () => typeof navigator !== 'undefined' && !!navigator.canShare?.({ files: [new File([''], 'a.gpx', { type: 'application/gpx+xml' })] });
 
 /** „3 übernommen, 2 gespeichert“ */
 export function syncSummary(r) {
