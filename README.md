@@ -944,7 +944,7 @@ Zentral für alle Projekte unter `wuefl_products` – die Skripte liegen neben
 
 ```bash
 tauri-android wmap              # bauen, aufs Handy, Protokoll
-tauri-android wmap bauen        # nur bauen (auch: sauber, install, log)
+tauri-android wmap build        # nur bauen (auch: clean, install, log, connect)
 tauri-android wmap release      # signiertes AAB (Play Store) + APKs → src-tauri/target/android-release/
 takeshots wmap                  # Screenshots nach appdata/images/
 takeshots wmap --eigener-server # ohne Docker
