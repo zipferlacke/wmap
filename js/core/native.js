@@ -4,8 +4,9 @@
  * das jeweilige Plugin da ist. Die Webversion verliert dadurch nichts.
  *
  * Bisher: Standort. Das Tauri-Plugin „geolocation“ liefert auf dem Handy
- * dieselben Daten wie der Browser, läuft aber als echte App weiter, wenn
- * der Bildschirm aus ist. Fehlt dort die Freigabe, kommt vorher der Dialog
+ * dieselben Daten wie der Browser. Wie dort ruht es, solange die App im
+ * Hintergrund bzw. der Bildschirm aus ist (das Plugin beendet die Abfrage
+ * in onPause, onResume startet sie neu). Fehlt die Freigabe, kommt vorher der Dialog
  * zu den Berechtigungen (ui/permissions.js); mit `ask: false` in den
  * Optionen (Start der Karte) wird still abgelehnt.
  */

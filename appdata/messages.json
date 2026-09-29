@@ -11,9 +11,8 @@
             "version": "2.0.1",
             "date": "2026-09-29",
             "changes": [
-                "Sicherung & Synchronisation vereinfacht: Ordner synchronisieren, einmal importieren oder als ZIP exportieren – alles in einer Kachel",
-                "Bessere Fortschrittsanzeige beim Synchronisieren – mit Prozent und Restzeit, beim ersten Mal auch deutlich schneller",
-                "Synchronisieren läuft im Hintergrund weiter – die Seite muss nicht mehr offen bleiben",
+                "Sicherung & Synchronisation vereinfacht und besser Performance.",
+                "Bessere Fortschrittsanzeige beim Synchronisieren – mit Prozent und Restzeit und läft im Hintegrund ab jetzt",
                 "Standard beim Synchronisieren geändert zu „beim App-Start synchronisieren“ – auch für Health Connect",
                 "Fix: „Meine Touren“ und „Entdecken“ blieben schwarz – in den Apps für Android, Windows, macOS und Linux",
                 "Fix: Standort in der Navigation kam nur alle 10 s oder gar nicht mehr – in der Android-App",
