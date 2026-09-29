@@ -30,6 +30,7 @@ const n = (x, one, many) => `${x.toLocaleString('de-DE')} ${x === 1 ? one : many
 /** Kurzer Stand für die Kachel „Sicherung & Synchronisation“ */
 async function syncCount() {
   const i = await folder.info().catch(() => null);
+  if (i?.connected && folder.busy) return 'Gleiche ab …';
   if (i?.error) return 'Fehler beim Abgleich';
   if (i?.connected) return `Ordner ${i.name}${i.last ? ` · ${DAY.format(i.last)}` : ''}`;
   const h = healthAvailable ? healthSync.last() : null;
@@ -163,4 +164,5 @@ $('.dash-version').addEventListener('click', () => showChangelog());
 paintTiles();
 paintStore();
 addEventListener('wmap:folder', paintTiles);
+addEventListener('wmap:folder-progress', (e) => { if (e.detail.busy || e.detail.done) paintTiles(); });
 autoSync();

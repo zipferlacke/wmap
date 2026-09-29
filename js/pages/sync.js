@@ -7,7 +7,8 @@
  *                   ohne Ordner-Zugriff (Firefox, Safari): GPX einlesen, teilen
  *   Health Connect  Trainings holen (Fortschritt am Knopf, am Ende nur eine
  *                   Meldung), automatisch wie oben, Freigaben (nur Android-App)
- *   Sicherung       alles als ZIP speichern bzw. einspielen
+ *   Sicherung       alles als ZIP speichern bzw. einspielen – gleicht ein
+ *                   Ordner ab, zugeklappt (der Ordner ist dann die Sicherung)
  */
 import { mountAppBar } from '../ui/appbar.js';
 import { ask, toast } from '../ui/dialogs.js';
@@ -32,6 +33,21 @@ const autoSelect = (name, value, hint) => `<label class="settings-select">
   </label>`;
 
 const status = (icon, text, cls = '') => `<p class="sync-status ${cls}"><span class="msr">${icon}</span><span>${text}</span></p>`;
+
+/** „Gleiche ab … 40 von 96 (42 %) · noch etwa 1 Min.“ */
+function progressText(p) {
+  if (!p?.n) return 'Gleiche ab …';
+  const pct = Math.floor((p.i / p.n) * 100);
+  const took = Date.now() - p.since;
+  let rest = '';
+  if (p.i >= 3 && took > 2000 && p.i < p.n) {
+    const s = Math.round(((p.n - p.i) * took) / p.i / 1000);
+    rest = s < 20 ? ' · gleich fertig' : s < 90 ? ` · noch etwa ${Math.round(s / 10) * 10} s` : ` · noch etwa ${Math.round(s / 60)} Min.`;
+  }
+  return `Gleiche ab … ${p.i} von ${p.n} (${pct} %)${rest}`;
+}
+const progressBar = (p) => `<div class="sync-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${p?.n ?? 0}" aria-valuenow="${p?.i ?? 0}">
+    <i style="width:${p?.n ? Math.round((p.i / p.n) * 100) : 5}%"></i></div>`;
 
 /* ── Ordner ───────────────────────────────────────────────────────────────── */
 
@@ -73,12 +89,15 @@ async function folderHtml() {
   }
   const again = i.permission !== 'granted';
   const busy = folder.busy || connecting;
+  const p = folder.progress;
   return `<section>
     <h3><span class="msr">folder_open</span> Ordner</h3>
     ${status('folder_open', `Verbunden mit <strong>${esc(i.name)}</strong>`)}
-    ${busy ? status('sync', 'Gleiche ab …', 'busy')
+    ${busy ? `<div class="folder-progress">${status('sync', progressText(p), 'busy')}${progressBar(p)}</div>`
       : again ? status('folder_managed', 'Der Browser braucht wieder deine Erlaubnis für den Ordner.', 'warn')
-        : status('schedule', `Letzter Abgleich: ${when(i.last)}${i.last ? ` – ${esc(syncSummary(i.result))}` : ''}`)}
+        : i.pending ? status('sync_problem', 'Der letzte Abgleich wurde unterbrochen – er läuft beim nächsten Öffnen einer Seite weiter.', 'warn')
+          : status('schedule', `Letzter Abgleich: ${when(i.last)}${i.last ? ` – ${esc(syncSummary(i.result))}` : ''}`)}
+    ${busy ? '<p class="settings-hint">Du kannst WMap weiter benutzen. Wechselst du die Seite, macht die nächste dort weiter, wo dieser Abgleich aufgehört hat.</p>' : ''}
     ${i.error && !busy ? status('error', `Fehler am ${when(i.error.at)}: ${esc(i.error.message)}`, 'error') : ''}
     <div class="sync-actions">
       <button type="button" class="button${again ? ' primary' : ''}" data-act="sync" ${busy ? 'disabled' : ''}><span class="msr">sync</span> ${again ? 'Erlauben und abgleichen' : 'Jetzt abgleichen'}</button>
@@ -99,8 +118,7 @@ async function healthHtml() {
   const line = !st.available ? status('block', esc(st.reason), 'warn')
     : !st.read ? status('favorite', 'Noch nicht freigegeben – WMap darf Health Connect noch nicht lesen.', 'warn')
       : status('check_circle', `Freigegeben${st.routes ? ', Routen immer' : ', Routen mit Rückfrage'}${st.values ? ', mit Puls &amp; Co.' : ''}`);
-  const bar = busy ? `<div class="sync-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${progress?.n ?? 0}" aria-valuenow="${progress?.i ?? 0}">
-      <i style="width:${progress?.n ? Math.round((progress.i / progress.n) * 100) : 5}%"></i></div>` : '';
+  const bar = busy ? progressBar(progress) : '';
   return `<section>
     <h3><span class="msr">favorite</span> Health Connect</h3>
     ${line}
@@ -119,21 +137,41 @@ async function healthHtml() {
 
 /* ── Sicherung ────────────────────────────────────────────────────────────── */
 
-const backupHtml = () => `<section>
-    <h3><span class="msr">folder_zip</span> Sicherung</h3>
-    <p class="settings-hint">Alles in einer ZIP-Datei – dieselbe Ordnung wie im Ordner, dazu eine vollständige Sicherung. Zum Mitnehmen auf ein anderes Gerät oder fürs Archiv.</p>
-    <div class="sync-actions">
+/**
+ * Ordner und Sicherung haben dieselbe Ordnung. Der Ordner gleicht laufend ab
+ * (und dein Sync-Programm hebt ihn auf) – dann ist die ZIP nur noch für ein
+ * Archiv oder ein Gerät ohne Ordner da und klappt zu.
+ */
+async function backupHtml() {
+  const i = folder.supported ? await folder.info().catch(() => null) : null;
+  const synced = !!(i?.connected && i.last);
+  const body = `<div class="sync-actions">
       <button type="button" class="button" data-act="backup"><span class="msr">folder_zip</span> Sicherung speichern (ZIP)</button>
       <label class="button"><span class="msr">settings_backup_restore</span> Sicherung laden<input type="file" accept=".zip,.json,application/zip,application/json" hidden data-file="restore"></label>
-    </div>
+    </div>`;
+  if (synced) {
+    return `<section>
+    <details class="sync-backup">
+      <summary><span class="msr">folder_zip</span> Sicherung als ZIP</summary>
+      <p class="settings-hint">Brauchst du nicht extra: Dein Ordner hat schon alles, in derselben Ordnung. Die ZIP ist für ein Archiv oder für ein Gerät ohne Ordner.</p>
+      ${body}
+    </details>
   </section>`;
+  }
+  return `<section>
+    <h3><span class="msr">folder_zip</span> Sicherung</h3>
+    <p class="settings-hint">Alles in einer ZIP-Datei – dieselbe Ordnung wie im Ordner, dazu eine vollständige Sicherung. Zum Mitnehmen auf ein anderes Gerät oder fürs Archiv.
+      Mit einem verbundenen Ordner brauchst du sie nicht: Der hat alles und ist immer aktuell.</p>
+    ${body}
+  </section>`;
+}
 
 let painting = null;
 async function render() {
   // Mehrere Anlässe kurz nacheinander: einmal zeichnen
   painting ??= (async () => {
     await null;
-    root.innerHTML = `${await folderHtml()}${await healthHtml()}${backupHtml()}
+    root.innerHTML = `${await folderHtml()}${await healthHtml()}${await backupHtml()}
       <p class="settings-hint sync-note"><span class="msr">lock</span> Alles bleibt auf deinen Geräten – WMap hat dafür keinen Server. Was im Ordner liegt, gleicht nur dein eigenes Sync-Programm ab.</p>`;
   })().finally(() => { painting = null; });
   return painting;
@@ -218,6 +256,12 @@ root.addEventListener('change', async (e) => {
 root.addEventListener('cancel', (e) => { if (e.target.matches?.('[data-file="folder"]')) toast('Kein Ordner gewählt'); }, true);
 
 addEventListener('wmap:folder', () => render());
+addEventListener('wmap:folder-progress', (e) => {
+  // Fortschritt: nur Zeile und Balken, nicht die ganze Seite neu
+  const box = root.querySelector('.folder-progress');
+  if (e.detail?.done || !box) { render(); return; }
+  box.innerHTML = `${status('sync', progressText(e.detail), 'busy')}${progressBar(e.detail)}`;
+});
 /** Verbunden, aber noch nie abgeglichen (z. B. gerade aus dem Ordnerdialog zurück): jetzt */
 async function firstSync() {
   const i = await folder.info().catch(() => null);

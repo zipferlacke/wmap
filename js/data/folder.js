@@ -51,8 +51,10 @@ const core = typeof window !== 'undefined' ? window.__TAURI__?.core : null;
 const nativeHere = !!core;
 const browserHere = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 
-let conf = null;          // { id, native?, handle?, name, index: { pfad: { id, kind, at, hash, rev } }, last, result, error }
+let conf = null;          // { id, native?, handle?, name, index: { pfad: { id, kind, at, hash, rev } }, last, result, error, pending }
 let syncing = null;
+let progress = null;      // { i, n, since } während des Abgleichs
+let syncTracks = null;    // alle Wege, einmal je Abgleich geladen (Doppelte erkennen)
 let testBackend = null;   // nur für Tests: ein Ordner im Speicher
 
 async function load() {
@@ -153,13 +155,16 @@ export const folder = {
   /** Läuft gerade ein Abgleich? */
   get busy() { return !!syncing; },
 
-  /** Stand für die Anzeige: { connected, name, permission, last, result, error } */
+  /** Wie weit? { i, n, since } – Dateien bzw. Einträge, seit wann (ms) – oder null */
+  get progress() { return progress; },
+
+  /** Stand für die Anzeige: { connected, name, permission, last, result, error, pending } */
   async info() {
     const c = await load();
     if (!c) return { connected: false };
     const permission = await backendOf(c).permission(false).catch(() => 'gone');
     if (permission === 'gone') { await this.disconnect(); return { connected: false }; }
-    return { connected: true, name: c.name, permission, last: c.last ?? null, result: c.result ?? null, error: c.error ?? null };
+    return { connected: true, name: c.name, permission, last: c.last ?? null, result: c.result ?? null, error: c.error ?? null, pending: !!c.pending };
   },
 
   /** Ordner auswählen (braucht einen Klick) und gleich abgleichen. */
@@ -196,7 +201,7 @@ export const folder = {
   async sync({ interactive = false } = {}) {
     if (syncing) return syncing;
     syncing = run(interactive).finally(() => { syncing = null; });
-    dispatchEvent(new CustomEvent('wmap:folder', { detail: { busy: true } }));
+    dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { busy: true } }));
     return syncing;
   },
 
@@ -215,18 +220,26 @@ async function run(interactive) {
   const be = backendOf(c);
   if (await be.permission(interactive) !== 'granted') return { needsPermission: true };
   try {
+    // Bis zum Ende „angefangen“: bricht er ab, macht die nächste Seite weiter
+    if (!c.pending && !testBackend) { c.pending = true; await persist(); }
     const out = await syncAll(c, be);
     c.last = Date.now();
     c.result = out;
     c.error = null;
+    c.pending = false;
     await persist();
     if (out.imported || out.removed || out.settings === 'imported') dispatchEvent(new CustomEvent('wmap:folder', { detail: out }));
+    dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { done: true } }));
     return out;
   } catch (err) {
     c.error = { at: Date.now(), message: String(err?.message ?? err) };
     await persist();
     dispatchEvent(new CustomEvent('wmap:folder', { detail: { error: c.error } }));
+    dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { done: true } }));
     throw err;
+  } finally {
+    progress = null;
+    syncTracks = null;
   }
 }
 
@@ -259,6 +272,35 @@ async function syncAll(c, be) {
   const seen = new Set();
   const used = new Set(files.map((f) => f.path.toLowerCase()));
   const out = { imported: 0, written: 0, removed: 0, moved: 0 };
+  syncTracks = [...locals.values()].filter((e) => e.kind === 'track').map((e) => e.item);
+
+  /*
+   * Fortschritt melden und unterwegs speichern: Wer die Seite wechselt,
+   * bricht den Abgleich ab – die nächste Seite macht dort weiter, statt
+   * alle Dateien noch einmal zu lesen (Dateien im Index gelten als bekannt).
+   */
+  // Erst die Dateien; was danach noch zu schreiben ist, kommt am Ende dazu
+  progress = { i: 0, n: files.length, since: Date.now() };
+  let told = 0, saved = Date.now(), shown = 0;
+  const step = async () => {
+    progress.i += 1;
+    const now = Date.now();
+    if (now - told > 250 || progress.i === progress.n) {
+      told = now;
+      dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { ...progress } }));
+    }
+    if (now - saved > 2000) {
+      saved = now;
+      c.index = { ...index, ...next };
+      c.pending = true;
+      await persist();
+      // Schon Übernommenes zeigen (Meine Touren), nicht erst am Ende
+      if (out.imported > shown) {
+        shown = out.imported;
+        dispatchEvent(new CustomEvent('wmap:folder', { detail: { partial: true, imported: out.imported } }));
+      }
+    }
+  };
 
   /**
    * Schreiben und merken. Liegt eine WMap-Datei (`move`) nicht, wo sie
@@ -278,6 +320,7 @@ async function syncAll(c, be) {
   };
 
   for (const f of files) {
+    await step();
     const known = index[f.path] ?? null;
     const sameTime = known && f.lastModified && f.lastModified === known.at;
     let text = null;
@@ -336,8 +379,10 @@ async function syncAll(c, be) {
     } else next[f.path] = { id, kind: mine.kind, at: f.lastModified, hash: h, rev: r, ours };
   }
 
+  progress.n += [...locals.keys()].filter((id) => !seen.has(id)).length;
   for (const [id, entry] of locals) {
     if (seen.has(id)) continue;
+    await step();
     if (Object.values(index).some((v) => v.id === id)) {
       // War schon im Ordner und ist dort weg: dort gelöscht
       if (entry.kind === 'track') await trackStore.remove(id);
@@ -372,7 +417,7 @@ function idIn(path, text) {
 }
 
 async function entryOf(id) {
-  const t = (await tracks.all()).find((x) => x.id === id);
+  const t = await tracks.get(id).catch(() => null);
   if (t) return { kind: 'track', item: t };
   const tour = tours.all().find((x) => x.id === id);
   if (tour) return { kind: 'tour', item: tour };
@@ -508,10 +553,11 @@ async function importFile(f, id, before = null) {
     }
     const [t] = parseGpx(f.text);
     if (!t) return null;
-    const twin = !before && !id && (await tracks.all()).find((x) => sameTrack(x, t));
+    const twin = !before && !id && (syncTracks ?? await tracks.all()).find((x) => sameTrack(x, t));
     if (twin) return { id: twin.id, kind: 'track', rev: rev(twin) };
     const track = { ...before, ...t, id: id ?? before?.id ?? t.id, updated: f.lastModified || Date.now() };
     await tracks.putQuiet(track);
+    syncTracks?.push(track);
     return { id: track.id, kind: 'track', rev: track.updated };
   } catch { return null; }
 }
@@ -651,8 +697,10 @@ export function syncSummary(r) {
 /** Still abgleichen – wenn verbunden, erlaubt und je nach Einstellung (`periodic`: der 30-Minuten-Takt) */
 export async function autoFolderSync({ periodic = false } = {}) {
   const mode = folder.auto;
-  if (!folder.supported || mode === 'off' || (periodic && mode !== 'every30')) return null;
+  if (!folder.supported || (periodic && mode !== 'every30')) return null;
   const i = await folder.info().catch(() => null);
   if (!i?.connected || i.permission !== 'granted') return null;
+  // Abgebrochen (Seite gewechselt): immer fertig machen, auch wenn „Aus“ gewählt ist
+  if (mode === 'off' && !i.pending) return null;
   return folder.sync().catch(() => null);
 }

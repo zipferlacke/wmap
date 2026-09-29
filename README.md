@@ -240,6 +240,18 @@ Start mit **Los** unter einer Route. Die Karte wechselt in die Fahreransicht.
   (Breite in Metern, Pfeile auf dem Asphalt, Übergänge über 50 m weich). Der
   Pfeil fährt dann in seiner Spur rechts der Mitte.
 
+**Standort** (`js/core/native.js`, `#startGps` in `js/nav/navigation.js`)
+
+- Im Browser `watchPosition`. Nach 6 s ohne Meldung steht „GPS-Signal
+  schwach“; neu gestartet wird erst nach **20 s** Stille (ein Neustart
+  braucht selbst Sekunden bis zur ersten Position), nach einer
+  Zeitüberschreitung gar nicht – die Abfrage läuft laut Standard weiter.
+- In der Handy-App das Tauri-Plugin `geolocation`. Es kennt nur **einen**
+  Empfänger (jede neue Abfrage ersetzt die vorige) und nimmt `timeout` als
+  Abstand zwischen zwei Meldungen. Darum eine gemeinsame Abfrage mit **1 s**
+  Abstand für alle (Navigation, Aufzeichnung); sie endet erst 0,5 s nach dem
+  letzten Empfänger, ein Neustart der Navigation nutzt dieselbe weiter.
+
 **Kamera** – feste Stufen statt ständigem Nachregeln; eher von schräg oben
 als aus Fahrersicht, damit Häuser Straße und Abzweig nicht verdecken:
 
@@ -691,6 +703,12 @@ WMap/
 - Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene. Dateien
   aus der alten Ordnung (`Geplant/`, `Abgeschlossen/<Jahr>/`, `Gemerkt.json`)
   ziehen beim ersten Abgleich um.
+- **Fortschritt:** „Gleiche ab … 40 von 96 (42 %) · noch etwa 1 Min.“ mit
+  Balken, in der Übersicht „Gleiche ab …“ auf der Kachel. Alle 2 s wird der
+  Stand gespeichert (`pending`) und schon Übernommenes gemeldet (Meine
+  Touren zeigt es sofort). Wer die Seite wechselt, bricht den Abgleich ab –
+  die nächste Seite mit `autoSync()` macht dort weiter (auch bei Automatik
+  „Aus“) und liest nur, was noch nicht im Stand war.
 - **Abgleich** beim Öffnen und 2,5 s nach jeder Änderung (je nach
   Automatik), sonst mit „Jetzt abgleichen“:
   - nur im Ordner → übernehmen; nur in WMap → Datei schreiben
@@ -720,6 +738,7 @@ WMap/
 
 ### Health Connect (Android-App)
 
+Standard: automatisch beim Öffnen – ohne Freigabe still, ohne Fehler.
 „Trainings holen“ übernimmt neue Trainings mit Route – der Fortschritt steht
 am Knopf, am Ende nur eine Meldung „x importiert“. Routen, für die Health
 Connect einzeln fragt, bleiben beim automatischen Holen liegen (Hinweis:
@@ -732,6 +751,10 @@ Dieselbe Ordnung wie im Ordner (GPX, Bus & Bahn, `Lesezeichen.json`), dazu
 `WMap/wmap-sicherung.json` mit allem für die Wiederherstellung. „Sicherung
 laden“ nimmt das ZIP (oder eine alte `.json`); ein ZIP ohne JSON, etwa ein
 gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
+
+Gleicht ein Ordner ab, ist der Teil zugeklappt („Sicherung als ZIP“): Der
+Ordner hat alles in derselben Ordnung und ist immer aktuell – die ZIP ist
+dann nur noch fürs Archiv oder für ein Gerät ohne Ordner.
 
 ## 16. Teilen, Standort anfragen, Bild in Bild
 
