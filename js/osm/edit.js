@@ -1,7 +1,9 @@
 /**
  * Orte in OpenStreetMap eintragen und bearbeiten – direkt aus dem Ort-Sheet.
  *
- *   Bearbeiten     Name, Öffnungszeiten, Telefon, Website eines Orts aus OSM
+ *   Bearbeiten     Name, Beschreibung, Öffnungszeiten, Telefon, Website, Bild,
+ *                  Merkmale (Lieferdienst, Bio …) eines Orts aus OSM; unter
+ *                  „Alle Tags“ die Rohdaten zum direkten Ändern
  *                  (Öffnungszeiten je Tag statt als Text: osm/hours-editor.js;
  *                  „Dauerhaft geschlossen“ geht immer als Hinweis – in OSM
  *                  trägt man einen Ort so nicht über die Zeiten aus)
@@ -19,6 +21,7 @@ import { countOsm } from './stats.js';
 import { esc } from '../core/geo.js';
 import { hoursField, mountHours } from './hours-editor.js';
 import { openLink } from '../core/links.js';
+import { TRAITS } from '../ui/poi-info.js';
 // Auswahl mit Suche für <select data-sp-picker> (legt sich selbst an)
 import '../../libs/wuefl-libs/selectpicker/selectpicker.js';
 
@@ -109,9 +112,65 @@ const ADDRESS = [
   ['addr:postcode', 'PLZ', 'text', ''], ['addr:city', 'Ort', 'text', ''],
 ];
 
+const DESCRIPTION = ['description', 'Beschreibung – kurz und sachlich, keine Werbung', 'textarea', 'z. B. Bio-Bäckerei mit Café, Brot aus eigenem Sauerteig'];
+
 /** Feld mit dem OSM-Schlüssel klein daneben – damit klar ist, was wo landet */
 const field = ([k, label, type, ph], v = '', { tag = true } = {}) => `<label class="osm-field"><span>${label}${tag ? ` <code class="osm-tag">${esc(k)}</code>` : ''}</span>
-  <input type="text" inputmode="${type}" name="${esc(k)}" value="${esc(v)}" placeholder="${esc(ph)}" autocomplete="off"></label>`;
+  ${type === 'textarea'
+    ? `<textarea name="${esc(k)}" rows="2" maxlength="255" placeholder="${esc(ph)}">${esc(v)}</textarea>`
+    : `<input type="text" inputmode="${type}" name="${esc(k)}" value="${esc(v)}" placeholder="${esc(ph)}" autocomplete="off">`}</label>`;
+
+/* ── Merkmale und alle Tags ───────────────────────────────────────────────── */
+
+// Wie in der Ortskarte (ui/poi-info.js), dazu Rollstuhl; je Wert ein Wort
+const EDIT_TRAITS = [
+  ...TRAITS.map(([k, label, txt]) => [k, label, k === 'internet_access' ? ['wlan'] : Object.keys(txt)]),
+  ['wheelchair', 'Rollstuhlgerecht', ['yes', 'limited']],
+];
+const WORD = { yes: 'Ja', only: 'Nur', limited: 'Teilweise', wlan: 'Ja', no: 'Nein' };
+
+const traitsBlock = (tags = {}) => `<details class="osm-more"${EDIT_TRAITS.some(([k]) => tags[k]) ? ' open' : ''}>
+  <summary><span class="msr">checklist</span> Merkmale <small>Lieferdienst, Bio, Vegan, WLAN …</small></summary>
+  <div class="osm-traits">${EDIT_TRAITS.map(([k, label, vals]) => {
+    const cur = tags[k] ?? '';
+    const opts = [['', '–'], ...[...vals, 'no'].map((v) => [v, WORD[v]])];
+    if (cur && !opts.some(([v]) => v === cur)) opts.push([cur, cur]);
+    return `<label class="osm-trait"><span>${esc(label)} <code class="osm-tag">${esc(k)}</code></span>
+      <select name="${esc(k)}">${opts.map(([v, l]) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`;
+  }).join('')}</div>
+</details>`;
+
+/** Rohdaten: eine Zeile je Tag. Neu anlegen: leer, für weitere Tags. */
+const RAW = '_raw';
+const rawBlock = (tags, hint) => `<details class="osm-more">
+  <summary><span class="msr">data_object</span> ${tags ? 'Alle Tags' : 'Weitere Tags'} <small>für Kenner – Schlüssel=Wert, eine Zeile je Tag</small></summary>
+  <textarea name="${RAW}" class="osm-raw" rows="${tags ? 8 : 3}" spellcheck="false" autocapitalize="off" placeholder="z. B. payment:cash=yes">${esc(Object.entries(tags ?? {}).map(([k, v]) => `${k}=${v}`).sort().join('\n'))}</textarea>
+  <p class="muted">${hint}</p>
+</details>`;
+
+/** Felder oben ändern → die Zeile unter „Alle Tags“ gleich mit (Bild nicht:
+ *  ein Commons-Link wird erst beim Speichern zu wikimedia_commons) */
+function syncRaw(dlg) {
+  const raw = dlg.querySelector(`textarea[name="${RAW}"]`);
+  const update = (e) => {
+    const el = e.target;
+    if (!raw || !el.name || [RAW, 'gone', 'image'].includes(el.name)) return;
+    const lines = raw.value.split('\n').filter((l) => l.trim() && !l.startsWith(`${el.name}=`));
+    if (el.value.trim()) lines.push(`${el.name}=${el.value.trim()}`);
+    raw.value = lines.sort().join('\n');
+  };
+  dlg.addEventListener('input', update);
+  dlg.addEventListener('change', update);
+}
+
+function parseRaw(text = '') {
+  const out = {};
+  for (const line of text.split('\n')) {
+    const m = line.match(/^\s*([^=\s][^=]*?)\s*=\s*(.*?)\s*$/);
+    if (m && m[2]) out[m[1].slice(0, 255)] = m[2].slice(0, 255);
+  }
+  return out;
+}
 
 /** Bild: ein Link auf Wikimedia Commons wird zu wikimedia_commons=File:…, sonst image=Link */
 function imageTags(set) {
@@ -123,7 +182,7 @@ function imageTags(set) {
   return { ...rest, wikimedia_commons: decodeURIComponent(m[1]).replace(/_/g, ' ') };
 }
 
-const valuesOf = (dlg) => Object.fromEntries([...dlg.querySelectorAll('input[name], select[name]')].map((i) => [i.name, i.value.trim()]));
+const valuesOf = (dlg) => Object.fromEntries([...dlg.querySelectorAll('input[name], select[name], textarea[name]')].map((i) => [i.name, i.value.trim()]));
 
 /**
  * Ohne Konto: erklären, was es braucht. → 'account' | 'note' | null
@@ -140,7 +199,7 @@ async function withoutAccount(what) {
   return v;
 }
 
-const noteText = (title, vals) => `${title} (über WMap):\n${Object.entries(vals).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join('\n')}`;
+const noteText = (title, vals) => `${title} (über WMap):\n${Object.entries(vals).map(([k, v]) => (v ? `${k}=${v}` : `${k} entfernen`)).join('\n')}`;
 
 /** @param kind  'bearbeitet' | 'neu' – für die Zählung (osm/stats.js) */
 async function send({ edits = [], creates = [], note = null }, comment, toast, kind) {
@@ -169,27 +228,37 @@ export async function editPlace({ osm, tags, point, title }, { toast }) {
   const shown = { ...tags, image: tags.image ?? (tags.wikimedia_commons ? `https://commons.wikimedia.org/wiki/${tags.wikimedia_commons.replace(/ /g, '_')}` : '') };
   const vals = await ask({
     icon: 'edit_location_alt', title: `${title || 'Ort'} bearbeiten`, className: 'osm-edit',
-    html: `<div class="osm-form">${field(FIELDS[0], tags.name ?? '')}${hoursField(tags.opening_hours ?? '')}${FIELDS.slice(1).map((f) => field(f, shown[f[0]] ?? '')).join('')}</div>
+    html: `<div class="osm-form">${field(FIELDS[0], tags.name ?? '')}${field(DESCRIPTION, tags.description ?? '')}${hoursField(tags.opening_hours ?? '')}${FIELDS.slice(1).map((f) => field(f, shown[f[0]] ?? '')).join('')}
+        ${traitsBlock(tags)}${rawBlock(tags, 'Was du oben in den Feldern änderst, gilt vor dem, was hier steht. Zeile löschen = Tag entfernen.')}</div>
       <p class="muted">Nur eintragen, was du selbst weißt – z. B. vom Schild vor Ort.</p>`,
     buttons: [{ value: 'cancel', label: 'Abbrechen' }, { value: 'ok', label: mode === 'note' ? 'Hinweis senden' : 'Speichern', primary: true }],
     read: valuesOf,
-    setup: mountHours,
+    setup(dlg) { mountHours(dlg); syncRaw(dlg); },
   });
   if (!vals || typeof vals !== 'object') return;
-  const { gone, ...rest } = vals;
+  const { gone, [RAW]: raw, ...form } = vals;
   if (gone) {
     await send({ note: { point, text: `„${title || 'Ort'}“ (${osm.type}/${osm.id}) ist dauerhaft geschlossen – gibt es an dieser Stelle nicht mehr (über WMap).` } }, '', toast, 'bearbeitet');
     return;
   }
-  const set = imageTags(Object.fromEntries(Object.entries(rest).filter(([k, v]) => (shown[k] ?? '') !== v && v)));
+  // Ausgang: alle Tags (so wie unter „Alle Tags“ stehen gelassen), darüber
+  // die geänderten Felder; leer gemachtes Feld = Tag entfernen
+  const next = raw === undefined ? { ...tags } : parseRaw(raw);
+  const changed = Object.fromEntries(Object.entries(form).filter(([k, v]) => (shown[k] ?? '') !== v));
+  // Bild geleert, das von Commons kam: dann dort weg
+  if ('image' in changed && !changed.image && !tags.image && tags.wikimedia_commons) changed.wikimedia_commons = '';
+  for (const [k, v] of Object.entries(imageTags(changed))) { if (v) next[k] = v; else delete next[k]; }
+  const set = {};
+  for (const [k, v] of Object.entries(next)) if (tags[k] !== v) set[k] = v;
+  for (const k of Object.keys(tags)) if (!(k in next)) set[k] = '';
   if (!Object.keys(set).length) { toast('Nichts geändert'); return; }
   if (mode === 'note') {
     await send({ note: { point, text: noteText(`Bitte ändern bei „${title}“ (${osm.type}/${osm.id})`, set) } }, '', toast, 'bearbeitet');
     return;
   }
   const expect = Object.fromEntries(Object.keys(set).map((k) => [k, tags[k] ?? null]));
-  const ok = await send({ edits: [{ osm, set, expect }] }, `${title || 'Ort'}: ${Object.keys(set).join(', ')} ergänzt`, toast, 'bearbeitet');
-  if (ok) Object.assign(tags, set);
+  const ok = await send({ edits: [{ osm, set, expect }] }, `${title || 'Ort'}: ${Object.keys(set).join(', ')} geändert`, toast, 'bearbeitet');
+  if (ok) for (const [k, v] of Object.entries(set)) { if (v) tags[k] = v; else delete tags[k]; }
 }
 
 /**
@@ -206,8 +275,9 @@ export async function addPlace(point, { address = {}, toast }) {
         <label class="osm-field"><span>Was ist hier?</span><select name="type" data-sp-picker="Was ist hier?">${PLACE_TYPES.map(([group, list]) => `<optgroup label="${esc(group)}">${list.map(([id, label]) => `<option value="${id}">${esc(label)}</option>`).join('')}</optgroup>`).join('')}</select></label>
         <label class="osm-field osm-brand" hidden><span>Marke / Kette <code class="osm-tag">brand</code></span>
           <input type="text" name="brand" list="osm-brands" placeholder="z. B. EDEKA – leer lassen, wenn es keine Kette ist" autocomplete="off"><datalist id="osm-brands"></datalist></label>
-        ${field(FIELDS[0])}${hoursField('', { gone: false })}${FIELDS.slice(1).map((f) => field(f)).join('')}
+        ${field(FIELDS[0])}${field(DESCRIPTION)}${hoursField('', { gone: false })}${FIELDS.slice(1).map((f) => field(f)).join('')}
         <div class="osm-addr">${ADDRESS.map((f) => field(f, addr[f[0]])).join('')}</div>
+        ${traitsBlock()}${rawBlock(null, 'Kommt zu den Angaben oben dazu.')}
       </div>
       <p class="muted">Der Punkt liegt dort, wo du lange gedrückt hast. Bitte nur, was es wirklich gibt – vor Ort gesehen.</p>`,
     buttons: [{ value: 'cancel', label: 'Abbrechen' }, { value: 'ok', label: mode === 'note' ? 'Hinweis senden' : 'Eintragen', primary: true }],
@@ -227,10 +297,10 @@ export async function addPlace(point, { address = {}, toast }) {
     },
   });
   if (!vals || typeof vals !== 'object') return;
-  const { type, gone: _, ...rest } = vals;
+  const { type, gone: _, [RAW]: raw, ...rest } = vals;
   if (!rest.name) { toast('Bitte einen Namen angeben'); return; }
   const kind = TYPE_LIST.find(([id]) => id === type) ?? TYPE_LIST[0];
-  const tags = { ...kind[2], ...imageTags(Object.fromEntries(Object.entries(rest).filter(([, v]) => v))) };
+  const tags = { ...parseRaw(raw), ...kind[2], ...imageTags(Object.fromEntries(Object.entries(rest).filter(([, v]) => v))) };
   if (mode === 'note') {
     await send({ note: { point, text: noteText(`Neuer Ort: ${kind[1]} „${rest.name}“`, tags) } }, '', toast, 'neu');
     return;

@@ -18,12 +18,19 @@ import app.tauri.plugin.Plugin
 import kotlin.concurrent.thread
 
 @InvokeArg
+class SlotArgs {
+    var slot: String = ""
+}
+
+@InvokeArg
 class PathArgs {
+    var slot: String = ""
     var path: String = ""
 }
 
 @InvokeArg
 class WriteArgs {
+    var slot: String = ""
     var path: String = ""
     var text: String = ""
 }
@@ -36,23 +43,32 @@ class WriteArgs {
  *
  *   pick, info, list, read { path }, write { path, text }, remove { path },
  *   disconnect – Pfade relativ zum Ordner, mit „/“.
+ *
+ * `slot` (optional, alle Befehle): welcher Ordner – leer ist der für
+ * Sicherung & Synchronisation, „layers“ der für eigene Ebenen (Plugins).
  */
 @TauriPlugin
 class FolderPlugin(private val activity: Activity) : Plugin(activity) {
     private val prefs = activity.getSharedPreferences("wmap_folder", Context.MODE_PRIVATE)
     private val resolver get() = activity.contentResolver
     private val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-    // Pfad → Dokument-ID aus dem letzten Durchgang (spart Abfragen)
+    // Ordner + Pfad → Dokument-ID aus dem letzten Durchgang (spart Abfragen)
     private val ids = HashMap<String, String>()
 
-    private fun tree(): Uri? {
-        val uri = prefs.getString("tree", null)?.let(Uri::parse) ?: return null
+    private fun key(slot: String): String {
+        require(slot.matches(Regex("[a-z0-9_-]{0,20}"))) { "Ungültiger Ordner: $slot" }
+        return if (slot.isEmpty()) "tree" else "tree.$slot"
+    }
+    private fun forget(slot: String) = ids.keys.removeAll { it.startsWith("$slot\u0000") }
+
+    private fun tree(slot: String): Uri? {
+        val uri = prefs.getString(key(slot), null)?.let(Uri::parse) ?: return null
         // Freigabe im System zurückgenommen? Dann gilt der Ordner als getrennt
         return if (resolver.persistedUriPermissions.any { it.uri == uri && it.isWritePermission }) uri else null
     }
 
-    private fun info(): JSObject {
-        val t = tree()
+    private fun info(slot: String): JSObject {
+        val t = tree(slot)
         val out = JSObject()
         out.put("connected", t != null)
         out.put("name", t?.let { nameOf(it, DocumentsContract.getTreeDocumentId(it)) })
@@ -85,8 +101,8 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     /** Dokument-ID zu einem Pfad; `create`: fehlende Ordner (und die Datei) anlegen */
-    private fun resolve(tree: Uri, path: String, create: Boolean, mime: String = "application/octet-stream"): String? {
-        ids[path]?.let { return it }
+    private fun resolve(slot: String, tree: Uri, path: String, create: Boolean, mime: String = "application/octet-stream"): String? {
+        ids["$slot\u0000$path"]?.let { return it }
         var id = DocumentsContract.getTreeDocumentId(tree)
         val p = parts(path)
         for ((i, name) in p.withIndex()) {
@@ -98,12 +114,12 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
                 DocumentsContract.getDocumentId(uri)
             }
         }
-        ids[path] = id
+        ids["$slot\u0000$path"] = id
         return id
     }
 
-    private fun work(invoke: Invoke, block: (Uri) -> Unit) {
-        val t = tree() ?: return invoke.reject("Kein Ordner verbunden", "none")
+    private fun work(invoke: Invoke, slot: String, block: (Uri) -> Unit) {
+        val t = tree(slot) ?: return invoke.reject("Kein Ordner verbunden", "none")
         thread {
             try { block(t) } catch (e: Exception) { invoke.reject(e.message ?: e.toString(), e) }
         }
@@ -115,28 +131,36 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
         startActivityForResult(invoke, intent, "picked")
     }
 
+    /** Freigabe nur zurückgeben, wenn kein anderer Ordner-Platz sie noch nutzt */
+    private fun release(slot: String) {
+        val old = prefs.getString(key(slot), null) ?: return
+        val shared = prefs.all.any { (k, v) -> k != key(slot) && k.startsWith("tree") && v == old }
+        if (!shared) runCatching { resolver.releasePersistableUriPermission(Uri.parse(old), flags) }
+    }
+
     @ActivityCallback
     fun picked(invoke: Invoke, result: ActivityResult) {
         val uri = result.data?.data ?: return invoke.reject("abgebrochen", "cancel")
         try {
+            val slot = invoke.parseArgs(SlotArgs::class.java).slot
             // Alten Ordner freigeben, den neuen dauerhaft behalten
-            prefs.getString("tree", null)?.let { old ->
-                if (old != uri.toString()) runCatching { resolver.releasePersistableUriPermission(Uri.parse(old), flags) }
-            }
+            if (prefs.getString(key(slot), null) != uri.toString()) release(slot)
             resolver.takePersistableUriPermission(uri, flags)
-            prefs.edit().putString("tree", uri.toString()).apply()
-            ids.clear()
-            invoke.resolve(info())
+            prefs.edit().putString(key(slot), uri.toString()).apply()
+            forget(slot)
+            invoke.resolve(info(slot))
         } catch (e: Exception) {
             invoke.reject(e.message ?: e.toString(), e)
         }
     }
 
     @Command
-    fun info(invoke: Invoke) = invoke.resolve(info())
+    fun info(invoke: Invoke) = invoke.resolve(info(invoke.parseArgs(SlotArgs::class.java).slot))
 
     @Command
-    fun list(invoke: Invoke) = work(invoke) { t ->
+    fun list(invoke: Invoke) {
+      val slot = invoke.parseArgs(SlotArgs::class.java).slot
+      work(invoke, slot) { t ->
         val out = JSArray()
         fun walk(id: String, prefix: String, depth: Int) {
             for ((name, c) in children(t, id)) {
@@ -144,22 +168,23 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
                 val path = prefix + name
                 if (c.dir) {
                     if (depth < 5) walk(c.id, "$path/", depth + 1)
-                } else if (name.endsWith(".gpx", true) || name.endsWith(".json", true)) {
-                    ids[path] = c.id
+                } else if (name.endsWith(".gpx", true) || name.endsWith(".json", true) || name.endsWith(".geojson", true)) {
+                    ids["$slot\u0000$path"] = c.id
                     out.put(JSObject().put("path", path).put("modified", c.modified))
                 }
             }
         }
-        ids.clear()
+        forget(slot)
         walk(DocumentsContract.getTreeDocumentId(t), "", 0)
         invoke.resolve(JSObject().put("files", out))
+      }
     }
 
     @Command
     fun read(invoke: Invoke) {
         val args = invoke.parseArgs(PathArgs::class.java)
-        work(invoke) { t ->
-            val id = resolve(t, args.path, false) ?: return@work invoke.reject("Nicht gefunden: ${args.path}", "missing")
+        work(invoke, args.slot) { t ->
+            val id = resolve(args.slot, t, args.path, false) ?: return@work invoke.reject("Nicht gefunden: ${args.path}", "missing")
             val text = resolver.openInputStream(DocumentsContract.buildDocumentUriUsingTree(t, id))!!.use { it.readBytes().toString(Charsets.UTF_8) }
             invoke.resolve(JSObject().put("text", text))
         }
@@ -168,15 +193,15 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
     @Command
     fun write(invoke: Invoke) {
         val args = invoke.parseArgs(WriteArgs::class.java)
-        work(invoke) { t ->
+        work(invoke, args.slot) { t ->
             val mime = if (args.path.endsWith(".json", true)) "application/json" else "application/gpx+xml"
             fun open(): Uri {
-                val uri = DocumentsContract.buildDocumentUriUsingTree(t, resolve(t, args.path, true, mime)!!)
+                val uri = DocumentsContract.buildDocumentUriUsingTree(t, resolve(args.slot, t, args.path, true, mime)!!)
                 resolver.openOutputStream(uri, "wt")!!.use { it.write(args.text.toByteArray(Charsets.UTF_8)) }
                 return uri
             }
             // Gemerkte ID veraltet (Datei woanders gelöscht)? Neu suchen bzw. anlegen
-            val uri = try { open() } catch (e: Exception) { ids.remove(args.path); open() }
+            val uri = try { open() } catch (e: Exception) { ids.remove("${args.slot}\u0000${args.path}"); open() }
             val modified = resolver.query(uri, arrayOf(Document.COLUMN_LAST_MODIFIED), null, null, null)
                 ?.use { if (it.moveToFirst() && !it.isNull(0)) it.getLong(0) else 0L } ?: 0L
             invoke.resolve(JSObject().put("modified", modified))
@@ -186,18 +211,19 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
     @Command
     fun remove(invoke: Invoke) {
         val args = invoke.parseArgs(PathArgs::class.java)
-        work(invoke) { t ->
-            resolve(t, args.path, false)?.let { DocumentsContract.deleteDocument(resolver, DocumentsContract.buildDocumentUriUsingTree(t, it)) }
-            ids.remove(args.path)
+        work(invoke, args.slot) { t ->
+            resolve(args.slot, t, args.path, false)?.let { DocumentsContract.deleteDocument(resolver, DocumentsContract.buildDocumentUriUsingTree(t, it)) }
+            ids.remove("${args.slot}\u0000${args.path}")
             invoke.resolve()
         }
     }
 
     @Command
     fun disconnect(invoke: Invoke) {
-        prefs.getString("tree", null)?.let { runCatching { resolver.releasePersistableUriPermission(Uri.parse(it), flags) } }
-        prefs.edit().remove("tree").apply()
-        ids.clear()
+        val slot = invoke.parseArgs(SlotArgs::class.java).slot
+        release(slot)
+        prefs.edit().remove(key(slot)).apply()
+        forget(slot)
         invoke.resolve()
     }
 }

@@ -1,5 +1,5 @@
 /**
- * Sicherung & Abgleich (sync.html) – Kachel in der Übersicht:
+ * Sicherung & Synchronisation (sync.html) – Kachel in der Übersicht:
  *
  *   Ordner          verbinden, jetzt abgleichen, trennen; automatisch: aus,
  *                   beim Öffnen, beim Öffnen und alle 30 Minuten; letzter

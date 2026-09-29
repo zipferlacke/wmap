@@ -20,7 +20,7 @@ import { konto, ensureLogin } from '../services/konto.js';
 import { local } from '../data/store.js';
 import { layers, newLayer, rasterLayer } from '../map/layers.js';
 import { extensions } from '../map/extensions.js';
-import { addOwnSource, addOwnFiles } from '../ui/own-source.js';
+import { addOwnSource, addOwnFiles, addOwnFolder, folderHere, layerFolder } from '../ui/own-source.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { esc } from '../core/geo.js';
 import { PRESETS, legendHtml } from '../map/presets.js';
@@ -344,18 +344,48 @@ document.addEventListener('click', async (e) => {
   if (add === 'source') { if (await addOwnSource({ toast, index: items.length })) { await load(); filter = 'own'; showList(); } }
   if (add === 'script') addScript();
   if (add === 'offer') offer();
+  if (add === 'folder-app' || add === 'folder-again') {
+    try { loaded(await addOwnFolder({ pick: add === 'folder-app', index: items.length })); } catch (err) {
+      if (err.name !== 'AbortError') toast(`Ordner ging nicht: ${err.message}`);
+    }
+    folderButtons();
+  }
 });
 document.addEventListener('change', async (e) => {
   const inp = e.target.closest('input[data-add]');
   if (!inp?.files?.length) return;
-  const { added, failed } = await addOwnFiles(inp.files, { index: items.length });
+  const r = await addOwnFiles(inp.files, { index: items.length });
   inp.value = '';
+  loaded(r);
+});
+
+async function loaded({ added, failed }) {
   toast(added.length ? `${added.length} ${added.length === 1 ? 'Ebene' : 'Ebenen'} geladen${failed.length ? ` – ${failed.length} ließen sich nicht lesen` : ''}`
     : failed.length ? `Keine gültige GeoJSON-Datei (${failed.slice(0, 3).join(', ')})` : 'Keine GeoJSON-Dateien gefunden');
   await load();
   filter = 'own';
   showList();
-});
+}
+
+/*
+ * App: Ordner über das Plugin „folder“ – das Android-WebView kann keine
+ * Ordner-Auswahl (<input webkitdirectory>). Der Ordner bleibt gemerkt;
+ * „neu laden“ liest ihn wieder ein, ohne erneut zu fragen.
+ */
+async function folderButtons() {
+  if (!folderHere) return;
+  const row = $('.plug-add-row');
+  row.querySelector('input[data-add="folder"]')?.closest('label')
+    ?.replaceWith(Object.assign(document.createElement('button'), { type: 'button', className: 'button', innerHTML: '<span class="msr">drive_folder_upload</span> Ordner laden' }));
+  const pick = [...row.querySelectorAll('button')].find((b) => /Ordner laden/.test(b.textContent));
+  pick?.setAttribute('data-add', 'folder-app');
+  row.querySelector('[data-add="folder-again"]')?.remove();
+  const f = await layerFolder();
+  if (f.connected) {
+    pick.insertAdjacentHTML('afterend', `<button type="button" class="button" data-add="folder-again"><span class="msr">refresh</span> „${esc(f.name ?? 'Ordner')}“ neu laden</button>`);
+  }
+}
+folderButtons();
 $('.plug-search input').addEventListener('input', (e) => { query = e.target.value; if (!$('.plug-detail').hidden) showList(); else paintGrid(); });
 addEventListener('popstate', () => {
   const p = new URLSearchParams(location.search);

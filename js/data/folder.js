@@ -557,7 +557,7 @@ addEventListener('wmap:data', (e) => {
   timer = setTimeout(async () => {
     await syncing?.catch(() => {});
     if (!await load()) { local.set(DELETED, []); return; }
-    if (folder.auto !== 'off') folder.sync().catch(() => { /* steht als Fehler auf der Seite „Sicherung & Abgleich“ */ });
+    if (folder.auto !== 'off') folder.sync().catch(() => { /* steht als Fehler auf der Seite „Sicherung & Synchronisation“ */ });
   }, 2500);
 });
 

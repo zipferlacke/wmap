@@ -1,6 +1,6 @@
 /**
  * Übersicht (Dashboard): Kacheln zu allen Ansichten – mit Zahlen, wo es
- * welche gibt, „Sicherung & Abgleich“ mit dem letzten Stand –, darunter was
+ * welche gibt, „Sicherung & Synchronisation“ mit dem letzten Stand –, darunter was
  * auf dem Gerät liegt und sich löschen lässt,
  * ganz unten der Dank an die Anbieter.
  */
@@ -27,7 +27,7 @@ const n = (x, one, many) => `${x.toLocaleString('de-DE')} ${x === 1 ? one : many
 
 /* ── Kacheln ──────────────────────────────────────────────────────────────── */
 
-/** Kurzer Stand für die Kachel „Sicherung & Abgleich“ */
+/** Kurzer Stand für die Kachel „Sicherung & Synchronisation“ */
 async function syncCount() {
   const i = await folder.info().catch(() => null);
   if (i?.error) return 'Fehler beim Abgleich';
@@ -53,7 +53,7 @@ async function paintTiles() {
     { href: './plugins.html', icon: 'extension', title: 'Plugins', text: 'Luftbilder, Geologie, eigene Daten, Erweiterungen', count: active ? `${active} aktiv` : '' },
     { href: './offline.html', icon: 'download_for_offline', title: 'Offline-Karten', text: 'Gebiete aufs Gerät laden – für unterwegs ohne Netz', count: as.length ? `${n(as.length, 'Gebiet', 'Gebiete')} · ${mb(areas.bytes())}` : '' },
     { href: './index.html?action=survey', icon: 'edit_location_alt', title: 'Mitmachen', text: 'Kurze Fragen, die OpenStreetMap verbessern' },
-    { href: './sync.html', icon: 'sync', title: 'Sicherung & Abgleich', text: 'Ordner (Nextcloud, Drive …), Health Connect, Sicherung', count: sc, warn: /Fehler/.test(sc) },
+    { href: './sync.html', icon: 'sync', title: 'Sicherung & Synchronisation', text: 'Ordner (Nextcloud, Drive …), Health Connect, Sicherung', count: sc, warn: /Fehler/.test(sc) },
     { href: './settings.html', icon: 'settings', title: 'Einstellungen', text: 'Hell/dunkel, Navigation, Offline, Konto' },
   ];
 

@@ -131,7 +131,11 @@ export function createMap(container, {
     // Mapterhorn liefert in Deutschland bis Zoom 16, darüber gibt es nur 404 –
     // ohne Obergrenze fragt MapLibre bis Zoom 18 nach (Fehler, Daten, Strom).
     // Die Kacheladresse direkt statt TileJSON spart außerdem eine Anfrage beim Start.
-    map.addSource('terrain', { ...DEM_SOURCE });
+    // Gelände höchstens so fein wie die Kacheln mit den Häusern (OpenMapTiles:
+    // Zoom 14) – feiner rechnet MapLibre die Höhe der 3D-Häuser falsch, sie
+    // schweben dann neben ihrem Grundriss („elevation maxzoom > source.maxzoom“).
+    // Die Schummerung darunter bleibt bei Zoom 16.
+    map.addSource('terrain', { ...DEM_SOURCE, maxzoom: 14 });
     // In der Navigation reicht gröberes Gelände (Zoom 13, ≈ 6 m): weniger Daten,
     // und die Straße liegt ruhiger – feine Höhenfehler lassen sie sonst wellen
     map.addSource('terrain-lo', { ...DEM_SOURCE, maxzoom: 13 });
@@ -172,7 +176,8 @@ const TERRAIN_EXAGGERATION = 1.5;
 /*
  * Höhen: Mapterhorn liefert in Deutschland bis Zoom 16 – bei 512er Kacheln
  * ≈ 0,75 m je Pixel, aus den amtlichen 1-m-Geländemodellen der Länder. Die
- * normale Karte nutzt das volle Maß, die Navigation 'terrain-lo'.
+ * Schummerung nutzt das volle Maß, das Gelände Zoom 14 (wegen der 3D-Häuser),
+ * die Navigation 'terrain-lo'.
  */
 const DEM_SOURCE = {
   type: 'raster-dem', tiles: [TERRAIN_TILES], tileSize: 512, maxzoom: 16, encoding: 'terrarium',

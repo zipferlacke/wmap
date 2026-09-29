@@ -30,7 +30,7 @@ gewollt?“) und als Grundlage für Erklärungen in der App.
 12. [Aufzeichnen](#12-aufzeichnen)
 13. [Entdecken](#13-entdecken)
 14. [Plugins und eigene Ebenen](#14-plugins-und-eigene-ebenen)
-15. [Sicherung & Abgleich: Ordner, Health Connect, ZIP](#15-sicherung--abgleich-ordner-health-connect-zip)
+15. [Sicherung & Synchronisation: Ordner, Health Connect, ZIP](#15-sicherung--synchronisation-ordner-health-connect-zip)
 16. [Teilen, Standort anfragen, Bild in Bild](#16-teilen-standort-anfragen-bild-in-bild)
 17. [Mitmachen bei OpenStreetMap, Meldungen](#17-mitmachen-bei-openstreetmap-meldungen)
 18. [WMap-Konto (OpenStreetMap) und Server](#18-wmap-konto-openstreetmap-und-server)
@@ -332,7 +332,11 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
 - **Eigene Ebenen & Plugins:** jede eigene Ebene und jedes geholte Plugin mit
   Schalter „auf der Karte“. Darunter nur ein Knopf **Verwalten** → Plugin-
   Seite: Plugins holen, eigene Quelle (Kacheln, WMS, GeoJSON – auf Wunsch mit
-  Benutzer und Passwort), Deckkraft.
+  Benutzer und Passwort), Deckkraft. **Ordner laden** nimmt alle GeoJSON-
+  Dateien eines Ordners (auch Unterordner); in der App über das Plugin
+  `folder` (das WebView kann keine Ordner-Auswahl) – der Ordner bleibt
+  gemerkt, „… neu laden“ liest ihn ohne Rückfrage wieder ein und ersetzt,
+  was vorher daraus kam.
 
 ## 7. 3D, Gelände und Höhen
 
@@ -341,9 +345,17 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
   neigt oder das Gelände schaltet, behält seine Wahl.
 - **Höhendaten:** Mapterhorn, in Deutschland bis Zoom 16 – das sind
   **≈ 0,75 m je Pixel**, gerechnet aus den amtlichen 1-m-Geländemodellen der
-  Länder. Die **normale Karte nutzt diese volle Auflösung**. In der
-  **Navigation** reicht Zoom 13 (≈ 6 m): weniger Daten, und die Straße liegt
-  ruhiger, weil kleine Höhenfehler sie sonst wellen.
+  Länder. Die **Schummerung nutzt diese volle Auflösung**, das **Gelände**
+  Zoom 14 (≈ 3 m): Die Kacheln mit den Häusern gehen nur bis Zoom 14, und mit
+  feinerem Gelände rechnet MapLibre die Höhe der 3D-Häuser falsch – sie
+  schweben dann neben ihrem Grundriss. In der **Navigation** reicht Zoom 13
+  (≈ 6 m): weniger Daten, und die Straße liegt ruhiger, weil kleine
+  Höhenfehler sie sonst wellen.
+- **Warnungen:** Der Grundstil wird vor dem ersten Zeichnen gerichtet –
+  fehlende Gebäudehöhen gelten als 0, Zahlenvergleiche in Filtern bekommen
+  ein `has`, fehlende Symbole des Grundstils (`atm`, `gate` …) werden leer
+  nachgeliefert. Sonst meldet MapLibre das je Kachel in der Konsole.
+- **Eigener Standort:** ein ruhiger Punkt – das Pulsieren von MapLibre ist aus.
 - **Überhöhung:** weit draußen 1,5-fach, ab Zoom 12 1,25, ab Zoom 14 1-fach.
 - **Relief (Schummerung):** Schatten an Hängen, damit Berge und Täler auch
   flach von oben sichtbar sind – kräftig bis Zoom 12, nah heran schwächer
@@ -397,7 +409,7 @@ Zweiter Hauptbildschirm (`dashboard.html`), ohne Karte, mit Navigationsleiste.
 - **Kacheln** nur für Ansichten, mit großem blassem Symbol, Titel, einem Satz
   und – wo es passt – einer Zahl: Karte (groß), Geplante Touren (Anzahl),
   Aufgezeichnete Touren (Anzahl, km in diesem Jahr), Entdecken, Plugins
-  (Anzahl aktiv), Offline-Karten, Mitmachen, **Sicherung & Abgleich**
+  (Anzahl aktiv), Offline-Karten, Mitmachen, **Sicherung & Synchronisation**
   (verbundener Ordner und letzter Abgleich, rot bei einem Fehler),
   Einstellungen. Tour planen, Aufzeichnen, Fliegen und Erreichbarkeit gibt
   es in Karte bzw. Touren.
@@ -444,7 +456,7 @@ Die ersten zwei:
   (antippen zoomt hinein); näher die Linien. Die gewählte Tour trägt
   **Kilometermarken** 1, 2, 3 … (lange Touren alle 5 bzw. 10 km); der Punkt
   aus dem Diagramm liegt über der Linie.
-- **Unten:** ein Hinweis auf „Sicherung & Abgleich“ (Ordner, Health
+- **Unten:** ein Hinweis auf „Sicherung & Synchronisation“ (Ordner, Health
   Connect, ZIP) – die Knöpfe dafür stehen nur noch dort.
 - **Detail** (Zeile oder Linie antippen): Name oben, ← zurück zur Liste.
   - Aufgezeichnet: Name änderbar, Datum und Uhrzeit, Strecke, Zeit in
@@ -619,12 +631,14 @@ ansehen“) – GeoJSON auf heller Karte (z. B. aus QGIS).
 - **Als Plugin:** hochladen (bis 2 MB), privat oder öffentlich.
 - Alles liegt nur im Browser (IndexedDB).
 
-**Health Connect** (nur Android-App): Sicherung & Abgleich → „Trainings
+**Health Connect** (nur Android-App): Sicherung & Synchronisation → „Trainings
 holen“ übernimmt neue Trainings mit Route als Wege (Name aus dem Training
 oder „Rudern am …“, Profil aus der Art, sonst am Tempo erkannt), dazu Puls,
 Tempo, Frequenz und Leistung je Punkt. Jeder Weg behält Art und App: Symbol
 und „Rudern · Zepp“ in Liste und Detail, auch in der Suche. Schon
-Übernommenes kommt nicht doppelt. Routen fremder Apps gibt Health Connect
+Übernommenes kommt nicht doppelt. Indoor-Trainings (Rudergerät, Workout,
+Laufband …) haben keine Strecke – hängt eine App trotzdem eine Route mit
+Rückfrage an (Zepp), wird sie still übergangen. Routen fremder Apps gibt Health Connect
 nur mit „Immer erlauben“ ohne Rückfrage heraus – lehnt man eine Rückfrage
 ab, fragt der Import für den Rest nicht mehr, übernimmt aber alles andere
 (`js/services/health.js`, Plugin in `src-tauri/plugins/health`).
@@ -639,7 +653,7 @@ das noch nicht erlaubt ist (Standort-Knopf, Navigation, Aufzeichnen, Route
 ab „Mein Standort“), und unter Einstellungen → Berechtigungen. Beim Start
 der Karte wird nicht gefragt – ohne Freigabe bleibt die letzte Ansicht.
 
-## 15. Sicherung & Abgleich: Ordner, Health Connect, ZIP
+## 15. Sicherung & Synchronisation: Ordner, Health Connect, ZIP
 
 Eigene Seite `sync.html` (Kachel in der Übersicht; Einstellungen → Daten und
 unten in Meine Touren verweisen dorthin). Drei Teile, je mit letztem
@@ -763,11 +777,20 @@ gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
   Ort bearbeitet, Ort neu; direkt in die Karte oder als Hinweis. Auf dem Gerät
   (Einstellungen → Mitmachen: „Du hast über WMap …“) und anonym auf dem Server.
 - **Orte bearbeiten und eintragen** (osm/edit.js): in der Ortskarte
-  **Bearbeiten** (Name, Öffnungszeiten, Telefon, Website, Veranstaltungen –
-  `website:events`, wie WMap sie für Programme nutzt –, Bild eines Orts aus
-  OSM; neben jedem Feld steht klein der OSM-Schlüssel). Bild: ein Link zu
-  einem freien Foto (`image`); ein Link auf Wikimedia Commons wird zu
+  **Bearbeiten** (Name, Beschreibung – `description`, kurz und sachlich –,
+  Öffnungszeiten, Telefon, Website, Veranstaltungen – `website:events`, wie
+  WMap sie für Programme nutzt –, Bild eines Orts aus OSM; neben jedem Feld
+  steht klein der OSM-Schlüssel). Bild: ein Link zu einem freien Foto
+  (`image`); ein Link auf Wikimedia Commons wird zu
   `wikimedia_commons=File:…`.
+  **Merkmale** (aufklappbar): Lieferdienst, Zum Mitnehmen, Bio, Vegan,
+  Vegetarisch, Draußen sitzen, WLAN, Drive-in, Rollstuhl – je Ja/Nur/Nein.
+  Die Ortskarte zeigt sie wie bei Google unter dem Namen („Bäckerei ·
+  Lieferdienst · Bio“), darunter die Beschreibung (ui/poi-info.js `TRAITS`).
+  **Alle Tags** (aufklappbar): die Rohdaten, eine Zeile `Schlüssel=Wert` –
+  ändern, ergänzen, Zeile löschen = Tag entfernen; was man oben in den
+  Feldern ändert, läuft dort gleich mit und gilt vorrangig. Beim Eintragen
+  heißt der Block „Weitere Tags“ und kommt zu den Angaben dazu.
   Die **Öffnungszeiten** als aufklappbarer Block (osm/hours-editor.js):
   Montag bis Sonntag und Feiertage untereinander, rechts die Zeiten (mehrere
   je Tag, schmale Felder fürs Handy), „+ Zeit“, bei Feiertagen „wie
@@ -843,7 +866,7 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
   Entwickler Server und Client-ID.
 - **Mitmachen:** Weg aufzeichnen und danach fragen, anonym als Hinweis.
 - **Daten:** Jede Navigation merken (Standard: aus – geplante Touren und
-  „Aufzeichnen“ werden immer gespeichert), Sicherung & Abgleich,
+  „Aufzeichnen“ werden immer gespeichert), Sicherung & Synchronisation,
   aufgezeichnete Wege, Suchverlauf löschen.
 
 ## 20. Offline und Datenverbrauch

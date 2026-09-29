@@ -28,6 +28,7 @@
         &.open { color: var(--clr-success-700); }
         &.closed { color: var(--clr-danger-600); }
     }
+    .poi-desc { font-size: var(--fs-200); color: var(--muted); white-space: pre-line; }
     .poi-facts {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));

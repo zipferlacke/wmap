@@ -159,7 +159,7 @@ function elementXml(el, changeset) {
 
 /**
  * Tag-Änderungen anwenden, wo nichts dazwischengekommen ist.
- * edit = { osm: { type, id }, set: { k: v }, expect: { k: alterWert|null } }
+ * edit = { osm: { type, id }, set: { k: v ('' = entfernen) }, expect: { k: alterWert|null } }
  * → { changes: [element], applied: [edit], conflicts: [edit] }
  */
 function applyEdits(elements, edits) {
@@ -173,7 +173,8 @@ function applyEdits(elements, edits) {
     if (!ok) { conflicts.push(ed); continue; }
     let changed = false;
     for (const [k, v] of Object.entries(ed.set)) {
-      if (el.tags[k] !== v) { el.tags[k] = v; changed = true; }
+      // Leer = Tag entfernen (Bearbeiten → „Alle Tags“, geleertes Feld)
+      if (v === '' || v == null) { if (k in el.tags) { delete el.tags[k]; changed = true; } } else if (el.tags[k] !== v) { el.tags[k] = v; changed = true; }
     }
     if (changed) touched.add(key);
     applied.push(ed);

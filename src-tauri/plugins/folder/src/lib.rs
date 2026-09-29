@@ -4,11 +4,14 @@
 //!
 //!   pick                Ordner wählen → { connected, name }
 //!   info                { connected, name }
-//!   list                Dateien (.gpx, .json) bis 5 Ebenen tief → { files: [{ path, modified }] }
+//!   list                Dateien (.gpx, .json, .geojson) bis 5 Ebenen tief → { files: [{ path, modified }] }
 //!   read { path }       → { text }
 //!   write { path, text } legt fehlende Ordner an → { modified }
 //!   remove { path }
 //!   disconnect
+//!
+//! Alle Befehle nehmen `slot` (optional): leer = Ordner für Sicherung &
+//! Synchronisation, „layers“ = Ordner für eigene Ebenen (Plugins).
 //!
 //! Pfade sind relativ zum gewählten Ordner, mit „/“ – „..“ und absolute
 //! Pfade lehnt das Plugin ab. Android: Kotlin (android/…/FolderPlugin.kt,

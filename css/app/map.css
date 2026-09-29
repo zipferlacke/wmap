@@ -97,6 +97,10 @@
     @media (min-width: 701px) { top: 3.4rem; }
 }
 
+/* Eigener Standort: ruhiger Punkt – MapLibre lässt ihn sonst dauernd pulsieren
+   (soll „wird laufend verfolgt“ heißen, wirkt aber wie ein Blinken) */
+.maplibregl-user-location-dot::before { animation: none; display: none; }
+
 .floating-pill {
     position: fixed;
     z-index: 9;

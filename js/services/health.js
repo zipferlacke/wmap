@@ -14,7 +14,7 @@
  *                      dazu die Messwerte (Puls, Frequenz, Leistung) je Punkt
  *   fillHealthValues() Messwerte für früher übernommene Wege nachladen
  *   syncHealth()       Neues holen – von Hand oder automatisch beim Öffnen
- *                      (healthSync.auto, Seite „Sicherung & Abgleich“)
+ *                      (healthSync.auto, Seite „Sicherung & Synchronisation“)
  *
  * Routen fremder Apps gibt Health Connect nur mit „Immer erlauben“ ohne
  * Rückfrage heraus; sonst fragt es je Training nach. Lehnt man einmal ab,
@@ -64,6 +64,17 @@ const TYPES = {
   boot_camp: ['Bootcamp', 'fitness_center'], exercise_class: ['Kurs', 'groups'],
   workout: ['Workout', 'fitness_center'], other_workout: ['Training', 'fitness_center'],
 };
+/**
+ * Trainings ohne Strecke (Geräte, Halle). Manche Apps (Zepp) hängen trotzdem
+ * eine leere Route mit Rückfrage an – die wird nicht erfragt und nicht als
+ * „nicht freigegeben“ gezählt.
+ */
+const INDOOR = new Set(['running_treadmill', 'biking_stationary', 'rowing_machine', 'elliptical', 'stair_climbing_machine',
+  'workout', 'other_workout', 'weightlifting', 'strength_training', 'calisthenics', 'high_intensity_interval_training',
+  'boot_camp', 'exercise_class', 'yoga', 'pilates', 'stretching', 'meditation', 'guided_breathing', 'swimming_pool',
+  'gymnastics', 'dancing', 'martial_arts', 'boxing', 'fencing', 'table_tennis', 'badminton', 'squash', 'racquetball']);
+const noRoute = (s) => s.route === 'none' || (s.route === 'consent' && INDOOR.has(s.type));
+
 export const TYPE_NAME = Object.fromEntries(Object.entries(TYPES).map(([k, [n]]) => [k, n]));
 export const typeName = (type) => TYPES[type]?.[0] ?? (type ? type.replace(/_/g, ' ') : 'Training');
 export const typeIcon = (type) => TYPES[type]?.[1] ?? 'fitness_center';
@@ -151,7 +162,7 @@ export async function importHealth(sessions, { onProgress, ask: askFirst = true 
   let ask = askFirst;
   for (const [i, s] of sessions.entries()) {
     onProgress?.(i, sessions.length);
-    if (s.route === 'none') continue;
+    if (noRoute(s)) continue;
     if (seen.has(s.id)) { out.known += 1; continue; }
     if (s.route === 'consent' && !ask) { out.denied += 1; continue; }
     let points;
@@ -290,7 +301,7 @@ async function runSync({ quiet = false, onProgress } = {}) {
     if (!st.read) throw new Error('Health Connect ist noch nicht freigegeben');
     const { sessions } = await call('sessions', { days: 3650 });
     const known = await knownHealthIds();
-    const fresh = sessions.filter((s) => s.route !== 'none' && !known.has(s.id)).sort((a, b) => b.start - a.start);
+    const fresh = sessions.filter((s) => !noRoute(s) && !known.has(s.id)).sort((a, b) => b.start - a.start);
     const r = await importHealth(fresh, { onProgress, ask: !quiet });
     await fillHealthTypes(sessions);
     const values = await fillHealthValues();

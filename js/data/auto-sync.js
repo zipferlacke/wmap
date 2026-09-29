@@ -1,5 +1,5 @@
 /**
- * Still abgleichen, was eingeschaltet ist (Seite „Sicherung & Abgleich“):
+ * Still abgleichen, was eingeschaltet ist (Seite „Sicherung & Synchronisation“):
  * beim Öffnen einer Seite und – wenn so gewählt – alle 30 Minuten, solange
  * WMap offen ist. Erst Health Connect (neue Wege), dann der verbundene
  * Ordner (nimmt sie gleich mit).

@@ -118,7 +118,7 @@ Eigenes Tauri-Plugin, nur Android tut etwas: Die Befehle stehen in Kotlin
 - minSdk 26 (`bundle.android.minSdkVersion`, `tools/android-einbinden.py`
   überträgt es ins erzeugte Projekt).
 - In der Web-App: `js/services/health.js`, Knopf „Trainings holen“ auf der
-  Seite Sicherung & Abgleich (nur in der Android-App); Freigaben erklärt
+  Seite Sicherung & Synchronisation (nur in der Android-App); Freigaben erklärt
   `js/ui/permissions.js` (auch den Standort – dafür stehen
   `geolocation:allow-check-permissions` und `…-request-permissions` in
   `capabilities/mobile.json`).
@@ -131,13 +131,16 @@ Eigenes Tauri-Plugin, nur Android tut etwas: Die Befehle stehen in Kotlin
 
 Das WebView der App kennt die File System Access API von Chrome nicht –
 darum wählt das System den Ordner, und die App liest und schreibt nur darin
-(`js/data/folder.js`, Seite „Sicherung & Abgleich“).
+(`js/data/folder.js`, Seite „Sicherung & Synchronisation“). Ein zweiter
+Ordner für eigene Ebenen (Plugins-Seite, `js/ui/own-source.js`) läuft über
+`slot: "layers"` – jeder Befehl nimmt `slot`, leer ist der Ordner für die
+Synchronisation.
 
 | Befehl | Was |
 |---|---|
 | `pick` | Ordner wählen → `{ connected, name }` |
 | `info` | `{ connected, name }` |
-| `list` | `.gpx`/`.json` bis 5 Ebenen tief → `{ files: [{ path, modified }] }` |
+| `list` | `.gpx`/`.json`/`.geojson` bis 5 Ebenen tief → `{ files: [{ path, modified }] }` |
 | `read { path }` / `write { path, text }` / `remove { path }` | Pfade relativ zum Ordner mit „/“; `..` und absolute Pfade lehnt das Plugin ab; `write` legt fehlende Ordner an |
 | `disconnect` | Ordner vergessen (Android: Freigabe zurückgeben) |
 
@@ -147,7 +150,13 @@ darum wählt das System den Ordner, und die App liest und schreibt nur darin
   wenn deren App Ordner anbietet. Manche melden keine Änderungszeit; der
   Abgleich vergleicht dann den Inhalt.
 - **Rechner** (`desktop.rs`): Ordnerdialog über `rfd`, der Pfad steht in
-  `ordner.json` im Konfigurationsordner der App.
+  `ordner.json` (bzw. `ordner-<slot>.json`) im Konfigurationsordner der App.
+- **Android:** je Ordner ein Eintrag in den SharedPreferences `wmap_folder`
+  (`tree`, `tree.layers`); die Freigabe wird erst zurückgegeben, wenn kein
+  anderer Eintrag denselben Ordner nutzt.
+- **Der Ordnerdialog ist System-Oberfläche** – ein eigenes ✕ lässt sich dort
+  nicht einbauen; abbrechen geht mit der Zurück-Geste (in Unterordnern
+  mehrmals) bzw. „Abbrechen“ im Dialog am Rechner.
 
 ## Weblinks, Teilen (`plugins/browser`)
 

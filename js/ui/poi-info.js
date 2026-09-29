@@ -280,8 +280,25 @@ SCHEMA.supermarket = [F.hoursReq, F.operator, F.wheelchair, F.payment];
 const DEFAULT = [F.hours, F.operator, F.wheelchair, F.phone, F.ele];
 
 /**
+ * Merkmale wie bei Google unter dem Namen („Bäckerei · Lieferdienst · Bio“).
+ * [Schlüssel, Name im Bearbeiten, { Wert: Text in der Karte }] – osm/edit.js
+ * bietet dieselben zum Setzen an (dazu „no“ = Nein).
+ */
+export const TRAITS = [
+  ['delivery', 'Lieferdienst', { yes: 'Lieferdienst', only: 'Nur Lieferung' }],
+  ['takeaway', 'Zum Mitnehmen', { yes: 'Zum Mitnehmen', only: 'Nur zum Mitnehmen' }],
+  ['organic', 'Bio', { yes: 'Bio', only: 'Nur Bio' }],
+  ['diet:vegan', 'Vegan', { yes: 'Vegane Auswahl', only: 'Vegan' }],
+  ['diet:vegetarian', 'Vegetarisch', { yes: 'Vegetarische Auswahl', only: 'Vegetarisch' }],
+  ['outdoor_seating', 'Draußen sitzen', { yes: 'Draußen sitzen' }],
+  ['internet_access', 'WLAN', { wlan: 'WLAN', yes: 'WLAN' }],
+  ['drive_through', 'Drive-in', { yes: 'Drive-in' }],
+];
+const traitsOf = (t) => TRAITS.map(([k, , txt]) => txt[t[k]]).filter(Boolean);
+
+/**
  * Alle Angaben zu einem Ort.
- * → { category, name, type, status, facts: [{ label, icon, value, unknown }], website }
+ * → { category, name, type, traits, description, status, facts: [{ label, icon, value, unknown }], website }
  */
 export function describePoi(tags = {}, { name, fallbackType } = {}) {
   const category = categoryFor(tags);
@@ -298,12 +315,17 @@ export function describePoi(tags = {}, { name, fallbackType } = {}) {
     category,
     name: name || tags.name || tags.brand || category?.one || fallbackType || 'Ort',
     type: category?.one ?? fallbackType ?? null,
+    traits: traitsOf(tags),
+    description: tags['description:de'] ?? tags.description ?? null,
     status: statusText(openState(tags.opening_hours)),
     open: openState(tags.opening_hours)?.open ?? null,
     facts,
     website: web && /^https?:\/\//.test(web) ? web : null,
   };
 }
+
+/** Unter dem Namen: Art und Merkmale */
+const subline = (info) => [info.type !== info.name ? info.type : null, ...(info.traits ?? [])].filter(Boolean).join(' · ');
 
 /** Karte fürs Popup und fürs Sheet. `compact` zeigt nur das Wichtigste. */
 export function poiCard(info, { compact = false } = {}) {
@@ -314,9 +336,10 @@ export function poiCard(info, { compact = false } = {}) {
     <div class="poi-card${compact ? ' compact' : ''}">
       <header>
         <span class="poi-ico msr" style="--c:${c?.color ?? '#e8590c'}">${c?.icon ?? 'location_on'}</span>
-        <div><strong>${esc(info.name)}</strong>${info.type && info.type !== info.name ? `<small>${esc(info.type)}</small>` : ''}</div>
+        <div><strong>${esc(info.name)}</strong>${subline(info) ? `<small>${esc(subline(info))}</small>` : ''}</div>
       </header>
       ${info.status ? `<p class="poi-status ${info.open ? 'open' : 'closed'}">${esc(info.status)}</p>` : ''}
+      ${!compact && info.description ? `<p class="poi-desc">${esc(info.description)}</p>` : ''}
       ${facts.length ? `<dl class="poi-facts">${facts.map((f) => `
         <div class="${f.unknown ? 'unknown' : ''}"><dt><span class="msr">${f.icon}</span>${esc(f.label)}</dt>
         <dd>${esc(f.value).replaceAll('\n', '<br>')}</dd></div>`).join('')}</dl>` : ''}

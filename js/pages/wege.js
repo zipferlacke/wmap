@@ -174,7 +174,7 @@ function showList({ push = false } = {}) {
     <a class="wege-sync-hint" href="./sync.html">
       <span class="msr">sync</span>
       <span>Alles bleibt auf diesem Gerät. Auf andere Geräte über einen Ordner (Nextcloud, Drive …), Health Connect
-        oder eine Sicherung: <strong>Sicherung &amp; Abgleich</strong></span>
+        oder eine Sicherung: <strong>Sicherung &amp; Synchronisation</strong></span>
       <span class="msr">chevron_right</span>
     </a>`;
   paintGroups();

@@ -58,15 +58,49 @@
 [data-view="route"]:not(.transit) .transit-actions { display: none; }
 
 /* Ort in OSM eintragen/bearbeiten (osm-edit.js) */
-.osm-form { display: grid; gap: .5rem; }
+.osm-form { display: grid; gap: .5rem; text-align: start; }
 .osm-field {
     display: grid; gap: .2rem; font-size: var(--fs-200);
     > span { color: var(--muted); }
-    input, select { width: 100%; min-width: 0; }
+    input, select, textarea { width: 100%; min-width: 0; }
+    textarea { resize: vertical; text-align: start; font: inherit; padding: .4rem .5rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--surface); color: inherit; }
     &[hidden] { display: none; }
     /* OSM-Schlüssel, in den das Feld schreibt */
     .osm-tag { font-size: var(--fs-100); padding: 0 .3rem; border-radius: .3rem; background: var(--surface-2); color: var(--muted); }
 }
+/* Merkmale und alle Tags – aufklappbar wie die Öffnungszeiten */
+.osm-more {
+    border: 1px solid var(--line);
+    border-radius: .8rem;
+    font-size: var(--fs-200);
+    > summary {
+        display: flex; align-items: center; gap: .4rem; flex-wrap: wrap;
+        padding: .6rem .7rem;
+        cursor: pointer;
+        font-weight: 600;
+        .msr { color: var(--route); font-size: 1.2rem; }
+        small { flex-basis: 100%; color: var(--muted); font-weight: 400; padding-left: 1.6rem; }
+    }
+    &[open] > summary { border-bottom: 1px solid var(--line); }
+    > .muted { padding: 0 .7rem .6rem; }
+}
+.osm-traits {
+    display: grid; gap: .1rem; padding: .4rem .7rem;
+    .osm-trait {
+        display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+        padding: .2rem 0;
+        .osm-tag { font-size: var(--fs-100); padding: 0 .3rem; border-radius: .3rem; background: var(--surface-2); color: var(--muted); }
+        select { width: 7rem; flex: none; }
+    }
+}
+.osm-raw {
+    display: block; width: calc(100% - 1.4rem); margin: .5rem .7rem;
+    resize: vertical; padding: .4rem .5rem; text-align: start; white-space: pre;
+    border: 1px solid var(--line); border-radius: .5rem;
+    background: var(--surface); color: inherit;
+    font-family: ui-monospace, monospace; font-size: var(--fs-100);
+}
+
 /* Formular mit Öffnungszeiten: breiter, scrollt in sich */
 .dialog.confirm.osm-edit { width: min(32rem, 94vw); max-width: min(32rem, 94vw); max-height: 88dvh; overflow-y: auto; overflow-x: hidden; }
 
@@ -101,8 +135,8 @@
     .oh-span { display: inline-flex; align-items: center; gap: .2rem; i { color: var(--muted); font-style: normal; } }
     /* Schmal genug fürs Handy: nur „08:00“, ohne Uhr-Symbol */
     input[type=time] {
-        width: 4.6rem; min-width: 0;
-        padding: .3rem .3rem;
+        width: 4rem; min-width: 0;
+        padding: .3rem .25rem;
         border: 1px solid var(--line);
         border-radius: .5rem;
         background: var(--surface-2, transparent);
@@ -128,6 +162,11 @@
     .oh-note { display: flex; gap: .4rem; align-items: flex-start; .msr { color: var(--route); } }
     .oh-raw { width: 100%; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--surface); color: inherit; font: inherit; }
     input[type=time]::-webkit-calendar-picker-indicator { display: none; }
+    /* Chrome auf Android hält rechts 24 px für einen Pfeil frei (auch ohne
+       Pfeil) – dadurch wurde „12:00“ abgeschnitten */
+    input[type=time]::-webkit-date-and-time-value { margin: 0; text-align: center; }
+    /* Firefox zeigt ein Uhr-Symbol im Feld, das sich nicht ausblenden lässt */
+    @supports (-moz-appearance: none) { input[type=time] { width: 5.8rem; } }
     .oh-day, .oh-times, .oh-span { min-width: 0; }
     .oh-quick {
         display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;

@@ -112,7 +112,7 @@ const render = () => {
       ${toggle('history', 'Jede Navigation merken',
         'Auch normale Navigationen landen unter Aufgezeichnete Touren. Geplante Touren, die du startest, und „Aufzeichnen“ werden immer gespeichert.',
         historySetting.get())}
-      <a class="button settings-row" href="./sync.html"><span class="msr">sync</span> Sicherung &amp; Abgleich – Ordner, Health Connect, ZIP</a>
+      <a class="button settings-row" href="./sync.html"><span class="msr">sync</span> Sicherung &amp; Synchronisation – Ordner, Health Connect, ZIP</a>
       <a class="button settings-row" href="./wege.html"><span class="msr">timeline</span> Aufgezeichnete Wege ansehen</a>
       <button type="button" class="button settings-row" data-act="history"><span class="msr">history</span> Suchverlauf löschen</button>
     </section>`;
