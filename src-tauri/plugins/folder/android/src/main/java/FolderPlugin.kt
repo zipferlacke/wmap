@@ -6,6 +6,8 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
+import android.provider.OpenableColumns
+import android.webkit.WebView
 import androidx.activity.result.ActivityResult
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
@@ -36,6 +38,11 @@ class SaveArgs {
 }
 
 @InvokeArg
+class OpenedArgs {
+    var peek: Boolean = false
+}
+
+@InvokeArg
 class WriteArgs {
     var slot: String = ""
     var path: String = ""
@@ -52,6 +59,9 @@ class WriteArgs {
  *   disconnect – Pfade relativ zum Ordner, mit „/“.
  *   save { name, data, mime } – eine Datei (Base64) über die Dokumentauswahl
  *   des Systems ablegen (ACTION_CREATE_DOCUMENT), z. B. den ZIP-Export.
+ *   opened { peek } – GPX-Dateien aus „Öffnen mit“ (ACTION_VIEW) und „Teilen“
+ *   (ACTION_SEND): beim Start und während die App läuft (dann gleich zur
+ *   Seite import.html); `peek` zählt nur.
  *
  * `slot` (optional, alle Befehle): welcher Ordner – leer ist der für
  * Sicherung & Synchronisation, „layers“ der für eigene Ebenen (Plugins).
@@ -63,6 +73,67 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
     private val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
     // Ordner + Pfad → Dokument-ID aus dem letzten Durchgang (spart Abfragen)
     private val ids = HashMap<String, String>()
+    // Mit WMap geöffnete Dateien, bis die Seite sie abholt
+    private val opened = ArrayList<JSObject>()
+    private var web: WebView? = null
+
+    override fun load(webView: WebView) {
+        super.load(webView)
+        web = webView
+        take(activity.intent)
+    }
+
+    // Läuft die App schon: Datei merken und zur Seite zum Öffnen
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (take(intent)) web?.post {
+            web?.evaluateJavascript("location.assign(new URL('import.html', location.href))", null)
+        }
+    }
+
+    /** GPX aus dem Intent lesen (höchstens 50 MB) → true, wenn etwas dazukam */
+    @Suppress("DEPRECATION")
+    private fun take(intent: Intent?): Boolean {
+        if (intent == null || intent.getBooleanExtra("wmap.taken", false)) return false
+        val uris: List<Uri> = when (intent.action) {
+            Intent.ACTION_VIEW -> listOfNotNull(intent.data)
+            Intent.ACTION_SEND -> listOfNotNull(intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri)
+            Intent.ACTION_SEND_MULTIPLE -> intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM) ?: emptyList()
+            else -> emptyList()
+        }.filter { it.scheme == "content" || it.scheme == "file" }
+        if (uris.isEmpty()) return false
+        intent.putExtra("wmap.taken", true)   // nicht noch einmal nach dem Drehen
+        var added = false
+        for (uri in uris) {
+            try {
+                var name: String? = null
+                var size = 0L
+                resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use {
+                    if (it.moveToFirst()) {
+                        name = it.getString(0)
+                        if (!it.isNull(1)) size = it.getLong(1)
+                    }
+                }
+                if (size > 50L * 1024 * 1024) continue
+                val text = resolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } ?: continue
+                // Nur GPX – „Öffnen mit“ kommt je nach Dateimanager auch als octet-stream
+                if (!text.contains("<gpx", ignoreCase = true)) continue
+                opened.add(JSObject().put("name", name ?: uri.lastPathSegment ?: "Datei.gpx").put("text", text))
+                added = true
+            } catch (e: Exception) { /* nicht lesbar – übergehen */ }
+        }
+        return added
+    }
+
+    @Command
+    fun opened(invoke: Invoke) {
+        val peek = invoke.parseArgs(OpenedArgs::class.java).peek
+        val files = JSArray()
+        if (!peek) { opened.forEach { files.put(it) } }
+        val count = opened.size
+        if (!peek) opened.clear()
+        invoke.resolve(JSObject().put("count", count).put("files", files))
+    }
 
     private fun key(slot: String): String {
         require(slot.matches(Regex("[a-z0-9_-]{0,20}"))) { "Ungültiger Ordner: $slot" }

@@ -109,3 +109,6 @@
 .sync .sync-link { display: inline; color: var(--route); text-decoration: underline; cursor: pointer; }
 .sync .sync-actions > .button { display: inline-flex; align-items: center; width: auto; flex: 0 0 auto; }
 .sync .sync-actions > .button:not(.primary) { border: 1px solid var(--line); background-color: var(--surface); }
+
+/* GPX öffnen (pages/import.js): der Name der Tour als Überschrift, nicht in Großbuchstaben */
+.import h3 { text-transform: none; letter-spacing: 0; font-size: var(--fs-400); color: inherit; }

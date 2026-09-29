@@ -34,10 +34,18 @@
   // Kurz verbergen, damit nicht erst die eingepackte Seite aufblitzt
   const root = document.documentElement;
   root.style.visibility = 'hidden';
+  window.__wmapStarting = true;             // core/theme.js: geöffnete Datei erst auf der Webversion abholen
   const get = (key, store = localStorage) => { try { return store.getItem(key); } catch { return null; } };
   const remember = (key, store = localStorage) => { try { store.setItem(key, '1'); } catch { /* gesperrt */ } };
   const go = () => location.replace(REMOTE + location.search + location.hash);
-  const stay = () => { root.style.visibility = ''; remember('wmap.local', sessionStorage); };
+  const stay = () => {
+    root.style.visibility = '';
+    remember('wmap.local', sessionStorage);
+    window.__wmapStarting = false;
+    // Ohne Netz bleibt es bei dieser Kopie – eine geöffnete Datei dann hier abholen
+    window.__TAURI__?.core?.invoke('plugin:folder|opened', { peek: true })
+      .then((r) => { if (r?.count) location.assign('./import.html'); }).catch(() => {});
+  };
 
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 2500);

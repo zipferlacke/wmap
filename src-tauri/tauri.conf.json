@@ -52,6 +52,15 @@
       "debugApplicationIdSuffix": ".debug",
       "minSdkVersion": 26
     },
+    "fileAssociations": [
+      {
+        "ext": ["gpx"],
+        "mimeType": "application/gpx+xml",
+        "name": "GPX",
+        "description": "GPS-Strecke (GPX)",
+        "role": "Viewer"
+      }
+    ],
     "category": "Travel",
     "shortDescription": "3D-Karte und Navigation auf Basis offener Daten",
     "copyright": "© 2026 Florian Wüllner"

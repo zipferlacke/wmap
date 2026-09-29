@@ -15,6 +15,10 @@
  * (js/ui/news.js): „Neue Version verfügbar“ bzw. zwingend bei minVersion;
  * „Aktualisieren“ schickt „skip-waiting“, dann lädt die Seite neu.
  *
+ * Teilen-Menü am Handy (manifest share_target): die GPX-Dateien kommen per
+ * POST an import.html – hier in den Cache „wmap-share“, dann weiter zu
+ * import.html?shared (js/pages/import.js holt sie dort ab).
+ *
  * Auf localhost (Entwicklung) erst Netz, sonst Cache – Änderungen sind sofort
  * zu sehen. Cache first testen: über 127.0.0.1 statt localhost öffnen.
  *
@@ -32,6 +36,7 @@
 const VERSION = '2.1.0';            // von appdata/version.py – neue Nummer = Update
 const APP = `wmap-app-${VERSION}`;
 const APP_PREFIX = 'wmap-app-';
+const SHARE = 'wmap-share';
 const DEV = self.location.hostname === 'localhost';
 const TILES = 'wmap-tiles-v1';
 const MAX_TILES = 8000;
@@ -61,7 +66,7 @@ async function precache() {
 }
 
 self.addEventListener('activate', (e) => e.waitUntil((async () => {
-  for (const k of await caches.keys()) if (![APP, TILES].includes(k) && !k.startsWith(NAV) && !k.startsWith(AREA)) await caches.delete(k);
+  for (const k of await caches.keys()) if (![APP, TILES, SHARE].includes(k) && !k.startsWith(NAV) && !k.startsWith(AREA)) await caches.delete(k);
   await dropOldNavs();
   await self.clients.claim();
 })()));
@@ -79,6 +84,7 @@ function areaKey(u) {
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
+  if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/import.html')) { e.respondWith(sharedIn(req)); return; }
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (TILE_HOSTS.includes(url.hostname)) {
@@ -89,6 +95,20 @@ self.addEventListener('fetch', (e) => {
     else e.respondWith(DEV ? networkFirst(req, APP) : appFirst(req));
   }
 });
+
+/** Geteilte Dateien ablegen, dann zur Seite, die sie öffnet */
+async function sharedIn(req) {
+  try {
+    const form = await req.formData();
+    const cache = await caches.open(SHARE);
+    let i = 0;
+    for (const f of form.getAll('files')) {
+      if (typeof f === 'string') continue;
+      await cache.put(`shared/${i += 1}`, new Response(f, { headers: { 'X-Name': encodeURIComponent(f.name || 'Datei.gpx') } }));
+    }
+  } catch { /* dann eben über die Auswahl */ }
+  return Response.redirect('./import.html?shared', 303);
+}
 
 /** Eigene Dateien: aus dem Cache dieser Version, nur Fehlendes aus dem Netz */
 async function appFirst(req) {

@@ -7,9 +7,13 @@ use tauri_plugin_deep_link::DeepLinkExt;
 pub fn run() {
   let builder = tauri::Builder::default();
   // Rechner: zweiter Start durch einen geo:-Link → Link geht ans offene Fenster
-  // (muss vor deep-link stehen)
+  // (muss vor deep-link stehen); durch eine GPX-Datei (Doppelklick) → Import
   #[cfg(desktop)]
-  let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+  let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+    let cwd = std::path::PathBuf::from(cwd);
+    if tauri_plugin_folder::open_paths(app, args.iter().skip(1).map(|a| cwd.join(a))) {
+      open_import(app);
+    }
     if let Some(win) = app.get_webview_window("main") {
       let _ = win.unminimize();
       let _ = win.set_focus();
@@ -42,10 +46,36 @@ pub fn run() {
       }
       let handle = app.handle().clone();
       app.deep_link().on_open_url(move |event| open_geo(&handle, &event.urls()));
+      // Mit einer GPX-Datei gestartet (Doppelklick, „Öffnen mit“): die Seite
+      // holt sie beim Plugin „folder“ ab (core/theme.js → import.html)
+      #[cfg(desktop)]
+      tauri_plugin_folder::open_paths(app.handle(), std::env::args_os().skip(1).map(std::path::PathBuf::from));
       Ok(())
     })
-    .run(tauri::generate_context!())
-    .expect("WMap konnte nicht starten");
+    .build(tauri::generate_context!())
+    .expect("WMap konnte nicht starten")
+    .run(|_app, _event| {
+      // macOS: Dateien kommen nicht als Argument, sondern als „Opened“
+      #[cfg(target_os = "macos")]
+      if let tauri::RunEvent::Opened { urls } = &_event {
+        let paths = urls.iter().filter_map(|u| u.to_file_path().ok());
+        if tauri_plugin_folder::open_paths(_app, paths) {
+          open_import(_app);
+        }
+      }
+    });
+}
+
+/// Neue GPX-Datei, während die App läuft: zur Seite zum Öffnen (import.html)
+/// neben der gerade offenen – eingepackt oder die Webversion
+#[cfg(desktop)]
+fn open_import(app: &tauri::AppHandle) {
+  let Some(win) = app.get_webview_window("main") else { return };
+  let Ok(Ok(mut page)) = win.url().map(|u| u.join("import.html")) else { return };
+  page.set_query(None);
+  page.set_fragment(None);
+  let _ = win.navigate(page);
+  let _ = win.set_focus();
 }
 
 /// geo:-Link an die Kartenseite: `index.html?geo=…` neben der gerade offenen

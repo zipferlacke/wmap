@@ -11,6 +11,10 @@
 //!   disconnect
 //!   save { name, data, mime } eine Datei (Base64) über den Speichern-Dialog des
 //!                       Systems ablegen, z. B. den ZIP-Export → { name }
+//!   opened { peek }     GPX-Dateien, mit denen WMap geöffnet wurde („Öffnen
+//!                       mit“, Teilen, Doppelklick) → { count, files: [{ name, text }] };
+//!                       `peek`: nur zählen, sonst abholen (danach leer).
+//!                       Rechner: die App gibt sie mit open_paths() herein
 //!
 //! Alle Befehle nehmen `slot` (optional): leer = Ordner für Sicherung &
 //! Synchronisation, „layers“ = Ordner für eigene Ebenen (Plugins).
@@ -25,6 +29,8 @@ use tauri::{
 
 #[cfg(desktop)]
 mod desktop;
+#[cfg(desktop)]
+pub use desktop::open_paths;
 
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
   let builder = Builder::new("folder");
@@ -37,7 +43,8 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
     desktop::write,
     desktop::remove,
     desktop::disconnect,
-    desktop::save
+    desktop::save,
+    desktop::opened
   ]);
   builder
     .setup(|_app, _api| {

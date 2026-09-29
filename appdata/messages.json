@@ -17,6 +17,7 @@
                 "Exportieren als ZIP und GPX speichern in den Apps über den Speichern-Dialog",
                 "Orte bearbeiten je nach Art: alles aus der Ortskarte lässt sich ändern – z. B. Stecker und Ladepunkte an Ladesäulen, Stellplätze, Gebühr, Belag, Kraftstoffe, Bezahlung",
                 "Tipp auf eine Angabe in der Ortskarte – auch auf „unbekannt“ – öffnet das Bearbeiten direkt an dieser Stelle",
+                "GPX-Dateien mit WMap öffnen – antippen, teilen oder doppelklicken: als aufgezeichnete Tour speichern (Doppelte werden erkannt) oder als geplante Tour öffnen",
                 "Fix: Website und Telefon ändern den vorhandenen Eintrag (contact:website) statt einen zweiten anzulegen – beim Bearbeiten von Orten",
                 "Fix: Bei geteilten Touren lief der Knopf „Übernehmen“ aus dem Rahmen – jetzt ein Speichern-Symbol mit Ausrufezeichen, solange die Tour noch nicht bei dir gespeichert ist"
             ]

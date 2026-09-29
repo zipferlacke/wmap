@@ -767,6 +767,29 @@ Dieselbe Ordnung wie im Ordner (GPX, Bus & Bahn, `Lesezeichen.json`), dazu
 nimmt das ZIP (oder eine alte `.json`); ein ZIP ohne JSON, etwa ein
 gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
 
+### GPX öffnen (`import.html`)
+
+Eine GPX-Datei antippen bzw. doppelklicken öffnet WMap – und dort je Datei:
+
+- **Als aufgezeichnete Tour speichern** (nur mit Zeiten in der Datei):
+  vorher Prüfung auf Doppelte (WMap-ID im Stichwort `wmap:…` bzw. derselbe
+  Weg – `sameTrack`); gibt es ihn schon: „Gibt es schon – ansehen“. Sonst
+  speichern und gleich zeigen (`wege.html?id=…`), der Ordner gleicht ihn mit ab.
+- **Als geplante Tour öffnen:** nur öffnen, wie eine geteilte Tour
+  (`tour.html#t=…`, Speichern mit Ausrufezeichen) – gespeichert wird erst dort.
+
+Wie die Datei ankommt:
+
+| Wo | Wie |
+|---|---|
+| Android-App | „Öffnen mit“ (`ACTION_VIEW`) und „Teilen“ (`ACTION_SEND`) – Intent-Filter aus `tools/android-einbinden.py`, das folder-Plugin liest die Datei (nur mit `<gpx`), `opened` gibt sie der Seite |
+| Rechner-Apps | Dateizuordnung `.gpx` (`bundle.fileAssociations`): Start mit Datei, zweiter Start (single-instance) bzw. macOS „Opened“ → `open_paths()` im folder-Plugin |
+| installierte Web-App | Chrome/Edge am Rechner: `file_handlers` im Manifest (`launchQueue`); am Handy das Teilen-Menü: `share_target` → `sw.js` legt die Dateien in den Cache `wmap-share` → `import.html?shared` |
+| sonst | Dateiauswahl auf der Seite |
+
+In der App schickt `js/core/theme.js` beim Start einer Seite zu
+`import.html`, wenn das Plugin Dateien bereithält (`opened { peek }`).
+
 ## 16. Teilen, Standort anfragen, Bild in Bild
 
 - **Teilen per Link** – ohne Server, alles steckt in der Adresse: ein Ort,

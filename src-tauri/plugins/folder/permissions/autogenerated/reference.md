@@ -1,6 +1,6 @@
 ## Default Permission
 
-Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, löschen – nur im gewählten Ordner; eine Datei über den Speichern-Dialog ablegen
+Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, löschen – nur im gewählten Ordner; eine Datei über den Speichern-Dialog ablegen; mit WMap geöffnete GPX-Dateien abholen
 
 #### This default permission set includes the following:
 
@@ -12,6 +12,7 @@ Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, lösche
 - `allow-remove`
 - `allow-disconnect`
 - `allow-save`
+- `allow-opened`
 
 ## Permission Table
 
@@ -96,6 +97,32 @@ Enables the list command without any pre-configured scope.
 <td>
 
 Denies the list command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:allow-opened`
+
+</td>
+<td>
+
+Enables the opened command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:deny-opened`
+
+</td>
+<td>
+
+Denies the opened command without any pre-configured scope.
 
 </td>
 </tr>

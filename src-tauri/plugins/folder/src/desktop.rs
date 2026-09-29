@@ -208,3 +208,58 @@ pub async fn save<R: Runtime>(app: AppHandle<R>, name: String, data: String) -> 
   fs::write(&path, bytes).map_err(|e| e.to_string())?;
   Ok(Saved { name: path.file_name().map(|n| n.to_string_lossy().into_owned()) })
 }
+
+/* ── Mit WMap geöffnete Dateien ─────────────────────────────────────────────── */
+
+#[derive(Serialize, Clone)]
+pub struct OpenedFile {
+  name: String,
+  text: String,
+}
+
+#[derive(Default)]
+pub struct Opened(std::sync::Mutex<Vec<OpenedFile>>);
+
+#[derive(Serialize)]
+pub struct OpenedList {
+  count: usize,
+  files: Vec<OpenedFile>,
+}
+
+const MAX_OPEN: u64 = 50 * 1024 * 1024;
+
+/// Dateien, mit denen WMap gestartet bzw. geöffnet wurde (Doppelklick, „Öffnen
+/// mit“): nur GPX, höchstens 50 MB. → true, wenn etwas dazukam
+pub fn open_paths<R: Runtime>(app: &AppHandle<R>, paths: impl IntoIterator<Item = PathBuf>) -> bool {
+  if app.try_state::<Opened>().is_none() {
+    app.manage(Opened::default());
+  }
+  let state = app.state::<Opened>();
+  let mut list = state.0.lock().unwrap_or_else(|e| e.into_inner());
+  let before = list.len();
+  for p in paths {
+    if !p.extension().is_some_and(|e| e.eq_ignore_ascii_case("gpx")) {
+      continue;
+    }
+    if fs::metadata(&p).map(|m| m.len() > MAX_OPEN).unwrap_or(true) {
+      continue;
+    }
+    if let Ok(text) = fs::read_to_string(&p) {
+      let name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "Datei.gpx".into());
+      list.push(OpenedFile { name, text });
+    }
+  }
+  list.len() > before
+}
+
+/// Geöffnete Dateien: `peek` nur zählen, sonst abholen (danach ist die Liste leer)
+#[command]
+pub fn opened<R: Runtime>(app: AppHandle<R>, peek: Option<bool>) -> OpenedList {
+  let Some(state) = app.try_state::<Opened>() else { return OpenedList { count: 0, files: vec![] } };
+  let mut list = state.0.lock().unwrap_or_else(|e| e.into_inner());
+  if peek.unwrap_or(false) {
+    return OpenedList { count: list.len(), files: vec![] };
+  }
+  let files = std::mem::take(&mut *list);
+  OpenedList { count: files.len(), files }
+}

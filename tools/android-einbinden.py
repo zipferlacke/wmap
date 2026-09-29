@@ -11,6 +11,9 @@ aufgerufen von `tauri-android wmap` (wuefl_products/tools) vor jedem Bauen:
   tools/android/MainActivity.kt → Bild in Bild während der Navigation
                              (beim Rauswischen von selbst, siehe js/nav/pip.js)
   supportsPictureInPicture → an die <activity>
+  GPX öffnen               → Intent-Filter an die <activity>: „Öffnen mit“
+                             (VIEW) und „Teilen“ (SEND) für GPX-Dateien; das
+                             folder-Plugin nimmt sie an (opened → import.html)
   minSdk                   → app/build.gradle.kts aus tauri.conf.json
                              (bundle.android.minSdkVersion; Health Connect
                              braucht 26 – ein früher erzeugtes Projekt hat 24)
@@ -70,6 +73,34 @@ def signatur() -> None:
     text = text.replace('getByName("release") {\n', 'getByName("release") {\n' + nutzen, 1)
     datei.write_text(text, encoding="utf-8")
 
+# GPX öffnen und teilen. Dateimanager melden GPX oft als octet-stream oder XML –
+# das Plugin nimmt nur, was wirklich <gpx enthält.
+GPX_MARKE = "<!-- wmap:gpx -->"
+GPX_FILTER = f"""            {GPX_MARKE}
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/gpx+xml" />
+                <data android:mimeType="application/gpx" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/xml" />
+                <data android:mimeType="text/xml" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/gpx+xml" />
+                <data android:mimeType="application/gpx" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/xml" />
+                <data android:mimeType="text/xml" />
+            </intent-filter>
+"""
+
 BERECHTIGUNGEN = [
     '<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',
     '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />',
@@ -106,6 +137,8 @@ def main() -> int:
     if fehlend:
         zeilen = "".join(f"    {b}\n" for b in fehlend)
         text = text.replace("    <application", zeilen + "\n    <application", 1)
+    if GPX_MARKE not in text:
+        text = text.replace("        </activity>", GPX_FILTER + "        </activity>", 1)
     if "supportsPictureInPicture" not in text:
         text = text.replace('android:name=".MainActivity"',
                             'android:name=".MainActivity"\n            android:supportsPictureInPicture="true"', 1)
@@ -117,7 +150,7 @@ def main() -> int:
         shutil.copyfile(PROJEKT / "tools/android/MainActivity.kt", ziel)
     min_sdk()
     signatur()
-    print("==> WMap-Teile eingesetzt (Symbol, Standort, Bild in Bild"
+    print("==> WMap-Teile eingesetzt (Symbol, Standort, Bild in Bild, GPX öffnen"
           + (", Upload-Signatur)" if SIGNATUR.is_file() else ")"))
     return 0
 

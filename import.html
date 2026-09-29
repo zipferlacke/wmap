@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>GPX öffnen – WMap</title>
+    <link rel="manifest" href="./appdata/manifest.json">
+    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#1a73e8">
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/tours.css">
+    <link rel="stylesheet" href="./css/dashboard.css">
+</head>
+
+<!--
+  GPX-Datei öffnen: kommt über „Öffnen mit“ bzw. „Teilen“ (Apps, Web-App) oder
+  die Dateiauswahl hier. Je Datei: als aufgezeichnete Tour speichern (mit
+  Prüfung auf Doppelte) oder als geplante Tour öffnen (gespeichert wird erst
+  dort). Siehe js/pages/import.js.
+-->
+<body class="dash-page settings-page import-page">
+    <header class="dash-head">
+        <h1>GPX öffnen</h1>
+    </header>
+
+    <main class="dash settings sync import"></main>
+
+    <script type="module" src="./js/pages/import.js"></script>
+</body>
+
+</html>

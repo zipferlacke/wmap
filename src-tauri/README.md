@@ -93,6 +93,15 @@ stehen – und die Webseite fragt vorher, ob es sie gibt.
 Achtung: Wer die Webseite ändern kann, darf damit auch alles, was die Rechte
 der App erlauben – die Rechte darum klein halten.
 
+## GPX-Dateien (`fileAssociations`, Intent-Filter)
+
+WMap meldet sich für `.gpx` an: am Rechner über `bundle.fileAssociations` in
+`tauri.conf.json` (Windows-Installer, macOS, `.desktop` unter Linux), unter
+Android über Intent-Filter für „Öffnen mit“ und „Teilen“
+(`tools/android-einbinden.py`). Die Datei landet im folder-Plugin
+(`opened`), die Seite `import.html` fragt, ob sie als aufgezeichnete Tour
+gespeichert oder als geplante Tour geöffnet wird (README, Abschnitt 15).
+
 ## Karten-Links (`geo:`)
 
 WMap meldet sich für `geo:`-Links an (`plugins.deep-link` in
@@ -169,6 +178,7 @@ Synchronisation.
 | `list` | `.gpx`/`.json`/`.geojson`/`.js` bis 5 Ebenen tief → `{ files: [{ path, modified }] }` |
 | `read { path }` / `write { path, text }` / `remove { path }` | Pfade relativ zum Ordner mit „/“; `..` und absolute Pfade lehnt das Plugin ab; `write` legt fehlende Ordner an |
 | `disconnect` | Ordner vergessen (Android: Freigabe zurückgeben) |
+| `opened { peek }` | mit WMap geöffnete GPX-Dateien → `{ count, files: [{ name, text }] }`; `peek` zählt nur, sonst abholen. Android: Intents `VIEW`/`SEND` (`onNewIntent` → gleich `import.html`), Rechner: `open_paths()` aus `src/lib.rs` (Argumente beim Start, zweiter Start, macOS `RunEvent::Opened`) |
 | `save { name, data, mime }` | eine Datei (Base64) über den Speichern-Dialog ablegen → `{ name }`; Android `ACTION_CREATE_DOCUMENT`, Rechner Dialog von `rfd`. Nutzt `download()` in `js/data/store.js` in der App (ZIP-Export, GPX) – `<a download>` kommt in den WebViews nicht an |
 
 - **Android** (`FolderPlugin.kt`): `ACTION_OPEN_DOCUMENT_TREE`, die Freigabe
