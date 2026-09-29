@@ -36,7 +36,9 @@ export function store(name) {
     return new Promise((resolve, reject) => {
       const t = db.transaction(name, mode);
       const out = fn(t.objectStore(name));
-      t.oncomplete = () => resolve(out?.result ?? out);
+      // Bei get() eines fehlenden Schlüssels ist result undefined – dann auch undefined
+      // zurückgeben, nicht die Anfrage selbst
+      t.oncomplete = () => resolve(out instanceof IDBRequest ? out.result : out);
       t.onerror = () => reject(t.error);
       t.onabort = () => reject(t.error ?? new Error('Speichern abgebrochen'));
     });
