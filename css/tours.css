@@ -267,6 +267,21 @@ body.readonly {
     .known-status .spin { animation: spin 1s linear infinite; vertical-align: -.25rem; }
 }
 
+/* ── Seitenleiste am Handy (userDialog-sheet aus wuefl-libs) ──────────────── */
+
+/* Höherer Griff, und eingeklappt bleibt er über der Gestenleiste von Android
+   stehen (--safe-bottom, siehe core/theme.js) – sonst fängt das System das
+   Hochziehen ab */
+@media screen and (max-width: 700px) {
+    .userDialog.uD-sheet:is(:not([data-pos-mobile]), [data-pos-mobile="bottom"]) {
+        padding-bottom: var(--safe-bottom);
+        &.uD-collapsed { translate: 0 calc(100% - var(--uD-grip) - var(--safe-bottom)); }
+    }
+}
+@media screen and (max-width: 700px) and (pointer: coarse) {
+    .userDialog.uD-sheet:is(:not([data-pos-mobile]), [data-pos-mobile="bottom"]) { --uD-grip: 2.2rem; }
+}
+
 /* ── Offline-Karten ───────────────────────────────────────────────────────── */
 
 .offline-page .tour-head h1.tour-name { font-size: var(--fs-500); margin: 0; }

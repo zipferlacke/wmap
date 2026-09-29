@@ -45,6 +45,12 @@ let autoSynced = false;   // beim Öffnen einer Seite einmal still abgleichen
 async function load() {
   if (testHandle) return conf;
   conf = (await kv.get(KEY).catch(() => null)) ?? null;
+  // Eintrag ohne Ordner-Zugriff (z. B. aus einer Android-Sicherung wiederhergestellt –
+  // den Zugriff selbst stellt niemand wieder her): gilt als nicht verbunden
+  if (conf && typeof conf.handle?.entries !== 'function') {
+    conf = null;
+    await kv.remove(KEY).catch(() => {});
+  }
   return conf;
 }
 const persist = () => (testHandle ? null : kv.put(conf));

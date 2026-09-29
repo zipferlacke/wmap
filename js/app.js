@@ -89,10 +89,13 @@ appNav.addItem('person_pin_circle', 'Standort anfragen', async () => {
 });
 appNav.addItem('keyboard', 'Tastatur', keysDialog);
 appNav.addItem('settings', 'Einstellungen', () => { location.href = './settings.html'; });
-/* Suchleiste: Controls rechts oben rücken darunter (mobil) */
-new ResizeObserver(() => {
+/* Suchleiste: Controls rechts oben rücken darunter (mobil) – auch wenn sie
+   nur ihre Lage ändert (Ränder der Android-App, core/theme.js) */
+const panelHeight = () => {
   document.documentElement.style.setProperty('--panel-h', `${Math.round($('#search').getBoundingClientRect().bottom)}px`);
-}).observe($('#search'));
+};
+new ResizeObserver(panelHeight).observe($('#search'));
+addEventListener('resize', panelHeight);
 
 /* Kategorien für die Hilfe im Suchfeld */
 q.title = `Auch Kategorien: ${CATEGORIES.slice(0, 12).map((c) => c.one).join(', ')} …`;

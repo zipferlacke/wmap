@@ -43,6 +43,25 @@ function apply(choice = theme.get()) {
   if (!first) dispatchEvent(new CustomEvent('wmap:theme', { detail: { dark } }));
 }
 
+/*
+ * Android-App: Das WebView reicht bis unter Status- und Gestenleiste, meldet
+ * aber kein env(safe-area-inset-*). Die Maße kommen aus der MainActivity
+ * (tools/android/MainActivity.kt) und setzen --safe-top/--safe-bottom –
+ * sonst lägen eingeklappte Sheets unter der Gestenleiste.
+ */
+function applyInsets(i) {
+  if (!i) return;
+  const root = document.documentElement.style;
+  root.setProperty('--safe-top', `max(env(safe-area-inset-top, 0px), ${i.top}px)`);
+  root.setProperty('--safe-bottom', `max(env(safe-area-inset-bottom, 0px), ${i.bottom}px)`);
+  // Was aus Maßen rechnet (Karte, Kartenknöpfe unter der Suche), soll es mitbekommen
+  requestAnimationFrame(() => dispatchEvent(new Event('resize')));
+}
+if (window.WMapAndroid?.insets) {
+  try { applyInsets(JSON.parse(window.WMapAndroid.insets())); } catch { /* ältere App ohne Ränder */ }
+  window.wmapInsets = applyInsets;
+}
+
 system.addEventListener('change', () => apply());
 addEventListener('storage', (e) => { if (e.key === KEY) apply(); });
 apply();
