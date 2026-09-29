@@ -4,7 +4,7 @@
  *   const v = await ask({ icon: 'wifi_off', title: '…', text: '…',
  *     buttons: [{ value: 'no', label: 'Nein' }, { value: 'yes', label: 'Ja', primary: true }] });
  *
- * → Wert des gedrückten Knopfs, null bei Esc. `className` kommt zu
+ * → Wert des gedrückten Knopfs, null bei Esc oder ✕ (oben rechts). `className` kommt zu
  *   „dialog confirm“ dazu (z. B. „stacked“: Knöpfe untereinander).
  * Mit `read(dlg)` liefert der
  *   Hauptknopf (primary) stattdessen dessen Ergebnis – z. B. ein Eingabefeld;
@@ -18,6 +18,7 @@ export function ask({ icon = 'help', title, text = '', html = '', buttons, read 
     const dlg = document.createElement('dialog');
     dlg.className = `dialog confirm ${className}`.trim();
     dlg.innerHTML = `
+      <button type="button" class="dialog-x" aria-label="Schließen" title="Schließen"><span class="msr">close</span></button>
       <h2><span class="msr">${esc(icon)}</span> ${esc(title)}</h2>
       ${text ? `<p>${esc(text)}</p>` : ''}${html}
       <div class="confirm-actions">${buttons.map((b) => `
@@ -29,6 +30,7 @@ export function ask({ icon = 'help', title, text = '', html = '', buttons, read 
     const primary = buttons.find((b) => b.primary)?.value;
     const pick = (v) => done(read && v === primary ? read(dlg) : v);
     dlg.addEventListener('click', (e) => {
+      if (e.target.closest('.dialog-x')) { done(null); return; }
       const b = e.target.closest('.confirm-actions button[value]');
       if (b) pick(b.value);
     });

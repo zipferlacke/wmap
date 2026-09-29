@@ -295,6 +295,18 @@
       "type": "string",
       "oneOf": [
         {
+          "description": "Enables the copy command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-copy",
+          "markdownDescription": "Enables the copy command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the copy command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-copy",
+          "markdownDescription": "Denies the copy command without any pre-configured scope."
+        },
+        {
           "description": "Enables the open command without any pre-configured scope.",
           "type": "string",
           "const": "allow-open",
@@ -307,10 +319,22 @@
           "markdownDescription": "Denies the open command without any pre-configured scope."
         },
         {
-          "description": "Weblinks öffnen – in der Ansicht mit Leiste oder im Standardbrowser\n#### This default permission set includes:\n\n- `allow-open`",
+          "description": "Enables the share command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-share",
+          "markdownDescription": "Enables the share command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the share command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-share",
+          "markdownDescription": "Denies the share command without any pre-configured scope."
+        },
+        {
+          "description": "Weblinks öffnen (Ansicht mit Leiste oder Standardbrowser), Android: teilen und in die Zwischenablage\n#### This default permission set includes:\n\n- `allow-open`\n- `allow-share`\n- `allow-copy`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Weblinks öffnen – in der Ansicht mit Leiste oder im Standardbrowser\n#### This default permission set includes:\n\n- `allow-open`"
+          "markdownDescription": "Weblinks öffnen (Ansicht mit Leiste oder Standardbrowser), Android: teilen und in die Zwischenablage\n#### This default permission set includes:\n\n- `allow-open`\n- `allow-share`\n- `allow-copy`"
         }
       ]
     }

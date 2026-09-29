@@ -29,13 +29,18 @@
         small { color: var(--muted); font-size: var(--fs-100); }
         input { flex-shrink: 0; }
     }
-    .settings-row { justify-content: flex-start; width: 100%; }
+    /* Lange Knopftexte umbrechen statt über den Rand zu ragen */
+    .settings-row { justify-content: flex-start; width: 100%; white-space: normal; text-align: left; height: auto; min-height: 2.6rem; }
+    section, section > * { min-width: 0; }
+    .button { max-width: 100%; white-space: normal; text-align: left; }
     .settings-hint { margin: 0; font-size: var(--fs-200); color: var(--muted); strong { color: var(--text-color, inherit); } }
     .settings-select {
         display: flex; align-items: center; justify-content: space-between; gap: 1rem;
         span { display: grid; gap: .1rem; }
         small { color: var(--muted); font-size: var(--fs-100); }
         select { flex-shrink: 0; font: inherit; padding: .3rem .5rem; border-radius: .5rem; border: 1px solid var(--line, rgb(0 0 0 / .15)); background: var(--bg-input, transparent); color: inherit; }
+        /* Handy: Auswahl unter die Beschriftung – sonst wird der Text sehr schmal */
+        @media (max-width: 480px) { flex-direction: column; align-items: stretch; gap: .4rem; select { width: 100%; padding: .45rem .5rem; } }
     }
     .settings-account {
         display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem;
@@ -76,4 +81,8 @@
         pre { margin: .4rem 0; padding: .6rem .7rem; border-radius: .6rem; background: var(--surface-2); overflow-x: auto; font-size: var(--fs-100); line-height: 1.5; }
     }
     .sync-note { display: flex; gap: .4rem; align-items: flex-start; .msr { font-size: 1.1rem; } }
+}
+.sync .sync-progress {
+    height: .4rem; border-radius: 999px; overflow: hidden; background: var(--surface-2);
+    i { display: block; height: 100%; background: var(--route); transition: width .3s; }
 }

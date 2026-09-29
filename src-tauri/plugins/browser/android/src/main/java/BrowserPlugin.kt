@@ -2,6 +2,9 @@ package de.wuefl.wmap.browser
 
 import android.app.Activity
 import android.app.PendingIntent
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -19,6 +22,12 @@ import app.tauri.plugin.Invoke
 import app.tauri.plugin.Plugin
 
 @InvokeArg
+class ShareArgs {
+    var title: String = ""
+    var text: String = ""
+}
+
+@InvokeArg
 class OpenArgs {
     var url: String = ""
     var external: Boolean = false
@@ -28,6 +37,9 @@ class OpenArgs {
  * Weblinks (js/core/links.js) im Custom Tab des Systems: der Browser legt
  * sich über WMap, oben ✕ zum Schließen (zurück in die App) und rechts
  * „Im Browser öffnen“. `external`: gleich im Standardbrowser.
+ *
+ * Dazu, weil das WebView es nicht kann: `share { title, text }` öffnet das
+ * Teilen-Menü von Android, `copy { text }` legt Text in die Zwischenablage.
  */
 @TauriPlugin
 class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
@@ -45,6 +57,32 @@ class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
                 // Kein Browser mit Custom Tabs: dann eben so
                 try { inBrowser(uri); invoke.resolve() } catch (e2: Exception) { invoke.reject(e2.message ?: e2.toString()) }
             }
+        }
+    }
+
+    @Command
+    fun share(invoke: Invoke) {
+        val args = invoke.parseArgs(ShareArgs::class.java)
+        activity.runOnUiThread {
+            try {
+                val send = Intent(Intent.ACTION_SEND).setType("text/plain")
+                    .putExtra(Intent.EXTRA_TEXT, args.text)
+                    .putExtra(Intent.EXTRA_SUBJECT, args.title)
+                activity.startActivity(Intent.createChooser(send, args.title.ifEmpty { "Teilen" }))
+                invoke.resolve()
+            } catch (e: Exception) {
+                invoke.reject(e.message ?: e.toString())
+            }
+        }
+    }
+
+    @Command
+    fun copy(invoke: Invoke) {
+        val args = invoke.parseArgs(ShareArgs::class.java)
+        activity.runOnUiThread {
+            val clip = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clip.setPrimaryClip(ClipData.newPlainText(args.title.ifEmpty { "WMap" }, args.text))
+            invoke.resolve()
         }
     }
 

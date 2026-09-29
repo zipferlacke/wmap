@@ -105,8 +105,8 @@ const render = () => {
 
     <section>
       <h3>Daten</h3>
-      ${toggle('history', 'Fahrten merken',
-        'Navigierte Strecken landen unter Aufgezeichnete Touren – auf diesem Gerät, über Jahre. Auf andere Geräte über Sicherung & Abgleich.',
+      ${toggle('history', 'Jede Navigation merken',
+        'Auch normale Navigationen landen unter Aufgezeichnete Touren. Geplante Touren, die du startest, und „Aufzeichnen“ werden immer gespeichert.',
         historySetting.get())}
       <a class="button settings-row" href="./sync.html"><span class="msr">sync</span> Sicherung &amp; Abgleich – Ordner, Health Connect, ZIP</a>
       <a class="button settings-row" href="./wege.html"><span class="msr">timeline</span> Aufgezeichnete Wege ansehen</a>

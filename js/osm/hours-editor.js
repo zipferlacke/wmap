@@ -82,6 +82,7 @@ function rowHtml(day, spans, ph) {
       <span class="oh-name">${isPh ? 'Feiertage' : DAYS[day]}
         <span class="oh-row-actions">
           <button type="button" class="oh-add" data-oh="add" title="Zeit hinzufügen"><span class="msr">add</span> ${empty ? 'Zeiten' : 'Zeit'}</button>
+          ${isPh ? '<button type="button" class="oh-add" data-oh="ph-sunday">wie Sonntag</button>' : ''}
           ${isPh && empty ? `<button type="button" class="oh-add" data-oh="ph-off">${none ? 'geschlossen' : 'keine Angabe'}</button>` : ''}
         </span>
       </span>
@@ -114,8 +115,7 @@ function bodyHtml(state, raw) {
       <input type="text" class="oh-raw" value="${esc(raw)}" placeholder="Mo-Fr 08:00-18:00; Sa 08:00-13:00" autocomplete="off">
       <button type="button" class="link-button" data-oh="week">Stattdessen je Tag neu eintragen</button>`;
   }
-  return `<div class="oh-week">${state.days.map((d, i) => rowHtml(i, d, null)).join('')}${rowHtml(PH, state.ph === 'off' ? [] : state.ph, state.ph)}</div>
-    <button type="button" class="link-button oh-copy" data-oh="copy-mo"><span class="msr">content_copy</span> Montag für Di–Fr übernehmen</button>`;
+  return `<div class="oh-week">${state.days.map((d, i) => rowHtml(i, d, null)).join('')}${rowHtml(PH, state.ph === 'off' ? [] : state.ph, state.ph)}</div>`;
 }
 
 /** @param gone  Knopf „Dauerhaft geschlossen“ zeigen (nur beim Bearbeiten) */
@@ -127,6 +127,7 @@ export function hoursField(value = '', { gone = true } = {}) {
       <input type="hidden" name="gone" value="">
       <div class="oh-body">${bodyHtml(state, value)}</div>
       <div class="oh-quick">
+        <button type="button" class="button" data-oh="copy-mo"><span class="msr">content_copy</span> Montag für Di–Fr</button>
         <button type="button" class="button" data-oh="24/7"><span class="msr">all_inclusive</span> 24/7 geöffnet</button>
         ${gone ? '<button type="button" class="button" data-oh="gone"><span class="msr">block</span> Dauerhaft geschlossen</button>' : ''}
         <button type="button" class="link-button" data-oh="raw">Als Text</button>
@@ -183,14 +184,18 @@ export function mountHours(root) {
       if (day === PH && !list.length) state.ph = null;
     } else if (act === 'ph-off') {
       state.ph = state.ph === 'off' ? null : 'off';
+    } else if (act === 'ph-sunday') {
+      state.ph = state.days[6].length ? state.days[6].map((x) => [...x]) : 'off';
     } else if (act === 'copy-mo') {
+      if (state.mode !== 'week') return;
       for (let d = 1; d <= 4; d += 1) state.days[d] = state.days[0].map((s) => [...s]);
     } else if (act === '24/7' || act === 'gone') {
       state.mode = act;
     } else if (act === 'week') {
-      if (state.mode === 'raw' || !state.days.some((d) => d.length)) {
-        state.days = [...Array(5).fill(null).map(() => [[480, 1080]]), [[480, 780]], []];
-        state.ph = null;
+      // Aus dem Text: was sich lesen lässt, sonst leer – nie erfundene Zeiten
+      if (state.mode === 'raw') {
+        const parsed = read(body.querySelector('.oh-raw')?.value ?? '');
+        state = parsed.mode === 'week' ? parsed : { mode: 'week', days: Array.from({ length: 7 }, () => []), ph: null };
       }
       state.mode = 'week';
     } else if (act === 'raw') {

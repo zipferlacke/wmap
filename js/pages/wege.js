@@ -23,12 +23,13 @@ import { tours, shapeOf, coordsOf, encodeShare, toGpx, download, local } from '.
 import { metrics, laps, lapLine } from '../data/track-stats.js';
 import { PROFILES } from '../core/config.js';
 import { ask, toast } from '../ui/dialogs.js';
-import { share } from '../ui/share.js';
+import { share, pageUrl } from '../ui/share.js';
 import { tourFromGpx } from '../data/folder.js';
 import { autoSync } from '../data/auto-sync.js';
 import { mapPage } from '../ui/map-page.js';
 import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, esc, bbox } from '../core/geo.js';
-import { connections } from '../data/saved.js';
+import { connections, places, DEFAULT_LIST, PLACE_KINDS } from '../data/saved.js';
+import { packJson, unpackJson } from '../data/store.js';
 import { legBadge, changesText, transitLegsHtml } from '../ui/transit-legs.js';
 import { healthAvailable, refreshHealthValues, appName, typeName, typeIcon } from '../services/health.js';
 
@@ -59,12 +60,14 @@ const moving = (t) => t.moving || (t.end - t.start) / 1000;
 /* ── Zustand ──────────────────────────────────────────────────────────────── */
 
 const params = new URLSearchParams(location.search);
-const tabOf = (p) => (p.get('tab') === 'bahn' || p.has('conn') ? 'bahn' : p.get('tab') === 'geplant' || p.has('tour') ? 'geplant' : 'wege');
+const tabOf = (p) => (p.get('tab') === 'bahn' || p.has('conn') ? 'bahn' : p.get('tab') === 'geplant' || p.has('tour') ? 'geplant'
+  : p.get('tab') === 'orte' || p.has('liste') ? 'orte' : 'wege');
 let tab = tabOf(params);
 let all = [];                      // aufgezeichnete Wege
 let planned = [];                  // geplante Touren
 let conns = [];                    // gemerkte Verbindungen mit Bus & Bahn
-const query = { wege: '', geplant: '', bahn: '' };
+const query = { wege: '', geplant: '', bahn: '', orte: '' };
+let sharedList = null;             // geöffneter Link „?liste=“: { name, items: [{ name, label, point }] }
 let selected = null;               // gewählter Weg oder Tour
 let years = [];
 const yearColor = (y) => YEAR_COLORS[Math.min(Math.max(0, years.indexOf(y)), YEAR_COLORS.length - 1)];
@@ -77,6 +80,13 @@ const ready = new Promise((r) => (map.loaded() ? r() : map.once('load', r)));
 const page = mapPage(panel, { map, onFit: () => fitView() });
 
 function fitView() {
+  if (tab === 'orte' && !selected) {
+    const pts = orteFeatures().map((f) => f.geometry.coordinates);
+    if (!pts.length) return;
+    const b = bbox(pts);
+    map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: page.padding(), maxZoom: 15, duration: 600 });
+    return;
+  }
   const list = selected ? [selected] : tab === 'geplant' ? visiblePlanned() : tab === 'bahn' ? visibleConns() : visible();
   const boxes = list.map((t) => (t.legs ? bbox(connCoords(t)) : t.bbox ?? bboxOfTour(t))).filter(Boolean);
   if (!boxes.length) return;
@@ -121,8 +131,13 @@ function showList({ push = false } = {}) {
   if (push) history.pushState(null, '', `./wege.html${tab === 'wege' ? '' : `?tab=${tab}`}`);
   document.title = 'Meine Touren – WMap';
   page.header('Meine Touren');
-  const isPlan = tab === 'geplant', isBahn = tab === 'bahn';
-  const empty = isBahn
+  const isPlan = tab === 'geplant', isBahn = tab === 'bahn', isOrte = tab === 'orte';
+  const ownPlaces = places.all().filter((p) => p.kind !== 'home' && p.kind !== 'work');
+  const empty = isOrte
+    ? `<div class="tour-empty"><span class="msr">bookmarks</span><p>Noch keine Orte gemerkt.</p>
+        <p class="muted">Tippe auf der Karte einen Ort an und dann auf „Merken“ – in „Allgemein“ oder eine eigene Liste wie „Hannover Urlaub“.</p>
+        <a class="button primary" href="./index.html"><span class="msr">map</span> Zur Karte</a></div>`
+    : isBahn
     ? `<div class="tour-empty"><span class="msr">directions_transit</span><p>Noch keine Verbindungen gemerkt.</p>
         <p class="muted">Plane auf der Karte eine Route mit Bus &amp; Bahn und tippe bei der passenden Verbindung auf „Merken“.</p>
         <a class="button primary" href="./index.html"><span class="msr">directions</span> Route planen</a></div>`
@@ -138,11 +153,13 @@ function showList({ push = false } = {}) {
       <a role="tab" href="?tab=geplant" data-tab="geplant" aria-selected="${isPlan}"><span class="msr">route</span> Geplant <small>${planned.length}</small></a>
       <a role="tab" href="./wege.html" data-tab="wege" aria-selected="${tab === 'wege'}"><span class="msr">timeline</span> Aufgezeichnet <small>${all.length}</small></a>
       <a role="tab" href="?tab=bahn" data-tab="bahn" aria-selected="${isBahn}"><span class="msr">directions_transit</span> Bus &amp; Bahn <small>${conns.length}</small></a>
+      <a role="tab" href="?tab=orte" data-tab="orte" aria-selected="${isOrte}"><span class="msr">bookmarks</span> Orte <small>${ownPlaces.length}</small></a>
     </nav>
-    <p class="muted tab-hint">${isBahn ? 'Bus & Bahn: gemerkte Verbindungen – kommende oben, vergangene zugeklappt darunter.'
+    <p class="muted tab-hint">${isOrte ? 'Orte: deine Lesezeichen in Listen – je Liste teilbar, alles auf der Karte.'
+      : isBahn ? 'Bus & Bahn: gemerkte Verbindungen – kommende oben, vergangene zugeklappt darunter.'
       : isPlan ? 'Geplant: Touren, die du noch fahren oder laufen willst – aus dem Planer, übernommen oder importiert.'
         : 'Aufgezeichnet: Wege, die du wirklich gefahren oder gelaufen bist – mit Zeit, Tempo und Puls.'}</p>
-    ${isBahn ? '' : `<div class="wege-tools">${isPlan ? `
+    ${isBahn || isOrte ? '' : `<div class="wege-tools">${isPlan ? `
       <a class="button" href="./tour.html"><span class="msr">add_road</span> Tour planen</a>
       <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>` : `
       <a class="button" href="./index.html?action=record"><span class="msr">radio_button_checked</span> Aufzeichnen</a>
@@ -150,9 +167,9 @@ function showList({ push = false } = {}) {
     </div>`}
     <form class="wege-search tour-search" role="search" onsubmit="return false">
       <span class="msr">search</span>
-      <input type="search" placeholder="${isBahn ? 'Suchen – Ort, Linie, Datum …' : isPlan ? 'Suchen – Name, Beschreibung, Rad, Wandern …' : 'Suchen – Name, Ort, Jahr, Monat …'}" value="${esc(query[tab])}" aria-label="Suchen">
+      <input type="search" placeholder="${isOrte ? 'Suchen – Name, Liste, Ort …' : isBahn ? 'Suchen – Ort, Linie, Datum …' : isPlan ? 'Suchen – Name, Beschreibung, Rad, Wandern …' : 'Suchen – Name, Ort, Jahr, Monat …'}" value="${esc(query[tab])}" aria-label="Suchen">
     </form>
-    ${(isBahn ? conns : isPlan ? planned : all).length ? '' : empty}
+    ${(isOrte ? (ownPlaces.length || sharedList ? [1] : []) : isBahn ? conns : isPlan ? planned : all).length ? '' : empty}
     <div class="wege-groups"></div>
     <a class="wege-sync-hint" href="./sync.html">
       <span class="msr">sync</span>
@@ -162,12 +179,109 @@ function showList({ push = false } = {}) {
     </a>`;
   paintGroups();
   page.open();
+  // Gewählter Reiter sichtbar – am Handy scrollen die Reiter
+  const sel = content.querySelector('[role="tab"][aria-selected="true"]');
+  sel?.parentElement.scrollTo({ left: sel.offsetLeft - 16 });
 }
 
 /** Nur die Gruppen neu – das Suchfeld bleibt, wie es ist */
+/* ── Orte: Lesezeichen in Listen ──────────────────────────────────────────── */
+
+const LIST_COLORS = ['#1a73e8', '#e8590c', '#2f9e44', '#ae3ec9', '#f59f00', '#0c8599', '#e64980', '#5c940d'];
+const listColor = (name) => LIST_COLORS[Math.max(0, places.lists().indexOf(name)) % LIST_COLORS.length];
+
+/** Orte, die gerade passen: je Liste; Zuhause/Arbeit als eigene Gruppe vorn */
+function visibleOrte() {
+  const q = norm(query.orte).trim();
+  const hit = (p) => !q || [p.name, p.label, p.list, PLACE_KINDS[p.kind]?.label].some((x) => norm(x).includes(q));
+  const fixedPl = places.all().filter((p) => (p.kind === 'home' || p.kind === 'work') && hit(p));
+  const groups = places.lists().map((name) => [name, places.inList(name).filter(hit)]).filter(([, l]) => l.length);
+  return { fixedPl, groups };
+}
+
+/** Punkte für die Karte: eigene Orte und die einer geteilten Liste */
+function orteFeatures() {
+  const { fixedPl, groups } = visibleOrte();
+  const f = (p, color, extra = {}) => ({ type: 'Feature', properties: { id: p.id ?? '', name: p.name, color, ...extra }, geometry: { type: 'Point', coordinates: p.point } });
+  return [
+    ...fixedPl.map((p) => f(p, '#1a73e8')),
+    ...groups.flatMap(([name, l]) => l.map((p) => f(p, listColor(name)))),
+    ...(sharedList?.items ?? []).map((p, i) => f({ ...p, id: `shared-${i}` }, '#e03131', { shared: true })),
+  ];
+}
+
+function paintOrte(box) {
+  const { fixedPl, groups } = visibleOrte();
+  const row = (p) => `<tr data-place="${esc(p.id)}" tabindex="0">
+      <td class="w-icon"><span class="msr" style="color:${p.kind === 'home' || p.kind === 'work' ? '#1a73e8' : listColor(p.list || DEFAULT_LIST)}">${PLACE_KINDS[p.kind]?.icon ?? 'star'}</span></td>
+      <td class="w-name"><strong>${esc(p.name)}</strong><small>${esc(p.label || PLACE_KINDS[p.kind]?.label || '')}</small></td>
+      <td class="w-num"><button type="button" class="button" data-shape="round no-background" data-place-route="${esc(p.id)}" title="Route dorthin"><span class="msr">directions</span></button></td>
+    </tr>`;
+  const shared = sharedList ? `<section class="orte-shared">
+      <p><span class="msr">share</span> Geteilte Liste <strong>„${esc(sharedList.name)}“</strong> – ${sharedList.items.length} Orte (rot auf der Karte)</p>
+      <div class="orte-shared-actions">
+        <button type="button" class="button primary" data-list-take><span class="msr">bookmark_add</span> Als Liste übernehmen</button>
+        <button type="button" class="button" data-list-drop>Verwerfen</button>
+      </div>
+      <table class="wege-table"><tbody>${sharedList.items.map((p) => `<tr><td class="w-icon"><span class="msr" style="color:#e03131">place</span></td>
+        <td class="w-name"><strong>${esc(p.name)}</strong><small>${esc(p.label ?? '')}</small></td><td></td></tr>`).join('')}</tbody></table>
+    </section>` : '';
+  box.innerHTML = shared
+    + (fixedPl.length ? `<details class="wege-year" open><summary><span class="msr" style="color:#1a73e8">home</span><strong>Zuhause &amp; Arbeit</strong><small>${fixedPl.length}</small></summary>
+        <table class="wege-table"><tbody>${fixedPl.map(row).join('')}</tbody></table></details>` : '')
+    + groups.map(([name, l]) => `<details class="wege-year" open>
+        <summary><i style="background:${listColor(name)}"></i><strong>${esc(name)}</strong><small>${l.length} ${l.length === 1 ? 'Ort' : 'Orte'}</small></summary>
+        <div class="orte-list-actions">
+          <button type="button" class="link-button" data-list-share="${esc(name)}"><span class="msr">share</span> Liste teilen</button>
+          <button type="button" class="link-button" data-list-show="${esc(name)}"><span class="msr">zoom_out_map</span> Auf der Karte</button>
+        </div>
+        <table class="wege-table"><tbody>${l.map(row).join('')}</tbody></table>
+      </details>`).join('')
+    + (query.orte && !fixedPl.length && !groups.length ? `<p class="muted">Nichts gefunden für „${esc(query.orte)}“.</p>` : '');
+  paintMap();
+}
+
+/** Liste als Link: alle Orte stecken gepackt in der Adresse – ohne Server */
+async function shareList(name) {
+  const items = places.inList(name).map((p) => [+p.point[0].toFixed(5), +p.point[1].toFixed(5), p.name, p.label ?? '']);
+  share({ title: `Liste „${name}“`, text: `${name} – ${items.length} Orte in WMap`, url: async () => `${pageUrl('wege.html')}?liste=${await packJson({ n: name, p: items })}` }, toast);
+}
+
+content.addEventListener('click', (e) => {
+  if (tab !== 'orte') return;
+  const b = e.target.closest('[data-list-share], [data-list-show], [data-list-take], [data-list-drop], [data-place-route], tr[data-place]');
+  if (!b) return;
+  if (b.dataset.listShare) shareList(b.dataset.listShare);
+  else if (b.dataset.listShow) {
+    const pts = places.inList(b.dataset.listShow).map((p) => p.point);
+    const bb = bbox(pts);
+    map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: page.padding(), maxZoom: 15, duration: 600 });
+  } else if (b.hasAttribute('data-list-take')) {
+    let name = sharedList.name;
+    // Gleichnamige eigene Liste: nicht mischen, sondern „(geteilt)“
+    if (places.lists().includes(name) && places.inList(name).length) name = `${name} (geteilt)`;
+    const n = places.addList(name, sharedList.items);
+    toast(`${n} ${n === 1 ? 'Ort' : 'Orte'} in „${name}“ übernommen`);
+    sharedList = null;
+    history.replaceState(null, '', './wege.html?tab=orte');
+    showList();
+  } else if (b.hasAttribute('data-list-drop')) {
+    sharedList = null;
+    history.replaceState(null, '', './wege.html?tab=orte');
+    showList();
+  } else if (b.dataset.placeRoute) {
+    const p = places.all().find((x) => x.id === b.dataset.placeRoute);
+    if (p) location.href = `./index.html?to=${p.point[0].toFixed(5)},${p.point[1].toFixed(5)}`;
+  } else {
+    const p = places.all().find((x) => x.id === b.closest('tr').dataset.place);
+    if (p) map.flyTo({ center: p.point, zoom: Math.max(map.getZoom(), 15), padding: page.padding(), duration: 800 });
+  }
+});
+
 function paintGroups() {
   const box = $('.wege-groups', content);
   if (!box) return;
+  if (tab === 'orte') { paintOrte(box); return; }
   if (tab === 'bahn') {
     const list = visibleConns();
     const now = Date.now();
@@ -582,7 +696,8 @@ function selectTour(id, { push = false } = {}) {
     ${t.description ? `<p class="tour-text">${esc(t.description)}</p>` : ''}
     <div class="elevation"></div>
     <div class="weg-actions">
-      <a class="button primary" href="./tour.html?id=${encodeURIComponent(t.id)}"><span class="msr">edit_road</span> Im Planer öffnen</a>
+      <a class="button primary" href="./index.html?tour=${encodeURIComponent(t.id)}&start"><span class="msr">navigation</span> Tour starten</a>
+      <a class="button" href="./tour.html?id=${encodeURIComponent(t.id)}"><span class="msr">edit_road</span> Im Planer öffnen</a>
       <button type="button" class="button" data-do="share"><span class="msr">share</span> Teilen</button>
       <button type="button" class="button" data-do="gpx"><span class="msr">download</span> GPX</button>
       <button type="button" class="button" data-do="delete"><span class="msr">delete</span> Löschen</button>
@@ -655,11 +770,29 @@ function speedGradient(t) {
   return stops.length >= 4 ? ['interpolate', ['linear'], ['line-progress'], ...stops] : null;
 }
 
+/** Startpunkte der Linien – für die Punkte weit draußen */
+const startsOf = (fc) => ({ type: 'FeatureCollection', features: fc.features.filter((f) => f.geometry.coordinates.length)
+  .map((f) => ({ type: 'Feature', properties: f.properties, geometry: { type: 'Point', coordinates: f.geometry.coordinates[0] } })) });
+
+/** Kilometermarken entlang des gewählten Wegs bzw. der Tour */
+function kmMarks(item) {
+  const empty = { type: 'FeatureCollection', features: [] };
+  if (!item || item.legs) return empty;
+  const c = 'start' in item ? trackCoords(item) : coordsOf(item.shape);
+  const cum = cumulative(c), total = cum.at(-1) ?? 0;
+  const step = total > 100000 ? 10000 : total > 30000 ? 5000 : 1000;
+  const features = [];
+  for (let m = step, n = 0; m < total - step * 0.3; m += step, n += 1) {
+    features.push({ type: 'Feature', properties: { km: String(m / 1000), n }, geometry: { type: 'Point', coordinates: pointAt(c, cum, m) } });
+  }
+  return { type: 'FeatureCollection', features };
+}
+
 let markers = [];
 async function paintMap() {
   await ready;
   // Nur der aktive Reiter liegt auf der Karte – sonst mischt sich Geplantes mit Gefahrenem
-  const fc = tab === 'bahn'
+  const fc = tab === 'orte' ? { type: 'FeatureCollection', features: [] } : tab === 'bahn'
     ? { type: 'FeatureCollection', features: visibleConns().map((c) => ({
       type: 'Feature', properties: { id: c.id, color: '#1a73e8' }, geometry: { type: 'LineString', coordinates: connCoords(c) },
     })) }
@@ -673,12 +806,44 @@ async function paintMap() {
   if (!map.getSource('wege')) {
     map.addSource('wege', { type: 'geojson', data: fc });
     map.addSource('weg-sel', { type: 'geojson', lineMetrics: true, data: { type: 'FeatureCollection', features: [] } });
+    // Weit draußen: je Tour ein Punkt am Start, nah beieinander zusammengefasst mit Anzahl
+    map.addSource('wege-pts', { type: 'geojson', data: startsOf(fc), cluster: true, clusterRadius: 44, clusterMaxZoom: 10 });
+    map.addSource('weg-km', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     const w = (a, b) => ['interpolate', ['linear'], ['zoom'], 6, a, 14, b];
     map.addLayer({ id: 'wege-casing', type: 'line', source: 'wege', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#fff', 'line-width': w(3, 7), 'line-opacity': 0.8 } });
     map.addLayer({ id: 'wege-line', type: 'line', source: 'wege', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': w(1.8, 4), 'line-opacity': 0.9 } });
     map.addLayer({ id: 'wege-hover', type: 'line', source: 'wege', filter: ['==', ['get', 'id'], ''], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': w(4, 8) } });
     map.addLayer({ id: 'weg-sel-casing', type: 'line', source: 'weg-sel', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#fff', 'line-width': w(6, 12) } });
     map.addLayer({ id: 'weg-sel', type: 'line', source: 'weg-sel', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#1a73e8', 'line-width': w(3.5, 7) } });
+    // Linien erst ab Zoom 9 – darunter die Punkte (sonst ein Knäuel, das man nicht auseinanderhält)
+    for (const id of ['wege-casing', 'wege-line', 'wege-hover']) map.setLayerZoomRange(id, 9, 24);
+    map.addLayer({ id: 'wege-cluster', type: 'circle', source: 'wege-pts', maxzoom: 9, filter: ['has', 'point_count'],
+      paint: { 'circle-color': '#1a73e8', 'circle-opacity': 0.9, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2,
+        'circle-radius': ['step', ['get', 'point_count'], 13, 10, 17, 50, 22] } });
+    map.addLayer({ id: 'wege-cluster-n', type: 'symbol', source: 'wege-pts', maxzoom: 9, filter: ['has', 'point_count'],
+      layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-allow-overlap': true },
+      paint: { 'text-color': '#fff' } });
+    map.addLayer({ id: 'wege-dot', type: 'circle', source: 'wege-pts', maxzoom: 9, filter: ['!', ['has', 'point_count']],
+      paint: { 'circle-color': ['get', 'color'], 'circle-radius': 7, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
+    // Kilometer an der gewählten Tour: 1, 2, 3 … (lange Touren: alle 5 bzw. 10 km)
+    map.addLayer({ id: 'weg-km-dot', type: 'circle', source: 'weg-km',
+      paint: { 'circle-color': '#fff', 'circle-radius': 9, 'circle-stroke-color': '#1a73e8', 'circle-stroke-width': 2 } });
+    map.addLayer({ id: 'weg-km', type: 'symbol', source: 'weg-km',
+      layout: { 'text-field': ['get', 'km'], 'text-font': ['Noto Sans Bold'], 'text-size': 10, 'text-allow-overlap': true, 'symbol-sort-key': ['get', 'n'] },
+      paint: { 'text-color': '#1a73e8' } });
+    map.on('click', 'wege-cluster', async (e) => {
+      const f = e.features[0];
+      const z = await map.getSource('wege-pts').getClusterExpansionZoom(f.properties.cluster_id);
+      map.easeTo({ center: f.geometry.coordinates, zoom: Math.max(z, 9.2) });
+    });
+    map.on('click', 'wege-dot', (e) => {
+      const id = e.features[0].properties.id;
+      if (tab === 'bahn') selectConn(id, { push: true }); else if (tab === 'geplant') selectTour(id, { push: true }); else select(id, { push: true });
+    });
+    for (const id of ['wege-cluster', 'wege-dot']) {
+      map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
+    }
     map.on('click', 'wege-line', (e) => {
       const id = e.features[0].properties.id;
       if (tab === 'bahn') selectConn(id, { push: true }); else if (tab === 'geplant') selectTour(id, { push: true }); else select(id, { push: true });
@@ -693,7 +858,24 @@ async function paintMap() {
       elevation.showAt(p.along / 1000 * chartScale);
     });
     map.on('mouseleave', 'weg-sel', () => { showHover(map, null); elevation?.showAt(null); });
-  } else map.getSource('wege').setData(fc);
+  } else { map.getSource('wege').setData(fc); map.getSource('wege-pts').setData(startsOf(fc)); }
+  // Orte: Punkte mit Namen, in der Farbe ihrer Liste (geteilte rot)
+  const orte = { type: 'FeatureCollection', features: tab === 'orte' ? orteFeatures() : [] };
+  if (!map.getSource('orte')) {
+    map.addSource('orte', { type: 'geojson', data: orte });
+    map.addLayer({ id: 'orte-dot', type: 'circle', source: 'orte',
+      paint: { 'circle-color': ['get', 'color'], 'circle-radius': 7, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
+    map.addLayer({ id: 'orte-name', type: 'symbol', source: 'orte', minzoom: 11,
+      layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-anchor': 'left', 'text-offset': [0.9, 0], 'text-optional': true },
+      paint: { 'text-color': ['get', 'color'], 'text-halo-color': '#fff', 'text-halo-width': 1.5 } });
+    map.on('click', 'orte-dot', (e) => {
+      const id = e.features[0].properties.id;
+      content.querySelector(`tr[data-place="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+  } else map.getSource('orte').setData(orte);
+  // Ausgewählt: keine Punkte, nur die eine Linie (die weg-sel zeigt)
+  for (const id of ['wege-cluster', 'wege-cluster-n', 'wege-dot']) map.setLayoutProperty(id, 'visibility', selected ? 'none' : 'visible');
+  map.getSource('weg-km').setData(kmMarks(selected));
 
   // Gewähltes obenauf (Wege nach Tempo gefärbt); der Rest tritt zurück
   map.setPaintProperty('wege-line', 'line-opacity', selected ? 0.25 : 0.9);
@@ -748,6 +930,14 @@ async function load() {
   years = [...new Set(all.map(yearOf))].sort((a, b) => b - a);
 }
 
+async function openSharedList(code) {
+  try {
+    const o = await unpackJson(code);
+    sharedList = { name: String(o.n || 'Geteilte Liste').slice(0, 40), items: (o.p ?? []).filter((x) => Number.isFinite(x[0]) && Number.isFinite(x[1]))
+      .map(([lon, lat, name, label]) => ({ point: [lon, lat], name: String(name || 'Ort').slice(0, 80), label: String(label || '').slice(0, 120) })) };
+  } catch { toast('Die geteilte Liste ließ sich nicht lesen'); }
+}
+
 function route() {
   const p = new URLSearchParams(location.search);
   tab = tabOf(p);
@@ -766,6 +956,9 @@ addEventListener('wmap:folder', async () => {
 });
 
 await load();
+if (params.get('liste')) await openSharedList(params.get('liste'));
 route();
 fitView();
 autoSync();
+// Lesezeichen geändert (auch aus dem Ordner): Orte neu
+addEventListener('wmap:saved', () => { if (tab === 'orte' && !selected) paintGroups(); });

@@ -6,7 +6,7 @@
 import { PROFILES } from './core/config.js';
 import * as geocode from './services/geocode.js';
 import { CATEGORIES } from './core/categories.js';
-import { local } from './data/store.js';
+import { local, tours } from './data/store.js';
 import { mountAppNav } from './ui/appnav.js';
 import { mountAppBar } from './ui/appbar.js';
 import { setupRecording } from './ui/record.js';
@@ -19,7 +19,7 @@ import { autoSync } from './data/auto-sync.js';
 import { $, debounce, freshView, map, myPosition, q, state } from './app/core.js';
 import { fly } from './app/map-clicks.js';
 import { openSurvey } from './app/mitmachen.js';
-import { nav, resumeNav } from './app/nav.js';
+import { nav, navTour, resumeNav } from './app/nav.js';
 import { placeWaypoint, showPlace, showPoint } from './app/place.js';
 import { openReach } from './app/reach.js';
 import { enterRoute, setProfile } from './app/route-plan.js';
@@ -36,7 +36,7 @@ import './app/report.js';
    ══════════════════════════════════════════════════════════════════════════ */
 
 // Mit Link-Parametern (siehe fromUrl) bestimmt der Link, wohin es geht
-if (!freshView && !/[?&](view|q|from|to|reach|geo|ort)=/.test(location.search)) {
+if (!freshView && !/[?&](view|q|from|to|reach|geo|ort|tour)=/.test(location.search)) {
   const flyHome = () => myPosition({ ask: false })
     .then((p) => map.flyTo({ center: p, zoom: 14, pitch: 0, duration: 1800 }))
     .catch(() => { /* ohne Standort bleibt die letzte bzw. die Startansicht */ });
@@ -162,6 +162,8 @@ async function fromUrl() {
       const r = await readRoute(p.get('route'));
       if (PROFILES[r.profile]?.nav) setProfile(r.profile);
       enterRoute({ waypoints: r.waypoints });
+    } else if (p.get('tour')) {
+      await startTour(p.get('tour'), p.has('start'));
     } else if (p.get('anfrage')) {
       answerRequest(p.get('anfrage'));
     } else if (p.get('geo')) {
@@ -169,6 +171,27 @@ async function fromUrl() {
     }
   } catch (err) { toast(err.message); }
 }
+/**
+ * Geplante Tour navigieren („?tour=ID&start“ aus Meine Touren): ihre Punkte
+ * als Route, Profil passend (Wandern → zu Fuß, Rennrad → Rad …); mit
+ * `start` geht die Navigation los, sobald die Route steht. Aufgezeichnet
+ * wird sie immer (app/nav.js) – auch wenn „Fahrten merken“ aus ist.
+ */
+async function startTour(id, go) {
+  const t = tours.all().find((x) => x.id === id);
+  if (!t?.points?.length) { toast('Die Tour gibt es auf diesem Gerät nicht'); return; }
+  const costing = PROFILES[t.profile]?.costing;
+  setProfile(costing === 'bicycle' ? 'bike' : costing === 'auto' ? 'car' : 'foot');
+  const n = t.points.length;
+  navTour.set(t);
+  enterRoute({ waypoints: t.points.map((point, i) => ({ label: i === 0 ? `Start: ${t.name}` : i === n - 1 ? t.name : `${t.name} · ${i}`, point, me: false })) });
+  if (!go) return;
+  // Warten, bis die Route berechnet ist – dann los
+  for (let i = 0; i < 120 && !state.routes.length; i += 1) await new Promise((r) => setTimeout(r, 250));
+  if (state.routes.length) document.querySelector('.start-nav')?.click();
+  else toast('Für die Tour ließ sich keine Route berechnen');
+}
+
 /** Geteilter Ort oder Standort („?ort=lon,lat&name=…&zeit=…“) */
 function openShared(p) {
   const [lon, lat] = p.get('ort').split(',').map(Number);
@@ -236,7 +259,7 @@ if (map.loaded()) resumeNav(); else map.once('load', resumeNav);
 // Willkommen, Neues nach einem Update, Nachrichten – nur beim normalen Start,
 // nicht wenn ein Link etwas öffnet und nicht in einer fortgesetzten Navigation
 map.once('idle', () => {
-  const linked = /[?&](view|q|from|to|reach|action|ort|route|anfrage|geo|sim)\b/.test(location.search);
+  const linked = /[?&](view|q|from|to|reach|action|ort|route|anfrage|geo|sim|tour)\b/.test(location.search);
   appNews({ dialogs: !linked && !nav.active });
   // Ordner und Health Connect still abgleichen (wenn eingeschaltet) – nicht während einer Navigation
   if (!nav.active) autoSync();

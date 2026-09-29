@@ -11,6 +11,13 @@
     <script>
         // Rückkehr von OpenStreetMap: Code an WMap weitergeben
         const p = new URLSearchParams(location.search);
+        // Kam die Anmeldung von einer anderen WMap (App, lokal)? Dorthin weiter –
+        // deren oauth.html holt den Code ab. Nur bekannte Adressen.
+        try {
+            const back = new TextDecoder().decode(Uint8Array.from(atob((p.get('state') || '').split('~')[1].replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)));
+            const ok = /^(https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?|https?:\/\/tauri\.localhost|tauri:\/\/localhost|https:\/\/app\.wuefl\.de)\//.test(back);
+            if (ok && !location.href.startsWith(back)) { location.replace(`${back}oauth.html${location.search}`); throw 'weiter'; }
+        } catch (e) { if (e === 'weiter') throw e; /* kein Rückweg im state: hier bleiben */ }
         const data = { type: 'osm-oauth', code: p.get('code'), state: p.get('state'), error: p.get('error') };
         if (window.opener && !window.opener.closed) {
             window.opener.postMessage(data, location.origin);

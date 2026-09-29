@@ -62,10 +62,13 @@
 .osm-field {
     display: grid; gap: .2rem; font-size: var(--fs-200);
     > span { color: var(--muted); }
-    input, select { width: 100%; }
+    input, select { width: 100%; min-width: 0; }
+    &[hidden] { display: none; }
+    /* OSM-Schlüssel, in den das Feld schreibt */
+    .osm-tag { font-size: var(--fs-100); padding: 0 .3rem; border-radius: .3rem; background: var(--surface-2); color: var(--muted); }
 }
 /* Formular mit Öffnungszeiten: breiter, scrollt in sich */
-.dialog.confirm.osm-edit { width: min(32rem, 94vw); max-width: min(32rem, 94vw); max-height: 88dvh; overflow-y: auto; }
+.dialog.confirm.osm-edit { width: min(32rem, 94vw); max-width: min(32rem, 94vw); max-height: 88dvh; overflow-y: auto; overflow-x: hidden; }
 
 /* Öffnungszeiten je Tag (osm/hours-editor.js) */
 .oh-block {
@@ -96,9 +99,10 @@
     .oh-name { display: grid; justify-items: start; gap: .25rem; font-weight: 600; }
     .oh-times { display: flex; flex-direction: column; align-items: flex-end; gap: .3rem; }
     .oh-span { display: inline-flex; align-items: center; gap: .2rem; i { color: var(--muted); font-style: normal; } }
+    /* Schmal genug fürs Handy: nur „08:00“, ohne Uhr-Symbol */
     input[type=time] {
-        min-width: 5.4rem;
-        padding: .3rem .4rem;
+        width: 4.6rem; min-width: 0;
+        padding: .3rem .3rem;
         border: 1px solid var(--line);
         border-radius: .5rem;
         background: var(--surface-2, transparent);
@@ -123,6 +127,8 @@
     .oh-copy { justify-self: start; display: inline-flex; align-items: center; gap: .3rem; color: var(--route); .msr { font-size: 1rem; } }
     .oh-note { display: flex; gap: .4rem; align-items: flex-start; .msr { color: var(--route); } }
     .oh-raw { width: 100%; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--surface); color: inherit; font: inherit; }
+    input[type=time]::-webkit-calendar-picker-indicator { display: none; }
+    .oh-day, .oh-times, .oh-span { min-width: 0; }
     .oh-quick {
         display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
         border-top: 1px solid var(--line);

@@ -33,6 +33,8 @@ with Browser(width=420, height=900) as b:
     print('8 leer (neuer Ort):', b.js("mk('', { gone: false }); return [val(), sum(), !!document.querySelector('#ohtest [data-oh=gone]'), document.querySelectorAll('#ohtest .oh-day.closed').length]"))
     print('  Mo + übernehmen:', b.js("row(0).querySelector('[data-oh=add]').click(); document.querySelector('#ohtest [data-oh=copy-mo]').click(); return val()"))
     print('9 Als Text:', b.js("document.querySelector('#ohtest [data-oh=raw]').click(); const r = document.querySelector('#ohtest .oh-raw'); r.value = 'Mo-Su 06:00-22:00'; r.dispatchEvent(new Event('input', { bubbles: true })); return val()"))
+    print('10 leer → Text → Tage:', b.js("mk(''); document.querySelector('#ohtest [data-oh=raw]').click(); document.querySelector('#ohtest [data-oh=week]').click(); return [val(), document.querySelectorAll('#ohtest .oh-span').length]"))
+    print('11 Feiertag wie Sonntag:', b.js("mk('Mo-Fr 08:00-18:00; Su 10:00-12:00'); row(7).querySelector('[data-oh=ph-sunday]').click(); return val()"))
     # Aussehen: wie im Bearbeiten-Dialog
     b.js("""mk('Mo-Fr 08:00-12:00,14:00-18:00; Sa 09:00-13:00; PH off');
       const f = document.querySelector('#ohtest'); f.className = 'osm-form'; f.style.cssText = 'position:fixed;inset:0;z-index:999;background:var(--surface);padding:12px;overflow:auto'""")

@@ -1061,8 +1061,12 @@ export function showNavRoad(map, features = []) {
 }
 
 export function showHover(map, lngLat) {
-  whenReady(map, () => src(map, 'hover').setData(lngLat
-    ? fc([{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: lngLat } }]) : EMPTY));
+  whenReady(map, () => {
+    // Obenauf – Seiten legen ihre Linien (Meine Touren, Planer) erst später an
+    if (lngLat && map.getLayer('hover')) map.moveLayer('hover');
+    src(map, 'hover').setData(lngLat
+      ? fc([{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: lngLat } }]) : EMPTY);
+  });
 }
 
 /**

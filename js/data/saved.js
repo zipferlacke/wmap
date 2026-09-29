@@ -4,7 +4,9 @@
  *   Verbindungen   Bus & Bahn von A nach B zu einer Zeit, mit allen
  *                  Abschnitten – unter Meine Touren → Verbindungen
  *   Orte           Zuhause, Arbeit und Lesezeichen (Haltestellen, Orte, mit
- *                  eigenem Namen) – in der Suche und Routenplanung ganz oben
+ *                  eigenem Namen) in Listen („Allgemein“, „Hannover Urlaub“ …)
+ *                  – Zuhause/Arbeit in Suche und Routenplanung immer oben,
+ *                  Lesezeichen dort, wenn sie zur Eingabe passen
  *
  * Liegt im Browser (wmap.saved). Mit verbundenem Ordner gleicht data/folder.js
  * ab: jede Verbindung als eigene Datei unter „Bus & Bahn/“ (wie ein Weg),
@@ -80,15 +82,25 @@ export const connections = {
   },
 };
 
+export const DEFAULT_LIST = 'Allgemein';
+const fixed = (kind) => kind === 'home' || kind === 'work';
+
 export const places = {
   all: () => read().places,
   byKind: (kind) => read().places.filter((p) => p.kind === kind),
+  /** Namen aller Listen – „Allgemein“ zuerst */
+  lists() {
+    const names = new Set(read().places.filter((p) => !fixed(p.kind)).map((p) => p.list || DEFAULT_LIST));
+    return [DEFAULT_LIST, ...[...names].filter((n) => n !== DEFAULT_LIST).sort((a, b) => a.localeCompare(b, 'de'))];
+  },
+  /** Orte einer Liste (ohne Zuhause/Arbeit) */
+  inList: (list) => read().places.filter((p) => !fixed(p.kind) && (p.list || DEFAULT_LIST) === list),
   /** Zuhause/Arbeit gibt es nur einmal – neu setzen ersetzt. `name` darf frei sein („Oma“, „Verein“ …) */
-  save({ kind = 'fav', name, label = '', point, ifopt = '' }) {
+  save({ kind = 'fav', name, label = '', point, ifopt = '', list = DEFAULT_LIST }) {
     const d = read();
     const at = (p) => Math.abs(p.point[0] - point[0]) < 1e-5 && Math.abs(p.point[1] - point[1]) < 1e-5;
-    const old = d.places.find((p) => (kind === 'home' || kind === 'work' ? p.kind === kind : at(p) && p.kind === kind));
-    const p = { id: old?.id ?? newId(), kind, name, label, point, ifopt, updated: Date.now() };
+    const old = d.places.find((p) => (fixed(kind) ? p.kind === kind : at(p) && p.kind === kind));
+    const p = { id: old?.id ?? newId(), kind, name, label, point, ifopt, ...(fixed(kind) ? {} : { list: list || DEFAULT_LIST }), updated: Date.now() };
     d.places = [...d.places.filter((x) => x !== old), p];
     write(d);
     return p;
@@ -97,12 +109,26 @@ export const places = {
     && Math.abs(p.point[0] - point[0]) < 1e-4 && Math.abs(p.point[1] - point[1]) < 1e-4) ?? null,
   remove: (id) => remove('places', id),
   rename(id, name, label = null) {
+    return this.update(id, { name, ...(label !== null ? { label } : {}) });
+  },
+  /** Name, Liste … ändern */
+  update(id, changes) {
     const d = read();
     const p = d.places.find((x) => x.id === id);
     if (!p) return null;
-    Object.assign(p, { name, ...(label !== null ? { label } : {}), updated: Date.now() });
+    Object.assign(p, changes, { updated: Date.now() });
     write(d);
     return p;
+  },
+  /** Eine ganze (geteilte) Liste übernehmen – was schon da ist, bleibt einmal → Anzahl neu */
+  addList(list, items) {
+    let n = 0;
+    for (const x of items) {
+      if (this.find(x.point)) continue;
+      this.save({ kind: 'fav', name: x.name, label: x.label ?? '', point: x.point, list });
+      n += 1;
+    }
+    return n;
   },
 };
 

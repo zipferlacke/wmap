@@ -45,7 +45,7 @@ import { connections, mergePlaces, mergeSaved } from './saved.js';
 const kv = store('kv');
 const KEY = 'folder';
 const DELETED = 'wmap.folder.deleted';   // in WMap gelöscht, Datei noch löschen
-const AUTO = 'wmap.sync.auto';            // nach Änderungen und beim Öffnen selbst abgleichen
+const AUTO = 'wmap.sync.auto';            // 'off' | 'start' (beim Öffnen und nach Änderungen) | 'every30' (dazu alle 30 min)
 
 const core = typeof window !== 'undefined' ? window.__TAURI__?.core : null;
 const nativeHere = !!core;
@@ -137,9 +137,12 @@ export const folder = {
   /** Geht hier ein Ordner? (App immer, Browser nur Chrome/Edge) */
   supported: nativeHere || browserHere,
 
-  /** Selbst abgleichen – nach Änderungen und beim Öffnen (Standard: an) */
-  get auto() { return local.get(AUTO, true) !== false; },
-  set auto(on) { local.set(AUTO, !!on); },
+  /** Selbst abgleichen: 'off', 'start' (beim Öffnen und nach Änderungen, Standard), 'every30' (dazu alle 30 min) */
+  get auto() { const v = local.get(AUTO, 'start'); return v === true ? 'start' : v === false ? 'off' : v; },
+  set auto(v) { local.set(AUTO, v); },
+
+  /** Läuft gerade ein Abgleich? */
+  get busy() { return !!syncing; },
 
   /** Stand für die Anzeige: { connected, name, permission, last, result, error } */
   async info() {
@@ -184,6 +187,7 @@ export const folder = {
   async sync({ interactive = false } = {}) {
     if (syncing) return syncing;
     syncing = run(interactive).finally(() => { syncing = null; });
+    dispatchEvent(new CustomEvent('wmap:folder', { detail: { busy: true } }));
     return syncing;
   },
 
@@ -544,7 +548,7 @@ addEventListener('wmap:data', (e) => {
   timer = setTimeout(async () => {
     await syncing?.catch(() => {});
     if (!await load()) { local.set(DELETED, []); return; }
-    if (folder.auto) folder.sync().catch(() => { /* steht als Fehler auf der Seite „Sicherung & Abgleich“ */ });
+    if (folder.auto !== 'off') folder.sync().catch(() => { /* steht als Fehler auf der Seite „Sicherung & Abgleich“ */ });
   }, 2500);
 });
 
@@ -635,11 +639,10 @@ export function syncSummary(r) {
   return parts.length ? parts.join(', ') : 'alles aktuell';
 }
 
-/** Beim Öffnen einer Seite einmal still abgleichen – wenn verbunden, erlaubt und „automatisch“ an */
-let autoSynced = false;
-export async function autoFolderSync() {
-  if (autoSynced || !folder.supported || !folder.auto) return null;
-  autoSynced = true;
+/** Still abgleichen – wenn verbunden, erlaubt und je nach Einstellung (`periodic`: der 30-Minuten-Takt) */
+export async function autoFolderSync({ periodic = false } = {}) {
+  const mode = folder.auto;
+  if (!folder.supported || mode === 'off' || (periodic && mode !== 'every30')) return null;
   const i = await folder.info().catch(() => null);
   if (!i?.connected || i.permission !== 'granted') return null;
   return folder.sync().catch(() => null);

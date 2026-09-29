@@ -196,11 +196,17 @@ body.readonly {
     background: var(--surface);
     box-shadow: 0 1px 0 var(--line);
 
+    /* Mehr Reiter als Platz: sie scrollen in sich – das Panel bleibt so breit wie der Bildschirm */
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
     a {
         display: inline-flex; align-items: center; gap: .35rem;
+        flex: none;
         padding: .65rem .9rem;
         color: var(--muted);
         font-weight: 600;
+        white-space: nowrap;
         text-decoration: none;
         border-bottom: 3px solid transparent;
         .msr { font-size: 1.2rem; }
@@ -532,6 +538,8 @@ body.wege-page { overflow: hidden; }
 /* ── Entdecken ────────────────────────────────────────────────────────────── */
 
 .ent-tabs { position: static; padding: 0; margin: 0 -.25rem .5rem; box-shadow: 0 1px 0 var(--line); background: none; a { padding: .5rem .6rem; font-size: var(--fs-200); } }
+@media (max-width: 480px) { .ent-tabs a { padding: .5rem .4rem; gap: .2rem; .msr { font-size: 1.05rem; } } }
+.wege-panel .wege-content, .wege-panel .wege-content > * { min-width: 0; }
 .ent-tabs[hidden], .ent-tabs a[hidden] { display: none; }
 /* Wegzeichen von Waymarked Trails (SVG) */
 .wmt-symbol { width: 1.6rem; height: 1.6rem; object-fit: contain; vertical-align: middle; }
@@ -667,3 +675,13 @@ body.readonly .tour-panel .save-state { width: auto; padding-inline: .8rem; gap:
     .transit-badge { min-width: 0; padding: .05rem .35rem; font-size: var(--fs-100); }
 }
 .conn-legs { list-style: none; margin: .5rem 0; padding: 0; display: grid; gap: .15rem; }
+
+/* Meine Touren → Orte: Lesezeichen in Listen (pages/wege.js) */
+.orte-list-actions { display: flex; flex-wrap: wrap; gap: .25rem 1rem; padding: .35rem .5rem 0; font-size: var(--fs-200);
+    .link-button { display: inline-flex; align-items: center; gap: .25rem; .msr { font-size: 1rem; } } }
+.orte-shared {
+    display: grid; gap: .5rem; padding: .7rem; border: 1px solid #e03131; border-radius: .8rem;
+    p { display: flex; align-items: center; gap: .4rem; margin: 0; font-size: var(--fs-200); .msr { color: #e03131; } }
+    .orte-shared-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+}
+.wege-table .w-num .button[data-place-route] { color: var(--route); }

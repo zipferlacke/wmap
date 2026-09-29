@@ -21,9 +21,12 @@ import { encodePolyline, decodePolyline, simplify, distance, bbox } from '../cor
 
 const SETTING = 'wmap.history';
 
-/** Fahrten und Aufzeichnungen merken? Standard: ja. */
+/**
+ * Navigierte Fahrten merken? Standard: nein. Geplante Touren (Meine Touren →
+ * Tour starten) und „Aufzeichnen“ landen immer unter Aufgezeichnete Touren.
+ */
 export const historySetting = {
-  get: () => local.get(SETTING, true) !== false,
+  get: () => local.get(SETTING, false) === true,
   set: (on) => local.set(SETTING, !!on),
 };
 
@@ -131,8 +134,9 @@ class Recorder {
   get points() { return this.#live?.points ?? []; }
   get info() { return this.#live; }
 
-  start({ kind, profile, name = '', from = '', to = '' }) {
-    this.#live = { kind, profile, name, from, to, started: Date.now(), paused: false, points: [] };
+  /** `keep`: auch als Navigation behalten, wenn „Fahrten merken“ aus ist (geplante Tour) */
+  start({ kind, profile, name = '', from = '', to = '', keep = false }) {
+    this.#live = { kind, profile, name, from, to, keep, started: Date.now(), paused: false, points: [] };
     this.#save();
   }
 
@@ -159,7 +163,7 @@ class Recorder {
     local.set(LIVE, null);
     this.onChange?.();
     if (!l) return null;
-    if (l.kind === 'nav' && !historySetting.get()) return null;
+    if (l.kind === 'nav' && !l.keep && !historySetting.get()) return null;
     const t = buildTrack(l.points, { ...l, name: name ?? l.name });
     if (t) await tracks.put(t);
     return t;

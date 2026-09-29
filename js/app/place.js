@@ -184,12 +184,12 @@ export function paintPlaceActions() {
     ];
   } else {
     list = [
+      // Route, Teilen, Erreichbar, Merken, Bearbeiten – „Als Start“ gibt es in der Routenplanung
       ['directions', 'Route', true, () => enterRoute({ to: wp })],
-      ['trip_origin', 'Als Start', false, () => enterRoute({ from: wp })],
+      ['share', 'Teilen', false, () => share({ title: label, text: label, url: () => placeUrl(point, label) }, toast)],
       ['radar', 'Erreichbar', false, () => openReach({ origin: point, label })],
       [places.find(point) ? 'bookmark_added' : 'bookmark_add', places.find(point) ? 'Gemerkt' : 'Merken', false,
         () => togglePlace(f, point, label, f.properties._point ? '' : geocode.describe(f).subtitle)],
-      ['share', 'Teilen', false, () => share({ title: label, text: label, url: () => placeUrl(point, label) }, toast)],
       // OpenStreetMap: Ort aus OSM bearbeiten, am freien Punkt einen neuen eintragen
       f.properties._point
         ? ['add_business', 'Hier eintragen', false, () => addPlace(point, { address: f.properties._address ?? {}, toast })]

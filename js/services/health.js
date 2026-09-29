@@ -158,7 +158,8 @@ export async function importHealth(sessions, { onProgress, ask: askFirst = true 
     try {
       ({ points } = await call('route', { id: s.id }));
     } catch (err) {
-      if (!/nicht freigegeben|denied/i.test(String(err))) throw err;
+      // Das Plugin lehnt mit { message, code } ab – nicht nur mit Text
+      if (!/nicht freigegeben|denied/i.test(`${err?.message ?? err} ${err?.code ?? ''}`)) throw err;
       out.denied += 1;
       ask = false;
       continue;
@@ -260,22 +261,29 @@ export async function fillHealthValues({ onProgress } = {}) {
 /* ── Abgleich: von Hand oder automatisch ──────────────────────────────────── */
 
 const LAST = 'wmap.health.sync';     // { at, added, denied, error }
-const AUTO = 'wmap.health.auto';
+const AUTO = 'wmap.health.auto';     // 'off' | 'start' | 'every30'
 
 export const healthSync = {
-  /** Beim Öffnen von WMap selbst Neues holen (höchstens alle 30 min) */
-  get auto() { return local.get(AUTO, false) === true; },
-  set auto(on) { local.set(AUTO, !!on); },
+  /** Automatisch: aus, beim Öffnen von WMap, beim Öffnen und alle 30 Minuten */
+  get auto() { const v = local.get(AUTO, 'off'); return v === true ? 'start' : v === false ? 'off' : v; },
+  set auto(v) { local.set(AUTO, v); },
   /** Letzter Abgleich: { at, added, denied, error } oder null */
   last: () => local.get(LAST, null),
 };
 
+let running = null;
 /**
- * Neue Trainings mit Route übernehmen und Messwerte nachladen.
- * `quiet`: ohne Rückfragen – fehlt die Freigabe, steht es als Fehler da.
- * → { added, denied, values }
+ * Neue Trainings mit Route übernehmen und Messwerte nachladen – läuft nur
+ * einmal gleichzeitig. `quiet`: ohne Rückfragen (Routen mit Rückfrage
+ * bleiben liegen). onProgress(i, n). → { added, denied, values }
  */
-export async function syncHealth({ quiet = false, onProgress } = {}) {
+export function syncHealth(opts = {}) {
+  running ??= runSync(opts).finally(() => { running = null; });
+  return running;
+}
+export const healthSyncing = () => !!running;
+
+async function runSync({ quiet = false, onProgress } = {}) {
   try {
     const st = await healthStatus();
     if (!st.available) throw new Error(st.reason);
@@ -286,18 +294,23 @@ export async function syncHealth({ quiet = false, onProgress } = {}) {
     const r = await importHealth(fresh, { onProgress, ask: !quiet });
     await fillHealthTypes(sessions);
     const values = await fillHealthValues();
-    const out = { at: Date.now(), added: r.added, denied: r.denied, error: null };
-    local.set(LAST, out);
+    local.set(LAST, { at: Date.now(), added: r.added, denied: r.denied, error: null });
+    dispatchEvent(new CustomEvent('wmap:health', { detail: r }));
     return { ...r, values };
   } catch (err) {
     local.set(LAST, { ...(healthSync.last() ?? {}), at: Date.now(), error: String(err?.message ?? err) });
+    dispatchEvent(new CustomEvent('wmap:health', { detail: { error: true } }));
     throw err;
   }
 }
 
-/** Beim Öffnen: wenn eingeschaltet und der letzte Abgleich über 30 min her ist */
-export async function autoHealthSync() {
-  if (!healthAvailable || !healthSync.auto) return null;
-  if (Date.now() - (healthSync.last()?.at ?? 0) < 30 * 60000) return null;
+/**
+ * Automatisch: beim Öffnen (nicht öfter als alle 5 Minuten – man wechselt
+ * ja die Seiten) bzw. `periodic` alle 30 Minuten, je nach Einstellung.
+ */
+export async function autoHealthSync({ periodic = false } = {}) {
+  const mode = healthSync.auto;
+  if (!healthAvailable || mode === 'off' || (periodic && mode !== 'every30')) return null;
+  if (!periodic && Date.now() - (healthSync.last()?.at ?? 0) < 5 * 60000) return null;
   return syncHealth({ quiet: true }).catch(() => null);
 }
