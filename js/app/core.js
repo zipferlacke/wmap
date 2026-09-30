@@ -12,13 +12,10 @@ export const $ = (s, root = document) => root.querySelector(s);
 export const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 
 /*
- * Startansicht: dort weitermachen, wo man aufgehört hat. Liegt der letzte
- * Besuch länger als einen Tag zurück, ist der eigene Standort wahrscheinlich
- * interessanter – dann dorthin, sobald er bekannt ist.
+ * Startansicht: dort weitermachen, wo man aufgehört hat (gleich danach ggf.
+ * der neuere Ausschnitt aus dem Ordner bzw. der eigene Standort – app.js).
  */
-const DAY_MS = 24 * 60 * 60 * 1000;
 const lastView = local.get('wmap.view');
-export const freshView = lastView && Date.now() - lastView.at < DAY_MS;
 export const { map, geolocate } = createMap('map', lastView ? {
   center: lastView.center, zoom: lastView.zoom, pitch: lastView.pitch ?? 0, bearing: lastView.bearing ?? 0,
 } : {});

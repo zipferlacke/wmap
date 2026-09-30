@@ -780,7 +780,8 @@ WMap/
 ├─ Aufgezeichnete Touren/2026/09 September/2026-09-20 Radtour am Samstagnachmittag.gpx
 ├─ Bus & Bahn/2026-09-30 08.15 Göttingen → Kassel.json   je gemerkte Verbindung
 ├─ Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen mit Listen
-└─ Gelöscht.json                     auf einem Gerät Gelöschtes (IDs, ein Jahr)
+├─ Gelöscht.json                     auf einem Gerät Gelöschtes (IDs, ein Jahr)
+└─ Kartenausschnitt.json             wo die Karte zuletzt stand
 ```
 
 - Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene. Dateien
@@ -809,6 +810,16 @@ WMap/
     wieder und erkennt Wege aus dem Ordner am Start (± 5 s) und der Länge
   - Doppelte ohne ID (fremde GPX): Weg an Start und Länge, geplante Tour an
     Verlauf und Name
+  - schon vorhandene Doppelte: Abschnitt „Doppelte Touren“ mit „Duplikate
+    entfernen“ auf dieser Seite, nur wenn es welche gibt
+    (`js/data/duplicates.js`) – je Gruppe bleibt der Eintrag mit den meisten
+    Angaben (Kennung aus Health Connect, Puls & Co.), die anderen werden
+    gelöscht und stehen damit in `Gelöscht.json`
+  - `Kartenausschnitt.json`: beim Start der Karte steht sie sofort am
+    Ausschnitt dieser App, gleich danach wird nur diese Datei gelesen (nicht
+    der ganze Abgleich) – ist sie neuer (anderes Gerät oder hier noch keiner),
+    springt die Karte dorthin, solange man sie nicht selbst bewegt hat.
+    Geschrieben beim Verlassen der Karte, sonst höchstens alle 2 Minuten
   - beides geändert → das Neuere gewinnt; geändert heißt: andere Zeit und
     anderer Inhalt als beim letzten Abgleich (manche Cloud-Ordner unter
     Android melden keine Zeit)
@@ -816,7 +827,7 @@ WMap/
     `deleted`, damit es nicht von einem anderen Gerät zurückkommt
   - `settings.json`: hier geändert → schreiben, nur dort geändert →
     übernehmen; beim ersten Abgleich eines Geräts gilt die Datei. Nicht
-    dabei: Konten, Verlauf, Kartenausschnitt.
+    dabei: Konten, Verlauf, Kartenausschnitt (eigene Datei, s. u.).
 - Erkannt wird eine Datei am Stichwort `wmap:ID` (GPX) bzw. an der `id`
   (JSON). Fremde GPX (Garmin, Komoot-Export …) dürfen irgendwo im Ordner
   liegen – mit Zeiten werden sie ein Weg, sonst eine Tour; sie bleiben, wo

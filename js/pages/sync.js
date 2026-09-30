@@ -10,6 +10,7 @@
  *                   und exportieren
  *   Health Connect  Trainings holen (Fortschritt am Knopf, am Ende nur eine
  *                   Meldung), automatisch wie oben, Freigaben (nur Android-App)
+ *   Doppelte        nur wenn es welche gibt: „Duplikate entfernen“ (data/duplicates.js)
  */
 import { mountAppBar } from '../ui/appbar.js';
 import { ask, toast } from '../ui/dialogs.js';
@@ -20,6 +21,7 @@ import { folder, zipBackup, restoreZip, importFolder, syncSummary } from '../dat
 import { healthAvailable, healthStatus, healthSync, syncHealth, healthSyncing } from '../services/health.js';
 import { showPermissions } from '../ui/permissions.js';
 import { autoSync } from '../data/auto-sync.js';
+import { findDuplicates, removeDuplicates } from '../data/duplicates.js';
 
 const root = document.querySelector('.sync');
 const WHEN = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -155,12 +157,31 @@ async function healthHtml() {
   </section>`;
 }
 
+/* ── Doppelte ─────────────────────────────────────────────────────────────── */
+
+async function duplicatesHtml() {
+  if (folder.busy || healthSyncing()) return '';
+  const d = await findDuplicates().catch(() => null);
+  if (!d?.count) return '';
+  const what = [
+    d.tracks.length ? `${d.tracks.reduce((n, g) => n + g.length - 1, 0)} aufgezeichnete` : '',
+    d.tours.length ? `${d.tours.reduce((n, g) => n + g.length - 1, 0)} geplante` : '',
+  ].filter(Boolean).join(' und ');
+  return `<section class="sync-dups">
+    <h3><span class="msr">content_copy</span> Doppelte Touren</h3>
+    ${status('content_copy', `${what} ${d.count === 1 ? 'Tour gibt' : 'Touren gibt'} es doppelt – etwa aus Health Connect und aus dem Ordner einer früheren App.`, 'warn')}
+    <div class="sync-actions">
+      <button type="button" class="button primary" data-act="dedupe"><span class="msr">delete_sweep</span> Duplikate entfernen</button>
+    </div>
+  </section>`;
+}
+
 let painting = null;
 async function render() {
   // Mehrere Anlässe kurz nacheinander: einmal zeichnen
   painting ??= (async () => {
     await null;
-    root.innerHTML = `${await folderHtml()}${await healthHtml()}
+    root.innerHTML = `${await folderHtml()}${await healthHtml()}${await duplicatesHtml()}
       <p class="settings-hint sync-note"><span class="msr">lock</span> Alles bleibt auf deinen Geräten – WMap hat dafür keinen Server. Was im Ordner liegt, gleicht nur dein eigenes Sync-Programm ab.</p>`;
   })().finally(() => { painting = null; });
   return painting;
@@ -220,6 +241,16 @@ root.addEventListener('click', async (e) => {
     render();
   }
   if (act === 'perms') { await showPermissions({ reason: 'health' }); render(); }
+  if (act === 'dedupe') {
+    const d = await findDuplicates();
+    const v = await ask({ icon: 'delete_sweep', title: `${d.count} ${d.count === 1 ? 'Duplikat' : 'Duplikate'} entfernen?`,
+      text: 'Von jeder doppelten Tour bleibt eine – die mit den meisten Angaben (Puls, Herkunft aus Health Connect). Auf anderen Geräten verschwinden die Doppelten beim nächsten Abgleich ebenfalls.',
+      buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Entfernen', primary: true }] });
+    if (v !== 'yes') return;
+    const n = await removeDuplicates();
+    toast(`${n} ${n === 1 ? 'Duplikat' : 'Duplikate'} entfernt`);
+    render();
+  }
   if (act === 'backup') {
     zipBackup().then((blob) => download(`wmap-sicherung-${new Date().toISOString().slice(0, 10)}.zip`, blob, 'application/zip'))
       .catch((err) => toast(`Sicherung ging nicht: ${err.message}`));

@@ -5,7 +5,8 @@
    mit der ID aus dem Ordner und der Health-Connect-Kennung.
 3. Hier gelöscht: steht in Gelöscht.json; Health Connect holt ihn nicht wieder (healthGone).
 4. Gelöscht und wieder eingespielt (ZIP): gilt wieder, die Datei kommt zurück.
-5. Datei einmal nicht lesbar: bleibt bekannt – dort gelöscht heißt dann hier auch gelöscht."""
+5. Datei einmal nicht lesbar: bleibt bekannt – dort gelöscht heißt dann hier auch gelöscht.
+6. Kartenausschnitt über den Ordner (Kartenausschnitt.json): schreiben, nicht zu oft, lesen."""
 import json
 import sys
 from common import Browser
@@ -87,6 +88,13 @@ files.delete(cPath);                                                  // dort ge
 out.five = await folder.sync();
 out.fiveTours = tours.all().map((t) => t.name).sort();
 out.fiveFiles = tourFiles();
+
+// ── 6. Kartenausschnitt über den Ordner ──
+const view = { center: [9.93, 51.53], zoom: 14.2, pitch: 0, bearing: 0, at: Date.now() };
+out.sixFirst = await folder.writeView(view, { now: true });
+out.sixThrottled = await folder.writeView({ ...view, zoom: 15, at: Date.now() });          // gleich danach: nicht schon wieder
+out.sixRead = (await folder.readView())?.zoom;
+out.sixIgnored = (await folder.sync(), [...files.keys()].some((p) => p.endsWith('Kartenausschnitt.json')));
 return out;
 """
 
@@ -103,6 +111,7 @@ with Browser() as b:
         '3. hier gelöscht → Gelöscht.json, Health Connect holt ihn nicht wieder': 'old1' in r['threeGone'] and r['threeFiles'] == [] and r['threeHealthKnown'],
         '4. wieder eingespielt → gilt wieder': 'Leinerunde' in r['fourTours'] and any('Leinerunde' in p for p in r['fourFiles']) and 'tourB' not in r['fourGone'],
         '5. einmal nicht lesbar, dann dort gelöscht → hier weg': 'Werrarunde' not in r['fiveTours'] and not any('Werrarunde' in p for p in r['fiveFiles']),
+        '6. Kartenausschnitt: schreiben, nicht zu oft, lesen, Abgleich lässt ihn stehen': r['sixFirst'] and not r['sixThrottled'] and r['sixRead'] == 14.2 and r['sixIgnored'],
     }
     for k, v in checks.items():
         print(('ok    ' if v else 'FALSCH') + ' ' + k)

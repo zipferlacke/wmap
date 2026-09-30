@@ -59,6 +59,7 @@
 "js/core/theme.js",
 "js/data/auto-sync.js",
 "js/data/db.js",
+"js/data/duplicates.js",
 "js/data/folder.js",
 "js/data/offline-areas.js",
 "js/data/offline.js",

@@ -11,6 +11,7 @@
  *   WMap/Bus & Bahn/2026-09-30 08.15 Göttingen → Kassel.json   je gemerkte Verbindung
  *   WMap/Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen
  *   WMap/Gelöscht.json                     was auf einem Gerät gelöscht wurde (ein Jahr)
+ *   WMap/Kartenausschnitt.json             wo die Karte zuletzt stand (readView/writeView)
  *
  * Heißt der verbundene Ordner selbst „WMap“, entfällt die Ebene. Dateien aus
  * der alten Ordnung (Geplant/, Abgeschlossen/, Gemerkt.json) ziehen beim
@@ -66,6 +67,9 @@ let syncing = null;
 let progress = null;      // { i, n, since } während des Abgleichs
 let syncTracks = null;    // alle Wege, einmal je Abgleich geladen (Doppelte erkennen)
 let testBackend = null;   // nur für Tests: ein Ordner im Speicher
+const VIEW_FILE = 'Kartenausschnitt.json';
+const VIEW_EVERY_MS = 2 * 60 * 1000;
+let viewWritten = 0, viewText = null;
 
 async function load() {
   if (testBackend) return conf;
@@ -213,6 +217,40 @@ export const folder = {
     syncing = run(interactive).finally(() => { syncing = null; });
     dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { busy: true } }));
     return syncing;
+  },
+
+  /**
+   * Letzter Kartenausschnitt über den Ordner (WMap/Kartenausschnitt.json) –
+   * beim Start der Karte gleich gelesen, ohne den ganzen Abgleich; nur ohne
+   * Rückfrage (im Browser also nur, wenn das Recht noch gilt). → { center, zoom, pitch, bearing, at } | null
+   */
+  async readView() {
+    const c = await load();
+    if (!c) return null;
+    const be = backendOf(c);
+    if (await be.permission(false).catch(() => 'gone') !== 'granted') return null;
+    try {
+      const v = JSON.parse(await be.read(`${baseOf(c.name)}${VIEW_FILE}`));
+      return Array.isArray(v?.center) && Number.isFinite(v.zoom) && Number.isFinite(v.at) ? v : null;
+    } catch { return null; }
+  },
+
+  /**
+   * Ausschnitt in den Ordner – beim Verlassen der Karte (`now`) bzw. höchstens
+   * alle 2 Minuten, damit der Cloud-Ordner nicht bei jeder Bewegung hochlädt.
+   */
+  async writeView(view, { now = false } = {}) {
+    if (!view || (!now && Date.now() - viewWritten < VIEW_EVERY_MS)) return false;
+    const text = JSON.stringify({ app: 'WMap', ...view }, null, 1);
+    if (text === viewText) return false;
+    const c = await load();
+    if (!c) return false;
+    const be = backendOf(c);
+    if (await be.permission(false).catch(() => 'gone') !== 'granted') return false;
+    viewWritten = Date.now();
+    viewText = text;
+    await be.write(`${baseOf(c.name)}${VIEW_FILE}`, text).catch(() => { viewText = null; });
+    return true;
   },
 
   /** Tests: Ordner im Speicher statt echtem Ordner ({ list, read, write, remove }) */

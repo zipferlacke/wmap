@@ -16,7 +16,8 @@ import { ask, toast } from './ui/dialogs.js';
 import { parseGeoUri } from './core/geo-uri.js';
 import { appNews } from './ui/news.js';
 import { autoSync } from './data/auto-sync.js';
-import { $, debounce, freshView, map, myPosition, q, state } from './app/core.js';
+import { folder } from './data/folder.js';
+import { $, debounce, map, myPosition, q, state } from './app/core.js';
 import { fly } from './app/map-clicks.js';
 import { openSurvey } from './app/mitmachen.js';
 import { nav, navTour, resumeNav } from './app/nav.js';
@@ -35,27 +36,45 @@ import './app/report.js';
    Startansicht, Menü oben rechts, Maße
    ══════════════════════════════════════════════════════════════════════════ */
 
-// Mit Link-Parametern (siehe fromUrl) bestimmt der Link, wohin es geht
-if (!freshView && !/[?&](view|q|from|to|reach|geo|ort|tour)=/.test(location.search)) {
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/*
+ * Startansicht: sofort der Ausschnitt, den diese App gespeichert hat (core.js).
+ * Gleich danach der aus dem verbundenen Ordner (Kartenausschnitt.json) – ist
+ * der neuer (anderes Gerät, oder hier noch keiner, etwa nach dem Wechsel zur
+ * Webversion), springt die Karte dorthin, solange man sie noch nicht selbst
+ * bewegt hat. Ist beides älter als ein Tag: zum eigenen Standort.
+ * Mit Link-Parametern (siehe fromUrl) bestimmt der Link, wohin es geht.
+ */
+if (!/[?&](view|q|from|to|reach|geo|ort|tour)=/.test(location.search)) {
+  let touched = false;
+  map.on('movestart', (e) => { if (e.originalEvent) touched = true; });
   const flyHome = () => myPosition({ ask: false })
-    .then((p) => map.flyTo({ center: p, zoom: 14, pitch: 0, duration: 1800 }))
+    .then((p) => { if (!touched) map.flyTo({ center: p, zoom: 14, pitch: 0, duration: 1800 }); })
     .catch(() => { /* ohne Standort bleibt die letzte bzw. die Startansicht */ });
-  flyHome();
-  // Gerade im Dialog zu den Berechtigungen erlaubt (erster Start): jetzt hin
-  addEventListener('wmap:location', flyHome, { once: true });
+  const own = local.get('wmap.view');
+  folder.readView().catch(() => null).then((v) => {
+    const newer = v && v.at > (own?.at ?? 0) + 1000;
+    if (newer && !touched) map.jumpTo({ center: v.center, zoom: v.zoom, pitch: v.pitch ?? 0, bearing: v.bearing ?? 0 });
+    if (Date.now() - Math.max(own?.at ?? 0, v?.at ?? 0) < DAY_MS) return;
+    flyHome();
+    // Gerade im Dialog zu den Berechtigungen erlaubt (erster Start): jetzt hin
+    addEventListener('wmap:location', flyHome, { once: true });
+  });
 }
 
-const saveView = () => {
+const saveView = ({ now = false } = {}) => {
   if (nav.active) return;
-  local.set('wmap.view', {
-    center: map.getCenter().toArray(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), at: Date.now(),
-  });
+  const view = { center: map.getCenter().toArray(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), at: Date.now() };
+  local.set('wmap.view', view);
+  // In den Ordner: beim Verlassen, sonst höchstens alle 2 Minuten (data/folder.js)
+  folder.writeView(view, { now }).catch(() => {});
 };
-map.on('moveend', debounce(saveView, 400));
+map.on('moveend', debounce(() => saveView(), 400));
 // Auch beim Verlassen sofort – wer gleich danach die Seite wechselt oder die
 // App schließt, verlöre sonst die letzte Bewegung
-addEventListener('pagehide', saveView);
-document.addEventListener('visibilitychange', () => { if (document.hidden) saveView(); });
+addEventListener('pagehide', () => saveView({ now: true }));
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveView({ now: true }); });
 
 
 function keysDialog() {
