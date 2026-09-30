@@ -561,6 +561,58 @@
       ]
     },
     {
+      "out": "werbung/handy-9-auto.png",
+      "formats": [
+        "promo-narrow"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "top": 7,
+          "left": 8,
+          "right": 8,
+          "bottom": 66,
+          "valign": "top",
+          "align": "left",
+          "gap": 2,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Android Auto",
+              "size": 2.6
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "WMap im Auto",
+              "size": 7.8
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Karte, Suche und Navigation auf dem Bildschirm im Auto – mit Ansagen, Tempolimit und Parkplätzen in der Nähe, hell am Tag und dunkel bei Nacht.",
+              "size": 3.8
+            }
+          ]
+        },
+        {
+          "type": "display",
+          "screen": "images/screenshot-auto_light.png",
+          "left": 4,
+          "right": 4,
+          "top": 42
+        },
+        {
+          "type": "display",
+          "screen": "images/screenshot-auto.png",
+          "left": 4,
+          "right": 4,
+          "top": 67
+        }
+      ]
+    },
+    {
       "out": "werbung/breit-1-titel.png",
       "formats": [
         "promo-wide"
@@ -894,6 +946,56 @@
           "left": 42,
           "top": 18,
           "height": 76
+        }
+      ]
+    },
+    {
+      "out": "werbung/breit-9-auto.png",
+      "formats": [
+        "promo-wide"
+      ],
+      "elements": [
+        {
+          "type": "stack",
+          "left": 6,
+          "right": 30,
+          "top": 7,
+          "bottom": 66,
+          "valign": "top",
+          "gap": 1.6,
+          "items": [
+            {
+              "type": "text",
+              "style": "caption",
+              "text": "Android Auto"
+            },
+            {
+              "type": "text",
+              "style": "heading",
+              "text": "WMap im Auto"
+            },
+            {
+              "type": "text",
+              "style": "body",
+              "text": "Karte, Suche und Navigation auf dem Bildschirm im Auto – mit Ansagen, Tempolimit und Parkplätzen in der Nähe, hell am Tag und dunkel bei Nacht.",
+              "size": 2.8
+            }
+          ]
+        },
+        {
+          "type": "display",
+          "screen": "images/screenshot-auto.png",
+          "right": 3,
+          "top": 5,
+          "width": 34
+        },
+        {
+          "type": "display",
+          "screen": "images/screenshot-auto_light.png",
+          "left": 6,
+          "right": 6,
+          "bottom": 7,
+          "width": 82
         }
       ]
     },

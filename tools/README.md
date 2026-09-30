@@ -36,6 +36,12 @@ Hinweise:
 - Overpass ist manchmal überlastet; dann fehlen in Bild 2 und 6 die Flächen
   bzw. Treffer – einfach das eine Bild noch einmal aufnehmen.
 - Icons und Logo (`appdata/wmap-*.png`, `appdata/logo.svg`) fehlen noch.
+- **Android Auto** (`screenshot-auto{,_light}.png`, 1920×720, für die
+  Werbebilder `*-9-auto`) nimmt takeShots nicht auf: im Simulator
+  (`tools/android-auto.sh id3`) eine Navigation fahren, dann
+  `echo "screenshot $HOME/.cache/wmap-dhu/x.png" >> ~/.cache/wmap-dhu/eingabe`
+  und das Auto-Bild herausschneiden (`magick x.png -crop 1920x720+0+180`).
+  Die Rahmen setzt `takeshots wmap compose` (Element `display`).
 
 ## Android Auto am Rechner (`android-auto.sh`)
 
