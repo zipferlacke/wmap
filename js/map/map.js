@@ -8,8 +8,12 @@
  */
 import { STYLE_URL, TERRAIN_TILES } from '../core/config.js';
 import { local } from '../data/store.js';
+import { whenFree } from '../ui/dialogs.js';
 import { byId } from '../core/categories.js';
 import { theme } from '../core/theme.js';
+import { geo, geolocationApi } from '../core/native.js';
+import { smoothGeolocation } from '../core/smooth.js';
+import { enhanceDot } from './location-dot.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const fc = (features) => ({ type: 'FeatureCollection', features });
@@ -117,15 +121,24 @@ export function createMap(container, {
     ],
   }), 'bottom-left');
   collapseAttribution(map.getContainer());
+  keepSized(map);
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 
+  // App: Der Punkt auf der Karte nutzt dieselbe Standortabfrage wie die
+  // Navigation (Plugin, core/native.js) – in Bewegung jede Sekunde, im Stand
+  // seltener bis alle 30 s. Überall geglättet (core/smooth.js): im Stand ruhig, Ausreißer weg
+  const base = geo.native ? geolocationApi() : navigator.geolocation;
+  if (base) Object.defineProperty(navigator, 'geolocation', { configurable: true, value: smoothGeolocation(base) });
   const geolocate = new maplibregl.GeolocateControl({
     positionOptions: { enableHighAccuracy: true },
     trackUserLocation: true,
-    showUserHeading: true,
+    // Kreis ruhig (geglättete Ungenauigkeit), bei genauem Standort weg – map/location-dot.js
+    showAccuracyCircle: true,
   });
   map.addControl(geolocate, 'top-right');
   guardGeolocate(map, geolocate);
+  // Punkt gleitet, ruhiger Kreis, Blickrichtung (map/location-dot.js)
+  enhanceDot(map, geolocate);
 
   map.on('load', () => {
     // Mapterhorn liefert in Deutschland bis Zoom 16, darüber gibt es nur 404 –
@@ -221,7 +234,9 @@ function allow3d() {
 }
 
 /** Rückfrage als Dialog aus wuefl-libs. */
-function askCellular() {
+async function askCellular() {
+  // Nicht mitten in das Willkommen oder einen anderen Dialog hinein
+  await whenFree();
   return new Promise((resolve) => {
     const dlg = document.createElement('dialog');
     dlg.className = 'dialog confirm';
@@ -267,6 +282,9 @@ function autoThreeD(map) {
   const exaggeration = () => (map.getZoom() >= 14 ? 1 : map.getZoom() >= 12 ? 1.25 : TERRAIN_EXAGGERATION);
   const source = () => (document.body.classList.contains('navigating') ? 'terrain-lo' : 'terrain');
   const terrain = (on) => {
+    // Autobildschirm (car/car.js): ohne Gelände – darübergelegt werden Route
+    // und Fahrspuren mit gröberem Zoom gezeichnet und wirken dann blass
+    if (document.documentElement.classList.contains('car-mode')) on = false;
     if (!!map.getTerrain() === on) return;
     ours = true;
     map.setTerrain(on ? { source: source(), exaggeration: exaggeration() } : null);
@@ -717,8 +735,9 @@ function addLayers(map) {
     filter: ['!', ['get', 'selected']],
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
-      'line-color': ROUTE_COLOR, 'line-opacity': 0.4,
-      'line-width': ['interpolate', ['linear'], ['zoom'], 6, 4, 14, 8],
+      // Alternativen deutlich sichtbar – blass und schmal waren sie auf dem Autobildschirm kaum zu treffen
+      'line-color': ROUTE_COLOR, 'line-opacity': 0.62,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 6, 5.5, 14, 10],
     },
   }, under);
   map.addLayer({
@@ -726,7 +745,7 @@ function addLayers(map) {
     filter: ['get', 'selected'],
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
-      'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 7, 14, 12],
+      'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 9.5, 14, 15],
       'line-opacity': hideCovered,
     },
   }, under);
@@ -736,7 +755,7 @@ function addLayers(map) {
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
       // Bus & Bahn: jede Fahrt in der Farbe ihrer Linie
-      'line-color': ['coalesce', ['get', 'color'], ROUTE_COLOR], 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 4.5, 14, 8],
+      'line-color': ['coalesce', ['get', 'color'], ROUTE_COLOR], 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 6.5, 14, 11],
       'line-opacity': hideCovered,
     },
   }, under);
@@ -872,7 +891,7 @@ function addLayers(map) {
   for (const [src, prefix] of [['highlight-points', 'hl'], ['pois', 'poi']]) {
     map.addLayer({
       id: `${prefix}-dot`, type: 'symbol', source: src,
-      filter: ['!', ['to-boolean', ['get', 'hasShape']]],
+      filter: ['all', ['!', ['to-boolean', ['get', 'hasShape']]], ['!', ['has', 'nr']]],
       layout: {
         'icon-image': ['concat', 'cat-', ['coalesce', ['get', 'category'], '']],
         'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.7, 15, 1],
@@ -885,9 +904,23 @@ function addLayers(map) {
       layout: {
         'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'], 'text-size': 12,
         'text-anchor': 'top', 'text-max-width': 10, 'text-optional': true,
-        'text-offset': ['case', ['to-boolean', ['get', 'hasShape']], ['literal', [0, -0.5]], ['literal', [0, 0.25]]],
+        'text-offset': ['case', ['all', ['to-boolean', ['get', 'hasShape']], ['!', ['has', 'nr']]], ['literal', [0, -0.5]], ['literal', [0, 0.25]]],
       },
       paint: { 'text-color': ['get', 'color'], 'text-halo-color': '#ffffff', 'text-halo-width': 1.6 },
+    });
+    // Treffer mit Nummer (die der Liste zeigt, „Parkplatz, (3)“): Symbol der Kategorie und Nummer in einer
+    // farbigen Pille – auch an Flächen, damit man den Eintrag der Liste auf der Karte wiederfindet.
+    // Kleinere Nummern liegen obenauf.
+    map.addLayer({
+      id: `${prefix}-nr`, type: 'symbol', source: src,
+      filter: ['has', 'nr'],
+      layout: {
+        'icon-image': ['concat', 'hit-', ['coalesce', ['get', 'category'], ''], '-', ['to-string', ['get', 'nr']]],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.75, 15, 1],
+        'icon-allow-overlap': true,
+        'icon-anchor': 'bottom',
+        'symbol-sort-key': ['-', ['get', 'nr']],
+      },
     });
   }
 
@@ -900,7 +933,7 @@ function addLayers(map) {
   });
 
   // Klickbares signalisieren
-  for (const id of ['route-alt', 'route-main', 'route-walk', 'hl-dot', 'poi-dot', 'hl-fill', 'traffic-icon']) {
+  for (const id of ['route-alt', 'route-main', 'route-walk', 'hl-dot', 'poi-dot', 'hl-nr', 'poi-nr', 'hl-fill', 'traffic-icon']) {
     map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
   }
@@ -940,9 +973,64 @@ function addLaneIcon(map, id) {
   map.addImage(id, ctx.getImageData(0, 0, S, S), { pixelRatio: 2 });
 }
 
+/** Treffer mit Nummer: Pille in der Farbe der Kategorie mit ihrem Symbol und der Nummer, Spitze nach unten */
+function addHitIcon(map, id) {
+  const [, catId, nr] = id.match(/^hit-(.*)-(\d+)$/) ?? [];
+  if (!nr) return false;
+  const extra = EXTRA_ICONS[catId];
+  const cat = byId(catId);
+  const color = extra?.[1] ?? cat?.color ?? '#e8590c';
+  const glyph = extra?.[0] ?? cat?.icon ?? 'location_on';
+  const r = 2;
+  const probe = document.createElement('canvas').getContext('2d');
+  probe.font = `700 ${12 * r}px system-ui, sans-serif`;
+  const numW = Math.ceil(probe.measureText(nr).width / r);
+  const bodyW = 6 + 15 + 3 + numW + 8;            // Rand, Symbol, Abstand, Nummer, Rand
+  const bodyH = 23, tip = 6, pad = 3;             // pad: Platz für den Schatten
+  const W = (bodyW + 2 * pad) * r, H = (bodyH + tip + 2 * pad) * r;
+  const c = Object.assign(document.createElement('canvas'), { width: W, height: H });
+  const ctx = c.getContext('2d');
+  ctx.scale(r, r);
+  const shape = (inset) => {
+    const x = pad + inset, y = pad + inset, w = bodyW - 2 * inset, h = bodyH - 2 * inset, rad = h / 2;
+    const cx = pad + bodyW / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + rad, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rad);
+    ctx.arcTo(x + w, y + h, x, y + h, rad);
+    ctx.lineTo(cx + 5 - inset, y + h);
+    ctx.lineTo(cx, pad + bodyH + tip - inset * 1.6);
+    ctx.lineTo(cx - 5 + inset, y + h);
+    ctx.arcTo(x, y + h, x, y, rad);
+    ctx.arcTo(x, y, x + w, y, rad);
+    ctx.closePath();
+  };
+  ctx.shadowColor = 'rgba(0,0,0,.35)';
+  ctx.shadowBlur = 3;
+  ctx.shadowOffsetY = 1;
+  shape(0);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+  shape(1.6);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  ctx.font = '15px "Material Symbols Rounded"';
+  ctx.fillText(glyph, pad + 6 + 7.5, pad + bodyH / 2 + 0.5);
+  ctx.textAlign = 'left';
+  ctx.font = '700 12px system-ui, sans-serif';
+  ctx.fillText(nr, pad + 6 + 15 + 3, pad + bodyH / 2 + 0.5);
+  map.addImage(id, ctx.getImageData(0, 0, W, H), { pixelRatio: r });
+  return true;
+}
+
 function addCategoryIcon(map, id) {
   if (id.startsWith('lane-')) { addLaneIcon(map, id); return; }
   if (map.hasImage(id)) return;
+  if (id.startsWith('hit-') && addHitIcon(map, id)) return;
   // Symbole, die dem Grundstil fehlen (swimming_pool, atm, gate …): leer
   // eintragen – gezeichnet wurde dort ohnehin nichts, nur jedes Mal gewarnt
   if (!id.startsWith('cat-')) { map.addImage(id, { width: 1, height: 1, data: new Uint8Array(4) }); return; }
@@ -1110,6 +1198,26 @@ export function showHover(map, lngLat) {
  * Android-App: Der Standort-Knopf fragt erst über den Dialog zu den
  * Berechtigungen (ui/permissions.js) – ohne Freigabe täte er sonst nichts.
  */
+/**
+ * Karte so groß wie ihr Platz: Hat der Platz beim Start noch keine Größe (App
+ * startet, Seite noch nicht gelayoutet), nimmt MapLibre 400 × 300 und
+ * übersieht die erste Änderung danach (sein ResizeObserver verwirft den
+ * ersten Aufruf) – die Karte blieb dann klein in der Ecke, bis man neu lud.
+ * Darum selbst nachsehen und bei Abweichung anpassen.
+ */
+function keepSized(map) {
+  const fit = () => {
+    const box = map.getContainer();
+    const c = map.getCanvas();
+    if (!box.clientWidth || !box.clientHeight) return;
+    if (Math.abs(c.clientWidth - box.clientWidth) > 1 || Math.abs(c.clientHeight - box.clientHeight) > 1) map.resize();
+  };
+  new ResizeObserver(fit).observe(map.getContainer());
+  map.once('load', fit);
+  addEventListener('pageshow', fit);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) fit(); });
+}
+
 function guardGeolocate(map, geolocate) {
   if (!window.__TAURI__ || !/Android/i.test(navigator.userAgent)) return;
   let ok = false;

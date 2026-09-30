@@ -8,7 +8,7 @@ import * as overpass from '../services/overpass.js';
 import { byId } from '../core/categories.js';
 import { reportsIn, reportsShared } from '../nav/reports.js';
 import { nearestOnLine, simplifyTo, bbox, fmtDistance, fmtClock, esc } from '../core/geo.js';
-import { renderResultList, tilePointsAlong } from './category.js';
+import { numberHits, renderResultList, tilePointsAlong } from './category.js';
 import { $, $$, afterLayout, current, map, state, viewPadding } from './core.js';
 import { showTrafficItem } from './place.js';
 import { computeRoutes } from './route-results.js';
@@ -101,6 +101,7 @@ export async function runAlong(cat) {
   const still = () => state.along === cat && current() === r && !signal.aborted;
   const render = (points, final) => {
     const near = points.sort((a, b) => a.properties.along - b.properties.along);
+    numberHits(near);
     showPois(map, near);
     if (!near.length) {
       list.innerHTML = `<li class="muted">${final ? `Keine ${esc(cat.label)} entlang der Route` : `Suche ${esc(cat.label)} entlang der Route …`}</li>`;

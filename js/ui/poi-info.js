@@ -3,6 +3,9 @@
  *
  * Je Art gibt es feste Felder. Pflichtfelder erscheinen immer, notfalls mit
  * „unbekannt“ – so sieht man auch, was OSM (noch) nicht weiß.
+ *
+ * Jedes Feld sagt auch, wie man es bearbeitet (Zahl, Auswahl, Häkchen,
+ * Stecker …): osm/edit.js zeigt dieselben Felder oben im Dialog je Art.
  */
 import { CATEGORIES, searchFilters } from '../core/categories.js';
 import { esc } from '../core/geo.js';
@@ -69,9 +72,10 @@ function fee(t) {
   return t.charge && t.fee !== 'no' ? `${base} (${t.charge})` : base;
 }
 
+const PAYMENT = { cash: 'bar', debit_cards: 'EC-Karte', credit_cards: 'Kreditkarte', contactless: 'kontaktlos', app: 'App' };
+
 function payment(t) {
-  const names = { cash: 'bar', debit_cards: 'EC-Karte', credit_cards: 'Kreditkarte', contactless: 'kontaktlos', app: 'App' };
-  const list = Object.keys(names).filter((k) => t[`payment:${k}`] === 'yes').map((k) => names[k]);
+  const list = Object.keys(PAYMENT).filter((k) => t[`payment:${k}`] === 'yes').map((k) => PAYMENT[k]);
   return list.length ? list.join(', ') : null;
 }
 
@@ -230,54 +234,81 @@ export function formatHours(oh) {
 
 /* ── Felder je Art ────────────────────────────────────────────────────────── */
 
-// [Beschriftung, Icon, Wert aus Tags, Pflicht?]
+/*
+ * Wie ein Feld bearbeitet wird (osm/edit.js):
+ *   { key, kind: 'number' | 'text' | 'choice' | 'hours', options?, ph? }
+ *   { key: 'payment:', kind: 'flags', options }   je Wert ein Häkchen (…=yes)
+ *   { key: 'socket:', kind: 'sockets' }           je Stecker Anzahl und Leistung
+ */
+const JA_NEIN = { yes: 'ja', no: 'nein' };
+const E = {
+  num: (key, ph = '') => ({ key, kind: 'number', ph }),
+  text: (key, ph = '') => ({ key, kind: 'text', ph }),
+  pick: (key, map) => ({ key, kind: 'choice', options: Object.entries(map) }),
+  flags: (prefix, map) => ({ key: prefix, kind: 'flags', options: Object.entries(map) }),
+};
+export const EDIT_SOCKETS = SOCKETS;
+
+// [Beschriftung, Icon, Wert aus Tags, Pflicht?, Bearbeiten]
 const F = {
-  hours: ['Öffnungszeiten', 'schedule', (t) => formatHours(t.opening_hours)],
-  hoursReq: ['Öffnungszeiten', 'schedule', (t) => formatHours(t.opening_hours), true],
-  fee: ['Gebühr', 'payments', fee, true],
-  surface: ['Belag', 'texture', (t) => tr(SURFACE, t.surface), true],
-  access: ['Zugang', 'lock_open', (t) => tr(ACCESS, t.access)],
-  operator: ['Betreiber', 'business', (t) => t.operator ?? t.brand],
-  wheelchair: ['Rollstuhl', 'accessible', (t) => tr(YES_NO, t.wheelchair)],
-  phone: ['Telefon', 'call', (t) => t.phone ?? t['contact:phone']],
-  cuisine: ['Küche', 'restaurant_menu', (t) => t.cuisine?.replaceAll(';', ', ').replaceAll('_', ' ')],
-  outdoor: ['Außenplätze', 'deck', (t) => tr(YES_NO, t.outdoor_seating)],
-  payment: ['Bezahlung', 'credit_card', payment],
-  ele: ['Höhe', 'landscape', (t) => (t.ele ? `${Math.round(Number(t.ele))} m` : null)],
+  hours: ['Öffnungszeiten', 'schedule', (t) => formatHours(t.opening_hours), false, { key: 'opening_hours', kind: 'hours' }],
+  hoursReq: ['Öffnungszeiten', 'schedule', (t) => formatHours(t.opening_hours), true, { key: 'opening_hours', kind: 'hours' }],
+  fee: ['Gebühr', 'payments', fee, true, E.pick('fee', { no: 'kostenlos', yes: 'kostenpflichtig' })],
+  surface: ['Belag', 'texture', (t) => tr(SURFACE, t.surface), true, E.pick('surface', SURFACE)],
+  access: ['Zugang', 'lock_open', (t) => tr(ACCESS, t.access), false, E.pick('access', ACCESS)],
+  operator: ['Betreiber', 'business', (t) => t.operator ?? t.brand, false, E.text('operator', 'z. B. Stadtwerke Göttingen')],
+  wheelchair: ['Rollstuhl', 'accessible', (t) => tr(YES_NO, t.wheelchair), false, E.pick('wheelchair', { yes: 'ja', limited: 'eingeschränkt', no: 'nein' })],
+  phone: ['Telefon', 'call', (t) => t.phone ?? t['contact:phone'], false, { key: 'phone', kind: 'text' }],
+  cuisine: ['Küche', 'restaurant_menu', (t) => t.cuisine?.replaceAll(';', ', ').replaceAll('_', ' '), false, E.text('cuisine', 'z. B. italian;pizza')],
+  outdoor: ['Außenplätze', 'deck', (t) => tr(YES_NO, t.outdoor_seating), false, E.pick('outdoor_seating', JA_NEIN)],
+  payment: ['Bezahlung', 'credit_card', payment, false, E.flags('payment:', PAYMENT)],
+  ele: ['Höhe', 'landscape', (t) => (t.ele ? `${Math.round(Number(t.ele))} m` : null), false, E.num('ele', 'Meter über dem Meer')],
 };
 
 const SCHEMA = {
   parking: [
     // capacity = alle Stellplätze, nicht die gerade freien
-    ['Stellplätze (gesamt)', 'local_parking', (t) => t.capacity, true],
+    ['Stellplätze (gesamt)', 'local_parking', (t) => t.capacity, true, E.num('capacity', 'alle, nicht nur die freien')],
     F.fee,
     F.hours,
     F.surface,
-    ['Art', 'garage', (t) => tr(PARKING, t.parking)],
-    ['Höchstparkdauer', 'timer', (t) => t.maxstay],
-    ['Behindertenparkplätze', 'accessible', (t) => t['capacity:disabled']],
-    ['Ladeplätze', 'ev_station', (t) => t['capacity:charging']],
+    ['Art', 'garage', (t) => tr(PARKING, t.parking), false, E.pick('parking', PARKING)],
+    ['Höchstparkdauer', 'timer', (t) => t.maxstay, false, E.text('maxstay', 'z. B. 2 hours')],
+    ['Behindertenparkplätze', 'accessible', (t) => t['capacity:disabled'], false, E.num('capacity:disabled')],
+    ['Ladeplätze', 'ev_station', (t) => t['capacity:charging'], false, E.num('capacity:charging')],
     F.access,
   ],
-  fuel: [F.operator, F.hoursReq, ['Kraftstoffe', 'local_gas_station', fuels], F.payment, ['Shop', 'storefront', (t) => tr(YES_NO, t.shop)]],
+  fuel: [F.operator, F.hoursReq, ['Kraftstoffe', 'local_gas_station', fuels, false, E.flags('fuel:', FUELS)], F.payment,
+    ['Shop', 'storefront', (t) => tr(YES_NO, t.shop), false, E.pick('shop', JA_NEIN)]],
   charging: [
-    ['Ladepunkte', 'ev_station', (t) => t.capacity, true],
-    ['Stecker', 'electrical_services', sockets, true],
-    F.fee, F.operator, F.hours, F.access,
+    ['Ladepunkte', 'ev_station', (t) => t.capacity, true, E.num('capacity', 'Fahrzeuge, die gleichzeitig laden können')],
+    ['Stecker', 'electrical_services', sockets, true, { key: 'socket:', kind: 'sockets' }],
+    F.fee, F.operator, F.hours, F.access, F.payment,
   ],
-  toilets: [F.fee, F.wheelchair, ['Wickeltisch', 'baby_changing_station', (t) => tr(YES_NO, t.changing_table)], F.hours],
-  water: [['Trinkwasser', 'water_drop', (t) => tr(YES_NO, t.drinking_water ?? 'yes')], ['Saisonal', 'event', (t) => tr(YES_NO, t.seasonal)]],
-  bikeparking: [['Stellplätze (gesamt)', 'pedal_bike', (t) => t.capacity, true], ['Überdacht', 'roofing', (t) => tr(YES_NO, t.covered)], F.fee],
+  toilets: [F.fee, F.wheelchair, ['Wickeltisch', 'baby_changing_station', (t) => tr(YES_NO, t.changing_table), false, E.pick('changing_table', JA_NEIN)], F.hours],
+  water: [['Trinkwasser', 'water_drop', (t) => tr(YES_NO, t.drinking_water ?? 'yes'), false, E.pick('drinking_water', JA_NEIN)],
+    ['Saisonal', 'event', (t) => tr(YES_NO, t.seasonal), false, E.pick('seasonal', JA_NEIN)]],
+  bikeparking: [['Stellplätze (gesamt)', 'pedal_bike', (t) => t.capacity, true, E.num('capacity')],
+    ['Überdacht', 'roofing', (t) => tr(YES_NO, t.covered), false, E.pick('covered', JA_NEIN)], F.fee],
   peak: [F.ele],
   viewpoint: [F.ele],
   soccer: [F.surface, F.access],
-  playground: [F.surface, ['Mindestalter', 'child_care', (t) => t.min_age]],
+  playground: [F.surface, ['Mindestalter', 'child_care', (t) => t.min_age, false, E.num('min_age', 'Jahre')]],
 };
 for (const id of ['bakery', 'cafe', 'restaurant', 'fastfood', 'icecream', 'pub']) {
   SCHEMA[id] = [F.hoursReq, F.cuisine, F.outdoor, F.wheelchair, F.phone];
 }
 SCHEMA.supermarket = [F.hoursReq, F.operator, F.wheelchair, F.payment];
 const DEFAULT = [F.hours, F.operator, F.wheelchair, F.phone, F.ele];
+
+/**
+ * Was sich an einem Ort dieser Art bearbeiten lässt – dieselben Felder wie in
+ * der Karte. → [{ label, icon, edit, required }]
+ */
+export function editFields(tags = {}) {
+  const schema = SCHEMA[categoryFor(tags)?.id] ?? DEFAULT;
+  return schema.filter((f) => f[4]).map(([label, icon, , required, edit]) => ({ label, icon, edit, required: !!required }));
+}
 
 /**
  * Merkmale wie bei Google unter dem Namen („Bäckerei · Lieferdienst · Bio“).
@@ -304,7 +335,7 @@ export function describePoi(tags = {}, { name, fallbackType } = {}) {
   const category = categoryFor(tags);
   const schema = SCHEMA[category?.id] ?? DEFAULT;
   const facts = [];
-  for (const [label, icon, get, required] of schema) {
+  for (const [label, icon, get, required, edit] of schema) {
     const value = get(tags);
     if (value || required) facts.push({ label, icon, value: value ?? 'unbekannt', unknown: !value });
   }

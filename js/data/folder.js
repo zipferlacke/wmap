@@ -10,13 +10,30 @@
  *   WMap/Aufgezeichnete Touren/2026/09 September/2026-09-27 Radtour am Samstag….gpx
  *   WMap/Bus & Bahn/2026-09-30 08.15 Göttingen → Kassel.json   je gemerkte Verbindung
  *   WMap/Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen
+ *   WMap/Gelöscht.json                     was auf einem Gerät gelöscht wurde (ein Jahr)
+ *   WMap/Kartenausschnitt.json             wo die Karte zuletzt stand (readView/writeView)
+ *   WMap/Inhalt.json                       Verzeichnis: je Datei ID, Art, Fingerabdruck, Stand
  *
  * Heißt der verbundene Ordner selbst „WMap“, entfällt die Ebene. Dateien aus
  * der alten Ordnung (Geplant/, Abgeschlossen/, Gemerkt.json) ziehen beim
  * Abgleich um. Dieselbe Ordnung hat der Export als ZIP (zipBackup).
  *
- * GPX-Dateien von woanders (Garmin, Komoot-Export …) dürfen irgendwo im
- * Ordner liegen: mit Zeiten werden sie ein Weg, sonst eine Tour.
+ * Es gilt die Ordnung: Abgeglichen wird nur, was unter „Geplante Touren/“,
+ * „Aufgezeichnete Touren/“ (mit beliebigen Unterordnern) und „Bus & Bahn/“
+ * liegt. GPX-Dateien von woanders (Garmin, Komoot-Export …) legt man dort
+ * hinein – unter „Geplante Touren/“ wird es eine Tour, unter „Aufgezeichnete
+ * Touren/“ mit Zeiten ein Weg. Löscht man dort eine Datei von Hand, die
+ * dieses Gerät schon kannte, verschwindet der Eintrag auch in WMap.
+ *
+ * Schnell bleibt der Abgleich durch das Verzeichnis Inhalt.json: Jede WMap
+ * trägt dort ein, was sie geschrieben oder gelesen hat. Gelesen wird der
+ * Ordner als Liste (Namen, Änderungszeit) und das Verzeichnis – den Inhalt
+ * einer Datei holt WMap nur, wenn sie neu ist (nicht im Verzeichnis, also von
+ * Hand hineingelegt), sich laut Änderungszeit bzw. Verzeichnis geändert hat
+ * oder hier noch fehlt. Manche Cloud-Ordner unter Android melden keine
+ * Änderungszeit – ohne Verzeichnis müsste WMap dort jedes Mal alles lesen.
+ * Das Verzeichnis ist nur eine Abkürzung: Was wirklich da ist, sagt die Liste
+ * des Ordners; fehlt oder irrt das Verzeichnis, wird gelesen wie früher.
  *
  * Abgleich (je Datei, erkannt am Stichwort „wmap:ID“, an der ID im JSON
  * oder am Pfad):
@@ -24,9 +41,35 @@
  *   nur in WMap         → Datei schreiben – oder, wenn die Datei schon mal da
  *                         war und im Ordner gelöscht wurde, auch hier löschen
  *   beides geändert     → das Neuere gewinnt
- *   in WMap gelöscht    → Datei löschen
+ *   in WMap gelöscht    → Datei löschen und in Gelöscht.json eintragen
+ *   in Gelöscht.json    → auch hier löschen, nie wieder schreiben – so weiß
+ *                         es jedes Gerät, auch eins, das noch nie oder lange
+ *                         nicht abgeglichen hat (sonst schriebe es die Datei
+ *                         mit seinem alten Stand zurück)
+ * Derselbe Weg zweimal bleibt einmal – auf jedem Gerät derselbe, sonst
+ * löschte jedes einen anderen:
+ *   dieselbe Kennung in zwei Dateien (Kopie)   die mit dem kleineren Pfad bleibt
+ *   dieselbe Aufzeichnung unter zwei Kennungen (dasselbe Training aus Health
+ *   Connect, gleicher Start und gleiche Länge – etwa nach einer Neuinstallation
+ *   noch einmal geholt)                        die Datei mit der kleineren
+ *                                              Kennung bleibt, was nur die andere
+ *                                              hatte (Puls …), kommt dazu; die
+ *                                              andere steht in Gelöscht.json
+ * Eine fremde Datei ohne Kennung (Garmin-Export …) bleibt liegen und steht
+ * für den Weg, den es schon gibt.
  * Geändert heißt: andere Änderungszeit und anderer Inhalt als beim letzten
  * Abgleich (manche Cloud-Ordner unter Android melden keine Zeit).
+ *
+ * In der App oder nur im Ordner: Mit verbundenem Ordner müssen nicht alle Wege
+ * doppelt liegen. Ganz in der App bleiben die der letzten Zeit (folder.keep,
+ * Standard 30 Tage) und was als „offline verfügbar“ markiert ist (pin); von
+ * den anderen bleibt eine Karteikarte (tracks.js stubOf: Name, Zeiten, Strecke,
+ * grober Verlauf), sobald ihre Datei im Ordner denselben Stand hat. Öffnet man
+ * so einen Weg, kommt er aus dem Ordner (readTrack). Ändert man die
+ * Karteikarte (Name, Farbe, Art), schreibt der Abgleich die Datei aus ihrem
+ * Inhalt und der Karteikarte neu – nie aus der Karteikarte allein. Vor dem
+ * Trennen des Ordners holt WMap alles zurück in die App (fillAll). Geplante
+ * Touren, Verbindungen und Lesezeichen bleiben immer ganz in der App.
  *
  * Zugang zum Ordner:
  *   Browser   File System Access API (Chrome und Edge, Rechner und Android)
@@ -36,7 +79,8 @@
  * Ohne beides bleiben Einlesen, Teilen und die ZIP-Sicherung (pages/sync.js).
  */
 import { store } from './db.js';
-import { tracks, trackGpx, parseGpx, sameTrack, backup, restore } from './tracks.js';
+import { tracks, trackGpx, parseGpx, sameTrack, backup, restore, bulk, stubOf, fromFile, unstub, hasValues } from './tracks.js';
+import { merge } from './duplicates.js';
 import { makeZip, readZip } from './zip.js';
 import { tours, toGpx, coordsOf, shapeOf, local } from './store.js';
 import { simplifyTo, distance } from '../core/geo.js';
@@ -45,6 +89,11 @@ import { connections, mergePlaces, mergeSaved } from './saved.js';
 const kv = store('kv');
 const KEY = 'folder';
 const DELETED = 'wmap.folder.deleted';   // in WMap gelöscht, Datei noch löschen
+const GONE_KEEP_MS = 365 * 24 * 3600 * 1000;   // so lange steht Gelöschtes in Gelöscht.json
+const REVIVED = 'wmap.folder.revived';   // gelöscht, dann hier wieder angelegt (ZIP, Import) – gilt wieder
+const KEEP = 'wmap.tracks.keep';          // 'all' | Tage ('30', '90', '365'): so alte Wege bleiben ganz in der App
+const DAY_MS = 24 * 3600 * 1000;
+const AUTO_EVERY_MS = 5 * 60000;          // beim Öffnen einer Seite höchstens so oft
 const AUTO = 'wmap.sync.auto';            // 'off' | 'start' (beim Öffnen und nach Änderungen) | 'every30' (dazu alle 30 min)
 
 const core = typeof window !== 'undefined' ? window.__TAURI__?.core : null;
@@ -56,6 +105,11 @@ let syncing = null;
 let progress = null;      // { i, n, since } während des Abgleichs
 let syncTracks = null;    // alle Wege, einmal je Abgleich geladen (Doppelte erkennen)
 let testBackend = null;   // nur für Tests: ein Ordner im Speicher
+const VIEW_FILE = 'Kartenausschnitt.json';
+const MANIFEST = 'Inhalt.json';
+const READ_AHEAD = 4;     // so viele Dateien werden zugleich gelesen
+const VIEW_EVERY_MS = 2 * 60 * 1000;
+let viewWritten = 0, viewText = null;
 
 async function load() {
   if (testBackend) return conf;
@@ -152,6 +206,14 @@ export const folder = {
   get auto() { const v = local.get(AUTO, 'start'); return v === true ? 'start' : v === false ? 'off' : v; },
   set auto(v) { local.set(AUTO, v); },
 
+  /**
+   * Wie alte Wege ganz in der App bleiben: 'all' oder Tage als Text ('30',
+   * '90', '365'). Ältere liegen nur im Ordner (Karteikarte in der App) – außer
+   * sie sind „offline verfügbar“ (pin). Gilt je Gerät.
+   */
+  get keep() { const v = String(local.get(KEEP, '30')); return v === 'all' || Number(v) > 0 ? v : '30'; },
+  set keep(v) { local.set(KEEP, String(v)); },
+
   /** Läuft gerade ein Abgleich? */
   get busy() { return !!syncing; },
 
@@ -163,12 +225,14 @@ export const folder = {
     const c = await load();
     if (!c) return { connected: false };
     const permission = await backendOf(c).permission(false).catch(() => 'gone');
-    if (permission === 'gone') { await this.disconnect(); return { connected: false }; }
+    if (permission === 'gone') { await this.disconnect({ keepStubs: true }); return { connected: false }; }
     return { connected: true, name: c.name, permission, last: c.last ?? null, result: c.result ?? null, error: c.error ?? null, pending: !!c.pending };
   },
 
   /** Ordner auswählen (braucht einen Klick) und gleich abgleichen. */
   async connect() {
+    // Ordner wechseln: erst holen, was nur im alten lag
+    if (await load()) await this.fillAll().catch(() => {});
     if (nativeHere) {
       let r;
       try { r = await call('pick'); } catch (err) {
@@ -185,7 +249,22 @@ export const folder = {
     return this.sync({ interactive: true });
   },
 
-  async disconnect() {
+  /**
+   * Alle Karteikarten wieder ganz in die App holen (vor dem Trennen oder
+   * Wechseln des Ordners). → Anzahl, die nicht zu holen war
+   */
+  async fillAll() {
+    let missing = 0;
+    for (const t of await tracks.all()) {
+      if (!t.stub) continue;
+      try { await tracks.putQuiet(await readTrack(t)); } catch { missing += 1; }
+    }
+    return missing;
+  },
+
+  /** Trennen – vorher kommt alles, was nur im Ordner lag, in die App. `keepStubs`: ohne das (Ordner ist weg) */
+  async disconnect({ keepStubs = false } = {}) {
+    if (!keepStubs && conf) await this.fillAll().catch(() => {});
     if (conf?.native || nativeHere) await call('disconnect').catch(() => {});
     conf = null;
     await kv.remove(KEY);
@@ -203,6 +282,40 @@ export const folder = {
     syncing = run(interactive).finally(() => { syncing = null; });
     dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { busy: true } }));
     return syncing;
+  },
+
+  /**
+   * Letzter Kartenausschnitt über den Ordner (WMap/Kartenausschnitt.json) –
+   * beim Start der Karte gleich gelesen, ohne den ganzen Abgleich; nur ohne
+   * Rückfrage (im Browser also nur, wenn das Recht noch gilt). → { center, zoom, pitch, bearing, at } | null
+   */
+  async readView() {
+    const c = await load();
+    if (!c) return null;
+    const be = backendOf(c);
+    if (await be.permission(false).catch(() => 'gone') !== 'granted') return null;
+    try {
+      const v = JSON.parse(await be.read(`${baseOf(c.name)}${VIEW_FILE}`));
+      return Array.isArray(v?.center) && Number.isFinite(v.zoom) && Number.isFinite(v.at) ? v : null;
+    } catch { return null; }
+  },
+
+  /**
+   * Ausschnitt in den Ordner – beim Verlassen der Karte (`now`) bzw. höchstens
+   * alle 2 Minuten, damit der Cloud-Ordner nicht bei jeder Bewegung hochlädt.
+   */
+  async writeView(view, { now = false } = {}) {
+    if (!view || (!now && Date.now() - viewWritten < VIEW_EVERY_MS)) return false;
+    const text = JSON.stringify({ app: 'WMap', ...view }, null, 1);
+    if (text === viewText) return false;
+    const c = await load();
+    if (!c) return false;
+    const be = backendOf(c);
+    if (await be.permission(false).catch(() => 'gone') !== 'granted') return false;
+    viewWritten = Date.now();
+    viewText = text;
+    await be.write(`${baseOf(c.name)}${VIEW_FILE}`, text).catch(() => { viewText = null; });
+    return true;
   },
 
   /** Tests: Ordner im Speicher statt echtem Ordner ({ list, read, write, remove }) */
@@ -228,7 +341,7 @@ async function run(interactive) {
     c.error = null;
     c.pending = false;
     await persist();
-    if (out.imported || out.removed || out.settings === 'imported') dispatchEvent(new CustomEvent('wmap:folder', { detail: out }));
+    if (out.imported || out.removed || out.merged || out.settings === 'imported') dispatchEvent(new CustomEvent('wmap:folder', { detail: out }));
     dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { done: true } }));
     return out;
   } catch (err) {
@@ -261,17 +374,40 @@ async function syncAll(c, be) {
   const legacy = at(`${base}Gemerkt.json`);
   if (legacy) mergeSaved(await be.read(legacy.path).catch(() => null));
 
-  const files = listed.filter((f) => /\.gpx$/i.test(f.path) || CONN_DIR.test(f.path));
+  // Nur die Ordnung: Geplante Touren/, Aufgezeichnete Touren/, Bus & Bahn/ (und die Ordner bis 1.0)
+  const inPlace = (path) => path.startsWith(base) && (STRUCTURE.test(path.slice(base.length)));
+  // Fest sortiert: bei Kopien bleibt so auf jedem Gerät dieselbe Datei – die ohne „ (2)“ zuerst
+  const order = (f) => [plain(f.path), String(f.path.length).padStart(5, '0'), f.path].join('\n');
+  const files = listed.filter((f) => inPlace(f.path)).map((f) => [order(f), f]).sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)).map(([, f]) => f);
+  const there = new Set(listed.map((f) => f.path));
+  // Verzeichnis: Pfad (ab dem WMap-Ordner) → { id, kind, hash, rev }
+  const manPath = `${base}${MANIFEST}`;
+  let manText = null, manifest = {};
+  if (at(manPath)) {
+    manText = await be.read(manPath).catch(() => null);
+    try { manifest = JSON.parse(manText).files ?? {}; } catch { manifest = {}; }
+  }
   const locals = new Map();
   for (const t of await tracks.all()) locals.set(t.id, { kind: 'track', item: t });
   for (const t of tours.all()) locals.set(t.id, { kind: 'tour', item: t });
   for (const x of connections.all()) locals.set(x.id, { kind: 'conn', item: x });
-  const deleted = new Set(local.get(DELETED, []));
+  // Gelöscht: hier seit dem letzten Abgleich und auf allen Geräten (Gelöscht.json)
+  const gonePath = `${base}Gelöscht.json`;
+  const goneFile = at(gonePath);
+  let goneThere = {};
+  if (goneFile) { try { goneThere = JSON.parse(await be.read(gonePath)).deleted ?? {}; } catch { /* kaputt: neu schreiben */ } }
+  const gone = { ...goneThere };
+  for (const id of local.get(DELETED, []) ?? []) gone[id] ??= Date.now();
+  for (const id of local.get(REVIVED, []) ?? []) delete gone[id];
+  for (const [id, when] of Object.entries(gone)) if (Date.now() - when > GONE_KEEP_MS) delete gone[id];
+  const deleted = new Set(Object.keys(gone));
   const index = c.index ?? {};
   const next = {};
   const seen = new Set();
   const used = new Set(files.map((f) => f.path.toLowerCase()));
-  const out = { imported: 0, written: 0, removed: 0, moved: 0 };
+  const out = { imported: 0, written: 0, removed: 0, moved: 0, merged: 0 };
+  const first = new Map();    // ID → erste Datei dazu { path, ours }
+  const blocked = new Set();  // nicht lesbare, unbekannte Dateien (Pfad ohne „ (2)“)
   syncTracks = [...locals.values()].filter((e) => e.kind === 'track').map((e) => e.item);
 
   /*
@@ -307,6 +443,14 @@ async function syncAll(c, be) {
    * hingehört, zieht sie um – fremde Dateien (Garmin-Export …) bleiben, wo sie sind.
    */
   const put = async (path, entry, text, move = true) => {
+    // Karteikarte: Die Datei entsteht aus ihrem jetzigen Inhalt und der Karteikarte (fullFrom unten)
+    if (entry.item.stub) {
+      const full = await fullFrom(entry.item, path);
+      if (!full) { if (path && index[path]) next[path] = index[path]; return null; }
+      text = serialize({ kind: 'track', item: full });
+      await tracks.putQuiet({ ...entry.item, fhash: hash(text) });
+    }
+    text ??= serialize(entry);
     const want = pathOf(entry.kind, entry.item, base);
     let target = path;
     if (!path || (move && dirname(path) !== dirname(want))) {
@@ -319,79 +463,203 @@ async function syncAll(c, be) {
     return target;
   };
 
+  /*
+   * Muss der Inhalt gelesen werden? Nein, wenn
+   *   - die Datei bekannt ist und ihre Änderungszeit noch stimmt,
+   *   - sie bekannt ist, der Ordner keine Zeit meldet und das Verzeichnis
+   *     denselben Fingerabdruck nennt wie beim letzten Abgleich,
+   *   - sie hier neu ist (Ordner neu verbunden), das Verzeichnis aber sagt:
+   *     gleiche ID und gleicher Inhalt wie der Eintrag, den es hier schon gibt.
+   */
+  const entryIn = (f) => manifest[f.path.slice(base.length)] ?? null;
+  const twinOf = (f) => {
+    const man = entryIn(f);
+    const mine = man && !index[f.path] ? locals.get(man.id) : null;
+    return mine && mine.kind === man.kind && localHash(mine) === man.hash ? man : null;
+  };
+  const unread = (f) => {
+    const known = index[f.path] ?? null;
+    if (!known) return !!twinOf(f);
+    if (f.lastModified && known.at) return f.lastModified === known.at;
+    return entryIn(f)?.hash === known.hash;
+  };
+  // Vorauslesen: ein paar Dateien zugleich – jede einzeln zu holen dauert beim
+  // ersten Abgleich (alles neu) sonst ewig
+  const reading = new Map();
+  const read = (path) => {
+    if (!reading.has(path)) reading.set(path, be.read(path).catch(() => null));
+    return reading.get(path);
+  };
+  const toRead = files.filter((f) => !unread(f)).map((f) => f.path);
+  let ahead = 0;
+  const textOf = async (path) => {
+    const i = toRead.indexOf(path, Math.max(0, ahead - READ_AHEAD));
+    for (; i >= 0 && ahead < Math.min(toRead.length, i + READ_AHEAD); ahead += 1) read(toRead[ahead]);
+    const text = await read(path);
+    reading.delete(path);
+    return text;
+  };
+
+  /** Karteikarte + Datei im Ordner → der ganze Weg (null: Datei fehlt oder ist nicht lesbar) */
+  const fullFrom = async (stub, path) => {
+    const from = path ?? Object.keys(next).find((p) => next[p].id === stub.id) ?? Object.keys(index).find((p) => index[p].id === stub.id && there.has(p));
+    const text = from ? await read(from).finally(() => reading.delete(from)) : null;
+    try { const [t] = text ? parseGpx(text) : []; return t ? fromFile(stub, t) : null; } catch { return null; }
+  };
+
+  const unreadable = (f, known) => {
+    if (known) { next[f.path] = known; seen.add(known.id); if (!first.has(known.id)) first.set(known.id, { path: f.path, ours: !!known.ours }); }
+    else blocked.add(plain(f.path));
+  };
+
   for (const f of files) {
     await step();
     const known = index[f.path] ?? null;
-    const sameTime = known && f.lastModified && f.lastModified === known.at;
+    const twin = known ? null : twinOf(f);
+    const skip = unread(f);
     let text = null;
-    if (!sameTime) text = await be.read(f.path).catch(() => null);
-    if (!sameTime && text === null) continue;
-    const id = (text !== null ? idIn(f.path, text) : null) ?? known?.id ?? null;
+    if (!skip) text = await textOf(f.path);
+    // Nicht lesbar (Cloud-Ordner hakt): bekannt bleibt bekannt – sonst hielte
+    // das Gerät die Datei später für neu und schriebe sie nach dem Löschen zurück
+    // und was nicht zu lesen war, wird in diesem Lauf nicht noch einmal daneben geschrieben
+    if (!skip && text === null) { unreadable(f, known); continue; }
+    let id = (text !== null ? idIn(f.path, text) : null) ?? known?.id ?? twin?.id ?? null;
+    // Bekannt, aber der Eintrag fehlt hier (und ist nicht gelöscht): doch lesen und übernehmen
+    if (text === null && id && !locals.has(id) && !deleted.has(id) && !seen.has(id)) {
+      text = await textOf(f.path);
+      if (text === null) { unreadable(f, known); continue; }
+      id = idIn(f.path, text) ?? id;
+    }
     // Von WMap geschrieben (mit ID) – nur solche Dateien ziehen um
-    const ours = text !== null ? !!idIn(f.path, text) : !!known?.ours;
+    const ours = text !== null ? !!idIn(f.path, text) : known ? !!known.ours : true;
     if (id && deleted.has(id)) {
       await be.remove(f.path);
       out.removed += 1;
       continue;
     }
-    if (id && seen.has(id)) continue;                 // Kopie derselben Datei
+    if (id && seen.has(id)) {
+      // Kopie: dieselbe Kennung noch einmal. Eigene Dateien bleiben einmal (die
+      // erste nach Pfad); eine fremde Datei bleibt liegen und steht für den Eintrag
+      if (ours && first.get(id)?.ours) { await be.remove(f.path); out.merged += 1; }
+      else {
+        const e = locals.get(id) ?? await entryOf(id);
+        if (e) next[f.path] = { id, kind: e.kind, at: f.lastModified, hash: text !== null ? hash(text) : known?.hash, rev: rev(e.item), ours };
+        if (ours) first.set(id, { path: f.path, ours });
+      }
+      continue;
+    }
     const mine = id ? locals.get(id) : null;
 
     if (!mine) {
-      const got = await importFile({ ...f, text }, id);
+      const got = await importFile({ ...f, text }, id, null);
       if (got) {
+        // Fremde Datei zu einem Weg, den es schon gibt: steht für ihn (got.id ist dann seiner)
+        const again = seen.has(got.id);
         seen.add(got.id);
-        if (!locals.has(got.id)) out.imported += 1;
+        if (!first.has(got.id) || (ours && !first.get(got.id).ours)) first.set(got.id, { path: f.path, ours });
+        if (!again && !locals.has(got.id)) out.imported += 1;
         const entry = await entryOf(got.id);
         // Eigene Dateien (mit WMap-ID) ziehen in die neue Ordnung um
         if (entry && ours && dirname(f.path) !== dirname(pathOf(entry.kind, entry.item, base))) {
-          await put(f.path, entry, serialize(entry));
+          await put(f.path, entry, null);
         } else next[f.path] = { id: got.id, kind: got.kind, at: f.lastModified, hash: hash(text), rev: got.rev, ours };
       }
       continue;
     }
     seen.add(id);
+    first.set(id, { path: f.path, ours });
     const r = rev(mine.item);
-    const h = text === null ? known.hash : hash(text);
-    const mineText = serialize(mine);
+    const h = text === null ? (known?.hash ?? twin.hash) : hash(text);
     let fileNew, localNew;
     if (known) {
       fileNew = h !== known.hash;
       localNew = r !== known.rev;
     } else {
       // Noch nie abgeglichen (z. B. neues Gerät): gleich? Sonst zählt die Zeit
-      const same = h === hash(mineText);
+      const same = h === localHash(mine);
       fileNew = !same && f.lastModified > r + 60000;
       localNew = !same && !fileNew;
     }
     if (localNew && (!fileNew || r > f.lastModified)) {
-      await put(f.path, mine, mineText, ours);
+      await put(f.path, mine, null, ours);
       out.written += 1;
     } else if (fileNew) {
       // Auf einem anderen Gerät geändert
       const got = await importFile({ ...f, text }, id, mine.item);
       const entry = await entryOf(id);
-      if (entry && ours && dirname(f.path) !== dirname(pathOf(entry.kind, entry.item, base))) await put(f.path, entry, serialize(entry));
+      if (entry && ours && dirname(f.path) !== dirname(pathOf(entry.kind, entry.item, base))) await put(f.path, entry, null);
       else next[f.path] = { id, kind: mine.kind, at: f.lastModified, hash: h, rev: got?.rev ?? r, ours };
       out.imported += 1;
     } else if (ours && dirname(f.path) !== dirname(pathOf(mine.kind, mine.item, base))) {
-      await put(f.path, mine, mineText);               // alte Ordnung → neue
+      await put(f.path, mine, null);                   // alte Ordnung → neue
     } else next[f.path] = { id, kind: mine.kind, at: f.lastModified, hash: h, rev: r, ours };
+  }
+
+  /*
+   * Dieselbe Aufzeichnung unter zwei Kennungen: dasselbe Training aus Health
+   * Connect oder gleicher Start und gleiche Länge (sameTrack) – etwa weil die
+   * App neu installiert und Health Connect noch einmal gelesen wurde, während
+   * der Ordner die Wege schon hatte. Es bleibt die Datei mit der kleinsten
+   * Kennung (auf jedem Gerät dieselbe Wahl), sonst der Eintrag, für den eine
+   * fremde Datei steht, sonst die kleinste Kennung. Ihr Inhalt wird der
+   * vollständigste der Gruppe (aus Health Connect vor einer wieder
+   * eingelesenen Datei, mit Puls vor ohne), was nur die anderen hatten, kommt
+   * dazu; deren Dateien gehen, ihre Kennungen stehen in Gelöscht.json –
+   * andere Geräte löschen sie dann auch.
+   */
+  const rich = (t) => (t.kind !== 'gpx' ? 8 : 0) + (t.source?.health ? 4 : 0) + (hasValues(t) ? 2 : 0) + (t.stub ? 0 : 1);
+  const pathsOf = (id) => Object.keys(next).filter((p) => next[p].id === id);
+  for (const group of sameRecordings(await tracks.all())) {
+    const filed = (t, own) => pathsOf(t.id).some((p) => !!next[p].ours === own);
+    const byId = (a, b) => (a.id < b.id ? -1 : 1);
+    const keep = [...group].sort(byId).find((t) => filed(t, true)) ?? [...group].sort(byId).find((t) => filed(t, false)) ?? [...group].sort(byId)[0];
+    const rest = group.filter((t) => t !== keep);
+    // Karteikarten ganz holen, damit Puls & Co. beim Zusammenlegen mitkommen
+    const whole = async (t) => (t.stub ? await fullFrom(t, null) ?? t : t);
+    const base0 = await whole(keep);
+    const all = [base0, ...await Promise.all(rest.map(whole))];
+    const best = [...all].sort((a, b) => rich(b) - rich(a))[0];
+    let item = best;
+    for (const other of all) if (other !== best) item = merge(item, other);
+    if ((item !== base0 || best !== base0) && !item.stub) {
+      item = { ...item, id: keep.id, updated: Date.now() };
+      await tracks.putQuiet(item);
+      const own = pathsOf(keep.id).find((p) => next[p].ours);
+      if (own) await put(own, { kind: 'track', item }, null);
+    }
+    if (locals.has(keep.id)) locals.set(keep.id, { kind: 'track', item });
+    for (const other of rest) {
+      const paths = pathsOf(other.id);
+      for (const p of paths) {
+        if (next[p].ours) { await be.remove(p); delete next[p]; } else next[p] = { ...next[p], id: keep.id, rev: rev(item) };
+      }
+      // Andere Geräte kennen ihn unter dieser Kennung: dort auch löschen
+      if (paths.length || Object.values(index).some((v) => v.id === other.id)) gone[other.id] = Date.now();
+      await trackStore.remove(other.id);
+      locals.delete(other.id);
+      out.merged += 1;
+    }
+    // Der bleibende steht im Ordner (und sei es als fremde Datei): nicht noch einmal schreiben
+    if (pathsOf(keep.id).length) seen.add(keep.id);
   }
 
   progress.n += [...locals.keys()].filter((id) => !seen.has(id)).length;
   for (const [id, entry] of locals) {
     if (seen.has(id)) continue;
     await step();
-    if (Object.values(index).some((v) => v.id === id)) {
-      // War schon im Ordner und ist dort weg: dort gelöscht
-      if (entry.kind === 'track') await trackStore.remove(id);
+    if (deleted.has(id) || Object.entries(index).some(([path, v]) => v.id === id && inPlace(path))) {
+      // Auf einem Gerät gelöscht bzw. war schon im Ordner und ist dort weg
+      if (entry.kind === 'track') await tracks.removeQuiet(id);
       else if (entry.kind === 'conn') connections.removeQuiet(id);
       else tourRemoveQuiet(id);
       out.removed += 1;
       continue;
     }
-    await put(null, entry, serialize(entry));
+    // Dazu lag vielleicht schon eine Datei da, die gerade nicht zu lesen war: nächstes Mal
+    if (blocked.has(plain(pathOf(entry.kind, entry.item, base)))) continue;
+    // Karteikarte ohne Datei (anderer Ordner verbunden): bleibt, wie sie ist – schreiben lässt sich nur der ganze Weg
+    if (entry.item.stub) continue;
+    await put(null, entry, null);
     out.written += 1;
   }
 
@@ -402,11 +670,129 @@ async function syncAll(c, be) {
   if (merged.changed) await be.write(bmPath, merged.text);
 
   out.settings = await syncSettings(c, be, at(`${base}settings.json`), `${base}settings.json`);
+  if (JSON.stringify(gone) !== JSON.stringify(goneThere)) {
+    await be.write(gonePath, JSON.stringify({ app: 'WMap', note: 'Auf einem Gerät gelöscht – nicht wieder anlegen', deleted: gone }, null, 1));
+  }
   if (legacy) await be.remove(legacy.path);
+
+  await shelve(next, be, out);
+
+  // Verzeichnis für alle Geräte: was jetzt im Ordner liegt. Was ein anderes
+  // Gerät eingetragen hat und hier noch nicht angekommen ist (nicht in der
+  // Liste, hier nie gesehen), bleibt stehen
+  const files2 = {};
+  for (const [path, v] of Object.entries(next)) {
+    if (inPlace(path)) files2[path.slice(base.length)] = { id: v.id, kind: v.kind, hash: v.hash, rev: v.rev };
+  }
+  for (const [rel, v] of Object.entries(manifest)) {
+    if (!files2[rel] && !there.has(base + rel) && !index[base + rel]) files2[rel] = v;
+  }
+  const sorted = Object.fromEntries(Object.keys(files2).sort().map((k) => [k, files2[k]]));
+  const manNext = JSON.stringify({ app: 'WMap', note: 'Verzeichnis für den Abgleich – wird von WMap geschrieben, nicht ändern', files: sorted }, null, 1);
+  if (manNext !== manText) await be.write(manPath, manNext);
 
   c.index = next;
   local.set(DELETED, []);
+  local.set(REVIVED, []);
   return out;
+}
+
+/**
+ * In der App oder nur im Ordner (siehe Kopf): ältere Wege, deren Datei im
+ * Ordner denselben Stand hat, werden zur Karteikarte; Karteikarten, die
+ * wieder ganz da sein sollen (offline verfügbar, Einstellung geändert),
+ * kommen aus dem Ordner zurück.
+ */
+async function shelve(next, be, out) {
+  const keep = folder.keep;
+  const limit = keep === 'all' ? -Infinity : Date.now() - Number(keep) * DAY_MS;
+  const pathOfId = new Map();
+  for (const [path, v] of Object.entries(next)) if (v.kind === 'track' && v.ours && !pathOfId.has(v.id)) pathOfId.set(v.id, path);
+  out.shelved = 0;
+  out.filled = 0;
+  for (const t of await tracks.all()) {
+    const path = pathOfId.get(t.id);
+    const here = !!t.pin || t.start >= limit;
+    if (!t.stub && !here && path && next[path].rev === rev(t)) {
+      // Die Datei muss genau diesen Stand haben – sonst bliebe nichts Ganzes übrig.
+      // Eine Datei aus einer älteren WMap (ohne alle Angaben) wird dafür erst neu geschrieben
+      const text = trackGpx(t);
+      if (next[path].hash !== hash(text)) {
+        try { next[path] = { ...next[path], at: await be.write(path, text), hash: hash(text) }; } catch { continue; }
+      }
+      await tracks.putQuiet(stubOf(t, next[path].hash));
+      out.shelved += 1;
+    } else if (t.stub && here && path) {
+      try {
+        const [parsed] = parseGpx(await be.read(path));
+        if (parsed) { await tracks.putQuiet(fromFile(t, parsed)); out.filled += 1; }
+      } catch { /* bleibt Karteikarte */ }
+    }
+  }
+}
+
+/**
+ * Speicher voll (tracks.js makeRoom): die ältesten ganzen Wege, deren Datei im
+ * Ordner genau diesen Stand hat, zur Karteikarte machen – ohne den Ordner
+ * anzufassen. „Offline verfügbar“ Markiertes bleibt. → Anzahl, oder null,
+ * wenn kein Ordner verbunden ist
+ */
+export async function shelveOldest(count = 10, exceptId = null) {
+  const c = await load().catch(() => null);
+  if (!c) return null;
+  const known = new Map();
+  for (const v of Object.values(c.index ?? {})) if (v.kind === 'track' && v.ours && !known.has(v.id)) known.set(v.id, v);
+  let n = 0;
+  for (const t of (await tracks.all()).reverse()) {
+    if (n >= count) break;
+    const v = known.get(t.id);
+    if (t.stub || t.pin || t.id === exceptId || !v || v.rev !== rev(t) || v.hash !== hash(trackGpx(t))) continue;
+    await tracks.putQuiet(stubOf(t, v.hash));
+    n += 1;
+  }
+  return n;
+}
+
+/** Fingerabdruck dessen, was hier liegt – bei einer Karteikarte der der Datei, aus der sie entstand */
+const localHash = (entry) => (entry.item.stub ? entry.item.fhash : hash(serialize(entry)));
+
+/**
+ * Karteikarte → der ganze Weg aus der Datei im verbundenen Ordner (für
+ * tracks.full). Wirft, wenn der Ordner nicht verbunden oder die Datei nicht
+ * zu lesen ist.
+ */
+export async function readTrack(stub) {
+  const c = await load();
+  if (!c) throw new Error('Der Ordner ist nicht verbunden');
+  const be = backendOf(c);
+  if (await be.permission(false).catch(() => 'gone') !== 'granted') throw new Error('Der Ordner ist gerade nicht erreichbar');
+  const paths = Object.keys(c.index ?? {}).filter((p) => c.index[p].id === stub.id);
+  const path = paths.find((p) => c.index[p].ours) ?? paths[0];
+  if (!path) throw new Error('Die Datei zu diesem Weg fehlt im Ordner');
+  const [t] = parseGpx(await be.read(path));
+  if (!t) throw new Error('Die Datei im Ordner ließ sich nicht lesen');
+  return fromFile(stub, t);
+}
+
+/** Pfad ohne „ (2)“ und ohne Groß/klein – dieselbe Datei, ein zweites Mal geschrieben */
+const plain = (path) => path.toLowerCase().replace(/ \(\d+\)(\.\w+)$/, '$1');
+
+/**
+ * Wege, die dieselbe Aufzeichnung sind: dasselbe Training aus Health Connect
+ * oder gleicher Start und gleiche Länge (sameTrack). → Gruppen ab zwei
+ */
+export function sameRecordings(list) {
+  const sorted = [...list].sort((a, b) => a.start - b.start);
+  const groups = [], byHealth = new Map();
+  for (const t of sorted) {
+    let g = t.source?.health ? byHealth.get(t.source.health) : null;
+    for (let i = groups.length - 1; !g && i >= 0 && groups[i].at(-1).start > t.start - 5000; i -= 1) {
+      if (groups[i].some((x) => sameTrack(x, t))) g = groups[i];
+    }
+    if (g) g.push(t); else { g = [t]; groups.push(g); }
+    if (t.source?.health) byHealth.set(t.source.health, g);
+  }
+  return groups.filter((g) => g.length > 1);
 }
 
 /** Dateiinhalt → WMap-ID (GPX: Stichwort wmap:ID, Verbindung: id im JSON) */
@@ -491,6 +877,8 @@ const dirname = (p) => p.slice(0, p.lastIndexOf('/') + 1);
 const TOUR_DIR = /(^|\/)(Geplante Touren|Geplant)\//;
 const TRACK_DIR = /(^|\/)(Aufgezeichnete Touren|Abgeschlossen)\//;
 const CONN_DIR = /(^|\/)Bus & Bahn\/[^/]+\.json$/i;
+// Was abgeglichen wird – Pfad ab dem WMap-Ordner
+const STRUCTURE = /^((Geplante Touren|Geplant|Aufgezeichnete Touren|Abgeschlossen)\/.+\.gpx|Bus & Bahn\/[^/]+\.json)$/i;
 
 /** Ordner „WMap“ im verbundenen Ordner – außer er heißt schon so */
 const baseOf = (name) => (/^wmap$/i.test(name ?? '') ? '' : 'WMap/');
@@ -545,7 +933,8 @@ async function importFile(f, id, before = null) {
       const t = tourFromGpx(f.text, f.path);
       if (!t) return null;
       // Ordner neu verbunden: dieselbe Tour nicht doppelt
-      const twin = !before && !id && tours.all().find((x) => x.shape === t.shape);
+      // gleicher Verlauf und gleicher Name – nur der Verlauf wäre zu grob (dieselbe Runde zweimal geplant)
+      const twin = !before && !id && tours.all().find((x) => x.shape === t.shape && x.name === t.name);
       if (twin) return { id: twin.id, kind: 'tour', rev: rev(twin) };
       const tour = { ...t, id: id ?? before?.id ?? tours.newId(), created: before?.created ?? f.lastModified, updated: f.lastModified || Date.now(), preview: before?.shape === t.shape ? before.preview : null };
       tours.put(tour);
@@ -553,9 +942,14 @@ async function importFile(f, id, before = null) {
     }
     const [t] = parseGpx(f.text);
     if (!t) return null;
-    const twin = !before && !id && (syncTracks ?? await tracks.all()).find((x) => sameTrack(x, t));
+    // Fremde Datei (ohne Kennung) zu einem Weg, den es schon gibt: bleibt der Weg.
+    // Eine Datei mit Kennung wird immer ihr eigener Eintrag – dieselbe Aufzeichnung
+    // unter zwei Kennungen legt der Abgleich danach zusammen (sameRecordings)
+    const all = syncTracks ?? await tracks.all();
+    const twin = !before && !id && all.find((x) => sameTrack(x, t));
     if (twin) return { id: twin.id, kind: 'track', rev: rev(twin) };
-    const track = { ...before, ...t, id: id ?? before?.id ?? t.id, updated: f.lastModified || Date.now() };
+    const source = before?.source || t.source ? { ...before?.source, ...t.source } : undefined;
+    const track = { ...unstub(before), ...t, id: id ?? before?.id ?? t.id, ...(source ? { source } : {}), updated: f.lastModified || Date.now() };
     await tracks.putQuiet(track);
     syncTracks?.push(track);
     return { id: track.id, kind: 'track', rev: track.updated };
@@ -598,14 +992,25 @@ export function tourFromGpx(text, path = '') {
 
 let timer = null;
 addEventListener('wmap:data', (e) => {
-  if (e.detail?.removed) local.set(DELETED, [...new Set([...local.get(DELETED, []), e.detail.id])]);
+  const id = e.detail?.id;
+  if (id && e.detail.removed) local.set(DELETED, [...new Set([...local.get(DELETED, []), id])]);
+  // Wieder angelegt (ZIP einspielen, Import, Bearbeiten): nicht mehr als gelöscht führen
+  else if (id) {
+    local.set(DELETED, (local.get(DELETED, []) ?? []).filter((x) => x !== id));
+    local.set(REVIVED, [...new Set([...(local.get(REVIVED, []) ?? []), id])].slice(-500));
+  }
+  later();
+});
+function later() {
   clearTimeout(timer);
   timer = setTimeout(async () => {
+    // Health Connect holt gerade viele Wege: erst danach, einmal für alle
+    if (bulk.active) { later(); return; }
     await syncing?.catch(() => {});
     if (!await load()) { local.set(DELETED, []); return; }
     if (folder.auto !== 'off') folder.sync().catch(() => { /* steht als Fehler auf der Seite „Sicherung & Synchronisation“ */ });
   }, 2500);
-});
+}
 
 /* ── Ohne Ordner-Zugriff (Firefox, Safari): Dateien laden und teilen ──────── */
 
@@ -686,7 +1091,8 @@ export async function zipBackup() {
   };
   const files = [
     ...tours.all().map((t) => entry('tour', t)),
-    ...(await tracks.all()).map((t) => entry('track', t)),
+    // Karteikarten ganz holen; was nicht zu holen ist, steht nur in der Sicherung (als Karteikarte)
+    ...(await tracks.allFull()).list.filter((t) => !t.stub).map((t) => entry('track', t)),
     ...connections.all().map((x) => entry('conn', x)),
     { path: 'WMap/Lesezeichen.json', data: mergePlaces(null).text, date: new Date() },
     { path: 'WMap/wmap-sicherung.json', data: await backup(), date: new Date() },
@@ -712,18 +1118,27 @@ export async function restoreZip(file) {
 /** „3 übernommen, 2 gespeichert“ */
 export function syncSummary(r) {
   if (!r) return '';
+  // (Wie viele nur noch als Karteikarte in der App liegen, steht auf der Seite – nicht in jeder Meldung)
   const parts = [r.imported && `${r.imported} übernommen`, r.written && `${r.written} gespeichert`, r.removed && `${r.removed} gelöscht`,
-    r.moved && `${r.moved} umgezogen`, r.settings === 'imported' && 'Einstellungen übernommen'].filter(Boolean);
+    r.moved && `${r.moved} umgezogen`, r.merged && `${r.merged} doppelte zusammengelegt`, r.settings === 'imported' && 'Einstellungen übernommen'].filter(Boolean);
   return parts.length ? parts.join(', ') : 'alles aktuell';
 }
 
-/** Still abgleichen – wenn verbunden, erlaubt und je nach Einstellung (`periodic`: der 30-Minuten-Takt) */
+/**
+ * Still abgleichen – wenn verbunden, erlaubt und je nach Einstellung
+ * (`periodic`: der 30-Minuten-Takt). Beim Öffnen einer Seite höchstens alle
+ * 5 Minuten: WMap besteht aus mehreren Seiten, sonst liefe der Abgleich bei
+ * jedem Wechsel neu an. Eigene Änderungen gehen ohnehin gleich in den Ordner
+ * (wmap:data), ein abgebrochener Abgleich wird sofort fertig gemacht.
+ */
 export async function autoFolderSync({ periodic = false } = {}) {
   const mode = folder.auto;
   if (!folder.supported || (periodic && mode !== 'every30')) return null;
   const i = await folder.info().catch(() => null);
   if (!i?.connected || i.permission !== 'granted') return null;
+  const aborted = i.pending && !i.error;
   // Abgebrochen (Seite gewechselt): immer fertig machen, auch wenn „Aus“ gewählt ist
-  if (mode === 'off' && !i.pending) return null;
+  if (mode === 'off' && !aborted) return null;
+  if (!periodic && !aborted && Date.now() - Math.max(i.last ?? 0, i.error?.at ?? 0) < AUTO_EVERY_MS) return null;
   return folder.sync().catch(() => null);
 }

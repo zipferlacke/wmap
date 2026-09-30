@@ -1,6 +1,6 @@
 [package]
 name = "wmap"
-version = "2.0.1"
+version = "2.1.0"
 description = "WMap – 3D-Karte und Navigation als Desktop-App"
 authors = ["Florian Wüllner"]
 license = ""
@@ -31,6 +31,9 @@ tauri-plugin-health = { path = "plugins/health" }
 tauri-plugin-folder = { path = "plugins/folder" }
 # Weblinks über der App öffnen – Leiste mit ✕ und „Im Browser öffnen“ (eigenes Plugin)
 tauri-plugin-browser = { path = "plugins/browser" }
+# Overpass mit Kennung fragen (User-Agent, Referer) – der WebView schickt auf
+# tauri:// keinen Referer, overpass-api.de lehnt dann mit 406 ab
+ureq = "3"
 
 # Rechner: ein Klick auf einen geo:-Link bei offener App startet keine zweite,
 # sondern gibt den Link an das offene Fenster
@@ -45,3 +48,9 @@ webkit2gtk = { version = "2.0", features = ["v2_40"] }
 # die Web-App fragt es über js/native.js an, im Browser bleibt es beim Web-GPS
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-geolocation = "2"
+
+# Das Geolocation-Plugin als Kopie mit Korrektur: im Original beantwortet der
+# Android-Teil „watchPosition“ nie und hält dabei je Aufruf einen Arbeits-Thread
+# der App fest – nach acht hängt die ganze App (plugins/geolocation/WMAP.md)
+[patch.crates-io]
+tauri-plugin-geolocation = { path = "plugins/geolocation" }

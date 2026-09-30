@@ -96,11 +96,12 @@ export const places = {
   /** Orte einer Liste (ohne Zuhause/Arbeit) */
   inList: (list) => read().places.filter((p) => !fixed(p.kind) && (p.list || DEFAULT_LIST) === list),
   /** Zuhause/Arbeit gibt es nur einmal – neu setzen ersetzt. `name` darf frei sein („Oma“, „Verein“ …) */
-  save({ kind = 'fav', name, label = '', point, ifopt = '', list = DEFAULT_LIST }) {
+  save({ kind = 'fav', name, label = '', point, ifopt = '', list = DEFAULT_LIST, poi = null }) {
     const d = read();
     const at = (p) => Math.abs(p.point[0] - point[0]) < 1e-5 && Math.abs(p.point[1] - point[1]) < 1e-5;
     const old = d.places.find((p) => (fixed(kind) ? p.kind === kind : at(p) && p.kind === kind));
-    const p = { id: old?.id ?? newId(), kind, name, label, point, ifopt, ...(fixed(kind) ? {} : { list: list || DEFAULT_LIST }), updated: Date.now() };
+    // `poi`: ein Geschäft, Lokal … – mit dem Auto endet die Fahrt am Parkplatz davor (app/drive-target.js)
+    const p = { id: old?.id ?? newId(), kind, name, label, point, ifopt, ...(fixed(kind) ? {} : { list: list || DEFAULT_LIST }), ...((poi ?? old?.poi) ? { poi: true } : {}), updated: Date.now() };
     d.places = [...d.places.filter((x) => x !== old), p];
     write(d);
     return p;
@@ -157,8 +158,10 @@ export function mergePlaces(text) {
   const deleted = { ...theirs.deleted, ...mine.deleted };
   for (const [id, at] of Object.entries(deleted)) if (Date.now() - at > 365 * 864e5) delete deleted[id];
   const places = mergeBy(deleted)(mine.places, theirs.places ?? []);
-  const ids = new Set([...mine.places, ...(theirs.places ?? [])].map((x) => x.id));
-  const next = JSON.stringify({ app: 'WMap', places, deleted: Object.fromEntries(Object.entries(deleted).filter(([id]) => ids.has(id))) }, null, 1);
+  // Gelöschtes bleibt ein Jahr stehen – auch wenn es gerade niemand mehr hat: Ein Gerät, das
+  // erst später abgleicht (oder die Karte im Auto, data/car-share.js), hat den Ort sonst noch
+  // und brächte ihn zurück
+  const next = JSON.stringify({ app: 'WMap', places, deleted }, null, 1);
   if (JSON.stringify(places) !== JSON.stringify(mine.places) || JSON.stringify(deleted) !== JSON.stringify(mine.deleted)) {
     write({ ...mine, places, deleted }, { sync: false });
   }

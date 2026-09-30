@@ -1,23 +1,54 @@
 {
     "welcome": [
-        "<b>WMap</b> ist eine Karte für unterwegs: suchen, Routen planen, navigieren, Touren planen und aufzeichnen – zu Fuß, mit dem Rad, dem Auto und mit Bus &amp; Bahn.",
-        "Alles beruht auf offenen Daten von OpenStreetMap. Du brauchst kein Konto, und deine Wege bleiben auf deinem Gerät.",
-        "Tippe oben einen Ort, eine Adresse oder einfach „Bäckerei“ ein – oder auf <span class=\"msr\">directions</span>, um eine Route zu planen."
+        "<b>WMap</b> ist eine Karte ohne Tracking: suchen, navigieren, Routen und Touren planen und aufzeichnen – zu Fuß, mit dem Rad, dem Auto und mit Bus &amp; Bahn.",
+        "Alles beruht auf offenen Daten von OpenStreetMap. Du brauchst kein Konto und hast volle Kontrolle über deine Daten.",
+        "Tippe oben einen Ort, eine Adresse oder einfach „Bäckerei“ ein, um Bäckereien in der Nähe zu finden – oder auf <span class=\"msr\">directions</span>, um eine Route zu planen."
     ],
-    "minVersion": "2.0.1",
+    "minVersion": "2.1.0",
+    "minAppVersion": "2.1.0",
     "messages": [],
     "changelog": [
+        {
+            "version": "2.1.0",
+            "date": "2026-10-02",
+            "changes": [
+                "Android Auto Unterstützung: Karte mit Suche, Route, Meine Touren und Orten in der Nähe (Parkplätze, Tankstellen …), Orte antippen, Navigation mit Ansagen und kurzen Fragen zum Mitmachen",
+                "Mitmachen wurde neugestaltet: kurze Fragen kommen beim Navigieren bzw. am Ende einer beendeten Navigation, einzeln einstellbar in den Einstellungen unter „Unterwegs“.",
+                "Editieren von Orten/Punkten auf der Karte wurde vereinfacht: Dialoge wurden auf die jeweilige Art zugeschnitten.",
+                "GPX-Dateien können mit WMap geöffnet werden – als aufgezeichnete Tour oder als geplante Tour",
+                "Shortcuts in den Apps für Android und Linux eingeführt: Route planen, Aufzeichnen, Meine Touren",
+                "Geteilte Orte, Routen und Touren öffnen sich direkt in der Android-App; Links zeigen in Messengern Logo und Beschreibung",
+                "Bild-in-Bild-Modus neu gestaltet: nur Karte mit Standort, Pfeil und Entfernung",
+                "GPS verbraucht weniger Energie und springt in der Navigation weniger herum.",
+                "Mit dem Auto zu einem Geschäft oder Lokal: Die Fahrt endet am Parkplatz direkt davor",
+                "Der letzte Kartenausschnitt kommt über den Ordner mit auf deine anderen Geräte",
+                "Aufgezeichnete Touren: Farbe nach Sportart oder eigene Farbe, ältere blasser; Jahre und einzelne Touren auf der Karte ausblenden; GPX per Drag & Drop; Touren erneut navigieren, als Planung öffnen und samt Puls & Co. teilen",
+                "Beim Start einer Tour fragt WMap, ob sie aufgezeichnet werden soll; in der Navigation gibt es einen Knopf für Aufzeichnen, Pause und Beenden",
+                "Mit verbundenem Ordner liegen ältere Touren nur noch dort – in der App bleiben der letzte Monat und was du als „offline verfügbar“ markierst (einstellbar)",
+                "Doppelte Touren (etwa von Uhr und Handy) lassen sich unter „Sicherung & Synchronisation“ zusammenführen – du wählst, wessen Strecke und wessen Gesundheitsdaten bleiben",
+                "Neue Seite „Offline“ in der Übersicht: alles, was ohne Netz auf dem Gerät liegt – Karten-Gebiete, Touren, Karten der Navigation",
+                "Allgemeine Performance- und Akku-Optimierungen",
+                "Fix: Navigation in der Android-App – GPS nicht verfügbar trotz GPS, fehlende Ansagen",
+                "Fix: GPS wandert im Stand und das Tempo bei der Navigation war nicht 0",
+                "Fix: Kategoriesuche und Orte entlang der Route kamen in den Apps nicht oder nur langsam",
+                "Fix: Auf einem Gerät gelöschte Touren kamen über den Ordner-Abgleich von anderen Geräten zurück",
+                "Fix: Der Ordner-Abgleich legte Touren aus Health Connect mehrfach an und lief bei jedem Seitenwechsel neu an – Doppelte im Ordner werden jetzt aufgeräumt",
+                "Fix: Die Android-App reagierte nach einiger Zeit nicht mehr („Webseite nicht verfügbar“)",
+                "Fix: Die Karte war ab und zu nach dem Start nur klein in der Ecke",
+                "Fix: Kleinere Darstellungsfehler (Knöpfe in der Navigation, lange Antworten, geteilte Touren)"
+            ]
+        },
         {
             "version": "2.0.1",
             "date": "2026-09-29",
             "changes": [
-                "Sicherung & Synchronisation vereinfacht und besser Performance.",
-                "Bessere Fortschrittsanzeige beim Synchronisieren – mit Prozent und Restzeit und läft im Hintegrund ab jetzt",
+                "Sicherung & Synchronisation vereinfacht und bessere Performance.",
+                "Bessere Fortschrittsanzeige beim Synchronisieren – mit Prozent und Restzeit und läuft im Hintergrund ab jetzt",
                 "Standard beim Synchronisieren geändert zu „beim App-Start synchronisieren“ – auch für Health Connect",
                 "Fix: „Meine Touren“ und „Entdecken“ blieben schwarz – in den Apps für Android, Windows, macOS und Linux",
                 "Fix: Standort in der Navigation kam nur alle 10 s oder gar nicht mehr – in der Android-App",
                 "Fix: Standort in der Navigation setzte immer wieder aus und kam verspätet – in der Web-App",
-                "Fix: Aufzeichnen während der Navigation bekam keine Punkte – in der Android-App",
+                "Fix: Aufzeichnen während der Navigation hat nicht funktioniert Standortdaten verfügbar – in der Android-App",
                 "Fix: Ordner-Abgleich brach beim Wechsel der Seite ab, „Letzter Abgleich“ blieb auf „noch nie“ – in den Apps und in Chrome/Edge",
                 "Fix: „Gleiche ab …“ blieb stehen, wenn sich nichts geändert hatte – auf „Sicherung & Synchronisation“"
             ]

@@ -15,7 +15,8 @@ import { connections } from '../data/saved.js';
 import { share, routeUrl, clock } from '../ui/share.js';
 import { toast } from '../ui/dialogs.js';
 import { nearestOnLine, pointAt, simplifyTo, bbox, fmtDistance, fmtDuration, esc } from '../core/geo.js';
-import { $, afterLayout, chipHtml, current, debounce, fitTo, map, myPosition, sheet, state, viewPadding } from './core.js';
+import { CAR, $, afterLayout, chipHtml, current, debounce, fitTo, map, markerEl, myPosition, releaseLock, sheet, state, viewPadding } from './core.js';
+import { parkingNear } from './drive-target.js';
 import { nav } from './nav.js';
 import { compactRoute, isSet, transitWhen } from './route-plan.js';
 import { loadTraffic, runAlong } from './traffic-along.js';
@@ -25,6 +26,7 @@ import { closeSheet, openSheet } from './views.js';
 
 export let routeCtl = null;
 let altMarkers = [];
+let parkMarker = null;
 
 export const elevation = new ElevationProfile($('[data-view="route"] .elevation'), {
   onHover(km) {
@@ -46,27 +48,34 @@ export async function computeRoutes() {
   routeStatus('Route wird berechnet …');
   try {
     const points = await Promise.all(state.waypoints.map((w) => (w.me ? myPosition() : w.point)));
+    // Mit dem Auto zu einem Geschäft, Lokal …: gefahren wird bis zum Parkplatz davor (app/drive-target.js)
+    const park = PROFILES[state.profile].costing === 'auto' && state.waypoints.at(-1).poi
+      ? await parkingNear(points.at(-1), { signal }) : null;
+    if (signal.aborted) return;
+    const drive = park ? [...points.slice(0, -1), park.point] : points;
     // Bus & Bahn: Verbindungen nach Fahrplan (Zwischenziele zählen hier nicht)
     const routes = PROFILES[state.profile].transit
       ? await journeys(points[0], points.at(-1), { ...transitWhen(), params: transitParams(), change: prefs.change, fastest: prefs.fastest, signal })
-      : await getRoutes(points, state.profile, {
+      : await getRoutes(drive, state.profile, {
         highways: prefs.highways, avoid: state.avoid.map((p) => avoidRing(p)), signal,
       });
     if (signal.aborted) return;
     state.points = points;
+    state.drive = drive;
     state.routes = routes;
     routeStatus(null);
+    showPark(park, state.waypoints.at(-1).label);
     compactRoute(true);
     selectRoute(routes[0].id, { fit: true });
-    const wps = state.waypoints.map(({ label, point, me: isMe }) => ({ label, point: isMe ? null : point, me: isMe }));
-    recent.add({
-      kind: 'route', profile: state.profile, waypoints: wps, from: wps[0], to: wps.at(-1),
-      title: `${wps[0].label} → ${wps.at(-1).label}`,
-    });
+    // Im Auto erst mit „Los“ (car/car.js): dort rechnet schon das Ansehen eines Orts die Route –
+    // „zuletzt gefahren“ füllte sich sonst mit Zielen, zu denen man nie gefahren ist
+    if (!CAR) rememberRoute();
   } catch (err) {
     if (err.name === 'AbortError') return;
     clearRoutes({ keepSheet: true });
-    routeStatus(err.message, true);
+    // Netzfehler des Browsers („Load failed“, „Failed to fetch“) nie roh zeigen
+    const net = err instanceof TypeError || /load failed|failed to fetch|networkerror/i.test(err.message ?? '');
+    routeStatus(net ? 'Die Route ließ sich gerade nicht laden – bitte gleich noch einmal versuchen' : err.message, true, { retry: net || !!err.retry });
   }
 }
 
@@ -80,17 +89,33 @@ export function clearRoutes({ keepSheet = false } = {}) {
   showHover(map, null);
   altMarkers.forEach((m) => m.remove());
   altMarkers = [];
+  showPark(null);
   const view = $('[data-view="route"]');
   view.classList.add('empty');
   if (!keepSheet && sheet.dataset.current === 'route') closeSheet();
 }
 
-function routeStatus(text, error = false) {
+/** Die Fahrt endet am Parkplatz vor dem Ziel: „P“ auf der Karte, ein Satz im Sheet – die Nadel bleibt am Ort */
+function showPark(park, label = '') {
+  parkMarker?.remove();
+  parkMarker = park ? new maplibregl.Marker({ element: markerEl('park', 'local_parking') }).setLngLat(park.point).addTo(map) : null;
+  const el = $('[data-view="route"] .route-park');
+  el.hidden = !park;
+  el.innerHTML = park ? `<span class="msr">local_parking</span> Die Fahrt endet am Parkplatz davor – ${fmtDistance(park.dist)} bis ${esc(label.split(',')[0])}` : '';
+}
+
+/** `retry`: Server nicht erreichbar o. Ä. – mit Knopf „Erneut versuchen“ (im Auto ohne: dort gibt es keine eigene Oberfläche) */
+function routeStatus(text, error = false, { retry = false } = {}) {
   const view = $('[data-view="route"]');
   const el = $('.route-status', view);
   el.hidden = !text;
   el.textContent = text ?? '';
   el.classList.toggle('error', error);
+  if (retry && !CAR) {
+    const b = Object.assign(document.createElement('button'), { type: 'button', className: 'button route-retry', innerHTML: '<span class="msr">refresh</span> Erneut versuchen' });
+    b.addEventListener('click', () => computeRoutes());
+    el.append(b);
+  }
   view.classList.toggle('loading', !!text && !error);
 }
 
@@ -100,6 +125,16 @@ export function fitRoute() {
   if (!all.length) return;
   fitTo([Math.min(...all.map((b) => b[0])), Math.min(...all.map((b) => b[1])),
     Math.max(...all.map((b) => b[2])), Math.max(...all.map((b) => b[3]))], 16, { flat: true });
+}
+
+/** Die geplante Strecke in den Verlauf („Zuletzt genutzt“, letzte Ziele im Auto) */
+export function rememberRoute() {
+  if (state.waypoints.length < 2) return;
+  const wps = state.waypoints.map(({ label, point, me: isMe, poi }) => ({ label, point: isMe ? null : point, me: isMe, ...(poi ? { poi: true } : {}) }));
+  recent.add({
+    kind: 'route', profile: state.profile, waypoints: wps, from: wps[0], to: wps.at(-1),
+    title: `${wps[0].label} → ${wps.at(-1).label}`,
+  });
 }
 
 /*
@@ -261,6 +296,7 @@ $('.step-list').addEventListener('click', (e) => {
   const r = current();
   if (!b || !r) return;
   const m = r.maneuvers[Number(b.dataset.i)];
+  releaseLock();
   map.flyTo({ center: r.coords[m.begin], zoom: 17, padding: viewPadding(), duration: 900 });
 });
 

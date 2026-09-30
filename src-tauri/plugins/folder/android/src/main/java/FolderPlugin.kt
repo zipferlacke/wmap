@@ -3,9 +3,14 @@ package de.wuefl.wmap.folder
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.drawable.Icon
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
+import android.provider.OpenableColumns
+import android.webkit.WebView
 import androidx.activity.result.ActivityResult
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
@@ -29,6 +34,18 @@ class PathArgs {
 }
 
 @InvokeArg
+class SaveArgs {
+    var name: String = "wmap"
+    var data: String = ""
+    var mime: String = "application/octet-stream"
+}
+
+@InvokeArg
+class OpenedArgs {
+    var peek: Boolean = false
+}
+
+@InvokeArg
 class WriteArgs {
     var slot: String = ""
     var path: String = ""
@@ -43,10 +60,31 @@ class WriteArgs {
  *
  *   pick, info, list, read { path }, write { path, text }, remove { path },
  *   disconnect – Pfade relativ zum Ordner, mit „/“.
+ *   save { name, data, mime } – eine Datei (Base64) über die Dokumentauswahl
+ *   des Systems ablegen (ACTION_CREATE_DOCUMENT), z. B. den ZIP-Export.
+ *   opened { peek } – GPX-Dateien aus „Öffnen mit“ (ACTION_VIEW) und „Teilen“
+ *   (ACTION_SEND): beim Start und während die App läuft (dann gleich zur
+ *   Seite import.html); `peek` zählt nur. Dazu `go`: die Seite eines
+ *   Shortcuts, mit dem die App gestartet wurde (einmal, dann null).
+ *
+ * Shortcuts (lange auf das App-Symbol drücken): dieselben wie in der Web-App
+ * (appdata/manifest.json) – dynamisch angelegt, weil eine statische
+ * shortcuts.xml den Paketnamen fest bräuchte (Debug: de.wuefl.wmap.debug).
  *
  * `slot` (optional, alle Befehle): welcher Ordner – leer ist der für
  * Sicherung & Synchronisation, „layers“ der für eigene Ebenen (Plugins).
  */
+/** Shortcut: Kennung, Beschriftung kurz/lang, Symbol, Seite (relativ zur offenen) */
+private class Shortcut(val id: String, val short: String, val long: String, val icon: Int, val page: String)
+
+private const val ACTION_GO = "de.wuefl.wmap.SHORTCUT"
+private const val EXTRA_GO = "wmap.go"
+private val SHORTCUTS = listOf(
+    Shortcut("route", "Route", "Route planen", R.drawable.wmap_shortcut_route, "index.html?action=route"),
+    Shortcut("record", "Aufzeichnen", "Aufzeichnen", R.drawable.wmap_shortcut_record, "index.html?action=record"),
+    Shortcut("tours", "Touren", "Meine Touren", R.drawable.wmap_shortcut_tours, "wege.html?tab=geplant"),
+)
+
 @TauriPlugin
 class FolderPlugin(private val activity: Activity) : Plugin(activity) {
     private val prefs = activity.getSharedPreferences("wmap_folder", Context.MODE_PRIVATE)
@@ -54,6 +92,95 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
     private val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
     // Ordner + Pfad → Dokument-ID aus dem letzten Durchgang (spart Abfragen)
     private val ids = HashMap<String, String>()
+    // Mit WMap geöffnete Dateien, bis die Seite sie abholt
+    private val opened = ArrayList<JSObject>()
+    // Seite aus dem Shortcut, mit dem die App gestartet wurde – bis die Seite fragt
+    private var go: String? = null
+    private var web: WebView? = null
+
+    override fun load(webView: WebView) {
+        super.load(webView)
+        web = webView
+        take(activity.intent)
+        go = shortcut(activity.intent)
+        publishShortcuts()
+    }
+
+    // Läuft die App schon: Datei merken und zur Seite zum Öffnen bzw. zur Seite des Shortcuts
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val page = if (take(intent)) "import.html" else shortcut(intent) ?: return
+        web?.post { web?.evaluateJavascript("location.assign(new URL('$page', location.href))", null) }
+    }
+
+    /** Shortcuts beim Launcher anlegen (bei jedem Start – so stimmen sie nach einem Update) */
+    private fun publishShortcuts() {
+        try {
+            val manager = activity.getSystemService(ShortcutManager::class.java) ?: return
+            manager.dynamicShortcuts = SHORTCUTS.map { s ->
+                ShortcutInfo.Builder(activity, s.id)
+                    .setShortLabel(s.short)
+                    .setLongLabel(s.long)
+                    .setIcon(Icon.createWithResource(activity, s.icon))
+                    .setIntent(Intent(activity, activity.javaClass).setAction(ACTION_GO).putExtra(EXTRA_GO, s.id))
+                    .build()
+            }
+        } catch (e: Exception) { /* Launcher ohne Shortcuts */ }
+    }
+
+    /** Seite des Shortcuts aus dem Intent (einmal) */
+    private fun shortcut(intent: Intent?): String? {
+        if (intent?.action != ACTION_GO || intent.getBooleanExtra("wmap.taken", false)) return null
+        intent.putExtra("wmap.taken", true)
+        return SHORTCUTS.find { it.id == intent.getStringExtra(EXTRA_GO) }?.page
+    }
+
+    /** GPX aus dem Intent lesen (höchstens 50 MB) → true, wenn etwas dazukam */
+    @Suppress("DEPRECATION")
+    private fun take(intent: Intent?): Boolean {
+        if (intent == null || intent.getBooleanExtra("wmap.taken", false)) return false
+        val uris: List<Uri> = when (intent.action) {
+            Intent.ACTION_VIEW -> listOfNotNull(intent.data)
+            Intent.ACTION_SEND -> listOfNotNull(intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri)
+            Intent.ACTION_SEND_MULTIPLE -> intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM) ?: emptyList()
+            else -> emptyList()
+        }.filter { it.scheme == "content" || it.scheme == "file" }
+        if (uris.isEmpty()) return false
+        intent.putExtra("wmap.taken", true)   // nicht noch einmal nach dem Drehen
+        var added = false
+        for (uri in uris) {
+            try {
+                var name: String? = null
+                var size = 0L
+                resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use {
+                    if (it.moveToFirst()) {
+                        name = it.getString(0)
+                        if (!it.isNull(1)) size = it.getLong(1)
+                    }
+                }
+                if (size > 50L * 1024 * 1024) continue
+                val text = resolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } ?: continue
+                // Nur GPX – „Öffnen mit“ kommt je nach Dateimanager auch als octet-stream
+                if (!text.contains("<gpx", ignoreCase = true)) continue
+                opened.add(JSObject().put("name", name ?: uri.lastPathSegment ?: "Datei.gpx").put("text", text))
+                added = true
+            } catch (e: Exception) { /* nicht lesbar – übergehen */ }
+        }
+        return added
+    }
+
+    @Command
+    fun opened(invoke: Invoke) {
+        val peek = invoke.parseArgs(OpenedArgs::class.java).peek
+        val files = JSArray()
+        if (!peek) { opened.forEach { files.put(it) } }
+        val count = opened.size
+        if (!peek) opened.clear()
+        val result = JSObject().put("count", count).put("files", files)
+        go?.let { result.put("go", it) }
+        go = null
+        invoke.resolve(result)
+    }
 
     private fun key(slot: String): String {
         require(slot.matches(Regex("[a-z0-9_-]{0,20}"))) { "Ungültiger Ordner: $slot" }
@@ -215,6 +342,33 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
             resolve(args.slot, t, args.path, false)?.let { DocumentsContract.deleteDocument(resolver, DocumentsContract.buildDocumentUriUsingTree(t, it)) }
             ids.remove("${args.slot}\u0000${args.path}")
             invoke.resolve()
+        }
+    }
+
+    @Command
+    fun save(invoke: Invoke) {
+        val a = invoke.parseArgs(SaveArgs::class.java)
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
+            .addCategory(Intent.CATEGORY_OPENABLE)
+            .setType(a.mime)
+            .putExtra(Intent.EXTRA_TITLE, a.name)
+        startActivityForResult(invoke, intent, "saved")
+    }
+
+    @ActivityCallback
+    fun saved(invoke: Invoke, result: ActivityResult) {
+        val uri = result.data?.data ?: return invoke.reject("abgebrochen", "cancel")
+        thread {
+            try {
+                val a = invoke.parseArgs(SaveArgs::class.java)
+                val bytes = android.util.Base64.decode(a.data, android.util.Base64.DEFAULT)
+                resolver.openOutputStream(uri, "wt")!!.use { it.write(bytes) }
+                val name = resolver.query(uri, arrayOf(Document.COLUMN_DISPLAY_NAME), null, null, null)
+                    ?.use { if (it.moveToFirst()) it.getString(0) else null }
+                invoke.resolve(JSObject().put("name", name))
+            } catch (e: Exception) {
+                invoke.reject(e.message ?: e.toString(), e)
+            }
         }
     }
 

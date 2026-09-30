@@ -243,3 +243,13 @@ textarea.share-link {
     p { grid-column: 1 / -1; color: var(--muted); font-size: var(--fs-100); }
     &.closed strong { color: var(--muted); }
 }
+
+/* Teilen einer Aufzeichnung: was mit soll (Puls, Frequenz, Leistung) */
+.share-opts {
+    display: flex; flex-wrap: wrap; gap: .4rem 1.1rem;
+    padding: .55rem .75rem;
+    border-radius: .6rem;
+    background: var(--surface-2);
+    font-size: var(--fs-200);
+    label { display: inline-flex; align-items: center; gap: .4rem; cursor: pointer; }
+}

@@ -18,6 +18,8 @@ try { if (localStorage.getItem('wmap.osm.return')) import('../osm/login-return.j
 const KEY = 'wmap.theme';
 const system = matchMedia('(prefers-color-scheme: dark)');
 let last = null;
+/** Autobildschirm: Tag/Nacht bestimmt das Auto (car/car.js) – nicht gespeichert */
+let forced = null;
 
 export const theme = {
   /** 'system' | 'light' | 'dark' */
@@ -31,13 +33,18 @@ export const theme = {
     apply(value);
   },
   get dark() { return last ?? isDark(this.get()); },
+  /** Nur für diese Seite hell (false) oder dunkel (true), null = wieder wie gewählt */
+  force(dark) {
+    forced = dark === null ? null : dark ? 'dark' : 'light';
+    apply();
+  },
 };
 
 function isDark(choice) {
   return choice === 'dark' || (choice === 'system' && system.matches);
 }
 
-function apply(choice = theme.get()) {
+function apply(choice = forced ?? theme.get()) {
   const root = document.documentElement;
   root.style.colorScheme = choice === 'system' ? '' : choice;
   const dark = isDark(choice);
@@ -68,6 +75,23 @@ if (window.WMapAndroid?.insets) {
   window.wmapInsets = applyInsets;
 }
 
+// Android-App: Touren, Lesezeichen und Ziele mit der Karte im Auto teilen (data/car-share.js)
+if (typeof window.WMapAndroid?.shareGet === 'function') import('../data/car-share.js').catch(() => { /* geht auch ohne */ });
+
 system.addEventListener('change', () => apply());
-addEventListener('storage', (e) => { if (e.key === KEY) apply(); });
+addEventListener('storage', (e) => { if (e.key === KEY && !forced) apply(); });
 apply();
+
+// App: Kam eine GPX-Datei über „Öffnen mit“, „Teilen“ oder Doppelklick? Dann
+// zur Seite zum Öffnen (pages/import.js holt sie beim Plugin „folder“ ab).
+// Mit einem Shortcut gestartet (lange aufs App-Symbol, Rechtsklick im Menü)?
+// Dann zu dessen Seite (`go`, z. B. index.html?action=route).
+// Nicht in der eingepackten Kopie, die gleich zur Webversion wechselt (tauri-start.js).
+if (window.__TAURI__?.core && !window.__wmapStarting && !/\/import\.html$/.test(location.pathname)) {
+  window.__TAURI__.core.invoke('plugin:folder|opened', { peek: true })
+    .then((r) => {
+      if (r?.count) location.assign('./import.html');
+      else if (r?.go) location.assign(new URL(r.go, location.href));
+    })
+    .catch(() => { /* ältere App ohne „opened“ */ });
+}

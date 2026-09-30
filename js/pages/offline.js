@@ -1,8 +1,10 @@
 /**
- * Seite „Offline-Karten“: Gebiete als Rechteck oder freie Form auf der Karte
- * wählen, Größe vorher sehen, herunterladen. In der Liste: hinzoomen, neu
- * laden (Aktualisieren), umbenennen, löschen. Die Logik liegt in
- * data/offline-areas.js, das Ausliefern ohne Netz in sw.js.
+ * Seite „Offline-Karten“ (Gebiete-Editor): Gebiete als Rechteck oder freie
+ * Form auf der Karte wählen, Größe vorher sehen, herunterladen. In der Liste:
+ * hinzoomen, neu laden (Aktualisieren), umbenennen, löschen. Die Logik liegt
+ * in data/offline-areas.js, das Ausliefern ohne Netz in sw.js. Erreichbar über
+ * die Seite „Offline“ (offline-daten.html), die alles Gespeicherte nach Art
+ * zeigt: ?neu legt gleich ein Gebiet an, ?gebiet=ID zoomt auf eins.
  */
 import { createMap } from '../map/map.js';
 import { Sheet } from '../ui/sheet.js';
@@ -427,5 +429,13 @@ addEventListener('keydown', (e) => {
   if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removePoint(); }
 });
 
-// Beim Öffnen aus dem Dashboard mit ?neu gleich ein Gebiet anlegen
-ready.then(() => { if (new URLSearchParams(location.search).has('neu')) openNew(); });
+// Aus der Seite „Offline“: ?neu legt gleich ein Gebiet an, ?gebiet=ID zeigt eins
+ready.then(() => {
+  const p = new URLSearchParams(location.search);
+  if (p.has('neu')) openNew();
+  const a = areas.get(p.get('gebiet'));
+  if (a) {
+    fit(a.ring);
+    document.querySelector(`.area[data-id="${CSS.escape(a.id)}"]`)?.scrollIntoView({ block: 'nearest' });
+  }
+});

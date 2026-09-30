@@ -2,7 +2,7 @@
     "id": "wmap",
     "name": "WMap – Karte, Routen & Navigation",
     "short_name": "WMap",
-    "description": "3D-Karte mit tippfehlertoleranter Suche, Routenplanung mit Alternativen, Höhenprofil, Navigation mit Ansagen, Baustellen auf der Autobahn und Orten in der Nähe – auf Basis offener Daten.",
+    "description": "Karte in 3D mit Suche, Routen zu Fuß, mit Rad, Auto, Bus & Bahn, Navigation mit Ansagen, Touren planen, aufzeichnen und auswerten – auf Basis von OpenStreetMap, ohne Konto und ohne Werbung.",
     "lang": "de",
     "dir": "ltr",
     "start_url": "../index.html",
@@ -143,6 +143,24 @@
     "protocol_handlers": [
         { "protocol": "geo", "url": "../index.html?geo=%s" }
     ],
+    "file_handlers": [
+        {
+            "action": "../import.html",
+            "accept": { "application/gpx+xml": [".gpx"] },
+            "icons": [{ "src": "./wmap-192.png", "sizes": "192x192", "type": "image/png" }],
+            "launch_type": "single-client"
+        }
+    ],
+    "share_target": {
+        "action": "../import.html",
+        "method": "POST",
+        "enctype": "multipart/form-data",
+        "params": {
+            "files": [
+                { "name": "files", "accept": [".gpx", "application/gpx+xml", "application/gpx", "application/octet-stream", "application/xml", "text/xml"] }
+            ]
+        }
+    },
     "shortcuts": [
         {
             "name": "Route planen",

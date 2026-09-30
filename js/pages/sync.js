@@ -4,22 +4,27 @@
  *   Ordner          ohne Ordner: synchronisieren (verbinden), einmal
  *                   importieren, als ZIP exportieren; mit Ordner: welcher,
  *                   jetzt abgleichen, ändern, exportieren, trennen; automatisch:
- *                   aus, beim Öffnen, beim Öffnen und alle 30 Minuten; letzter
+ *                   aus, beim Öffnen, beim Öffnen und alle 30 Minuten; „In der
+ *                   App behalten“ (letzte 30/90/365 Tage oder alles – Älteres
+ *                   liegt nur im Ordner, in der App die Karteikarte); letzter
  *                   Abgleich, Fehler, Ordnerstruktur erklärt (data/folder.js) –
  *                   ohne Ordner-Zugriff (Firefox, Safari): nur importieren
  *                   und exportieren
  *   Health Connect  Trainings holen (Fortschritt am Knopf, am Ende nur eine
  *                   Meldung), automatisch wie oben, Freigaben (nur Android-App)
+ *   Doppelte        nur wenn es welche gibt: je Tour wählen, wessen Strecke (GPS) bleibt und –
+ *                   bei mehreren mit Messwerten – wessen Gesundheitsdaten (data/duplicates.js)
  */
 import { mountAppBar } from '../ui/appbar.js';
 import { ask, toast } from '../ui/dialogs.js';
-import { esc } from '../core/geo.js';
+import { esc, fmtDistance, fmtDuration } from '../core/geo.js';
 import { download } from '../data/store.js';
-import { restore } from '../data/tracks.js';
+import { restore, trackEnd, sameTrack, tracks } from '../data/tracks.js';
 import { folder, zipBackup, restoreZip, importFolder, syncSummary } from '../data/folder.js';
-import { healthAvailable, healthStatus, healthSync, syncHealth, healthSyncing } from '../services/health.js';
+import { healthAvailable, healthStatus, healthSync, syncHealth, healthSyncing, appName } from '../services/health.js';
 import { showPermissions } from '../ui/permissions.js';
 import { autoSync } from '../data/auto-sync.js';
+import { findDuplicates, removeDuplicates, valueKinds } from '../data/duplicates.js';
 
 const root = document.querySelector('.sync');
 const WHEN = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -30,6 +35,7 @@ let progress = null;        // Health Connect: { i, n }
 const nativeHere = !!window.__TAURI__?.core;
 
 const AUTO = [['off', 'Aus – nur von Hand'], ['start', 'Beim Öffnen von WMap'], ['every30', 'Beim Öffnen und alle 30 Minuten']];
+const KEEP = [['30', 'Letzte 30 Tage'], ['90', 'Letzte 90 Tage'], ['365', 'Letztes Jahr'], ['all', 'Alles']];
 const autoSelect = (name, value, hint) => `<label class="settings-select">
     <span><strong>Automatisch</strong><small>${esc(hint)}</small></span>
     <select name="${name}">${AUTO.map(([v, l]) => `<option value="${v}" ${v === value ? 'selected' : ''}>${l}</option>`).join('')}</select>
@@ -60,9 +66,11 @@ const TREE = `<details class="sync-tree"><summary>Ordnerstruktur erklärt</summa
 ├─ Aufgezeichnete Touren/
 │  └─ 2026/09 September/    je Weg eine GPX-Datei (mit Puls &amp; Co.)
 ├─ Bus &amp; Bahn/              je gemerkte Verbindung eine JSON-Datei
-└─ Lesezeichen.json         Zuhause, Arbeit, Lesezeichen und Listen</pre>
+├─ Lesezeichen.json         Zuhause, Arbeit, Lesezeichen und Listen
+└─ Inhalt.json              Verzeichnis für den schnellen Abgleich</pre>
   <p class="settings-hint">Jede WMap, die denselben Ordner verbindet, liest ihn ein und gleicht mit ab. Heißt der Ordner selbst „WMap“, entfällt die Ebene.
-    GPX-Dateien von woanders (Garmin, Komoot …) dürfen irgendwo darin liegen.</p></details>`;
+    GPX-Dateien von woanders (Garmin, Komoot …) legst du in „Geplante Touren“ bzw. „Aufgezeichnete Touren“ – woanders im Ordner werden sie nicht gelesen.
+    Löschst du dort eine Datei, verschwindet der Eintrag auch in WMap.</p></details>`;
 
 /*
  * Knöpfe: Importieren liest einen Ordner einmal ein (App: Ordnerdialog,
@@ -107,6 +115,8 @@ async function folderHtml() {
   }
   const again = i.permission !== 'granted';
   const busy = folder.busy || connecting;
+  const list = await tracks.all().catch(() => []);
+  const shelf = { total: list.length, cards: list.filter((t) => t.stub).length };
   const p = folder.progress;
   return `<section>
     <h3><span class="msr">folder_open</span> Ordner</h3>
@@ -124,6 +134,11 @@ async function folderHtml() {
       <button type="button" class="button" data-act="disconnect"><span class="msr">link_off</span> Trennen</button>
     </div>
     ${autoSelect('folder-auto', folder.auto, 'Beim Öffnen gleicht WMap ab und kurz nach jeder Änderung; auf Wunsch zusätzlich alle 30 Minuten, solange WMap offen ist.')}
+    <label class="settings-select">
+      <span><strong>In der App behalten</strong><small>Aufgezeichnete Touren aus dieser Zeit liegen ganz in der App, ältere nur im Ordner – in der App bleibt eine Karteikarte (Name, Strecke, Zeit, grober Verlauf), der Rest kommt beim Öffnen aus dem Ordner.
+        Was du in „Meine Touren“ als „offline verfügbar“ markierst, bleibt immer ganz in der App. Geplante Touren bleiben es ohnehin.${shelf.cards ? ` Gerade: ${shelf.cards} von ${shelf.total} nur im Ordner.` : ''}</small></span>
+      <select name="folder-keep">${KEEP.map(([v, l]) => `<option value="${v}" ${v === folder.keep ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    </label>
     ${TREE}
   </section>`;
 }
@@ -155,12 +170,77 @@ async function healthHtml() {
   </section>`;
 }
 
+/* ── Doppelte ─────────────────────────────────────────────────────────────── */
+
+/** Welche Aufzeichnung je doppelter Tour bleibt und von welcher die Gesundheitsdaten kommen (IDs) – gemerkt, solange die Seite offen ist */
+const dupKeep = new Set();
+const dupVals = new Set();
+const VALUE_NAME = { hr: 'Puls', cad: 'Frequenz', pow: 'Leistung' };
+
+/** Woher eine Aufzeichnung kommt – „Health Connect · Zepp“, „GPX-Datei“, „Mit WMap aufgezeichnet“ */
+const dupOrigin = (t) => (t.kind === 'health' ? `Health Connect${t.source?.app ? ` · ${appName(t.source.app)}` : ''}`
+  : t.kind === 'gpx' ? 'GPX-Datei' : t.kind === 'nav' ? 'Bei der Navigation aufgezeichnet' : 'Mit WMap aufgezeichnet');
+const dupPoints = (t) => (t.stub ? t.n : t.times?.length) || 0;
+/** Strecke: Kilometer, Dauer, wie fein aufgezeichnet */
+const dupFacts = (t) => [
+  fmtDistance(t.length), fmtDuration((trackEnd(t) - t.start) / 1000),
+  dupPoints(t) ? `${dupPoints(t).toLocaleString('de-DE')} Punkte` : '',
+].filter(Boolean).join(' · ');
+/** Gesundheitsdaten: was gemessen wurde, beim Puls der Schnitt */
+function dupValues(t) {
+  const hr = (t.hr ?? []).filter((v) => v > 0);
+  return valueKinds(t).map((k) => (k === 'hr' && hr.length ? `Puls (Ø ${Math.round(hr.reduce((a, b) => a + b, 0) / hr.length)})` : VALUE_NAME[k])).join(' · ');
+}
+const dupDate = (t) => new Date(t.start).toLocaleString('de-DE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+async function duplicatesHtml() {
+  if (folder.busy || healthSyncing()) return '';
+  const d = await findDuplicates().catch(() => null);
+  if (!d?.count) return '';
+  const what = [
+    d.tracks.length ? `${d.tracks.reduce((n, g) => n + g.length - 1, 0)} aufgezeichnete` : '',
+    d.tours.length ? `${d.tours.reduce((n, g) => n + g.length - 1, 0)} geplante` : '',
+  ].filter(Boolean).join(' und ');
+  // Zu wählen gibt es nur bei zwei verschiedenen Aufzeichnungen (Uhr und Handy);
+  // dieselbe Aufzeichnung zweimal (aus dem Ordner wieder eingelesen) braucht keine Frage
+  const groups = d.tracks.map((g, i) => {
+    if (g.every((t) => sameTrack(g[0], t))) return '';
+    const keep = g.find((t) => dupKeep.has(t.id)) ?? g[0];
+    // Gesundheitsdaten: zu wählen nur, wenn mehrere Aufzeichnungen welche haben
+    const measured = g.filter((t) => valueKinds(t).length);
+    const from = measured.find((t) => dupVals.has(t.id)) ?? (measured.includes(keep) ? keep : measured[0]);
+    return `<fieldset class="dup-group">
+      <legend>${esc(keep.name || 'Ohne Namen')} <small>${esc(dupDate(keep))}</small></legend>
+      <p class="dup-q"><span class="msr">route</span> Strecke (GPS) von</p>
+      ${g.map((t) => `<label class="dup-option">
+        <input type="radio" name="dup-${i}" value="${esc(t.id)}" ${t === keep ? 'checked' : ''}>
+        <span><strong>${esc(dupOrigin(t))}</strong><small>${esc(dupFacts(t))}</small></span>
+      </label>`).join('')}
+      ${measured.length > 1 ? `<p class="dup-q"><span class="msr">monitor_heart</span> Gesundheitsdaten von</p>
+      ${measured.map((t) => `<label class="dup-option dup-values">
+        <input type="radio" name="dupv-${i}" value="${esc(t.id)}" ${t === from ? 'checked' : ''}>
+        <span><strong>${esc(dupOrigin(t))}</strong><small>${esc(dupValues(t))}</small></span>
+      </label>`).join('')}`
+    : measured.length ? `<p class="dup-q dup-one"><span class="msr">monitor_heart</span> Gesundheitsdaten: ${esc(dupOrigin(measured[0]))} – ${esc(dupValues(measured[0]))}</p>` : ''}
+    </fieldset>`;
+  }).join('');
+  return `<section class="sync-dups" id="doppelt">
+    <h3><span class="msr">content_copy</span> Doppelte Touren</h3>
+    ${status('content_copy', `${what} ${d.count === 1 ? 'Tour gibt' : 'Touren gibt'} es doppelt – etwa mit der Uhr und dem Handy aufgezeichnet oder aus Health Connect und aus dem Ordner.`, 'warn')}
+    ${groups ? `<p class="settings-hint">Diese Touren gibt es aus mehreren Quellen. Wähle je Tour, wessen Strecke bleibt – ihre Zeit und Kilometer gelten. Gesundheitsdaten (Puls, Frequenz, Leistung) kommen dazu; haben mehrere Aufzeichnungen welche, wählst du auch, von welcher.</p>
+    <div class="dup-list">${groups}</div>` : ''}
+    <div class="sync-actions">
+      <button type="button" class="button primary" data-act="dedupe"><span class="msr">merge</span> Zusammenführen</button>
+    </div>
+  </section>`;
+}
+
 let painting = null;
 async function render() {
   // Mehrere Anlässe kurz nacheinander: einmal zeichnen
   painting ??= (async () => {
     await null;
-    root.innerHTML = `${await folderHtml()}${await healthHtml()}
+    root.innerHTML = `${await folderHtml()}${await healthHtml()}${await duplicatesHtml()}
       <p class="settings-hint sync-note"><span class="msr">lock</span> Alles bleibt auf deinen Geräten – WMap hat dafür keinen Server. Was im Ordner liegt, gleicht nur dein eigenes Sync-Programm ab.</p>`;
   })().finally(() => { painting = null; });
   return painting;
@@ -196,7 +276,7 @@ root.addEventListener('click', async (e) => {
     render();
   }
   if (act === 'disconnect') {
-    const v = await ask({ icon: 'link_off', title: 'Ordner trennen?', text: 'WMap gleicht dann nicht mehr ab. Die Dateien im Ordner und alles in WMap bleiben, wie es ist.',
+    const v = await ask({ icon: 'link_off', title: 'Ordner trennen?', text: 'WMap gleicht dann nicht mehr ab. Die Dateien im Ordner bleiben, wie sie sind; Touren, die nur im Ordner lagen, holt WMap vorher in die App.',
       buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Trennen', primary: true }] });
     if (v !== 'yes') return;
     await folder.disconnect();
@@ -220,6 +300,19 @@ root.addEventListener('click', async (e) => {
     render();
   }
   if (act === 'perms') { await showPermissions({ reason: 'health' }); render(); }
+  if (act === 'dedupe') {
+    const d = await findDuplicates();
+    const v = await ask({ icon: 'merge', title: `${d.count} doppelte ${d.count === 1 ? 'Tour' : 'Touren'} zusammenführen?`,
+      text: 'Von jeder doppelten Tour bleibt die gewählte Strecke mit den gewählten Gesundheitsdaten. Auf anderen Geräten verschwinden die Doppelten beim nächsten Abgleich ebenfalls.',
+      buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Zusammenführen', primary: true }] });
+    if (v !== 'yes') return;
+    const picked = (sel) => [...root.querySelectorAll(`${sel} input:checked`)].map((el) => el.value);
+    const n = await removeDuplicates(picked('.dup-option:not(.dup-values)'), picked('.dup-values'));
+    dupKeep.clear();
+    dupVals.clear();
+    toast(`${n} doppelte ${n === 1 ? 'Tour' : 'Touren'} zusammengeführt`);
+    render();
+  }
   if (act === 'backup') {
     zipBackup().then((blob) => download(`wmap-sicherung-${new Date().toISOString().slice(0, 10)}.zip`, blob, 'application/zip'))
       .catch((err) => toast(`Sicherung ging nicht: ${err.message}`));
@@ -228,6 +321,19 @@ root.addEventListener('click', async (e) => {
 
 root.addEventListener('change', async (e) => {
   const t = e.target;
+  if (t.closest('.dup-option')) {
+    // Wahl merken – die Seite zeichnet sich bei jedem Abgleich neu
+    const set = t.closest('.dup-values') ? dupVals : dupKeep;
+    for (const el of t.closest('.dup-group').querySelectorAll(`input[name="${t.name}"]`)) set.delete(el.value);
+    set.add(t.value);
+    return;
+  }
+  if (t.name === 'folder-keep') {
+    folder.keep = t.value;
+    toast(t.value === 'all' ? 'Alle Touren bleiben ganz in der App' : `In der App: ${Object.fromEntries(KEEP)[t.value].toLowerCase()} – Älteres liegt im Ordner`);
+    folder.sync().catch(() => {}).finally(render);
+    return;
+  }
   const label = Object.fromEntries(AUTO)[t.value];
   if (t.name === 'folder-auto') { folder.auto = t.value; toast(`Ordner: ${label}`); }
   if (t.name === 'health-auto') {

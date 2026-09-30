@@ -12,22 +12,31 @@ export const $ = (s, root = document) => root.querySelector(s);
 export const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 
 /*
- * Startansicht: dort weitermachen, wo man aufgehört hat. Liegt der letzte
- * Besuch länger als einen Tag zurück, ist der eigene Standort wahrscheinlich
- * interessanter – dann dorthin, sobald er bekannt ist.
+ * Startansicht: dort weitermachen, wo man aufgehört hat (gleich danach ggf.
+ * der neuere Ausschnitt aus dem Ordner bzw. der eigene Standort – app.js).
  */
-const DAY_MS = 24 * 60 * 60 * 1000;
+/** Autobildschirm (Android Auto, car/car.js): nur die Karte, die Vorlagen zeichnet das Auto */
+export const CAR = new URLSearchParams(location.search).has('car');
+if (CAR) document.documentElement.classList.add('car-mode');
+
 const lastView = local.get('wmap.view');
-export const freshView = lastView && Date.now() - lastView.at < DAY_MS;
-export const { map, geolocate } = createMap('map', lastView ? {
+// Im Auto gleich am Standort beginnen – nicht beim Globus oder beim letzten Ausschnitt der App: Android gibt den
+// letzten bekannten Standort mit (?at=lon,lat – car/CarWeb.kt), sonst gilt der zuletzt im Auto gemerkte (car/drive.js)
+const carAt = CAR ? new URLSearchParams(location.search).get('at')?.split(',').map(Number) ?? local.get('wmap.carPos') : null;
+const carStart = Array.isArray(carAt) && carAt.length >= 2 && carAt.slice(0, 2).every(Number.isFinite);
+export const { map, geolocate } = createMap('map', carStart ? {
+  center: [carAt[0], carAt[1]], zoom: 16.5, pitch: 50, bearing: Number.isFinite(carAt[2]) ? carAt[2] : 0,
+} : lastView ? {
   center: lastView.center, zoom: lastView.zoom, pitch: lastView.pitch ?? 0, bearing: lastView.bearing ?? 0,
 } : {});
 
 export const state = {
   mode: 'search',
-  profile: PROFILES[local.get('wmap.profile')]?.nav ? local.get('wmap.profile') : 'car',
+  // Im Auto immer das Auto – die letzte Wahl am Handy (Rad, zu Fuß) gilt dort nicht
+  profile: !CAR && PROFILES[local.get('wmap.profile')]?.nav ? local.get('wmap.profile') : 'car',
   waypoints: [],        // { label, point: [lon, lat] | null, me: bool }
   points: [],           // aufgelöste Punkte der letzten Berechnung
+  drive: [],            // dieselben, wie sie gefahren werden: das Ziel ggf. der Parkplatz davor (app/drive-target.js)
   routes: [],
   selected: 0,
   place: null,          // gewählter Ort (Photon-Feature oder daraus gebaut)
@@ -56,6 +65,42 @@ export const afterLayout = (fn) => requestAnimationFrame(() => requestAnimationF
 
 geolocate.on('geolocate', (pos) => { state.position = [pos.coords.longitude, pos.coords.latitude]; });
 
+/*
+ * Der eigene Standort steht von Anfang an auf der Karte – auch in der Routenansicht, wo „Mein Standort“
+ * keinen eigenen Startpunkt hat. Bisher erschien der Punkt erst nach einem Tipp auf den Standort-Knopf.
+ * Nur mit schon erteilter Freigabe (gefragt wird hier nicht), und die Karte bleibt, wo sie ist: MapLibres
+ * Knopf startet im Zustand „im Hintergrund“ (Punkt folgt, Kamera nicht) – ein Tipp darauf springt wie
+ * gewohnt hin. Greift dafür wie map/location-dot.js auf Interna von MapLibre 5.x zu.
+ */
+async function showDot() {
+  if (CAR || geolocate._watchState !== 'OFF') return;
+  let granted = false;
+  try {
+    if (geo.native) granted = await (await import('../ui/permissions.js')).locationAccess({ ask: false });
+    else granted = (await navigator.permissions?.query({ name: 'geolocation' }))?.state === 'granted';
+  } catch { granted = false; }
+  if (!granted || geolocate._watchState !== 'OFF' || !geolocate.trigger()) return;
+  geolocate._watchState = 'BACKGROUND';
+  const btn = geolocate._geolocateButton;
+  btn?.classList.remove('maplibregl-ctrl-geolocate-waiting', 'maplibregl-ctrl-geolocate-active');
+  btn?.classList.add('maplibregl-ctrl-geolocate-background');
+}
+map.once('load', () => setTimeout(showDot, 300));
+
+/*
+ * Die Karte geht von selbst woanders hin (Route einpassen, Ort zeigen): Der Standort-Knopf lässt los.
+ * MapLibre tut das nur, wenn man die Karte verschiebt – ein Flug mit Zoom gilt ihm nicht als „weg vom
+ * Standort“, und mit der nächsten Standortmeldung holte es die Karte zurück: Die Routenübersicht sprang
+ * dann jedes Mal wieder zum eigenen Standort. Der Punkt bleibt, nur das Folgen endet.
+ */
+export function releaseLock() {
+  if (!['ACTIVE_LOCK', 'WAITING_ACTIVE'].includes(geolocate._watchState)) return;
+  geolocate._watchState = 'BACKGROUND';
+  const btn = geolocate._geolocateButton;
+  btn?.classList.remove('maplibregl-ctrl-geolocate-waiting', 'maplibregl-ctrl-geolocate-active');
+  btn?.classList.add('maplibregl-ctrl-geolocate-background');
+}
+
 /** `ask: false`: ohne Freigabe nicht nachfragen (Start der Karte) */
 export function myPosition({ ask = true } = {}) {
   return new Promise((resolve, reject) => {
@@ -74,6 +119,17 @@ export function myPosition({ ask = true } = {}) {
  * Rand, rechts neben den Knöpfen. Alles, was eingepasst wird, landet mittig darin.
  */
 export function viewPadding() {
+  // Auto: frei ist, was seine Vorlagen nicht verdecken (car/car.js)
+  if (map.carInsets) {
+    const i = map.carInsets;
+    const { clientWidth: w, clientHeight: h } = map.getContainer();
+    const pad = { top: i.top + 24, bottom: i.bottom + 24, left: i.left + 24, right: i.right + 24 };
+    // Kleiner Bildschirm, breite Liste: mindestens 160 × 120 frei lassen
+    const over = pad.left + pad.right - (w - 160);
+    if (over > 0) { pad.left = Math.max(0, pad.left - over); }
+    if (pad.top + pad.bottom > h - 120) { pad.top = 12; pad.bottom = 12; }
+    return pad;
+  }
   // Rechner: Dialoge stehen links unter der Suche – die Karte rechts ist frei
   const sheet = $('#sheet');
   if (!matchMedia('(max-width: 700px)').matches && sheet.open) {
@@ -97,12 +153,20 @@ export function viewPadding() {
  */
 export function fitTo([w, s, e, n], maxZoom = 16, { flat = false } = {}) {
   if (flat) map.quietFit = true;
+  releaseLock();
   const padding = viewPadding();
+  // Ein Rand, den die Karte noch trägt (freie Fahrt im Auto, Folgen der Navigation), zählt MapLibre zum neuen
+  // dazu – die Route läge dann winzig in einem Bruchteil der freien Fläche
+  const old = map.getPadding();
+  if (old.top || old.bottom || old.left || old.right) map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
   // Geneigt und mit viel Rand findet MapLibre oft keine Lösung und tut dann
   // gar nichts („cannot fit“). Darum flach einpassen – nah genug dran neigt
   // die 3D-Automatik danach wieder.
   const opts = { padding, maxZoom, pitch: 0, ...(flat ? { bearing: 0 } : {}) };
-  if (map.cameraForBounds([[w, s], [e, n]], opts)) {
+  // MapLibre wirft teils statt „passt nicht“ zu melden (sehr wenig Platz)
+  let fits = null;
+  try { fits = map.cameraForBounds([[w, s], [e, n]], opts); } catch { fits = null; }
+  if (fits) {
     map.fitBounds([[w, s], [e, n]], { ...opts, duration: 800 });
   } else {
     // Selten findet MapLibre direkt nach einem Flug mit Gelände keine Lösung –

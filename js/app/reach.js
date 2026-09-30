@@ -7,7 +7,7 @@ import * as overpass from '../services/overpass.js';
 import { byId } from '../core/categories.js';
 import { isochrone } from '../services/routing.js';
 import { simplifyTo, bbox, esc } from '../core/geo.js';
-import { clearCategory, renderResultList, tilePoints } from './category.js';
+import { clearCategory, numberHits, renderResultList, tilePoints } from './category.js';
 import { $, $$, afterLayout, chipHtml, fitTo, map, markerEl, myPosition, q, showHl } from './core.js';
 import { clearPlace } from './place.js';
 import { leaveRouteMode } from './route-plan.js';
@@ -118,6 +118,7 @@ async function searchInReach(cat) {
   const inside = (points) => points.filter((p) => insideRing(p.geometry.coordinates, ring)).map(assign);
   const render = (points, final) => {
     points.sort((a, b) => a.properties.reach - b.properties.reach);
+    numberHits(points);
     showHl({ points });
     if (!points.length) {
       list.innerHTML = `<li class="muted">${final ? `Keine ${esc(cat.label)} erreichbar` : `Suche ${esc(cat.label)} im erreichbaren Bereich …`}</li>`;

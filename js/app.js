@@ -7,6 +7,7 @@ import { PROFILES } from './core/config.js';
 import * as geocode from './services/geocode.js';
 import { CATEGORIES } from './core/categories.js';
 import { local, tours } from './data/store.js';
+import { tracks, trackAsTour } from './data/tracks.js';
 import { mountAppNav } from './ui/appnav.js';
 import { mountAppBar } from './ui/appbar.js';
 import { setupRecording } from './ui/record.js';
@@ -16,7 +17,9 @@ import { ask, toast } from './ui/dialogs.js';
 import { parseGeoUri } from './core/geo-uri.js';
 import { appNews } from './ui/news.js';
 import { autoSync } from './data/auto-sync.js';
-import { $, debounce, freshView, map, myPosition, q, state } from './app/core.js';
+import { folder } from './data/folder.js';
+import { savedNav } from './data/offline.js';
+import { $, CAR, debounce, map, myPosition, q, state } from './app/core.js';
 import { fly } from './app/map-clicks.js';
 import { openSurvey } from './app/mitmachen.js';
 import { nav, navTour, resumeNav } from './app/nav.js';
@@ -35,22 +38,46 @@ import './app/report.js';
    Startansicht, Menü oben rechts, Maße
    ══════════════════════════════════════════════════════════════════════════ */
 
-// Mit Link-Parametern (siehe fromUrl) bestimmt der Link, wohin es geht
-if (!freshView && !/[?&](view|q|from|to|reach|geo|ort|tour)=/.test(location.search)) {
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/*
+ * Startansicht: sofort der Ausschnitt, den diese App gespeichert hat (core.js).
+ * Gleich danach der aus dem verbundenen Ordner (Kartenausschnitt.json) – ist
+ * der neuer (anderes Gerät, oder hier noch keiner, etwa nach dem Wechsel zur
+ * Webversion), springt die Karte dorthin, solange man sie noch nicht selbst
+ * bewegt hat. Ist beides älter als ein Tag: zum eigenen Standort.
+ * Mit Link-Parametern (siehe fromUrl) bestimmt der Link, wohin es geht.
+ */
+if (!CAR && !/[?&](view|q|from|to|reach|geo|ort|tour|track)=/.test(location.search)) {
+  let touched = false;
+  map.on('movestart', (e) => { if (e.originalEvent) touched = true; });
   const flyHome = () => myPosition({ ask: false })
-    .then((p) => map.flyTo({ center: p, zoom: 14, pitch: 0, duration: 1800 }))
+    .then((p) => { if (!touched) map.flyTo({ center: p, zoom: 14, pitch: 0, duration: 1800 }); })
     .catch(() => { /* ohne Standort bleibt die letzte bzw. die Startansicht */ });
-  flyHome();
-  // Gerade im Dialog zu den Berechtigungen erlaubt (erster Start): jetzt hin
-  addEventListener('wmap:location', flyHome, { once: true });
+  const own = local.get('wmap.view');
+  folder.readView().catch(() => null).then((v) => {
+    const newer = v && v.at > (own?.at ?? 0) + 1000;
+    if (newer && !touched) map.jumpTo({ center: v.center, zoom: v.zoom, pitch: v.pitch ?? 0, bearing: v.bearing ?? 0 });
+    if (Date.now() - Math.max(own?.at ?? 0, v?.at ?? 0) < DAY_MS) return;
+    flyHome();
+    // Gerade im Dialog zu den Berechtigungen erlaubt (erster Start): jetzt hin
+    addEventListener('wmap:location', flyHome, { once: true });
+  });
 }
 
-map.on('moveend', debounce(() => {
-  if (nav.active) return;
-  local.set('wmap.view', {
-    center: map.getCenter().toArray(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), at: Date.now(),
-  });
-}, 400));
+const saveView = ({ now = false } = {}) => {
+  // Im Auto nicht: der Ausschnitt dort ist ein anderer als am Handy
+  if (nav.active || CAR) return;
+  const view = { center: map.getCenter().toArray(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), at: Date.now() };
+  local.set('wmap.view', view);
+  // In den Ordner: beim Verlassen, sonst höchstens alle 2 Minuten (data/folder.js)
+  folder.writeView(view, { now }).catch(() => {});
+};
+map.on('moveend', debounce(() => saveView(), 400));
+// Auch beim Verlassen sofort – wer gleich danach die Seite wechselt oder die
+// App schließt, verlöre sonst die letzte Bewegung
+addEventListener('pagehide', () => saveView({ now: true }));
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveView({ now: true }); });
 
 
 function keysDialog() {
@@ -164,6 +191,8 @@ async function fromUrl() {
       enterRoute({ waypoints: r.waypoints });
     } else if (p.get('tour')) {
       await startTour(p.get('tour'), p.has('start'));
+    } else if (p.get('track')) {
+      await startTrack(p.get('track'), p.has('start'));
     } else if (p.get('anfrage')) {
       answerRequest(p.get('anfrage'));
     } else if (p.get('geo')) {
@@ -180,6 +209,23 @@ async function fromUrl() {
 async function startTour(id, go) {
   const t = tours.all().find((x) => x.id === id);
   if (!t?.points?.length) { toast('Die Tour gibt es auf diesem Gerät nicht'); return; }
+  return navigateTour(t, go);
+}
+
+/**
+ * Aufgezeichnete Tour noch einmal navigieren („?track=ID&start“ aus Meine
+ * Touren → Aufgezeichnet): ihr Verlauf als ein paar Punkte, dazwischen wird
+ * neu gerechnet – wie bei einer geplanten Tour mit festem Verlauf. Liegt sie
+ * nur im verbundenen Ordner, kommt sie von dort.
+ */
+async function startTrack(id, go) {
+  let t = null;
+  try { t = await tracks.full(id); } catch (err) { toast(err.message); return; }
+  if (!t?.shape) { toast('Die Tour gibt es auf diesem Gerät nicht'); return; }
+  return navigateTour(trackAsTour(t), go);
+}
+
+async function navigateTour(t, go) {
   const costing = PROFILES[t.profile]?.costing;
   setProfile(costing === 'bicycle' ? 'bike' : costing === 'auto' ? 'car' : 'foot');
   const n = t.points.length;
@@ -254,13 +300,20 @@ async function answerRequest(from) {
   } catch (err) { toast(err.message); }
 }
 
+// Autobildschirm (Android Auto): Vorlagen des Autos statt Oberfläche, keine Dialoge
+if (CAR) import('./car/car.js');
 if (map.loaded()) fromUrl(); else map.once('load', fromUrl);
-if (map.loaded()) resumeNav(); else map.once('load', resumeNav);
+if (!CAR) { if (map.loaded()) resumeNav(); else map.once('load', resumeNav); }
 // Willkommen, Neues nach einem Update, Nachrichten – nur beim normalen Start,
-// nicht wenn ein Link etwas öffnet und nicht in einer fortgesetzten Navigation
+// nicht wenn ein Link etwas öffnet und nicht vor einer unterbrochenen
+// Navigation („Navigation fortsetzen?“). Gleich jetzt, nicht erst wenn die
+// Karte fertig geladen ist: bei schwachem Netz käme das Willkommen sonst
+// irgendwann, mitten in die Bedienung
+if (!CAR) {
+  const linked = /[?&](view|q|from|to|reach|action|ort|route|anfrage|geo|sim|tour|track)\b/.test(location.search);
+  appNews({ dialogs: !linked && !nav.active && !savedNav() });
+}
 map.once('idle', () => {
-  const linked = /[?&](view|q|from|to|reach|action|ort|route|anfrage|geo|sim|tour)\b/.test(location.search);
-  appNews({ dialogs: !linked && !nav.active });
   // Ordner und Health Connect still abgleichen (wenn eingeschaltet) – nicht während einer Navigation
-  if (!nav.active) autoSync();
+  if (!CAR && !nav.active) autoSync();
 });

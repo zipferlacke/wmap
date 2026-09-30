@@ -23,7 +23,7 @@ import { tours, shapeOf, coordsOf, encodeShare, decodeShare, toGpx, download, lo
 import { sheet as sidePanel } from '../../libs/wuefl-libs/userDialog/userDialog.js';
 import { mountLayerMenu } from '../ui/layer-menu.js';
 import { ask, toast } from '../ui/dialogs.js';
-import { share } from '../ui/share.js';
+import { share, pageUrl } from '../ui/share.js';
 import * as geocode from '../services/geocode.js';
 import { distance, nearestOnLine, pointAt, simplifyTo, bbox, cumulative, fmtDistance, fmtDuration, esc } from '../core/geo.js';
 import { setupStages } from '../ui/tour-stages.js';
@@ -108,7 +108,12 @@ const descInput = $('#tour-desc');
 nameInput.value = tour.name;
 descInput.value = tour.description ?? '';
 nameInput.readOnly = descInput.readOnly = readOnly;
-if (readOnly) { $('.save-label').textContent = 'Übernehmen'; $('#save .msr').textContent = 'library_add'; }
+// Geteilte Tour: noch nicht bei mir – Speichern mit Ausrufezeichen, Erklärung im Tooltip
+if (readOnly) {
+  $('#save').classList.add('unsaved');
+  $('#save').title = 'In meine Touren übernehmen – diese Tour ist noch nicht gespeichert';
+  $('#save').setAttribute('aria-label', $('#save').title);
+}
 
 function paintTitle() {
   document.title = `${tour.name || 'Neue Tour'} – WMap`;
@@ -134,19 +139,16 @@ help.addEventListener('toggle', (e) => {
   help.style.left = wide ? `${Math.round(Math.min(b.left, innerWidth - help.offsetWidth - 12))}px` : '';
 });
 
-/* Profile als Chips */
+/* Profil als Auswahlliste – daneben das Symbol der gewählten Art */
 function paintProfiles() {
-  $('.tour-profiles').innerHTML = TOUR_PROFILES.map((id) => {
-    const p = PROFILES[id];
-    return `<button type="button" class="chip" role="radio" data-profile="${id}" aria-pressed="${id === tour.profile}"
-      aria-checked="${id === tour.profile}"><span class="msr">${p.icon}</span>${esc(p.label)}</button>`;
-  }).join('');
+  const select = $('.tour-profiles');
+  select.innerHTML = TOUR_PROFILES.map((id) => `<option value="${id}" ${id === tour.profile ? 'selected' : ''}>${esc(PROFILES[id].label)}</option>`).join('');
+  $('.tour-profile-pick .msr').textContent = PROFILES[tour.profile]?.icon ?? 'route';
 }
 paintProfiles();
-$('.tour-profiles').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-profile]');
-  if (!b || b.dataset.profile === tour.profile) return;
-  tour.profile = b.dataset.profile;
+$('.tour-profiles').addEventListener('change', (e) => {
+  if (!PROFILES[e.target.value] || e.target.value === tour.profile) return;
+  tour.profile = e.target.value;
   local.set('wmap.tourProfile', tour.profile);
   paintProfiles();
   recompute();
@@ -895,6 +897,9 @@ function adopt() {
   readOnly = false;
   document.body.classList.remove('readonly');
   nameInput.readOnly = descInput.readOnly = false;
+  $('#save').classList.remove('unsaved');
+  $('#save').title = 'Tour speichern';
+  $('#save').removeAttribute('aria-label');
   tour.id = null;
   saveState('new');
   history.replaceState(null, '', './tour.html');
@@ -923,7 +928,7 @@ async function shareTour() {
   if (tour.points.length < 2) { toast('Erst eine Strecke planen'); return; }
   const name = tour.name || nameInput.value || 'Tour';
   const code = await encodeShare({ ...tour, name });
-  share({ title: 'Tour teilen', text: `Tour: ${name}`, url: `${location.origin}${location.pathname.replace(/[^/]*$/, '')}tour.html#t=${code}` }, toast);
+  share({ title: 'Tour teilen', text: `Tour: ${name}`, url: `${pageUrl('tour.html')}#t=${code}` }, toast);
 }
 
 /* GPX mit Höhen */

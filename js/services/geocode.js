@@ -25,9 +25,22 @@ async function photon(q, { center, zoom, limit, signal, bbox, tag } = {}) {
   return (await res.json()).features ?? [];
 }
 
+/** So weit um die Kartenmitte gilt ein Treffer als „um die Ecke“ und steht vor Treffern von weiter weg */
+const NEAR_KM = 40;
+const kmBetween = (a, b) => Math.hypot((a[0] - b[0]) * Math.cos(((a[1] + b[1]) / 2) * Math.PI / 180), a[1] - b[1]) * 111.32;
+/** Große Orte (Stadt, Land …) darf der erste Treffer bleiben – wer „Berlin“ tippt, meint Berlin */
+const PROMINENT = new Set(['city', 'state', 'country', 'county']);
+
 export async function search(q, { center, zoom, limit = 7, signal, bbox } = {}) {
   // Etwas mehr holen – das Aussortieren nimmt einige wieder weg
   const jobs = [photon(q, { center, zoom, limit: limit + 4, signal, bbox })];
+  // Photon reiht bekannte Orte weit weg (auch im Ausland) gern vor den gleichnamigen um die Ecke –
+  // darum eigens in der Umgebung fragen und diese Treffer vorn einreihen
+  let near = Promise.resolve([]);
+  if (center && !bbox) {
+    const dy = NEAR_KM / 111.32, dx = dy / Math.cos(center[1] * Math.PI / 180);
+    near = photon(q, { center, zoom, limit: 4, signal, bbox: [center[0] - dx, center[1] - dy, center[0] + dx, center[1] + dy] }).catch(() => []);
+  }
   // „Göttingen Bahnhof“ findet Photon allein schlecht (Industriegleis, Stadtteil
   // „Bahnhof-Ost“) – gezielt nach Bahnhöfen des Orts fragen und vorn einreihen
   const place = q.replace(STATION_WORDS, ' ').replace(/\s+/g, ' ').trim();
@@ -35,8 +48,15 @@ export async function search(q, { center, zoom, limit = 7, signal, bbox } = {}) 
     jobs.unshift(Promise.all(['railway:station', 'railway:halt'].map((tag) => photon(place, { center, zoom, limit: 2, signal, bbox, tag })))
       .then((r) => r.flat()).catch(() => []));
   }
-  const all = (await Promise.all(jobs)).flat();
-  return dedupe(all).slice(0, limit);
+  const lists = await Promise.all(jobs);
+  const main = lists.at(-1);
+  const stations = lists.length > 1 ? lists[0] : [];
+  const local = await near;
+  if (!center || bbox) return dedupe([...stations, ...main]).slice(0, limit);
+  const isNear = (f) => kmBetween(center, f.geometry.coordinates) <= NEAR_KM;
+  const top = main[0] && PROMINENT.has(main[0].properties.type) && !isNear(main[0]) ? [main[0]] : [];
+  const rest = main.filter((f) => f !== top[0]);
+  return dedupe([...stations, ...top, ...local, ...rest.filter(isNear), ...rest.filter((f) => !isNear(f))]).slice(0, limit);
 }
 
 export async function reverse([lon, lat], { signal } = {}) {
@@ -95,7 +115,10 @@ export function describe(feature) {
   const p = feature.properties ?? {};
   const street = [p.street, p.housenumber].filter(Boolean).join(' ');
   const title = p.name || street || p.city || 'Ort';
-  const place = [p.postcode, p.city || p.town || p.village].filter(Boolean).join(' ');
+  // Der Ort, in dem es liegt, vor der Gemeinde: „Rittmarshausen, Gleichen“ statt nur „Gleichen“
+  const town = p.city || p.town || p.village;
+  const part = p.district && p.district !== town && p.district !== p.name ? p.district : null;
+  const place = [p.postcode, [part, town].filter(Boolean).join(', ')].filter(Boolean).join(' ');
   const parts = [p.name && street ? street : null, place !== title ? place : null,
     p.city ? null : p.county, p.state].filter(Boolean);
   const type = TYPE_LABEL[p.osm_value] ?? (p.housenumber ? 'Adresse' : null);

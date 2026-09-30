@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Offline – WMap</title>
+    <meta name="description" content="Was ohne Netz da ist: Karten-Gebiete, Touren und die Karten der Navigation.">
+    <!-- Vorschau beim Teilen (WhatsApp, Signal, Telegram …): kleines Logo statt großem Bild -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="WMap">
+    <meta property="og:locale" content="de_DE">
+    <meta property="og:title" content="Offline – WMap">
+    <meta property="og:description" content="Was ohne Netz da ist: Karten-Gebiete, Touren und die Karten der Navigation.">
+    <meta property="og:image" content="https://app.wuefl.de/wmap/appdata/preview.png">
+    <meta property="og:image:width" content="256">
+    <meta property="og:image:height" content="256">
+    <meta property="og:image:alt" content="WMap-Logo">
+    <meta name="twitter:card" content="summary">
+    <link rel="manifest" href="./appdata/manifest.json">
+    <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#1a73e8">
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/tours.css">
+    <link rel="stylesheet" href="./css/dashboard.css">
+</head>
+
+<!--
+  Offline: alles, was ohne Netz auf dem Gerät liegt, nach Art – Karten-Gebiete,
+  offline verfügbare aufgezeichnete Touren, geplante Touren, Karten der
+  Navigation. Je Eintrag: öffnen bzw. „nicht mehr offline“. Kachel in der
+  Übersicht; die Gebiete selbst bearbeitet offline.html.
+-->
+<body class="dash-page settings-page sync-page">
+    <header class="dash-head">
+        <a class="button" data-shape="round no-background" href="./dashboard.html" title="Zur Übersicht"><span class="msr">arrow_back</span></a>
+        <h1>Offline</h1>
+    </header>
+    <main class="dash settings sync offline-data"></main>
+    <script type="module" src="./js/pages/offline-daten.js"></script>
+</body>
+</html>

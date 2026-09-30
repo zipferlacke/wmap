@@ -30,7 +30,7 @@ gewollt?“) und als Grundlage für Erklärungen in der App.
 12. [Aufzeichnen](#12-aufzeichnen)
 13. [Entdecken](#13-entdecken)
 14. [Plugins und eigene Ebenen](#14-plugins-und-eigene-ebenen)
-15. [Sicherung & Synchronisation: Ordner, Health Connect, ZIP](#15-sicherung--synchronisation-ordner-health-connect-zip)
+15. [Sicherung & Synchronisation: Ordner, Health Connect](#15-sicherung--synchronisation-ordner-health-connect)
 16. [Teilen, Standort anfragen, Bild in Bild](#16-teilen-standort-anfragen-bild-in-bild)
 17. [Mitmachen bei OpenStreetMap, Meldungen](#17-mitmachen-bei-openstreetmap-meldungen)
 18. [WMap-Konto (OpenStreetMap) und Server](#18-wmap-konto-openstreetmap-und-server)
@@ -38,8 +38,9 @@ gewollt?“) und als Grundlage für Erklärungen in der App.
 20. [Offline und Datenverbrauch](#20-offline-und-datenverbrauch)
 21. [Was wo gespeichert wird](#21-was-wo-gespeichert-wird)
 22. [Aufruf per Link](#22-aufruf-per-link)
-23. [Werkzeuge](#werkzeuge)
-24. [Entwicklung](#entwicklung)
+23. [Android Auto](#23-android-auto)
+24. [Werkzeuge](#werkzeuge)
+25. [Entwicklung](#entwicklung)
 
 ---
 
@@ -58,9 +59,10 @@ Man startet immer mit der Karte.
   Strich die Einträge der Seite (auf der Karte z. B. Aufzeichnen, Standort
   teilen/anfragen, Tastatur, Einstellungen). Mitmachen steht nicht
   im Menü, sondern in der Übersicht und im Hinweis nach einer Fahrt.
-- **Seiten ohne Karte** (Übersicht, Plugins, Einstellungen) zeichnen keine Karte, sondern
-  haben eine **Navigationsleiste** – am Rechner links, am Handy unten:
-  Übersicht · Karte · Touren · Entdecken · Plugins.
+- **Seiten ohne Karte** (Übersicht, Plugins, Einstellungen, Sicherung &
+  Synchronisation, Offline, GPX öffnen) zeichnen keine Karte, sondern haben
+  eine **Navigationsleiste** – am Rechner links, am Handy unten:
+  Karte · Übersicht · Touren · Entdecken · Plugins (`js/ui/appbar.js`).
 
 **Kartenseiten mit Panel** (Meine Touren, Entdecken) sind alle gleich gebaut:
 
@@ -73,7 +75,7 @@ Man startet immer mit der Karte.
 - **✕ oben rechts:** schließt die Seite und führt zur Karte.
 - **Griff** über die ganze Kante (am Rechner der rechte Rand, am Handy oben):
   **ziehen** macht das Panel breiter bzw. höher (mind. 300 px, höchstens
-  70 % der Breite; am Handy 160 px bis 92 % der Höhe). **Weiter als das
+  70 % der Breite; am Handy bis 92 % der Höhe). **Weiter als das
   Minimum gezogen** klappt es ganz ein – nur der Griff bleibt am Rand.
   **Antippen** klappt ein und aus; Pfeiltasten auf dem Griff ändern die Größe.
   Größe und Zustand bleiben gespeichert.
@@ -95,8 +97,20 @@ Man startet immer mit der Karte.
   Ampeln). Geholt wird in Feldern von etwa 1 km: nur Felder im Blick, die
   noch fehlen – beim Verschieben der neue Streifen, beim Zurückschieben
   nichts. Die Abfrage fragt die Server nacheinander statt parallel; ein
-  Server, der ablehnt (429) oder überlastet ist (5xx), bekommt 60 bzw. 20 s
-  Pause – das gilt für alle Overpass-Abfragen der App.
+  Server, der ablehnt (429 bzw. 406) oder überlastet ist (5xx), bekommt 60,
+  30 bzw. 20 s Pause – das gilt für alle Overpass-Abfragen der App.
+- **Overpass und Kennung:** Die öffentlichen Server verlangen einen
+  User-Agent oder Referer, der die App eindeutig erkennen lässt (sonst 406;
+  [Nutzungsregeln](https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances):
+  unter 10 000 Abfragen und 1 GB am Tag, nach 406/429 mindestens 30 s
+  Pause). Im Browser schickt der Browser den Referer `app.wuefl.de` mit. Die
+  Apps laufen auf `tauri://localhost` bzw. `http://tauri.localhost` – ohne
+  bzw. ohne eindeutigen Referer; dort fragt die App selbst (Befehl
+  `overpass` in `src-tauri/src/lib.rs`, nur die Server aus
+  `API.overpass`) mit User-Agent `WMap/<Version> (+https://wuefl.de/wmap)`
+  und Referer `https://app.wuefl.de/wmap/`. Eine E-Mail braucht es nicht.
+  Für eine App für alle raten die Regeln langfristig zu einem eigenen
+  Overpass-Server.
 - **Kartenbild:** OpenFreeMap „Liberty“ mit deutschen Namen (`name:de` vor
   `name`; bei nicht-lateinischer Schrift steht der deutsche Name vorn und das
   Original darunter). Gebäude haben Farben nach Nutzung und Schatten am Boden,
@@ -111,6 +125,19 @@ Man startet immer mit der Karte.
   darüber): Zoom +/−, Kompass (Norden oben; zeigt die Neigung),
   eigener Standort, **Ebenen** (siehe [6](#6-ebenen-satellit-wandern--rad-plugins)),
   Gelände an/aus.
+- **Eigener Standort von Anfang an:** Ist der Standort schon freigegeben,
+  steht der Punkt gleich auf der Karte – auch in der Routenansicht, wo
+  „Mein Standort“ keinen eigenen Startpunkt hat –, ohne dass die Karte
+  dafür verschoben wird (`showDot` in `js/app/core.js`: der Standort-Knopf
+  startet „im Hintergrund“). Ein Tipp auf den Knopf springt wie gewohnt
+  hin. Gefragt wird beim Start nicht. In der **Routenansicht** steht er als
+  Pfeil wie in der Navigation (weiße Scheibe, blauer Pfeil in
+  Blickrichtung; `.wmap-arrow`, `body.route-view`).
+- **Folgen endet, wenn die Karte von selbst woanders hingeht** (Route
+  einpassen, Ort zeigen – `releaseLock` in `js/app/core.js`): MapLibre
+  lässt den Standort-Knopf nur beim Verschieben los, nicht bei einem Flug
+  mit Zoom; die Routenübersicht sprang sonst mit der nächsten
+  Standortmeldung zurück zum eigenen Standort.
 - **Quellenangabe:** nur ein kleines (i) unten links, das erst beim Antippen
   aufgeht. Ausführlich stehen die Quellen, Version und Impressum unten auf
   der Übersicht (Danke-Banner).
@@ -177,9 +204,30 @@ Man startet immer mit der Karte.
 
 - **Suchfeld oben:** Orte, Adressen und Kategorien. Tippfehler werden
   verziehen („Parkplaz“, „Backerei“: ein Buchstabe Abweichung).
+- **Nahes zuerst** (`js/services/geocode.js`): Photon reiht bekannte Orte
+  weit weg – auch im Ausland – gern vor gleichnamige um die Ecke. Darum
+  fragt die Suche zusätzlich nur die Umgebung (40 km um den eigenen
+  Standort, solange er im Kartenausschnitt liegt, sonst um die Kartenmitte)
+  und stellt diese Treffer nach vorn; nur ein großer Ort (Stadt, Land) als
+  erster Treffer bleibt vorn – wer „Berlin“ tippt, meint Berlin. Unter dem
+  Namen steht der **Ort vor der Gemeinde**: „Rittmarshausen, Gleichen“
+  statt nur „Gleichen“.
+- **Entfernung an jedem Treffer** (rechts über der Art), sobald der eigene
+  Standort bekannt ist: bei den ersten drei die Strecke auf der Straße –
+  dieselbe Zahl wie danach in der Route, gerechnet mit dem zuletzt
+  genutzten Profil –, bei den übrigen „≈“ und die Luftlinie. Die genauen
+  Zahlen kommen kurz nach der Liste (`fillRoad` in `js/app/search.js`,
+  `roadDistances` in `js/services/routing.js`).
 - **Kategorien** („Parkplatz“, „Bäckerei“, „Fluss“ …): zuerst sofort aus den
   Kartenkacheln (Zoom 14, ohne Netzabfrage), dann ergänzt aus Overpass
   (Flächen, Linien, seltene Kategorien). Restaurants zeigen auch Imbisse.
+- **Treffer mit Nummer:** In jeder Trefferliste (Kategorie, Erreichbarkeit,
+  entlang der Route, in der Navigation) trägt der Eintrag seine Nummer am
+  Namen – „Parkplatz, (3)“ – und steht mit derselben Nummer auf der Karte:
+  eine Pille in der Farbe der Kategorie mit ihrem Symbol und der Nummer,
+  auch an Flächen (`numberHits` in `js/app/category.js`; Ebenen `hl-nr`,
+  `poi-nr`, Bild `hit-<Kategorie>-<Nummer>` in `js/map/map.js`). Treffer,
+  die die Liste nicht mehr zeigt, behalten den Tropfen ohne Nummer.
 - **Ortskarte:** Name, Art, Öffnungszeiten, Adresse, Bild und Kurztext aus
   Wikipedia/Commons, an Bahnhöfen die Abfahrten, an Tankstellen die Preise
   (mit eigenem Tankerkönig-Schlüssel). Knöpfe: **Route**, Teilen,
@@ -215,6 +263,24 @@ Man startet immer mit der Karte.
 - Start ist standardmäßig der eigene Standort; ein Klick in die Karte füllt
   das erste leere Feld. Zwischenziele lassen sich hinzufügen.
 - Wo es welche gibt, stehen Alternativen zur Auswahl – mit Zeit, Strecke und Höhenprofil.
+  Auf der Karte ist die gewählte Route breit mit weißem Rand, die Alternativen sind etwas
+  schmaler und leicht durchscheinend (`route-main`, `route-alt` in `js/map/map.js`).
+  Das Höhenprofil folgt dem in WMap gewählten Thema und zeichnet sich beim Wechsel neu
+  (`js/ui/elevation.js`); Gitter und Achsen sind hell wie dunkel dasselbe leichte Grau.
+- **Mit dem Auto zu einem Geschäft, Lokal, einer Praxis …:** Hineinfahren kann man dort nicht – die Route
+  endete an der Straße, die dem Punkt des Orts am nächsten liegt (oft die Rückseite), und „Ziel erreicht“
+  kam dort. Liegt ein Parkplatz direkt am Ort (sein Rand höchstens 75 m vom Punkt, nicht privat), endet die
+  Fahrt jetzt dort: Die Nadel bleibt am Ort, ein „P“ markiert das Ende, im Sheet steht „Die Fahrt endet am
+  Parkplatz davor – 40 m bis …“; Navigation und Neuberechnen fahren denselben Punkt an (`state.drive`).
+  Sonst bleibt alles wie bisher. Gilt für Ziele, die als Ort gewählt wurden (Wegpunkt mit `poi` – Suche,
+  Kategorie, Tipp auf die Karte, damit gemerkte Lesezeichen und letzte Ziele, auch im Auto), nicht für
+  Adressen, Punkte auf der Karte, Zwischenziele oder Orte, in die man hineinfährt (Parkplatz, Tankstelle,
+  Ladesäule). Gefragt wird Overpass (höchstens 2,5 s, kennt „privat“), sonst zählen die Parkplätze aus den
+  Kartenkacheln (`js/app/drive-target.js`).
+- **Routenserver antwortet nicht:** Die Abfrage versucht es nach 1,5 s von selbst noch einmal.
+  Klappt auch das nicht, steht statt „Load failed“ ein verständlicher Satz da (Server nicht
+  erreichbar, überlastet oder kein Netz) und darunter der Knopf **Erneut versuchen**
+  (`request` in `js/services/routing.js`, `routeStatus` in `js/app/route-results.js`).
 - **Entlang der Route** suchen (Tankstelle, Bäckerei …) – ab der aktuellen
   Stelle der Navigation.
 - **Erreichbarkeit** (Suchfeld antippen → „Was ist von hier erreichbar?“, oder
@@ -231,8 +297,29 @@ Start mit **Los** unter einer Route. Die Karte wechselt in die Fahreransicht.
 - Der Pfeil gleitet zwischen zwei GPS-Meldungen auf der Straße entlang
   (30 Bilder/s). Kommt eine Meldung spät (Tunnel, Häuserschlucht), rollt er
   bis zu **4 s** mit dem letzten Tempo weiter.
+- **Start:** in gut 1,5 s in der Fahreransicht (Zoom, Neigung, Richtung
+  die ersten 3 s zügig), danach wird ruhig nachgeführt.
+- **Strom:** Bewegt sich nichts (Ampel, Pause), wird nicht gezeichnet und nur
+  alle 250 ms nachgesehen statt bei jedem Bild des Bildschirms (bis 120/s);
+  eine neue Meldung weckt sofort. Die Route wird nur neu an die Karte
+  gegeben, wenn man ≥ 8 m weiter ist (sie wird dabei jedes Mal neu in
+  Kacheln zerlegt).
 - Die Richtung folgt der Straße voraus (Blick 12–55 m nach vorn, je nach
   Tempo), nicht der sprunghaften GPS-Richtung.
+- **Im Stand** wandert das GPS um einige Meter und meldet ein kleines Tempo.
+  Zwei ruhige Meldungen hintereinander (unter 0,5 m/s) → der Pfeil hält in
+  der Mitte der beiden, Tempo **0**. Er läuft erst wieder, wenn das GPS
+  zweimal hintereinander Fahrt misst (ab 0,9 m/s) oder man sich weiter
+  entfernt als die doppelte Ungenauigkeit (mindestens 12 m).
+- Bei schwachem Signal meldet das GPS auch im Stand 1–2 m/s (am Handy
+  gemessen). Das Tempo zählt darum nur, wenn man in den letzten 8 s auch
+  vorangekommen ist (≥ 6–8 m je nach Ungenauigkeit, gut ein Drittel dessen,
+  was das Tempo verspricht) und in den letzten 5 s ≥ 3–5 m – sonst 0
+  (`trustedSpeed` in `core/smooth.js`, ebenso für den Punkt auf der Karte
+  und wie oft er fragt).
+- Der Pfeil sitzt im unteren Drittel; der Rand oben wird bei jeder
+  Größenänderung neu berechnet – so bleibt er auch im kleinen Bild in Bild
+  sichtbar.
 - Der Pfeil bleibt auf der Straße, bis **3 Meldungen hintereinander mehr als
   40 m** daneben liegen – erst dann gilt man als abgekommen und die Route wird
   neu berechnet (danach 10 s Pause bis zur nächsten Neuberechnung).
@@ -251,6 +338,16 @@ Start mit **Los** unter einer Route. Die Karte wechselt in die Fahreransicht.
   Abstand zwischen zwei Meldungen. Darum eine gemeinsame Abfrage mit **1 s**
   Abstand für alle (Navigation, Aufzeichnung); sie endet erst 0,5 s nach dem
   letzten Empfänger, ein Neustart der Navigation nutzt dieselbe weiter.
+- **Korrigiertes Plugin:** `tauri-plugin-geolocation` 2.4.0 beantwortet unter
+  Android den Aufruf `watchPosition` nie; die Rust-Seite wartet blockierend
+  darauf und hält je Aufruf einen Arbeits-Thread der App fest. Nach acht
+  solchen Aufrufen (Pixel 9) antwortete die App auf nichts mehr – „Webseite
+  nicht verfügbar – http://tauri.localhost“. WMap bringt das Plugin darum
+  als korrigierte Kopie mit (`src-tauri/plugins/geolocation`, was geändert
+  ist, steht dort in `WMAP.md`; eingebunden über `[patch.crates-io]` in
+  `src-tauri/Cargo.toml`). Läuft die Oberfläche in einer älteren App ohne
+  diese Korrektur, startet `native.js` die Abfrage nur neu, wenn sie öfter
+  kommen muss.
 
 **Kamera** – feste Stufen statt ständigem Nachregeln; eher von schräg oben
 als aus Fahrersicht, damit Häuser Straße und Abzweig nicht verdecken:
@@ -272,11 +369,17 @@ eigene Standort liegt im unteren Drittel, damit man voraus sieht.
 - **Folgen-Knopf** (einer für alles): **blau**, solange die Karte folgt.
   Antippen, während sie folgt, wechselt zwischen geneigt (3D) und flach.
   Verschiebt, dreht, neigt oder zoomt man die Karte selbst, hört sie auf zu
-  folgen und der Knopf wird **farblos**; Antippen holt sie zurück.
+  folgen und der Knopf wird **farblos** und zeigt die Nadel im Kreis
+  (`share_location`); Antippen holt sie zurück.
 - **Kompass:** Fahrtrichtung oben ↔ Norden oben.
 - **Übersicht:** ganze Restroute im Bild.
-- **Stumm**, **Suchen** (entlang der Route), **Melden**, **Teilen**
-  (Ankunftszeit als Link), **Beenden**. Nach dem Beenden ist die Route weg.
+- **Stumm**, **Suchen** (entlang der Route), **Teilen** (Ankunftszeit als
+  Link, mit dem üblichen Teilen-Symbol), **Beenden**. Nach dem Beenden ist die Route weg. **Melden** (Glocke)
+  ist vorerst ausgeblendet (`.nav-report` in `css/app/navigation.css`), bis
+  es fertig ist.
+- Knöpfe rechts und Tempo links stehen immer über der Leiste unten – deren
+  Höhe misst ein ResizeObserver (`--nav-bar-h`; Gestenleiste, große
+  Systemschrift, Offline-Hinweis).
 
 **Ansagen**
 
@@ -288,6 +391,11 @@ eigene Standort liegt im unteren Drittel, damit man voraus sieht.
 - Nach einem Manöver, wenn das nächste weit ist: „2 Kilometer der Route folgen.“
 - Die Stimme ist wählbar (Einstellungen → Stimme); deutsche Stimmen der großen
   Anbieter werden bevorzugt.
+- **Android-App:** Das WebView kennt keine Web-Sprachausgabe
+  (`speechSynthesis`) – dort spricht Android selbst (TextToSpeech über
+  `window.WMapAndroid.speak`, `tools/android/MainActivity.kt`); Musik wird
+  währenddessen leiser. Stimme und Tempo aus den Android-Einstellungen
+  („Sprachausgabe“).
 
 **Spurleiste:** Vor einer Kreuzung (bis 700 m vorher) zeigt die Leiste oben
 alle Spuren mit Pfeilen; die richtigen sind hervorgehoben.
@@ -432,7 +540,9 @@ Zweiter Hauptbildschirm (`dashboard.html`), ohne Karte, mit Navigationsleiste.
 - **Kacheln** nur für Ansichten, mit großem blassem Symbol, Titel, einem Satz
   und – wo es passt – einer Zahl: Karte (groß), Geplante Touren (Anzahl),
   Aufgezeichnete Touren (Anzahl, km in diesem Jahr), Entdecken, Plugins
-  (Anzahl aktiv), Offline-Karten, Mitmachen, **Sicherung & Synchronisation**
+  (Anzahl aktiv), **Offline** (Gebiete und ihre Größe; führt zur Seite
+  „Offline“, siehe [20](#20-offline-und-datenverbrauch)), Mitmachen,
+  **Sicherung & Synchronisation**
   (verbundener Ordner und letzter Abgleich, rot bei einem Fehler),
   Einstellungen. Tour planen, Aufzeichnen, Fliegen und Erreichbarkeit gibt
   es in Karte bzw. Touren.
@@ -467,13 +577,34 @@ Die ersten zwei:
 |---|---|---|
 | Was | Touren, die man noch machen will | was man wirklich gefahren/gelaufen ist |
 | Woher | Planer, übernommene bekannte Wege, GPX ohne Zeiten | Aufzeichnen, Navigation, GPX mit Zeiten |
-| Gruppen | Zu Fuß · Rad · Auto | Jahre (je Jahr eine Farbe) |
+| Gruppen | Zu Fuß · Rad · Auto | Jahre, jede Tour in der Farbe ihrer Art |
 | Zahlen | Strecke, Anstieg | Strecke, Zeit in Bewegung, Tempo, Puls |
 
 - **Oben:** Tour planen bzw. Aufzeichnen und GPX importieren (doppelte Wege
   werden erkannt), darunter die Suche (Name, Ort, Jahr, Monat, Profil …),
   dann je Gruppe eine Tabelle – Jahre bzw. Gruppen als Aufklapp-Zeile mit
   Pfeil. Überfahren einer Zeile hebt die Linie auf der Karte hervor.
+  **GPX-Dateien lassen sich auf die Seite ziehen** (Drag & Drop): unter
+  „Geplant“ werden es Touren, sonst aufgezeichnete Touren.
+- **Aufgezeichnet – Art, Farbe, Alter** (`js/data/track-look.js`):
+  - Jede Tour hat eine **Art** (Gehen, Wandern, Laufen, Rad, Auto, Rudern …):
+    aus Health Connect, bei eigenen Aufzeichnungen aus dem Profil, aus einer
+    fremden GPX-Datei, wenn sie sie in `<type>` nennt (running, cycling …) –
+    oder von Hand gewählt. Ohne Art heißt sie nur „GPX“, mit neutralem
+    Symbol in Grau.
+  - **Farbe:** die der Art (Gehen orange, Rad grün, Rudern petrol, Auto blau
+    …) oder eine eigene je Tour. **Je älter, desto blasser:** bis einen
+    Monat voll, dann in Monatsschritten bis 0,4 ab zwei Jahren.
+  - **Zeile:** Symbol der Art in ihrer Farbe, Name, darunter Datum · Art ·
+    Herkunft (ohne Uhrzeit) und kleine Symbole: Gesundheitsdaten (Puls,
+    Frequenz, Leistung), offline verfügbar, liegt im Ordner. Rechts das
+    **Auge der Zeile**: diese eine Tour auf der Karte aus- bzw. einblenden.
+  - **Auf der Karte** liegt, was in den eingestellten Zeitraum fällt
+    (Einstellungen → Daten: alle · dieses Jahr · letzte 365 · letzte 30
+    Tage). Das **Auge am Jahr** blendet ein Jahr ein oder aus, das Auge an
+    der Zeile (und „Auf der Karte“ in der Tour) eine einzelne – das geht
+    vor; Jahre ohne Sichtbares sind
+    zugeklappt, das Auge durchgestrichen. Die Suche zeigt alle Treffer.
 - **Karte:** nur der aktive Reiter. Weit herausgezoomt (unter Zoom 9) je
   Tour ein Punkt am Start, nahe beieinander zusammengefasst mit der Anzahl
   (antippen zoomt hinein); näher die Linien. Die gewählte Tour trägt
@@ -489,19 +620,47 @@ Die ersten zwei:
     **Diagramm** mit Umschalter: Höhe, Tempo, Puls, Schritt- bzw.
     Trittfrequenz, Leistung – nur, was gemessen wurde; Zeiger im Diagramm
     und auf der Linie zeigen dieselbe Stelle.
-    **Runden** zu 1, 2 oder 5 km (gemerkt): Zeit, Tempo (zu Fuß als min/km),
+    **Runden** zu 1, 2 oder 5 km (gemerkt; Rudern und Paddeln 500 m, 1, 2 km):
+    Zeit, Tempo (zu Fuß als min/km, Rudern je 500 m, Schwimmen je 100 m),
     Ø Puls, Anstieg; die schnellste grün, die langsamste rot, eine Runde
     antippen hebt sie auf der Karte hervor (`js/data/track-stats.js`).
-    Knöpfe: Als Tour speichern, Als Tour teilen, GPX, Löschen.
+    Die Frequenz heißt je Art Schritt-, Tritt-, Schlag- bzw. Zugfrequenz.
+    (Zepp liefert über Health Connect fürs Rudern nur Puls und Strecke:
+    als Frequenz kommen ein paar Werte aus den letzten Sekunden, alle 0,
+    und ein einziger Abschnitt mit „1 Wiederholung“ – am Handy
+    nachgemessen. Ein Schlagzahl-Diagramm gibt es dafür darum nicht.)
+    **Art, Farbe und Anzeige** – ein Block zum Auf- und Zuklappen (zu; der
+    Kopf nennt Art, Farbe und ob die Tour ausgeblendet bzw. offline
+    verfügbar ist; beim Ändern bleibt er offen): Art wählen, Farbe (die der
+    Art, eine von zwölf oder frei), „Auf der Karte“ ein/aus und – mit
+    verbundenem Ordner – „Offline verfügbar“ (bleibt ganz in der App, siehe
+    [15](#15-sicherung--synchronisation-ordner-health-connect)).
+    Art, Farbe und Ausblenden stehen in der GPX-Datei (`<wmap:track sport
+    color hidden …/>`) und gelten damit auf allen Geräten.
+    Knöpfe:
+    - **Navigieren** (`index.html?track=ID&start`): der Verlauf als Punkte,
+      dazwischen wird neu gerechnet – wie „Tour starten“ bei einer geplanten.
+    - **Als Planung öffnen:** der Verlauf als neue Tour im Planer
+      (`tour.html#t=…`) – gespeichert wird erst dort.
+    - **Teilen:** die Aufzeichnung selbst, nicht nur ihr Verlauf – Strecke,
+      Zeiten und Tempo, dazu nach Wahl Puls, Frequenz, Leistung (Haken im
+      Dialog). Als **Link** (`wege.html#weg=…`, alles gepackt in der Adresse,
+      lange Wege auf 500 Punkte ausgedünnt, `js/data/track-share.js`): wer ihn
+      öffnet, sieht die Tour mit Diagrammen und kann sie „Bei mir speichern“.
+      Oder als **GPX-Datei** (Teilen-Menü des Geräts, sonst speichern).
+    - GPX, Löschen.
+    Liegt die Tour nur im Ordner, zeigt die Seite erst die Karteikarte und
+    holt dann alle Punkte; ist der Ordner nicht erreichbar, bleiben Zahlen
+    und grober Verlauf mit einem Hinweis.
     Puls, Frequenz und Leistung stehen je Punkt am Weg und gehen als
     GPX-Erweiterung (gpxtpx:hr/cad, power) mit in den verbundenen Ordner;
     beim Ausdünnen bleibt mindestens alle 30 s ein Punkt.
   - Geplant: Profil, Strecke, Dauer, Anstieg/Abstieg, Beschreibung,
     Höhenprofil. Knöpfe: **Tour starten** (Karte mit den Punkten der Tour
     als Route, Profil passend – Wandern → zu Fuß, Rennrad → Rad –, die
-    Navigation startet von selbst: `index.html?tour=ID&start`; sie wird
-    immer unter Aufgezeichnete Touren gespeichert), Im Planer öffnen,
-    Teilen, GPX, Löschen.
+    Navigation startet von selbst: `index.html?tour=ID&start`; vorher
+    fragt WMap, ob die Tour aufgezeichnet werden soll), Im Planer
+    öffnen, Teilen, GPX, Löschen.
 
 ## 11. Tour planen
 
@@ -511,13 +670,15 @@ Die ersten zwei:
   voller Höhe (Breite ziehen, ganz einklappen), am Handy unten. Kopf: ← zu
   Meine Touren, Name, Speichern als Symbol (grüner Haken = gesichert), ✕ zur
   Karte. Ganz oben: Ort suchen, daneben das blaue **i** (Anleitung als Notiz,
-  am Handy volle Breite). Darunter Werkzeuge, Zahlen, Art, Hintergrund,
+  am Handy volle Breite). Darunter Werkzeuge, Zahlen, „Unterwegs als“, Hintergrund,
   Höhenprofil, Wege, Beschreibung, unten Teilen · GPX · Veröffentlichen ·
   Löschen. Ebenen-Knopf (Satellit …) wie auf der Hauptkarte; Straßennamen
   eine Zoomstufe früher und dichter als auf der geneigten Hauptkarte.
 
-- **Profile:** Wandern, Spazieren, Rennrad (Asphalt), Tourenrad, Gravel
-  (Schotter), Mountainbike, Ausfahrt (Auto).
+- **Unterwegs als** (Auswahlliste mit dem Symbol der gewählten Art):
+  Wandern, Spazieren, Rennrad (Asphalt), Tourenrad, Gravel (Schotter),
+  Mountainbike, Auto. Nur Touren mit „Auto“ erscheinen in Android Auto
+  (siehe [23](#23-android-auto)).
 - Unten stehen immer Strecke, Zeit, Anstieg, Höhenprofil und die Anteile von
   Wegtypen und Belägen.
 - **Lange Touren** (Fernwanderung, mehrtägige Radtour) gehen mit wenigen
@@ -565,9 +726,16 @@ Die ersten zwei:
   **4 m** bewegt hat. Stehzeiten zählen nicht zur Bewegungszeit.
 - Nach Absturz oder Neuladen geht es weiter (bis 12 Stunden).
 - Beim Stopp einen Namen geben oder verwerfen. Gespeichert wird nur auf dem
-  Gerät. Navigationen einer geplanten Tour (Meine Touren → Tour starten)
-  werden immer aufgezeichnet, andere Navigationen nur mit Einstellungen →
-  „Jede Navigation merken“ (Standard: aus).
+  Gerät.
+- **In der Navigation:** Startet man eine Tour (geplant: „Tour starten“,
+  aufgezeichnet: „Navigieren“), fragt WMap vorher **„Tour aufzeichnen?“**
+  (im Auto geht keine Rückfrage – dort wird sie aufgezeichnet). Andere
+  Navigationen werden nur mit Einstellungen → „Jede Navigation merken“
+  aufgezeichnet (Standard: aus). Unterwegs steht rechts oben in der
+  Knopfleiste der **Aufnahme-Knopf**: grau = aus (antippen startet die
+  Aufzeichnung auch nachträglich), rot = läuft, orange = Pause; bei
+  laufender Aufzeichnung öffnet er Pause/Weiter, „Beenden und speichern“
+  und „Verwerfen“ – die Navigation läuft dabei weiter (`js/app/nav.js`).
 - Browser zeichnen im Hintergrund nicht auf – der Bildschirm bleibt an.
 
 ## 13. Entdecken
@@ -676,6 +844,34 @@ das noch nicht erlaubt ist (Standort-Knopf, Navigation, Aufzeichnen, Route
 ab „Mein Standort“), und unter Einstellungen → Berechtigungen. Beim Start
 der Karte wird nicht gefragt – ohne Freigabe bleibt die letzte Ansicht.
 
+**Standort in der App** (`js/core/native.js`): eine gemeinsame Abfrage über
+das Plugin „geolocation“ für alle – so oft, wie der Eifrigste es braucht:
+Navigation und Aufzeichnen jede Sekunde, der Punkt auf der Karte (MapLibres
+Standort-Knopf, über `geolocationApi` statt `navigator.geolocation`) je nach
+Bewegung: in Bewegung jede Sekunde, wer steht, nach 15 s alle 5 s, nach einer
+Minute alle 30 s (`geo.retime`). Beim Losgehen meldet der
+Beschleunigungssensor (`devicemotion`) Schritte bzw. Fahrt gleich – dann
+sofort wieder jede Sekunde. Fehlt das Recht aufs Plugin, geht es über den
+Standort des WebViews (dort bestimmt der Browser den Abstand).
+
+**Ruhiger Punkt auf der Karte** (`js/core/smooth.js`, auch im Browser): Nah
+an der letzten Stelle und ohne Fahrt bleibt der Punkt stehen, die Meldungen
+werden im Hintergrund gemittelt (genaue zählen mehr) – höchstens alle 10 s
+rückt er auf das Mittel, wenn es sich ≥ 3 m verschoben hat. Sonst geht er ¾
+zur neuen Meldung (ungenauere zählen weniger), in Fahrt mit Richtung und
+Tempo des GPS vorausgerechnet, damit er nicht hinterherhinkt. Ausreißer
+(Sprung, der nicht zum Tempo passt, oder viel ungenauer) werden verworfen,
+drei hintereinander gelten. Zwischen zwei Meldungen gleitet der Punkt
+(nur der Marker, die Karte wird dafür nicht neu gezeichnet). Im Stand kommt
+nichts Neues – auch die Karte muss nicht nachgeführt werden.
+
+**Punkt, Kreis, Richtung** (`js/map/location-dot.js`): Der Kreis der
+Ungenauigkeit ist blau durchsichtig und ruhig (geglättete Ungenauigkeit, kein
+Pulsieren); ist der Standort genau (≤ 12 m), ist er ganz weg. Die
+Blickrichtung zeigt ein Kegel am Punkt – in Fahrt die Richtung des GPS,
+sonst der Kompass (`deviceorientationabsolute`). MapLibre selbst kennt keine
+Richtung (`showUserHeading` gibt es nur bei Mapbox).
+
 ## 15. Sicherung & Synchronisation: Ordner, Health Connect
 
 Eigene Seite `sync.html` (Kachel in der Übersicht; Einstellungen → Daten und
@@ -708,8 +904,61 @@ WMap/
 ├─ Geplante Touren/Harzer Hexenstieg.gpx
 ├─ Aufgezeichnete Touren/2026/09 September/2026-09-20 Radtour am Samstagnachmittag.gpx
 ├─ Bus & Bahn/2026-09-30 08.15 Göttingen → Kassel.json   je gemerkte Verbindung
-└─ Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen mit Listen
+├─ Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen mit Listen
+├─ Gelöscht.json                     auf einem Gerät Gelöschtes (IDs, ein Jahr)
+├─ Kartenausschnitt.json             wo die Karte zuletzt stand
+└─ Inhalt.json                       Verzeichnis: je Datei ID, Art, Fingerabdruck, Stand
 ```
+
+- **Es gilt die Ordnung:** Abgeglichen wird nur, was unter `Geplante Touren/`,
+  `Aufgezeichnete Touren/` (mit beliebigen Unterordnern) und `Bus & Bahn/`
+  liegt. Was woanders im Ordner liegt, wird nicht gelesen.
+- **Schnell durch das Verzeichnis `Inhalt.json`:** Jede WMap trägt dort ein,
+  was sie geschrieben oder gelesen hat. Ein Abgleich holt die Liste des
+  Ordners (Namen, Änderungszeit) und das Verzeichnis – den Inhalt einer
+  Datei nur, wenn sie neu ist (nicht im Verzeichnis: von Hand hineingelegt),
+  sich laut Änderungszeit bzw. Verzeichnis geändert hat oder hier fehlt.
+  Manche Cloud-Ordner unter Android melden keine Änderungszeit; dort gilt
+  der Fingerabdruck aus dem Verzeichnis, sonst würde jedes Mal alles
+  gelesen. Ein neu verbundener Ordner, dessen Einträge hier schon da sind,
+  wird ebenfalls nicht gelesen (gleiche ID, gleicher Fingerabdruck). Das
+  Verzeichnis ist nur eine Abkürzung – was da ist, sagt die Liste des
+  Ordners; fehlt oder irrt es, wird gelesen. Was gelesen werden muss (erster
+  Abgleich eines neuen Geräts), kommt zu viert zugleich.
+- **In der App oder nur im Ordner** („In der App behalten“ auf der Seite:
+  letzte 30 Tage – Standard –, 90 Tage, letztes Jahr, alles; gilt je Gerät).
+  Mit verbundenem Ordner müssen aufgezeichnete Touren nicht doppelt liegen:
+  - Ganz in der App bleiben die Touren aus dem gewählten Zeitraum und alles,
+    was in Meine Touren als **offline verfügbar** markiert ist (`pin`).
+  - Von den älteren bleibt eine **Karteikarte** (`stub`: Name, Zeiten,
+    Strecke, Art, Farbe, grober Verlauf mit höchstens 60 Punkten, welche
+    Messwerte es gibt) – sobald die Datei im Ordner denselben Stand hat.
+    Eine Datei aus einer älteren WMap wird dafür erst neu geschrieben.
+  - Öffnet man so eine Tour, kommen Punkte und Messwerte aus der Datei
+    (`tracks.full` → `readTrack`). Liste, Karte und Suche brauchen den
+    Ordner nicht.
+  - Ändert man die Karteikarte (Name, Art, Farbe), schreibt der Abgleich
+    die Datei aus ihrem Inhalt und der Karteikarte neu – nie aus der
+    Karteikarte allein.
+  - Sicherung und ZIP holen alles ganz; „Trennen“ und „Ordner ändern“ holen
+    vorher alles zurück in die App.
+  - Geplante Touren, Verbindungen und Lesezeichen bleiben immer ganz in der
+    App – sie sind klein, und navigieren soll auch ohne den Ordner gehen.
+- **Ohne Ordner** bleibt jede Aufzeichnung ganz in der App, so lange man
+  will – nach Zeit wird nie gelöscht. Eine Tour belegt rund 2 KB (am Handy
+  gemessen: 90 Touren aus neun Monaten = 182 KB; in 30 Jahren wären das
+  etwa 7 MB bei rund 10 GB, die der Browser erlaubt).
+- **Speicher voll** (`makeRoom` in `js/data/tracks.js`): Nimmt das Gerät
+  eine Tour nicht mehr an (`QuotaExceededError`), macht WMap Platz und
+  speichert noch einmal. Mit Ordner werden die zehn ältesten Touren zur
+  Karteikarte (`shelveOldest` – nur, wenn ihre Datei im Ordner denselben
+  Stand hat), gelöscht wird nichts. Ohne Ordner weichen die fünf ältesten
+  – nie etwas als „offline verfügbar“ Markiertes; was aus Health Connect
+  kam, holt der nächste Import nicht wieder. Eine Meldung sagt, was
+  geschehen ist.
+- **Von Hand im Ordner:** eine Datei in die Ordnung gelegt → wird
+  übernommen und ins Verzeichnis eingetragen; eine Datei gelöscht, die das
+  Gerät schon kannte → der Eintrag verschwindet auch in WMap.
 
 - Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene. Dateien
   aus der alten Ordnung (`Geplant/`, `Abgeschlossen/<Jahr>/`, `Gemerkt.json`)
@@ -721,9 +970,68 @@ WMap/
   die nächste Seite mit `autoSync()` macht dort weiter (auch bei Automatik
   „Aus“) und liest nur, was noch nicht im Stand war.
 - **Abgleich** beim Öffnen und 2,5 s nach jeder Änderung (je nach
-  Automatik), sonst mit „Jetzt abgleichen“:
+  Automatik), sonst mit „Jetzt abgleichen“. Beim Öffnen einer Seite höchstens
+  alle 5 Minuten (`autoFolderSync` – WMap hat mehrere Seiten, sonst liefe er
+  bei jedem Wechsel neu an); holt Health Connect gerade Trainings, wartet er
+  bis danach (`bulk` in `js/data/tracks.js`):
   - nur im Ordner → übernehmen; nur in WMap → Datei schreiben
   - im Ordner gelöscht → auch in WMap weg; in WMap gelöscht → Datei weg
+    und Eintrag in `Gelöscht.json` (ein Jahr) – jedes Gerät löscht es dann
+    auch und schreibt es nie zurück, auch eins, das den Ordner neu verbunden
+    hat oder lange nicht abgeglichen hat (sein Gedächtnis, welche Dateien
+    schon da waren, reicht dafür nicht). Wieder angelegt (ZIP einspielen,
+    Import, Bearbeiten) → gilt wieder
+  - eine Datei ist einmal nicht lesbar (Cloud-Ordner hakt) → bleibt bekannt,
+    der Eintrag hier bleibt; eine unbekannte, nicht lesbare Datei → in
+    diesem Lauf wird nichts Gleichnamiges daneben geschrieben
+  - **derselbe Weg zweimal im Ordner** – der Abgleich legt zusammen, auf
+    jedem Gerät mit derselben Wahl (sonst löschte jedes eine andere Datei):
+    - dieselbe Kennung in zwei Dateien (Kopie, „… (2).gpx“): die Datei ohne
+      Zusatz bzw. mit dem kleineren Pfad bleibt
+    - dieselbe Aufzeichnung unter zwei Kennungen (`sameRecordings`: dasselbe
+      Training aus Health Connect – `wmap-hc:…` neben `wmap:ID` – oder
+      gleicher Start und gleiche Länge): die Datei mit der kleinsten Kennung
+      bleibt, was nur die anderen hatten (Puls …), kommt dazu, die anderen
+      Kennungen stehen in `Gelöscht.json`. So etwas entstand, wenn nach einer
+      Neuinstallation Health Connect noch einmal gelesen wurde, während der
+      Ordner die Wege schon hatte
+    - Wege aus Health Connect bekommen ihre Kennung darum aus Start und
+      Kennung des Trainings (`healthTrackId`), nicht gewürfelt – dasselbe
+      Training hat überall dieselbe. Health Connect holt Gelöschtes nicht
+      wieder und erkennt Wege aus dem Ordner am Start (± 5 s) und der Länge
+  - Doppelte ohne ID (fremde GPX): Weg an Start und Länge (`sameTrack` in
+    `js/data/tracks.js`: Start ± 5 s und Länge ± 2 % – oder gleicher Start
+    und gleiches Ende bei bis zu 15 % anderer Länge, so kommt eine GPX-Datei
+    einer älteren WMap zurück, die nur die vereinfachten Punkte enthielt);
+    geplante Tour an Verlauf und Name
+  - GPX-Dateien von WMap tragen neben den vereinfachten Punkten, was aus
+    allen gemessen wurde (Strecke, Zeit in Bewegung, Spitze), die Herkunft
+    und das Aussehen (Art, Farbe, ein-/ausgeblendet, Start und Ziel –
+    `<wmap:track …/>` in `metadata/extensions`) – auf dem nächsten Gerät ist
+    der Weg derselbe, nicht kürzer und nicht nur „GPX“. Wieder eingelesen
+    wird so eine Datei Punkt für Punkt übernommen, nicht noch einmal
+    ausgedünnt
+  - dieselbe Aktivität aus zwei Quellen (mit der Uhr über Health Connect und
+    mit dem Handy aufgezeichnet, oder als GPX in den Ordner gelegt –
+    `sameActivity`: Zeiten überlappen zu 80 %, Längen bis 15 % verschieden,
+    Gebiete berühren sich): beide bleiben erst stehen, zusammengeführt wird
+    unter „Doppelte Touren“ – dort wählt man je Tour getrennt, **wessen
+    Strecke (GPS)** bleibt und – wenn mehrere Aufzeichnungen Puls, Frequenz
+    oder Leistung haben – **von welcher die Gesundheitsdaten** kommen (je
+    Aufzeichnung stehen Herkunft, km, Dauer, Punkte und z. B. „Puls (Ø 120)“
+    da); die Werte kommen nach der Uhrzeit an die Punkte der gewählten
+    Strecke (`withValuesFrom`)
+  - schon vorhandene Doppelte: Abschnitt „Doppelte Touren“ mit
+    „Zusammenführen“ auf dieser Seite, nur wenn es welche gibt
+    (`js/data/duplicates.js`) – je Gruppe bleibt die gewählte Aufzeichnung,
+    ohne Wahl der Eintrag mit den meisten Angaben (Kennung aus Health
+    Connect, Puls & Co.), die anderen werden
+    gelöscht und stehen damit in `Gelöscht.json`
+  - `Kartenausschnitt.json`: beim Start der Karte steht sie sofort am
+    Ausschnitt dieser App, gleich danach wird nur diese Datei gelesen (nicht
+    der ganze Abgleich) – ist sie neuer (anderes Gerät oder hier noch keiner),
+    springt die Karte dorthin, solange man sie nicht selbst bewegt hat.
+    Geschrieben beim Verlassen der Karte, sonst höchstens alle 2 Minuten
   - beides geändert → das Neuere gewinnt; geändert heißt: andere Zeit und
     anderer Inhalt als beim letzten Abgleich (manche Cloud-Ordner unter
     Android melden keine Zeit)
@@ -731,11 +1039,12 @@ WMap/
     `deleted`, damit es nicht von einem anderen Gerät zurückkommt
   - `settings.json`: hier geändert → schreiben, nur dort geändert →
     übernehmen; beim ersten Abgleich eines Geräts gilt die Datei. Nicht
-    dabei: Konten, Verlauf, Kartenausschnitt.
+    dabei: Konten, Verlauf, Kartenausschnitt (eigene Datei, s. u.).
 - Erkannt wird eine Datei am Stichwort `wmap:ID` (GPX) bzw. an der `id`
-  (JSON). Fremde GPX (Garmin, Komoot-Export …) dürfen irgendwo im Ordner
-  liegen – mit Zeiten werden sie ein Weg, sonst eine Tour; sie bleiben, wo
-  sie sind. Puls, Frequenz, Leistung bleiben erhalten.
+  (JSON). Fremde GPX (Garmin, Komoot-Export …) gehören in `Geplante
+  Touren/` (wird eine Tour) bzw. `Aufgezeichnete Touren/` (mit Zeiten ein
+  Weg); sie bleiben, wo sie dort liegen. Puls, Frequenz, Leistung bleiben
+  erhalten.
 - **Wo es geht:**
   - **WMap-App** (Android, Linux, macOS, Windows): eigenes Plugin
     `src-tauri/plugins/folder` – Android wählt den Ordner über den
@@ -767,11 +1076,36 @@ Dieselbe Ordnung wie im Ordner (GPX, Bus & Bahn, `Lesezeichen.json`), dazu
 nimmt das ZIP (oder eine alte `.json`); ein ZIP ohne JSON, etwa ein
 gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
 
+### GPX öffnen (`import.html`)
+
+Eine GPX-Datei antippen bzw. doppelklicken öffnet WMap – und dort je Datei:
+
+- **Als aufgezeichnete Tour speichern** (nur mit Zeiten in der Datei):
+  vorher Prüfung auf Doppelte (WMap-ID im Stichwort `wmap:…` bzw. derselbe
+  Weg – `sameTrack`); gibt es ihn schon: „Gibt es schon – ansehen“. Sonst
+  speichern und gleich zeigen (`wege.html?id=…`), der Ordner gleicht ihn mit ab.
+- **Als geplante Tour öffnen:** nur öffnen, wie eine geteilte Tour
+  (`tour.html#t=…`, Speichern mit Ausrufezeichen) – gespeichert wird erst dort.
+
+Wie die Datei ankommt:
+
+| Wo | Wie |
+|---|---|
+| Android-App | „Öffnen mit“ (`ACTION_VIEW`) und „Teilen“ (`ACTION_SEND`) – Intent-Filter aus `tools/android-einbinden.py`, das folder-Plugin liest die Datei (nur mit `<gpx`), `opened` gibt sie der Seite |
+| Rechner-Apps | Dateizuordnung `.gpx` (`bundle.fileAssociations`): Start mit Datei, zweiter Start (single-instance) bzw. macOS „Opened“ → `open_paths()` im folder-Plugin |
+| installierte Web-App | Chrome/Edge am Rechner: `file_handlers` im Manifest (`launchQueue`); am Handy das Teilen-Menü: `share_target` → `sw.js` legt die Dateien in den Cache `wmap-share` → `import.html?shared` |
+| sonst | Dateiauswahl auf der Seite |
+
+In der App schickt `js/core/theme.js` beim Start einer Seite zu
+`import.html`, wenn das Plugin Dateien bereithält (`opened { peek }`).
+
 ## 16. Teilen, Standort anfragen, Bild in Bild
 
 - **Teilen per Link** – ohne Server, alles steckt in der Adresse: ein Ort,
   „Hier bin ich“ (mit Uhrzeit), eine Route mit Profil und Wegpunkten, eine
-  Tour (`tour.html#t=…`), in der Navigation die Ankunftszeit.
+  Tour (`tour.html#t=…`), in der Navigation die Ankunftszeit. Die Links
+  zeigen immer auf `app.wuefl.de/wmap/` – auch aus den Apps; die
+  Android-App öffnet sie selbst (src-tauri/README.md, „Geteilte Links“).
 - **Standort anfragen:** Link schicken; wer ihn öffnet, schickt seinen
   Standort zurück.
 - **Teilen-Dialog:** Teilen-Menü des Geräts, Text mit Link kopieren oder nur
@@ -781,24 +1115,62 @@ gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
   nicht im Fenster von WMap, sondern darüber mit einer Leiste – ✕ links
   schließt, rechts „Im Browser öffnen“. Android: Custom Tab des Systems,
   Rechner: eigenes Fenster. Im Browser wie gewohnt ein neuer Tab.
-- **Bild in Bild** während der Navigation:
+- **Bild in Bild** während der Navigation – überall nur die Karte mit dem
+  eigenen Standort (weit unten, ~80 %) und oben der Pfeil der nächsten
+  Anweisung mit der Entfernung; kein Text, keine Knöpfe, Leisten oder Zeiten
+  (`js/nav/pip.js`):
   - **Android-App:** Wischt man die App weg (oder drückt Home), geht sie von
-    selbst ins Mini-Fenster – die ganze App, also Karte und Anweisung; Knöpfe,
-    Suche und Leisten verschwinden darin. Der Knopf in der Navigation geht
-    sofort hinein. Ab Android 12 schaltet das System selbst, bei 8–11 WMap
-    beim Verlassen. Die Karte läuft im Mini-Fenster weiter.
-  - **Chrome, Edge, neue Firefox:** der Knopf schiebt die Karte samt
-    Anweisung in ein Mini-Fenster über anderen Apps und Tabs; schließt man es,
-    kehrt die Karte zurück.
-  - **Safari:** nur die Anweisung, als Video.
+    selbst ins Mini-Fenster – die ganze App, per `html.pip-mode`
+    (`css/app/dialogs.css`) auf Karte und Anweisung reduziert. Der Knopf in
+    der Navigation geht sofort hinein. Ab Android 12 schaltet das System
+    selbst, bei 8–11 WMap beim Verlassen. Karte und GPS laufen im
+    Mini-Fenster weiter (`MainActivity.kt` setzt die Plugins nach der Pause
+    gleich wieder fort; wird das Fenster weggewischt, ruhen sie).
+  - **Chrome, Edge am Rechner, neue Firefox:** der Knopf schiebt die Karte
+    samt Anweisung in ein Mini-Fenster über anderen Apps und Tabs
+    (Document Picture-in-Picture); schließt man es, kehrt die Karte zurück.
+  - **Chrome am Handy, Safari:** Video-Bild-in-Bild – Karte (nach jedem
+    Kartenbild kopiert), Standortpfeil und Anweisung auf ein Canvas gemalt.
 
 ## 17. Mitmachen bei OpenStreetMap, Meldungen
 
 - **Mitmachen:** Nach einer Fahrt kurze Fragen zu Orten, an denen man
   nachweislich war („Kostet das Parken hier etwas?“, „Hat die Bäckerei noch
-  diese Zeiten?“, Belag, Beleuchtung, fehlende Wege). Zu Fuß/Rad im
-  Vorbeigehen (≤ 30 m), mit dem Auto nur, wo man angehalten hat. Öffnungszeiten
-  mit Wochen-Editor, „Rund um die Uhr“ und „Gibt es nicht mehr“.
+  diese Zeiten?“, Belag, Beleuchtung). Öffnungszeiten und Parkplätze nur,
+  wo man angehalten hat (≥ 3 min) – im Vorbeigehen sieht man sie nicht.
+  Öffnungszeiten mit Wochen-Editor, „Rund um die Uhr“ und „Gibt es nicht
+  mehr“. Jede Frage hat ein ✕ (vergessen – kommt man wieder vorbei, darf sie wiederkommen);
+  „Weiß nicht / später“ stellt sie einen Tag zurück. Die Übersicht zeigt
+  bei „Mitmachen“, wie viele Fragen offen sind.
+- **Fragen unterwegs** (`js/app/ask-along.js`) – in der Navigation und
+  ohne sie, wenn man mit dem Standortpunkt unterwegs ist (Fortbewegung dann
+  nach dem Tempo; „Gesperrt?“ nur in der Navigation), als kleine Pille (`quickAsk({ pill: true })`): links ✕, die Frage, rechts
+  „Bestätigen“ in Grün; sie läuft nach 12 s von selbst ab und steht dann am
+  Ende in der Liste, ✕ heißt vergessen. Keine Höchstzahl, aber zwischen
+  zwei Pillen 2 min oder 1 km:
+  - **„Neue Straße?“ / „Neuer Weg?“** – mindestens 200 m am Stück mehr als
+    30 m neben jedem Weg der Karte (Schicht `transportation` der
+    Kartenkacheln), nur in Bewegung und bei Genauigkeit ≤ 20 m; Bestätigen
+    schickt einen Hinweis mit dem Verlauf.
+  - **„Gesperrt?“** – nach einer Neuberechnung erst, wenn man ≥ 100 m neben
+    der alten Route ist (zurück auf ihr: keine Frage).
+  - **„Gibt es … noch?“** – Läden und Lokale direkt am Weg (zu Fuß 15 m,
+    Rad 20 m, Auto 25 m und nur langsamer als 30 km/h), seit über zwei
+    Jahren unbestätigt – nach dem Vorbeikommen; Bestätigen setzt
+    `check_date`. Die Orte kommen aus den Kartenkacheln (Schicht `poi`, kein
+    Netz); erst nach dem Vorbeikommen fragt eine Anfrage bei der OSM-API nach
+    genau diesem Ort (Art, Stand). Im Auto nur Läden an der eigenen Straße:
+    Liegt eine andere Straße fürs Auto ≥ 8 m näher am Laden (Rückseite,
+    Parallelstraße), wird nicht gefragt.
+  - **Meldungen auf der Route** („Immer noch Stau?“, „Immer noch
+    gesperrt?“, „Baustelle noch da?“ – Autobahn-Verkehrslage und geteilte
+    Meldungen, `js/app/report.js`) kommen immer sofort als Pille
+    (`urgent`), auch kurz nach einer anderen, die sie wegschiebt; ✕ heißt
+    „nicht mehr da“, die Antwort geht an die Meldung.
+  - Die Abfrage der Kartenkacheln für „Neuer Weg?“ (lokal, kein Netz) läuft
+    höchstens alle 5 s bzw. 25 m.
+  Je Fortbewegung abschaltbar (Einstellungen → Unterwegs: Zu Fuß, Rad,
+  Auto); dann kommen „Neuer Weg?“ und „Gesperrt?“ gleich in die Liste.
 - Hochladen mit OSM-Konto direkt in die Karte, sonst anonym als Hinweis.
   Das OSM-Konto ist zugleich das WMap-Konto (Abschnitt 18).
   Die Anmeldung braucht eine **OAuth-Client-ID** in `OSM_AUTH` in
@@ -822,20 +1194,39 @@ gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
   Ort bearbeitet, Ort neu; direkt in die Karte oder als Hinweis. Auf dem Gerät
   (Einstellungen → Mitmachen: „Du hast über WMap …“) und anonym auf dem Server.
 - **Orte bearbeiten und eintragen** (osm/edit.js): in der Ortskarte
-  **Bearbeiten** (Name, Beschreibung – `description`, kurz und sachlich –,
-  Öffnungszeiten, Telefon, Website, Veranstaltungen – `website:events`, wie
-  WMap sie für Programme nutzt –, Bild eines Orts aus OSM; neben jedem Feld
-  steht klein der OSM-Schlüssel). Bild: ein Link zu einem freien Foto
-  (`image`); ein Link auf Wikimedia Commons wird zu
-  `wikimedia_commons=File:…`.
-  **Merkmale** (aufklappbar): Lieferdienst, Zum Mitnehmen, Bio, Vegan,
-  Vegetarisch, Draußen sitzen, WLAN, Drive-in, Rollstuhl – je Ja/Nur/Nein.
-  Die Ortskarte zeigt sie wie bei Google unter dem Namen („Bäckerei ·
-  Lieferdienst · Bio“), darunter die Beschreibung (ui/poi-info.js `TRAITS`).
-  **Alle Tags** (aufklappbar): die Rohdaten, eine Zeile `Schlüssel=Wert` –
-  ändern, ergänzen, Zeile löschen = Tag entfernen; was man oben in den
-  Feldern ändert, läuft dort gleich mit und gilt vorrangig. Beim Eintragen
-  heißt der Block „Weitere Tags“ und kommt zu den Angaben dazu.
+  **Bearbeiten**; neben jedem Feld steht klein der OSM-Schlüssel. Der Dialog
+  von oben nach unten:
+  1. **Name**.
+  2. **Angaben** – je Art dieselben Felder wie in den Kacheln der Ortskarte
+     (`SCHEMA` in ui/poi-info.js, `editFields()`), auch die „unbekannten“:
+     Zahl (Stellplätze, Ladepunkte, Höhe …), Auswahl (Gebühr, Belag, Zugang,
+     Art …), Häkchen (Kraftstoffe `fuel:…`, Bezahlung `payment:…` – abhaken
+     entfernt ein „yes“), an Ladesäulen je Stecker Anzahl und Leistung
+     (`socket:type2`, `socket:type2:output` …), Öffnungszeiten.
+  3. **Grundlegendes**, soweit nicht schon bei den Angaben: Beschreibung
+     (`description`, kurz und sachlich), Öffnungszeiten, Telefon, Website.
+     Telefon und Website ändern den Tag, den es schon gibt (`contact:phone`,
+     `contact:website`), statt einen zweiten anzulegen.
+  4. **Ausgefülltes** aus dem Rest – Adresse, Programm (`website:events`, wie
+     WMap es für Veranstaltungen nutzt), Bild, Merkmale mit Wert.
+  5. **Weiteres** (zugeklappt): dieselben Felder, solange sie leer sind, und
+     am Ende immer **Alle Tags**.
+
+  Die Kacheln der Ortskarte selbst öffnen nichts – bearbeitet wird nur über
+  den Knopf. Bild: ein Link zu einem freien Foto (`image`); ein Link auf
+  Wikimedia Commons wird zu `wikimedia_commons=File:…`.
+  **Merkmale:** Lieferdienst, Zum Mitnehmen, Bio, Vegan, Vegetarisch, Draußen
+  sitzen, WLAN, Drive-in, Rollstuhl – je Ja/Nur/Nein (was schon bei den
+  Angaben steht, nicht noch einmal). Die Ortskarte zeigt sie wie bei Google
+  unter dem Namen („Bäckerei · Lieferdienst · Bio“), darunter die
+  Beschreibung (ui/poi-info.js `TRAITS`).
+  **Alle Tags:** die Rohdaten, eine Zeile `Schlüssel=Wert` – ändern,
+  ergänzen, Zeile löschen = Tag entfernen; was man oben in den Feldern
+  ändert, läuft dort gleich mit und gilt vorrangig.
+  **Eintragen:** Art (mit Suche), Marke, Name, die Angaben der gewählten Art
+  (passen sich beim Wechsel an), Beschreibung, Öffnungszeiten, Telefon,
+  Website, Adresse; unter „Weiteres“ Programm, Bild, Merkmale und „Weitere
+  Tags“, die zu den Angaben dazukommen.
   Die **Öffnungszeiten** als aufklappbarer Block (osm/hours-editor.js):
   Montag bis Sonntag und Feiertage untereinander, rechts die Zeiten (mehrere
   je Tag, schmale Felder fürs Handy), „+ Zeit“, bei Feiertagen „wie
@@ -855,7 +1246,7 @@ gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
   wird: **Konto verbinden** führt zu Einstellungen → Konto
   (`settings.html#osm`), **Als Hinweis senden** schickt es anonym als Hinweis.
 - **Meldungen unterwegs** (Stau, Unfall, Baustelle) mit kurzer Rückfrage für
-  andere („Baustelle noch da? Ja/Nein“). Autobahn-Verkehrslage aus den offenen
+  andere als Pille („Immer noch Stau?“, siehe Fragen unterwegs). Autobahn-Verkehrslage aus den offenen
   Daten der Autobahn GmbH.
 
 ## 18. WMap-Konto (OpenStreetMap) und Server
@@ -901,22 +1292,52 @@ Kachel in der Übersicht).
 Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 
 - **Darstellung:** hell oder dunkel – wie das System (Standard), Hell, Dunkel;
-  in der Android-App „Berechtigungen“. Am Handy stehen Auswahlfelder unter
+  im Browser am Rechner „Karten-Links (geo:) mit WMap öffnen“, in der
+  Android-App „Berechtigungen“. Am Handy stehen Auswahlfelder unter
   ihrer Beschriftung, lange Knopftexte brechen um.
 - **Unterwegs:** Karte für die Navigation offline speichern, Zoom in der
   Navigation (Automatisch/Näher/Mehr Überblick), 3D in der Navigation,
-  Datensparmodus, Stimme, Spritpreise.
+  **Kurze Fragen unterwegs** je Fortbewegung (Zu Fuß, Rad, Auto – siehe
+  [17](#17-mitmachen-bei-openstreetmap-meldungen)), Datensparmodus, Stimme,
+  Spritpreise, Offline-Karten (Gebiete-Editor).
 - **Konto** (`#osm`): Anmelden mit OpenStreetMap (zugleich WMap-Konto), wer
   angemeldet ist, Abmelden, „Konto löschen“ (→ `deleteKonto.html`), für
   Entwickler Server und Client-ID.
-- **Mitmachen:** Weg aufzeichnen und danach fragen, anonym als Hinweis.
+- **Mitmachen:** Weg aufzeichnen und danach fragen, Aufzeichnung löschen,
+  ohne Konto als Hinweis senden, eigene Beiträge.
 - **Daten:** Jede Navigation merken (Standard: aus – geplante Touren und
-  „Aufzeichnen“ werden immer gespeichert), Sicherung & Synchronisation,
-  aufgezeichnete Wege, Suchverlauf löschen.
+  „Aufzeichnen“ werden immer gespeichert), **Aufgezeichnete Touren auf der
+  Karte** (alle · dieses Jahr · letzte 365 Tage · letzte 30 Tage, siehe
+  [10](#10-meine-touren-geplant-aufgezeichnet-bus--bahn-orte)), Sicherung &
+  Synchronisation, aufgezeichnete Wege, Suchverlauf löschen.
 
 ## 20. Offline und Datenverbrauch
 
-- Der Service Worker hält die App offline bereit (erst Netz, sonst Cache).
+- Der Service Worker (`sw.js`) hält **genau eine Version** der App bereit –
+  **erst Cache, sonst Netz**, auch mit Netz. Jede Fassung hat ihren Cache
+  `wmap-app-<Version>-<Stand>`; beim Installieren lädt er alle Dateien aus
+  `appdata/sw-files.json` vorab (von `appdata/version.py` erzeugt: alles,
+  was die Seiten über `import`, `@import`, `url()`, `src`/`href` erreichen –
+  aus wuefl-libs nur das Genutzte, zurzeit gut 8 MB) – im Hintergrund, sechs
+  zugleich, jede Datei nur nachgefragt (unverändert bzw. gerade von der Seite
+  geladen: 304, nichts wird doppelt übertragen). Angemeldet wird er beim
+  ersten Besuch erst, wenn die Seite steht. Der **Stand** (`BUILD` in
+  `sw.js`) ist eine Prüfsumme über alle diese Dateien: Dieselbe Nummer mit
+  geänderten Dateien noch einmal hochgeladen ist ein neuer Service Worker
+  mit eigenem Speicher – die laufende Seite bleibt ganz bei ihrer Fassung,
+  die neue gilt ab dem nächsten Start (Alt und Neu mischen sich nie). Nur
+  `appdata/messages.json` kommt immer erst aus dem Netz (sie sagt, ob es
+  Neues gibt), `bEnd/` nur aus dem Netz.
+- **Updates** (`js/ui/news.js`, nur mit Netz): Ist im `changelog` eine
+  neuere Version, lädt der Browser die neue `sw.js` im Hintergrund, und es
+  kommt „Neue Version verfügbar“ – **Aktualisieren** oder **Später** (dann
+  erst beim nächsten Start wieder). Ausgelassene Versionen werden
+  übersprungen; nach dem Aktualisieren zeigt die Seite alles Neue seit der
+  zuletzt gesehenen Version. Zwingend (ohne Später, Escape schließt nicht)
+  bei `minVersion` bzw. `minAppVersion`, siehe `messages.json` unten.
+- Auf **localhost** arbeitet der Service Worker wie früher erst mit Netz –
+  Änderungen sind beim Entwickeln sofort zu sehen. Cache first ausprobieren:
+  über `127.0.0.1` statt `localhost` öffnen (so auch `test/update.py`).
 - Kacheln, Schriften und Symbole angesehener Gegenden bleiben im Cache
   `wmap-tiles-v1` (bis 8000 Kacheln, älteste zuerst raus).
 - Vor der Navigation werden bis zu 2500 Kacheln entlang der Route geladen –
@@ -924,8 +1345,26 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
   wird er gelöscht; reicht der Platz vorher nicht, weicht zuerst die
   **älteste** Navigation. Schon vorhandene Kacheln werden übernommen statt
   neu geladen. Höhendaten nicht – ohne Netz bleibt die Karte darum flach.
-- **Offline-Karten** (`offline.html`, Kachel in der Übersicht, Link in den
-  Einstellungen): Gebiete als Rechteck (zwei Ecken ziehen) oder freie Form
+  Ohne Service Worker (App mit eingepackter Oberfläche – `http://tauri.localhost`
+  darf keinen anmelden) lädt die Seite selbst vor, sechs zugleich; die
+  Kacheln liegen dann im HTTP-Cache des WebViews (`saveRouteOffline`).
+- **Seite „Offline“** (`offline-daten.html`, Kachel in der Übersicht,
+  `js/pages/offline-daten.js`): alles, was ohne Netz auf dem Gerät liegt,
+  nach Art – je Eintrag **„Nicht mehr offline“**:
+  - **Karten-Gebiete** mit Größe, Kacheln und Stand; antippen zeigt das
+    Gebiet im Editor (`offline.html?gebiet=ID`), „Neues Gebiet“ und
+    „Gebiete bearbeiten“ führen hin. Entfernen fragt nach.
+  - **Aufgezeichnete Touren:** ohne Ordner liegen alle ganz auf dem Gerät
+    (nur die Zahl); mit Ordner die der letzten Zeit und die als „offline
+    verfügbar“ markierten – diese als Liste, antippen öffnet die Tour.
+  - **Geplante Touren** – immer ganz in der App, antippen öffnet sie.
+  - **Karten der Navigation** mit Datum, Kacheln und Resttagen, einzeln
+    oder alle löschen (`navCaches`, `clearNavCaches` in
+    `js/data/offline.js`, auch für die Übersicht).
+  Unten steht der belegte Speicher. Offline-Gebiete werden **nicht von
+  selbst aktualisiert** – nur mit „Neu laden“ im Editor.
+- **Offline-Karten – der Gebiete-Editor** (`offline.html`, von der Seite
+  „Offline“ und aus den Einstellungen): Gebiete als Rechteck (zwei Ecken ziehen) oder freie Form
   (Punkte tippen) aufs Gerät laden. Vorher steht die Größe da – geschätzt
   aus einer Stichprobe echter Kacheln, in der Stadt sind sie viel größer als
   auf dem Land. Detail „Alles“ (bis Zoom 14) oder „Übersicht“ (bis 11), auf
@@ -943,7 +1382,9 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 
 | Was | Wo | Verlässt das Gerät? |
 |---|---|---|
-| Aufgezeichnete Wege | IndexedDB `wmap` / tracks | nur per Ordner, GPX, Sicherung |
+| Aufgezeichnete Wege | IndexedDB `wmap` / tracks – mit verbundenem Ordner von älteren nur die Karteikarte, der Rest in der GPX-Datei | nur per Ordner, GPX, Sicherung |
+| Für Android Auto: geplante Touren, Lesezeichen, letzte Ziele, ein paar Einstellungen, „Karte im Auto läuft“ | Android SharedPreferences `wmap_shared` (nur in der Android-App) | nein |
+| Android Auto: letzter Standort für den nächsten Start | localStorage `wmap.carPos` | nein |
 | Geplante Touren | localStorage `wmap.tours` | nur per Ordner, GPX, Link, Veröffentlichen |
 | Eigene Ebenen, Plugins, Zugangsdaten | IndexedDB / layers | nur „Als Plugin“ |
 | Verbundener Ordner | IndexedDB / kv | nein |
@@ -966,10 +1407,210 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 | `?ort=…`, `?route=…`, `?anfrage=…` | Geteiltes |
 | `?geo=geo:51.53,9.93?q=…` | Karten-Link einer anderen App (`geo:`) – Punkt, Punkt mit Namen oder Suche |
 | `?sim`, `?tempo=4` | Navigation simulieren |
-| `wege.html?tab=geplant`, `?tour=ID`, `?id=ID` | Meine Touren |
+| `?car`, `&at=lon,lat` | Karte für den Autobildschirm (Android Auto, siehe [23](#23-android-auto)); `at`: dort beginnen |
+| `?tour=ID&start`, `?track=ID&start` | geplante bzw. aufgezeichnete Tour navigieren |
+| `wege.html?tab=geplant`, `?tour=ID`, `?id=ID`, `#weg=…` | Meine Touren; `#weg=` ist eine geteilte Aufzeichnung |
 | `entdecken.html#wege\|andere`, `?view=lon,lat,zoom` | Entdecken |
-| `offline.html?neu` | Offline-Karten: gleich ein neues Gebiet wählen |
+| `offline-daten.html` | Seite „Offline“: alles, was ohne Netz auf dem Gerät liegt |
+| `offline.html?neu`, `?gebiet=ID` | Gebiete-Editor: gleich ein neues Gebiet wählen bzw. auf ein Gebiet zoomen |
+| `sync.html`, `import.html` | Sicherung & Synchronisation; GPX öffnen |
 | `plugins.html?f=layer\|extension\|own\|active`, `?id=…` | Plugins |
+
+**Shortcuts** (lange aufs App-Symbol – installierte Web-App, Android, Linux):
+Route planen, Aufzeichnen, Meine Touren (`shortcuts` in
+`appdata/manifest.json`; für die Apps siehe `src-tauri/README.md`).
+
+## 23. Android Auto
+
+Mit dem Handy am Auto erscheint WMap in Android Auto als Navigations-App.
+Das Auto zeigt dabei nur Googles Vorlagen – eigene Oberflächen lässt
+Android Auto nicht zu (Ablenkung). WMap malt einzig die Karte selbst:
+
+- **Start am Standort:** Die Karte beginnt gleich dort, wo das Auto steht,
+  geneigt – nicht beim Globus oder beim letzten Ausschnitt der App. Android
+  gibt den letzten bekannten Standort schon mit der Adresse mit
+  (`?car&at=lon,lat`, `CarWeb.startAt`), sonst gilt der zuletzt im Auto
+  gemerkte (`wmap.carPos`, alle 15 s aus `js/car/drive.js`).
+- **Startseite:** links eine feste Such-„Leiste“ – **Suchen** und daneben das
+  Routen-Symbol (Ziel wählen, ein Tipp plant gleich die Route). Sie bleibt
+  stehen; die Leisten des Autos blendet Android Auto nach ein paar Sekunden
+  aus. Rechts von oben: Übersicht (nur mit Route), +, −, Standort.
+- **Suchen:** oben das Suchfeld, rechts der Umschalter **Meine Touren** /
+  **Orte** (Reiter erlaubt Android Auto nur auf der Startseite). Orte leer:
+  **In der Nähe** (Parkplatz und Tanken als Knöpfe, antippen: alle
+  Kategorien als Raster mit großen Symbolen), darunter **Lesezeichen**
+  (Zuhause und Arbeit als Knöpfe, antippen: alle gemerkten Orte als Raster
+  aus Kacheln mit Entfernung – `bookmarks` in `js/car/car.js`,
+  `BookmarksScreen`; die Zeile steht auch ohne Gemerktes da), dann die
+  letzten Ziele. Kachel, Knopf und letztes
+  Ziel führen gleich zur Routenwahl. Mit Text findet die Suche gemerkte
+  Orte weiter in der Liste.
+  **Meine Touren:** nur die **fürs Auto geplanten** Touren (Planer →
+  Unterwegs als „Auto“; Wander- und Radtouren fehlen, ohne
+  solche steht „Keine Touren fürs Auto geplant“), das Suchfeld filtert.
+- **In der Nähe:** Eine Kategorie zeigt ihre Treffer als Liste neben der
+  Karte, die Karte zoomt dafür auf die nächsten acht heraus (`fitHits`).
+  Jeder Treffer trägt eine **Nummer in Klammern hinter dem Namen**
+  („Parkplatz, (3)“ – mit Komma, sie gehört nicht zum Namen) und steht mit derselben Nummer und dem Symbol der Kategorie auf der Karte (`showNumbers` – statt der
+  Symbole, die nicht sagen, welcher es ist). Ein Treffer der Liste führt
+  direkt zur Routenwahl, ohne die Ortskarte dazwischen; ein Tipp auf den
+  nummerierten Punkt öffnet den Ort.
+- **Entfernungen in den Listen** (Suche, letzte Ziele, Lesezeichen, „In der
+  Nähe“): bei den **ersten drei** die Strecke auf der Straße – dieselbe
+  Zahl wie danach in der Route –, bei den übrigen **„≈“ und die
+  Luftlinie**. So fragt nicht jede Zeile den Routenserver
+  (`roadDistances` in `js/services/routing.js`: nahe Ziele in einer
+  Sammelabfrage `sources_to_targets`, ferne einzeln als Route ohne
+  Wegbeschreibung; gemerkt je Start und Ziel). Dasselbe gilt für die
+  Vorschläge der Suche in der App.
+- **Immer mit dem Auto:** Im Auto wird jede Route mit dem Profil Auto
+  gerechnet – auch wenn am Handy zuletzt Rad oder zu Fuß gewählt war; die
+  Wahl am Handy bleibt davon unberührt (`setProfile` in
+  `js/app/route-plan.js`).
+- **Standort-Knopf wie in der Navigation am Handy:** ◎, solange die Karte
+  nicht folgt, sonst Pfeil (geneigt) bzw. Kompass (flach); antippen holt
+  zurück bzw. wechselt geneigt ↔ flach (Neigen mit zwei Fingern reicht das
+  Auto nicht an Apps weiter).
+- **Fahren ohne Route wie in der Navigation:** Pfeil statt Punkt, beim
+  Fahren (ab ~7 km/h) auf der Straße (nächste Autostraße aus den
+  Kartenkacheln, passend zur Fahrtrichtung), die Karte folgt geneigt; immer sichtbar Tempo,
+  Tempolimit (Valhalla `/locate`, höchstens alle 10 s) und der
+  Straßenname (`js/car/drive.js`). Beim Navigieren kommen Tempo und Limit
+  von der Navigation.
+- **Orte antippen** auf der Karte (Parkplatz, Laden, Treffer) oder aus der
+  Suche öffnen: wie der Dialog in der App – Art, Adresse, Öffnungszeiten,
+  Merken als Stern oben. Die Route dorthin wird gleich mitgerechnet und
+  auf der Karte gezeigt; in der ersten Zeile stehen Dauer und Strecke der
+  gewählten, unten **Los** und **Filter**. Eine andere Route wählt man
+  durch Antippen in der Karte. Während einer laufenden Navigation bleibt
+  es bei „Route“ und „Abbrechen“ (das Ansehen eines Orts soll die Fahrt
+  nicht abbrechen). Ein Ziel kommt erst mit „Los“ in die letzten Ziele.
+- **✕ oben** (ab dem dritten Bildschirm) führt in einem Schritt zurück zur
+  Karte – statt mehrmals „Zurück“.
+- **Routenwahl** gebaut wie der Ort: Karte mit Feld daneben, je Route eine
+  Zeile mit Dauer und Länge (höchstens vier, immer in derselben
+  Reihenfolge): die gewählte mit Pfeil und „Gewählt“, jede andere mit einem
+  **Haken-Knopf zum Wählen** – die Zeilen selbst lässt Android Auto in
+  diesem Feld nicht antippen. Auch ein **Tipp auf die Route in der Karte**
+  wählt sie. Am eigenen Standort steht kein Startpunkt (er verdeckte den
+  Pfeil). Darunter groß **Los** und **Filter**. Die Routen füllen die
+  freie Fläche neben dem Feld: `fitTo` nimmt der Karte vorher den Rand, den
+  sie aus der freien Fahrt noch trägt – MapLibre zählt ihn sonst zum neuen
+  dazu, die Route lag dann winzig in der Mitte.
+- **Filter:** Autobahnen, Mautstraßen, Fähren vermeiden – dieselben
+  Einstellungen wie hinter dem Filter-Knopf der App (`wmap.routePrefs`;
+  das Auto liest sie vor jeder Route neu, eine Änderung im Auto gilt auch
+  in der App). Zurück in der Routenwahl wird neu gerechnet
+  (`RoutePrefsScreen`, `routesAgain`).
+- Beim Start der Navigation verschwindet der Pfeil der freien Fahrt sofort
+  (nicht erst mit der nächsten Standortmeldung), nach dem Ende steht er
+  gleich wieder am letzten Standort (`js/car/drive.js`).
+- „Los“ startet die
+  Navigation: Pfeil, Entfernung, Straße und Ankunftszeit in der Vorlage des
+  Autos, Ansagen über die Lautsprecher des Autos, Ton aus, „In der Nähe“
+  unterwegs, Übersicht der ganzen Route; beendet wird mit dem ✕ neben der
+  Ankunftszeit (von Android Auto, auch wo Anweisung und Zeit stehen, legt
+  das Auto fest).
+- **Ziel erreicht:** Die Ankunftskarte bleibt stehen (0 min · 0 m) – an
+  ihr hängt das ✕ zum Beenden; nach **30 s** endet die Navigation von
+  selbst (`ARRIVED_MS` in `js/car/car.js`).
+- **Kurze Fragen zum Mitmachen** (Pillen, „Immer noch Stau?“) kommen als
+  Hinweis des Autos – die Pille wie am Handy mit **✕** und „Bestätigen“,
+  sonst mit ihren ersten zwei Knöpfen. Hinweise zeigt Android Auto nur
+  während der Navigation.
+- **Fragen nach der Fahrt** („3 kurze Fragen zu deinem Weg“) kommen im Auto
+  nicht – dort lassen sie sich nicht beantworten. Die App bietet sie beim
+  nächsten Start an (`wmap.survey.fromCar`, `js/app/mitmachen.js`).
+- **Offline-Gebiete** der App nutzt die Karte im Auto mit: In der fertigen
+  App laden beide von app.wuefl.de und teilen sich Speicher und Service
+  Worker (am Gerät nachgeprüft: eine Kachel aus einem Gebiet der App kommt
+  in der Auto-Seite an).
+- Ohne Standort-Freigabe fragt das Auto am Handy danach.
+- „Navigiere zu …“ aus anderen Apps oder per Sprache (`geo:`) öffnet die
+  Routenwahl bzw. die Suche.
+
+Technik: Die Vorlagen stehen in `tools/android/car/` (Kotlin, Car App
+Library), `tools/android-einbinden.py` setzt sie ins erzeugte Android-Projekt.
+Die Karte ist die Webversion mit `?car` (`js/car/car.js`, `js/car/drive.js`, `css/app/car.css`)
+in einem eigenen WebView auf der Kartenfläche des Autos (virtuelles Display);
+sie beantwortet die Fragen der Vorlagen – Suche, Kategorien, Ort, Routen,
+Touren – mit derselben Logik wie die App. Die Debug-Fassung lädt sie vom
+Rechner (`adb reverse tcp:8080 tcp:8080`), sonst von app.wuefl.de.
+
+**Dieselben Touren und Lesezeichen wie in der App:** Die fertige App läuft
+wie die Karte im Auto von app.wuefl.de – beide WebViews haben dann
+denselben Browser-Speicher, es gibt nichts abzugleichen. Anders, wenn die
+Adressen verschieden sind: Die Debug-Fassung läuft unter `tauri.localhost`
+(die Karte im Auto vom Rechner), ebenso eine App, die ohne Netz bei ihrer
+eingepackten Kopie bleibt – „Meine Touren“ war dort im Auto leer. Beide
+Seiten gleichen darum über einen gemeinsamen Speicher von Android ab
+(SharedPreferences `wmap_shared`, `WMapAndroid.shareGet/shareSet` in
+`MainActivity.kt` und `car/CarWeb.kt`, `js/data/car-share.js`): geplante
+Touren und ein paar Einstellungen (Routen-Vorlieben, Stimme, Spritpreise)
+von der App ins Auto, Lesezeichen und letzte Ziele in beide Richtungen (je
+Eintrag das Neuere, Gelöschtes bleibt gelöscht). Jede Seite legt ihre
+Adresse dazu; übernommen wird nur von einer anderen Adresse – bei
+gemeinsamem Speicher fasst das Auto nichts an. Die App legt beim Start und
+nach jeder Änderung ab, das Auto liest beim Start und bevor es Touren oder
+Ziele auflistet. Die App muss dafür einmal geöffnet gewesen sein.
+
+**Rechenzeit und Wärme** (`js/core/fps.js`): Die Karte im Auto und die App
+sind zwei WebViews derselben App – sie teilen sich einen Rechen-Thread. Am
+Pixel 9 gemessen zeichnete die Auto-Seite bei freier Fahrt gut 40
+Kartenbilder je Sekunde zu je 15–19 ms (64–80 % der Rechenzeit); navigierte
+die App dazu, fiel jede auf rund 20 Bilder, das Handy wurde heiß und
+drosselte – die Karte hing dann hunderte Meter hinter dem Standort her und
+reagierte erst nach Sekunden. Darum:
+
+- Im Auto höchstens **20 Bilder je Sekunde** (30, solange ein Finger die
+  Karte verschiebt) – gemessen danach 18 Bilder, 30 % der Rechenzeit.
+- Die **App zeichnet nur noch 10 Bilder je Sekunde**, solange die Karte im
+  Auto läuft: Das Auto meldet sich alle 5 s im gemeinsamen Speicher
+  (`carAlive`, `js/data/car-share.js`); bleibt die Meldung 15 s aus, gilt
+  die App wieder allein.
+- **Nur die neueste Standortmeldung zählt** (`__carFix` in `index.html`):
+  Kommt die Seite einmal nicht nach, staut sich nichts auf. Wischen und
+  Zoomen werden je Bild zu einem Schritt zusammengefasst.
+
+**Höchstens fünf Bildschirme hintereinander:** Android Auto zählt mit, wie
+viele Vorlagen eine App nacheinander zeigt („Task step … of 5“ im Protokoll
+des Autos); der sechste bleibt leer. Die Navigation setzt den Zähler zurück,
+„Zurück“ senkt ihn, ein Neuzeichnen derselben Vorlage zählt nicht. Darum
+sind die Wege kurz gehalten: Das Raster „In der Nähe“ **ersetzt** die Suche,
+statt über ihr zu liegen (erst zurück zur Karte, die öffnet es dann –
+`WMapSession.afterHome`, `SearchScreen.replace` in
+`tools/android/car/CarScreens.kt`), und ein Treffer geht ohne Ortskarte zur
+Routenwahl. So ist „Los“ auch auf dem längsten Weg (Suchen → In der Nähe →
+Treffer → Routenwahl) der vierte Schritt, der Filter der fünfte.
+
+**Routenwahl ohne Googles Vorlage:** `RoutePreviewNavigationTemplate` blieb
+in der aktuellen Fassung von Android Auto leer, sobald der Bildschirm davor
+schon eine Karte zeigte (Ort nach Kartentipp, Trefferliste) – sie ging nur
+direkt aus der Suche. Die Routenwahl ist darum ab Car API 7 eine
+`MapWithContentTemplate` mit `PaneTemplate`; Googles Vorlage bleibt für
+ältere Autos (`RoutePreviewScreen.classic()`).
+
+Zeigt das Auto eine Vorlage ohne Karte (Suche, Listen), nimmt es der App die
+Kartenfläche weg. Die Seite läuft dann weiter (`CarWeb.onSurfaceDestroyed`
+hält sie nicht an, ihr Prozess bleibt wichtig) – sie beantwortet ja gerade
+dann die Suche, „Meine Touren“ und die Ziele. Angehalten kamen Timer und
+Netz der Seite nicht mehr zurück: die Listen blieben leer.
+
+Ausprobieren ohne Auto: Android Auto auf dem Handy → Version zehnmal
+antippen → Entwicklereinstellungen → „Unbekannte Quellen“ an (sonst fehlt
+eine nicht aus dem Play Store installierte App) → Menü „Head Unit Server
+starten“; am Rechner `tools/android-auto.sh` (lädt Googles Desktop Head
+Unit beim ersten Mal, richtet die adb-Weiterleitungen ein; auf ARM-Linux
+über muvm/FEX, siehe `tools/README.md`). Mit `id3`, `mercedes`, `golf` oder
+`klein` als erstem Wort zeigt es den Bildschirm dieses Autos
+(`tools/dhu/*.ini`). **Mit Kabel:** Über WLAN meldet sich adb bei jedem
+Aussetzer mit anderem Port neu an, die Weiterleitungen sind dann weg und
+der Simulator verliert das Handy – das Skript nimmt darum das Kabel, wenn
+beides verbunden ist, und startet den Simulator nach einem Abriss von
+selbst neu. Was Android Auto mit den Vorlagen macht, zeigt
+`adb shell setprop log.tag.CarApp.H.Dis VERBOSE` (ebenso `CarApp`,
+`CarApp.H`, `CarApp.H.Tem`; gilt bis zum Neustart des Handys) in `adb
+logcat`.
 
 ## Werkzeuge
 
@@ -977,11 +1618,13 @@ Zentral für alle Projekte unter `wuefl_products` – die Skripte liegen neben
 `git-release` in `~/wuefl_profiles/shell_scripts` (im PATH):
 
 ```bash
-tauri-android wmap              # bauen, aufs Handy, Protokoll
+tauri-android wmap              # bauen, aufs Handy, Protokoll (Debug-Fassung: heißt „wmap-Debug“)
 tauri-android wmap build        # nur bauen (auch: clean, install, log, connect)
 tauri-android wmap release      # signiertes AAB (Play Store) + APKs → src-tauri/target/android-release/
-takeshots wmap                  # Screenshots nach appdata/images/
+takeshots wmap                  # Screenshots nach appdata/images/, Werbebilder nach appdata/werbung/
+takeshots wmap compose          # nur die Werbebilder neu zusammensetzen (auch: shots)
 takeshots wmap --eigener-server # ohne Docker
+tools/android-auto.sh id3       # Android Auto am Rechner (Simulator), siehe Abschnitt 23
 ```
 
 - `tauri-android` liest den Paketnamen aus `src-tauri/tauri.conf.json` und
@@ -1002,7 +1645,12 @@ takeshots wmap --eigener-server # ohne Docker
   `src-tauri/tauri.conf.json` – vor jedem Upload erhöhen.
 - `takeshots` liest `appdata/takeshots.json`, setzt `{base}` auf den
   Docker-Server (`http://localhost:8080/web/wuefl_products/wmap/`) und bricht
-  mit „Server nicht erreichbar“ ab, wenn der nicht läuft.
+  mit „Server nicht erreichbar“ ab, wenn der nicht läuft. Welches Bild was
+  zeigt und welche acht Werbebilder in den Play Store gehören, steht in
+  [`tools/README.md`](tools/README.md); die Store-Texte liegen in
+  `appdata/store/de-DE/`. Die Bilder aus Android Auto kommen aus dem
+  Simulator: Navigation (`screenshot-auto*.png`) und Routenwahl mit „Los“
+  (`screenshot-auto-route*.png`), je Tag und Nacht.
 - **GitHub Actions** (`.github/workflows/build.yml`, wie bei WKeePass): ein Tag
   `v*` (von `git-release`) baut Windows (.exe), macOS (.dmg), Linux (RPM,
   AppImage, je x86_64/aarch64) und Android (AAB + APKs) und hängt alles an
@@ -1025,12 +1673,13 @@ takeshots wmap --eigener-server # ohne Docker
   | Ordner | Was drin ist |
   |---|---|
   | `app.js`, `app/` | Kartenseite (`index.html`): Einstieg und ihre Teile, siehe unten |
-  | `pages/` | Einstieg jeder anderen Seite: Übersicht, Meine Touren, Tour planen, Entdecken, Ebenen, Plugins, Einstellungen, Konto löschen |
+  | `pages/` | Einstieg jeder anderen Seite: Übersicht, Meine Touren, Tour planen, Entdecken, Ebenen, Plugins, Einstellungen, Sicherung & Synchronisation, Offline, Offline-Karten (Gebiete), GPX öffnen, Konto löschen |
+  | `car/` | Karte für Android Auto (`index.html?car`): Schnittstelle für die Vorlagen des Autos, Fahren ohne Route |
   | `ui/` | HTML-Bausteine: Dialoge und Toast, Sheet, Leiste und Menü, Teilen, Höhenprofil, Ebenen-Menü, Ort-Infos, Routen-Filter, Abschnitte Bus & Bahn, Aufzeichnen, Etappen |
   | `map/` | Karte: Stil und Ebenen, eigene Ebenen, fertige Ebenen, Gebäude im Satellitenmodus, Ampeln, Orte aus den Kacheln, Tastatur, Plugins ausführen |
   | `nav/` | Navigation unterwegs: Ansicht, Ansagen, Hinweise, Bild in Bild, Meldungen |
   | `services/` | Dienste im Netz: WMap-API und Konto, Suche, Routing, Overpass, Fahrplan, ÖPNV, Verkehr, Bilder, bekannte Touren |
-  | `data/` | Was auf dem Gerät bleibt: Speicher, Datenbank, Gemerktes, Wege, Spur, Ordner, ZIP, Offline |
+  | `data/` | Was auf dem Gerät bleibt: Speicher, Datenbank, Gemerktes, Wege (Aussehen, Zahlen, Teilen, Doppelte), Spur, Ordner und Abgleich, ZIP, Offline, Plugin-Ordner, Abgleich mit Android Auto |
   | `osm/` | OpenStreetMap: Anmelden und Hochladen, Objekte laden, Bearbeiten, Fragen (Mitmachen), Beiträge zählen |
   | `core/` | Grundlagen ohne Oberfläche: Endpunkte und Profile, Geometrie, Kategorien, Danksagung, Geräte-Funktionen, Hell/Dunkel |
 
@@ -1052,6 +1701,7 @@ takeshots wmap --eigener-server # ohne Docker
   | `map-clicks.js` | Klicks und langes Drücken, Ebenen-Menü, Tastatur |
   | `nav.js` | Navigation, Bild in Bild, Offline, Suche unterwegs |
   | `report.js` | Fragen und Melden unterwegs |
+  | `ask-along.js` | Kurze Fragen unterwegs („Neuer Weg?“, „Gibt es … noch?“) |
   | `mitmachen.js` | Mitmachen bei OpenStreetMap |
 
   Die Teile rufen sich gegenseitig über Funktionen auf. Was ein Teil an
@@ -1082,7 +1732,8 @@ takeshots wmap --eigener-server # ohne Docker
   ```json
   {
     "welcome": ["Absatz", "…"],
-    "minVersion": "1.0.0",
+    "minVersion": "2.1.0",
+    "minAppVersion": "2.1.0",
     "messages": [
       { "id": "wartung-okt", "title": "Wartung", "text": ["Absatz", "…"],
         "icon": "construction", "from": "2026-10-01", "until": "2026-10-05" }
@@ -1096,14 +1747,22 @@ takeshots wmap --eigener-server # ohne Docker
   | `welcome` | Dialog beim allerersten Start |
   | `changelog` | nach einem Update: alle Versionen seit der zuletzt gesehenen bis zur laufenden; in der Übersicht über die Versionsnummer alles. Oberster Eintrag = neueste Version – daraus macht `git-release` den Tag und GitHub den Release-Text |
   | `messages` | Nachrichten als Dialog, jede einmal (gemerkt über `id`); `from`/`until` (Datum) optional, `text` HTML erlaubt |
-  | `minVersion` | ist die laufende Version älter: Banner „Aktualisieren“ auf jeder Seite – verwirft die gespeicherten App-Dateien und lädt neu (in der App wieder von der Webversion) |
+  | `minVersion` | kleinste Version der **Oberfläche**. Ist die laufende älter (z. B. nach einer Änderung an der Server-API): „Update nötig“ – nur **Aktualisieren**, lädt den neuen Service Worker |
+  | `minAppVersion` | kleinste Version der **App selbst** (Tauri-Teil: Rust, Kotlin, Plugins, Rechte). Ist die installierte App älter: gesperrt mit „WMap-App aktualisieren“ – sichern (in den Ordner bzw. als ZIP), dann Play Store bzw. wuefl.de. Im Browser gilt es nicht (`src-tauri/README.md`) |
 
   **Neue Version:** oben im `changelog` eintragen, dann
   `python3 appdata/version.py` – trägt die Nummer in `js/core/config.js`,
-  `src-tauri/tauri.conf.json`, `Cargo.toml` und `Cargo.lock` ein
-  (`--pruefen` nur prüfen; `git-release` prüft das vor dem Tag).
+  `sw.js`, `src-tauri/tauri.conf.json`, `Cargo.toml` und `Cargo.lock` ein und
+  schreibt `appdata/sw-files.json` und den Stand (`BUILD` in `sw.js`) neu
+  (`--pruefen` nur prüfen; `git-release` prüft das vor dem Tag). **Vor jedem
+  Hochladen** laufen lassen, auch ohne neue Nummer – sonst bekommen
+  Installierte die geänderten Dateien nicht.
 
   Die Dialoge kommen nur beim normalen Start der Karte, nicht wenn ein Link
   etwas öffnet – dann beim nächsten Mal (so auch nicht auf den Screenshots).
+  Sie kommen sofort beim Start (nicht erst, wenn die Karte geladen ist) und
+  nacheinander: Was von selbst kommt (Willkommen, Neuigkeiten, „Navigation
+  fortsetzen?“, 3D im Mobilfunk), wartet, bis kein anderer Dialog offen ist
+  (`ask({ auto: true })` bzw. `whenFree()` in `js/ui/dialogs.js`).
   Gemerkt wird in localStorage `wmap.seen`. Zum Ausprobieren:
   `localStorage.setItem('wmap.seen', '{"version":"0.9.0","messages":[]}')`.

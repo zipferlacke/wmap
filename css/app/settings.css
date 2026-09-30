@@ -51,6 +51,10 @@
     section, section > * { min-width: 0; }
     .button { max-width: 100%; white-space: normal; text-align: left; }
     .settings-hint { margin: 0; font-size: var(--fs-200); color: var(--muted); strong { color: var(--text-color, inherit); } }
+    .settings-checks {
+        display: flex !important; flex-wrap: wrap; gap: .3rem .9rem; flex-shrink: 0;
+        label { display: inline-flex; align-items: center; gap: .3rem; cursor: pointer; }
+    }
     .settings-select {
         display: flex; align-items: center; justify-content: space-between; gap: 1rem;
         span { display: grid; gap: .1rem; }
@@ -99,6 +103,25 @@
         pre { margin: .4rem 0; padding: .6rem .7rem; border-radius: .6rem; background: var(--surface-2); overflow-x: auto; font-size: var(--fs-100); line-height: 1.5; }
     }
     .sync-note { display: flex; gap: .4rem; align-items: flex-start; .msr { font-size: 1.1rem; } }
+    /* Doppelte Touren: je Tour wählen, welche Aufzeichnung bleibt */
+    .dup-list { display: flex; flex-direction: column; gap: .6rem; max-height: 26rem; overflow-y: auto; }
+    .dup-group {
+        margin: 0; padding: .5rem .7rem .6rem; border: 1px solid var(--line); border-radius: .7rem;
+        display: flex; flex-direction: column; gap: .35rem; min-width: 0;
+        legend { padding: 0 .3rem; font-weight: 600; font-size: var(--fs-200); small { font-weight: 400; color: var(--muted); } }
+    }
+    .dup-q {
+        margin: .25rem 0 0; display: flex; align-items: center; gap: .3rem; font-size: var(--fs-100); color: var(--muted);
+        text-transform: uppercase; letter-spacing: .03em;
+        .msr { font-size: 1rem; }
+        &.dup-one { text-transform: none; letter-spacing: 0; font-size: var(--fs-200); }
+    }
+    .dup-option {
+        display: flex; align-items: flex-start; gap: .5rem; cursor: pointer; font-size: var(--fs-200);
+        input { flex: none; width: auto; margin: .2rem 0 0; }
+        span { display: flex; flex-direction: column; min-width: 0; }
+        small { color: var(--muted); }
+    }
 }
 .sync .sync-progress {
     height: .4rem; border-radius: 999px; overflow: hidden; background: var(--surface-2);
@@ -109,3 +132,31 @@
 .sync .sync-link { display: inline; color: var(--route); text-decoration: underline; cursor: pointer; }
 .sync .sync-actions > .button { display: inline-flex; align-items: center; width: auto; flex: 0 0 auto; }
 .sync .sync-actions > .button:not(.primary) { border: 1px solid var(--line); background-color: var(--surface); }
+
+/* GPX öffnen (pages/import.js): der Name der Tour als Überschrift, nicht in Großbuchstaben */
+.import h3 { text-transform: none; letter-spacing: 0; font-size: var(--fs-400); color: inherit; }
+
+/* Offline (pages/offline-daten.js): je Art eine Liste – Eintrag öffnen, rechts „nicht mehr offline“ */
+.offline-data {
+    .off-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
+    .off-item {
+        display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+        padding: .5rem .7rem; border-radius: .75rem; background: var(--surface);
+    }
+    .off-main {
+        flex: 1 1 14rem; min-width: 0; display: flex; align-items: center; gap: .6rem; color: inherit; text-decoration: none;
+        > .msr { flex: none; color: var(--route); }
+        > span:last-child { display: grid; gap: .05rem; min-width: 0; }
+        strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        small { color: var(--muted); font-size: var(--fs-200); }
+    }
+    a.off-main:hover strong, a.off-main:focus-visible strong { text-decoration: underline; }
+    .off-remove {
+        flex: none; display: inline-flex; align-items: center; gap: .25rem; margin-left: auto;
+        font-size: var(--fs-200); cursor: pointer; .msr { font-size: 1.1rem; }
+    }
+    .sync-actions > a.button { display: inline-flex; align-items: center; width: auto; flex: 0 0 auto; text-decoration: none; }
+    .sync-actions > a.button:not(.primary) { border: 1px solid var(--line); background-color: var(--surface); }
+    .settings-hint a { color: var(--route); }
+}
+.dash-head > a.button { flex: none; }

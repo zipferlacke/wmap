@@ -6,7 +6,7 @@ import * as osm from '../osm/objects.js';
 import { toast } from '../ui/dialogs.js';
 import { quickAsk } from '../osm/quick-ask.js';
 import { report, answered, reportsShared, REPORT_KINDS } from '../nav/reports.js';
-import { answerParking, anonNotes } from '../osm/survey.js';
+import { answerParking, anonNotes, alongSetting } from '../osm/survey.js';
 import { account } from '../osm/api.js';
 import { contribute } from '../data/trace.js';
 import { distance } from '../core/geo.js';
@@ -26,13 +26,16 @@ function whereItGoes() {
 }
 
 /*
- * An einer gemeldeten Baustelle, Sperrung oder einem Stau vorbei: danach
- * einmal fragen, ob sie noch da ist. Erst nah dran (150 m), dann weiter weg
- * (250 m) – so fragt es erst, wenn man es gesehen hat.
+ * An einer gemeldeten Baustelle, Sperrung oder einem Stau auf der Route
+ * vorbei: danach einmal fragen, ob sie noch da ist – als Pille, die immer
+ * gleich kommt (auch kurz nach einer anderen Frage, die sie wegschiebt).
+ * Erst nah dran (150 m), dann weiter weg (250 m) – so fragt es erst, wenn man
+ * es gesehen hat. ✕ heißt „nicht mehr da“, abgelaufen heißt keine Antwort.
+ * Aus, wenn die kurzen Fragen für diese Fortbewegung aus sind (Einstellungen).
  */
 const passing = new Map();
 export function checkTrafficPassed(point) {
-  if (!nav.active || !contribute.get()) return;
+  if (!nav.active || !contribute.get() || !alongSetting.get(nav.profile)) return;
   for (const t of trafficItems) {
     const ref = `t:${t.road}|${t.title}|${t.point.map((v) => v.toFixed(4)).join(',')}`;
     const d = distance(point, t.point);
@@ -46,13 +49,9 @@ export function checkTrafficPassed(point) {
 
 async function askStillThere(t, ref) {
   const kind = t.kind === 'warning' ? 'hazard' : t.kind;
-  const title = { roadworks: 'Ist die Baustelle noch da?', closure: 'Ist hier noch gesperrt?', jam: 'Ist hier noch Stau?',
-    accident: 'Ist der Unfall noch da?' }[t.kind] ?? 'Gibt es hier noch eine Behinderung?';
-  const v = await quickAsk({
-    icon: TRAFFIC_ICON[t.kind]?.[0] ?? 'warning', title, sub: [t.road, t.title].filter(Boolean).join(' '),
-    options: [{ value: 'yes', label: 'Ja', icon: 'check' }, { value: 'no', label: 'Nein', icon: 'close' }],
-    note: reportsShared() ? 'Hilft allen, die hier später fahren.' : '',
-  });
+  const title = { roadworks: 'Baustelle noch da?', closure: 'Immer noch gesperrt?', jam: 'Immer noch Stau?',
+    accident: 'Unfall noch da?' }[t.kind] ?? 'Immer noch Behinderung?';
+  const v = await quickAsk({ pill: true, urgent: true, icon: TRAFFIC_ICON[t.kind]?.[0] ?? 'warning', title, timeout: 15000, no: 'Nein, nicht mehr da' });
   if (!v) return;
   await report({ kind, point: t.point, answer: v, ref });
   toast('Danke!');

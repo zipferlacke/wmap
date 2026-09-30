@@ -1,0 +1,68 @@
+/* Autobildschirm (Android Auto, js/car/car.js): nur die Karte. Suche, Listen,
+   Anweisung und Knöpfe zeichnet das Auto in seinen Vorlagen darüber – auch
+   Hinweise und kurze Fragen kommen dort als dessen Hinweise. */
+html.car-mode {
+    body > :not(main, script),
+    main > :not(#map),
+    #map .maplibregl-control-container > :not(.maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left),
+    #map .maplibregl-ctrl:not(.maplibregl-ctrl-attrib),
+    .quick-ask, #toast, dialog { display: none !important; }
+    body, main { overflow: hidden; }
+    #map { position: fixed !important; inset: 0 !important; width: auto !important; height: auto !important; }
+    /* Quellenangabe klein und ohne Knopf */
+    .maplibregl-ctrl-attrib { font-size: 9px; opacity: .7; }
+    .maplibregl-ctrl-attrib-button { display: none; }
+}
+
+/* Immer auf der Karte (js/car/drive.js): Tempo und Tempolimit rechts unten,
+   der Straßenname unten in der Mitte – im freien Teil neben den Vorlagen */
+html.car-mode {
+    .maplibregl-user-location-dot, .maplibregl-user-location-accuracy-circle { display: none !important; }
+    .car-hud {
+        position: absolute; inset: 0; pointer-events: none; z-index: 2;
+        font-family: system-ui, sans-serif;
+    }
+    .car-speed {
+        position: absolute;
+        right: calc(var(--car-right, 0px) + 12px);
+        bottom: calc(var(--car-bottom, 0px) + 12px);
+        display: flex; align-items: center; gap: .55rem;
+        padding: .35rem .8rem .35rem .35rem;
+        border-radius: 999px;
+        background: #fff; color: #111;  /* hell wie ein Schild, auch nachts */
+        box-shadow: 0 2px 8px rgb(0 0 0 / .3);
+        .car-limit {
+            display: grid; place-items: center;
+            width: 3.5rem; height: 3.5rem; border-radius: 50%;
+            border: .4rem solid #d32f2f; background: #fff; color: #111;
+            font-weight: 700; font-size: 1.45rem;
+        }
+        .car-limit[hidden] { display: none; }
+        .car-kmh { display: grid; justify-items: center; line-height: 1; min-width: 3.2rem;
+            strong { font-size: 2.2rem; font-variant-numeric: tabular-nums; } small { font-size: .8rem; opacity: .75; } }
+        &.over .car-kmh strong { color: #d32f2f; }
+    }
+    .car-street {
+        position: absolute;
+        left: calc(var(--car-left, 0px) + (100% - var(--car-left, 0px) - var(--car-right, 0px)) / 2);
+        transform: translateX(-50%);
+        bottom: calc(var(--car-bottom, 0px) + 14px);
+        max-width: 45%;
+        padding: .35rem .9rem; border-radius: 999px;
+        background: var(--route, #1a73e8); color: #fff; font-weight: 600; font-size: 1rem;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        box-shadow: 0 2px 8px rgb(0 0 0 / .3);
+    }
+    .car-street[hidden] { display: none; }
+}
+
+/* Treffer einer Kategorie („In der Nähe“): Symbol der Kategorie und die Nummer aus der Liste des Autos */
+html.car-mode .car-hit {
+    display: flex; align-items: center; gap: .15rem;
+    height: 1.9rem; padding: 0 .5rem 0 .3rem; box-sizing: border-box;
+    border-radius: 999px; border: 2px solid #fff;
+    background: var(--c, #1a73e8); color: #fff;
+    font: 700 1rem/1 system-ui, sans-serif;
+    box-shadow: 0 1px 4px rgb(0 0 0 / .45);
+    .msr { font-size: 1.25rem; font-variation-settings: 'FILL' 1; }
+}

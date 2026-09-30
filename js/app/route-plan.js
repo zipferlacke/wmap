@@ -9,7 +9,7 @@ import { mountRoutePrefs } from '../ui/route-prefs.js';
 import { toast } from '../ui/dialogs.js';
 import { nearestOnLine, esc } from '../core/geo.js';
 import { clearCategory } from './category.js';
-import { $, $$, afterLayout, current, debounce, map, markerEl, state } from './core.js';
+import { $, $$, CAR, afterLayout, current, debounce, map, markerEl, state } from './core.js';
 import { placeWaypoint, removePlaceMarker } from './place.js';
 import { clearReach } from './reach.js';
 import { clearRoutes, computeRoutes, fitRoute, routeCtl } from './route-results.js';
@@ -27,6 +27,8 @@ export const isSet = (w) => w.me || !!w.point;
 export function enterRoute({ to = null, from = null, waypoints = null, push = true } = {}) {
   const wasRoute = state.mode === 'route';
   state.mode = 'route';
+  // Für den Standort als Pfeil (map/location-dot.js, css/app/map.css)
+  document.body.classList.add('route-view');
   $('#search-form').hidden = true;
   $('#route-form').hidden = false;
   suggest.hide();
@@ -57,6 +59,7 @@ export function enterRoute({ to = null, from = null, waypoints = null, push = tr
 export function leaveRouteMode() {
   if (state.mode !== 'route') return;
   state.mode = 'search';
+  document.body.classList.remove('route-view');
   routeCtl?.abort();
   state.waypoints = [];
   state.avoid = [];
@@ -115,8 +118,10 @@ const routePrefs = mountRoutePrefs($$('.route-prefs-open'), $('#route-prefs'), {
 });
 
 export function setProfile(p) {
+  // Im Auto wird jede Route mit dem Auto gerechnet (Fahrzeit, Straßen) – und die Wahl am Handy bleibt, wie sie ist
+  if (CAR) p = 'car';
   state.profile = p;
-  local.set('wmap.profile', p);
+  if (!CAR) local.set('wmap.profile', p);
   $$('input[name="profile"]').forEach((r) => { r.checked = r.value === p; });
   $('#add-via').hidden = !!PROFILES[p].transit;
   $('.transit-when').hidden = !PROFILES[p].transit;
@@ -182,6 +187,8 @@ function renderWaypoints() {
   wpMarkers.forEach((m) => m.remove());
   wpMarkers = state.waypoints.map((w, i) => {
     if (!w.point) return null;
+    // Im Auto steht am eigenen Standort schon der Pfeil – der Startpunkt läge darüber
+    if (CAR && i === 0 && w.label === 'Mein Standort') return null;
     const k = wpKind(i);
     const m = new maplibregl.Marker({
       element: markerEl(k.kind, k.icon, k.kind === 'via' ? String(i) : ''),

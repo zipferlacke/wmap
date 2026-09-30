@@ -21,6 +21,13 @@ export const offlineSetting = {
 
 export async function registerOffline() {
   if (!('serviceWorker' in navigator)) return;
+  // Erst die Seite: Beim allerersten Besuch lädt der Service Worker alle
+  // Dateien in seinen Speicher – das soll nicht mit dem Aufbau der Seite um
+  // die Leitung streiten. Ist er schon da, kostet das Anmelden nichts
+  if (!navigator.serviceWorker.controller) {
+    if (document.readyState !== 'complete') await new Promise((r) => addEventListener('load', r, { once: true }));
+    await new Promise((r) => setTimeout(r, 1500));
+  }
   try {
     await navigator.serviceWorker.register('./sw.js');
     const reg = await navigator.serviceWorker.ready;
@@ -108,8 +115,9 @@ export function styleAssets(map) {
  * → Promise<{ tiles, loaded, failed }>; onProgress(done, total)
  */
 export async function saveRouteOffline(map, route, { onProgress } = {}) {
-  if (!('serviceWorker' in navigator)) throw new Error('Offline-Karten gehen in diesem Browser nicht');
-  const reg = await navigator.serviceWorker.ready;
+  // Ohne Service Worker (App mit eingepackter Oberfläche: http://tauri.localhost
+  // darf keinen anmelden) käme `ready` nie – dann lädt die Seite selbst vor
+  const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
   const { template, urls } = styleAssets(map);
   if (!template) throw new Error('Kartenquelle noch nicht geladen');
 
@@ -122,6 +130,7 @@ export async function saveRouteOffline(map, route, { onProgress } = {}) {
   // Der Browser soll den Cache nicht bei Platzmangel still wegräumen
   navigator.storage?.persist?.().catch(() => {});
 
+  if (!reg?.active) return prefetchHere(all, tiles.length, onProgress);
   return new Promise((resolve) => {
     const ch = new MessageChannel();
     ch.port1.onmessage = ({ data }) => {
@@ -130,6 +139,52 @@ export async function saveRouteOffline(map, route, { onProgress } = {}) {
     };
     reg.active.postMessage({ type: 'prefetch', urls: all }, [ch.port2]);
   });
+}
+
+/** Selbst laden – landet im HTTP-Cache des Browsers bzw. WebViews (6 zugleich) */
+async function prefetchHere(urls, tiles, onProgress) {
+  let done = 0;
+  let failed = 0;
+  let next = 0;
+  const worker = async () => {
+    while (next < urls.length) {
+      const u = urls[next++];
+      try { if (!(await fetch(u)).ok) failed += 1; } catch { failed += 1; }
+      done += 1;
+      onProgress?.(done, urls.length);
+    }
+  };
+  await Promise.all(Array.from({ length: 6 }, worker));
+  return { tiles, loaded: done - failed, failed };
+}
+
+/* ── Was für Navigationen vorgeladen ist (Übersicht, Seite „Offline“) ─────── */
+
+const TILE_CACHE = 'wmap-tiles-v1';     // Namen wie in sw.js
+const NAV_CACHE = 'wmap-nav-';
+/** So viele Tage bleibt eine vorgeladene Navigation, dann löscht sie der Service Worker */
+export const NAV_DAYS = 10;
+
+/** → { tiles (Kacheln angesehener Gegenden), navs: [{ name, at, tiles, daysLeft }] }, neueste zuerst */
+export async function navCaches() {
+  try {
+    if (!self.caches) return { tiles: 0, navs: [] };
+    const keys = await caches.keys();
+    const count = async (name) => (await (await caches.open(name)).keys()).length;
+    const tiles = keys.includes(TILE_CACHE) ? await count(TILE_CACHE) : 0;
+    const navs = await Promise.all(keys.filter((k) => k.startsWith(NAV_CACHE)).map(async (name) => {
+      const at = +name.slice(NAV_CACHE.length) || 0;
+      return { name, at, tiles: await count(name), daysLeft: Math.max(0, Math.ceil(NAV_DAYS - (Date.now() - at) / 864e5)) };
+    }));
+    return { tiles, navs: navs.sort((a, b) => b.at - a.at) };
+  } catch { return { tiles: 0, navs: [] }; }
+}
+
+/** Vorgeladene Navigationen löschen – eine (`name`) oder alle samt den Kacheln angesehener Gegenden */
+export async function clearNavCaches(name = null) {
+  if (name) { await caches.delete(name); return; }
+  await caches.delete(TILE_CACHE);
+  for (const k of await caches.keys()) if (k.startsWith(NAV_CACHE)) await caches.delete(k);
 }
 
 /* ── Laufende Navigation merken ───────────────────────────────────────────── */

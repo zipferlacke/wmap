@@ -9,9 +9,11 @@ import { recent } from '../data/store.js';
 import { isStop } from '../services/transit.js';
 import { places, PLACE_KINDS, DEFAULT_LIST } from '../data/saved.js';
 import { ask, toast } from '../ui/dialogs.js';
-import { esc } from '../core/geo.js';
+import { distance, esc, fmtDistance } from '../core/geo.js';
+import { fmtAbout, roadDistances, ROAD_FIRST } from '../services/routing.js';
 import { runCategory } from './category.js';
 import { $, $$, debounce, map, q, state } from './core.js';
+import { isPoi } from './drive-target.js';
 import { paintPlaceActions, placeWaypoint, showPlace } from './place.js';
 import { openReach } from './reach.js';
 import { enterRoute, setProfile } from './route-plan.js';
@@ -38,11 +40,34 @@ export const suggest = {
         <button type="button" data-i="${i}">
           <span class="msr" style="${it.color ? `color:${esc(it.color)}` : ''}">${esc(it.icon)}</span>
           <span class="sg-text"><strong>${esc(it.title)}</strong>${it.subtitle ? `<small>${esc(it.subtitle)}</small>` : ''}</span>
-          ${it.type ? `<span class="sg-type">${esc(it.type)}</span>` : ''}
+          ${it.type || it.point ? `<span class="sg-type">${it.point ? '<b class="sg-dist"></b>' : ''}${it.type ? `<span>${esc(it.type)}</span>` : ''}</span>` : ''}
         </button>
       </li>`;
     }).join('');
     this.el.hidden = !items.length;
+    this.fillRoad(items);
+  },
+  /*
+   * Entfernung vom eigenen Standort: bei den ersten drei Treffern die Strecke auf der Straße – dieselbe Zahl
+   * wie danach in der Route –, bei den übrigen „≈“ und die Luftlinie (nicht jeder Treffer soll den Server
+   * fragen, services/routing.js roadDistances). Die genauen kommen kurz nach der Liste und erst, wenn man
+   * nicht weitertippt; gerechnet mit dem Profil, mit dem zuletzt geplant wurde (sonst Auto).
+   */
+  roadTimer: null,
+  fillRoad(items) {
+    clearTimeout(this.roadTimer);
+    const from = state.position;
+    const at = items.map((it, i) => (it.point ? i : -1)).filter((i) => i >= 0);
+    if (!from || !at.length) return;
+    const el = (i) => this.el.querySelector(`li[data-i="${i}"] .sg-dist`);
+    at.forEach((i) => { const e = el(i); if (e) e.textContent = fmtAbout(distance(from, items[i].point)); });
+    const first = at.slice(0, ROAD_FIRST);
+    this.roadTimer = setTimeout(async () => {
+      const profile = PROFILES[state.profile]?.costing ? state.profile : 'car';
+      const road = await roadDistances(from, first.map((i) => items[i].point), profile).catch(() => null);
+      if (!road || this.items !== items) return;
+      first.forEach((i, k) => { const e = el(i); if (e && road[k]) e.textContent = fmtDistance(road[k].length); });
+    }, 350);
   },
   hide() { this.el.hidden = true; this.el.replaceChildren(); this.items = []; this.active = -1; },
   move(d) {
@@ -83,6 +108,15 @@ let searchCtl = null;
 export function cancelSuggestions() { searchSeq += 1; }
 
 /** Photon-Treffer (und in der Suche: eine passende Kategorie) als Vorschläge. */
+/**
+ * Wo die Suche Nahes zuerst zeigt: am eigenen Standort, solange er im Kartenausschnitt liegt –
+ * dazu passt die Entfernung an den Treffern. Zeigt die Karte eine andere Gegend, gilt deren Mitte.
+ */
+function searchCenter() {
+  const p = state.position;
+  return p && map.getBounds().contains(p) ? p : map.getCenter().toArray();
+}
+
 export async function placeSuggestions(text, onPick, { withCategory = true, extra = [] } = {}) {
   const seq = ++searchSeq;
   const query = text.trim();
@@ -91,7 +125,7 @@ export async function placeSuggestions(text, onPick, { withCategory = true, extr
   searchCtl = new AbortController();
   let results = [];
   try {
-    results = await geocode.search(query, { center: map.getCenter().toArray(), zoom: map.getZoom(), signal: searchCtl.signal });
+    results = await geocode.search(query, { center: searchCenter(), zoom: map.getZoom(), signal: searchCtl.signal });
   } catch (err) {
     if (err.name === 'AbortError') return null;
     toast(err.message);
@@ -100,7 +134,7 @@ export async function placeSuggestions(text, onPick, { withCategory = true, extr
 
   const places = results.map((f) => {
     const d = geocode.describe(f);
-    return { icon: d.icon, title: d.title, subtitle: d.subtitle, type: d.type, run: () => onPick(f) };
+    return { icon: d.icon, title: d.title, subtitle: d.subtitle, type: d.type, point: f.geometry.coordinates, run: () => onPick(f) };
   });
   const cat = withCategory ? matchCategory(query, { loose: true }) : null;
   if (!cat) return [...extra, ...places];
@@ -133,9 +167,9 @@ export function savedItems(onPlace, text = '') {
   const fixedKind = (p) => p.kind === 'home' || p.kind === 'work';
   return places.all().filter((p) => (words.length ? hit(p) : fixedKind(p)))
     .sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind)).slice(0, 6).map((p) => ({
-    section: SAVED_SECTION, icon: PLACE_KINDS[p.kind]?.icon ?? 'star', title: p.name,
+    section: SAVED_SECTION, icon: PLACE_KINDS[p.kind]?.icon ?? 'star', title: p.name, point: p.point,
     subtitle: [fixedKind(p) ? '' : p.list && p.list !== DEFAULT_LIST ? p.list : PLACE_KINDS[p.kind]?.label, p.label].filter(Boolean).join(' · '),
-    run: () => onPlace({ type: 'Feature', geometry: { type: 'Point', coordinates: p.point }, properties: { name: p.name } }),
+    run: () => onPlace({ type: 'Feature', geometry: { type: 'Point', coordinates: p.point }, properties: { name: p.name, _poi: !!p.poi } }),
   }));
 }
 
@@ -148,7 +182,7 @@ export function togglePlace(f, point, title, subtitle) {
   const had = places.find(point);
   if (had) { editBookmark(point, title); return; }
   const tags = f.properties._tags;
-  places.save({ kind: tags && isStop(tags) ? 'stop' : 'fav', name: title, label: subtitle, point, ifopt: tags?.['ref:IFOPT'] ?? '' });
+  places.save({ kind: tags && isStop(tags) ? 'stop' : 'fav', name: title, label: subtitle, point, ifopt: tags?.['ref:IFOPT'] ?? '', poi: isPoi(f) });
   paintPlaceActions();
   toast(`In „${DEFAULT_LIST}“ gemerkt`, { action: { label: 'Ändern', run: () => editBookmark(point, title) } });
 }
@@ -213,7 +247,7 @@ export function withSaved(saved, found) {
 export function recentItems(onPlace, kinds = ['place', 'category', 'route']) {
   return recent.list(kinds).slice(0, 7).map((e) => {
     if (e.kind === 'place') {
-      return { section: RECENT_SECTION, icon: e.icon ?? 'history', title: e.title, subtitle: e.subtitle, run: () => onPlace(e.feature) };
+      return { section: RECENT_SECTION, icon: e.icon ?? 'history', title: e.title, subtitle: e.subtitle, point: e.point ?? e.feature?.geometry?.coordinates, run: () => onPlace(e.feature) };
     }
     if (e.kind === 'category') {
       const cat = byId(e.category);

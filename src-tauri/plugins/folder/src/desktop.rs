@@ -176,3 +176,119 @@ pub fn disconnect<R: Runtime>(app: AppHandle<R>, slot: Option<String>) -> Result
   let _ = fs::remove_file(conf_file(&app, &slot)?);
   Ok(())
 }
+
+#[derive(Serialize)]
+pub struct Saved {
+  name: Option<String>,
+}
+
+/// Eine Datei über den Speichern-Dialog ablegen (ZIP-Export …); `data` in Base64
+#[command]
+pub async fn save<R: Runtime>(app: AppHandle<R>, name: String, data: String) -> Result<Saved, String> {
+  use base64::Engine;
+  let bytes = base64::engine::general_purpose::STANDARD.decode(data.as_bytes()).map_err(|e| e.to_string())?;
+  let start = app.path().download_dir().ok();
+  let (tx, rx) = std::sync::mpsc::channel();
+  app
+    .run_on_main_thread(move || {
+      let mut dialog = rfd::AsyncFileDialog::new().set_title("Speichern").set_file_name(&name);
+      if let Some(dir) = start {
+        dialog = dialog.set_directory(dir);
+      }
+      let dialog = dialog.save_file();
+      std::thread::spawn(move || {
+        let _ = tx.send(tauri::async_runtime::block_on(dialog).map(|h| h.path().to_path_buf()));
+      });
+    })
+    .map_err(|e| e.to_string())?;
+  let picked = tauri::async_runtime::spawn_blocking(move || rx.recv().ok().flatten())
+    .await
+    .map_err(|e| e.to_string())?;
+  let Some(path) = picked else { return Err("abgebrochen".into()) };
+  fs::write(&path, bytes).map_err(|e| e.to_string())?;
+  Ok(Saved { name: path.file_name().map(|n| n.to_string_lossy().into_owned()) })
+}
+
+/* ── Mit WMap geöffnete Dateien ─────────────────────────────────────────────── */
+
+#[derive(Serialize, Clone)]
+pub struct OpenedFile {
+  name: String,
+  text: String,
+}
+
+#[derive(Default)]
+pub struct Opened(std::sync::Mutex<Vec<OpenedFile>>);
+
+#[derive(Serialize)]
+pub struct OpenedList {
+  count: usize,
+  files: Vec<OpenedFile>,
+  /// Seite eines Shortcuts, mit dem WMap gestartet wurde (einmal)
+  #[serde(skip_serializing_if = "Option::is_none")]
+  go: Option<String>,
+}
+
+/// Seite aus dem Shortcut beim Start – bis die Seite fragt
+#[derive(Default)]
+pub struct Go(std::sync::Mutex<Option<String>>);
+
+/// Shortcut aus der .desktop-Datei (`--wmap-go=index.html?action=route`):
+/// nur eine Seite neben der offenen – Kleinbuchstaben, Ziffern, `._?=&-`
+pub fn shortcut_page<I: IntoIterator<Item = S>, S: AsRef<std::ffi::OsStr>>(args: I) -> Option<String> {
+  args.into_iter().find_map(|a| {
+    let page = a.as_ref().to_str()?.strip_prefix("--wmap-go=")?;
+    let ok = page.contains(".html")
+      && !page.contains("..")
+      && page.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "._?=&-".contains(c));
+    ok.then(|| page.to_string())
+  })
+}
+
+/// Mit einem Shortcut gestartet: merken, core/theme.js holt die Seite über `opened`
+pub fn open_page<R: Runtime>(app: &AppHandle<R>, page: String) {
+  if app.try_state::<Go>().is_none() {
+    app.manage(Go::default());
+  }
+  *app.state::<Go>().0.lock().unwrap_or_else(|e| e.into_inner()) = Some(page);
+}
+
+const MAX_OPEN: u64 = 50 * 1024 * 1024;
+
+/// Dateien, mit denen WMap gestartet bzw. geöffnet wurde (Doppelklick, „Öffnen
+/// mit“): nur GPX, höchstens 50 MB. → true, wenn etwas dazukam
+pub fn open_paths<R: Runtime>(app: &AppHandle<R>, paths: impl IntoIterator<Item = PathBuf>) -> bool {
+  if app.try_state::<Opened>().is_none() {
+    app.manage(Opened::default());
+  }
+  let state = app.state::<Opened>();
+  let mut list = state.0.lock().unwrap_or_else(|e| e.into_inner());
+  let before = list.len();
+  for p in paths {
+    if !p.extension().is_some_and(|e| e.eq_ignore_ascii_case("gpx")) {
+      continue;
+    }
+    if fs::metadata(&p).map(|m| m.len() > MAX_OPEN).unwrap_or(true) {
+      continue;
+    }
+    if let Ok(text) = fs::read_to_string(&p) {
+      let name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "Datei.gpx".into());
+      list.push(OpenedFile { name, text });
+    }
+  }
+  list.len() > before
+}
+
+/// Geöffnete Dateien: `peek` nur zählen, sonst abholen (danach ist die Liste
+/// leer); die Seite eines Shortcuts kommt immer mit und nur einmal
+#[command]
+pub fn opened<R: Runtime>(app: AppHandle<R>, peek: Option<bool>) -> OpenedList {
+  let go = app.try_state::<Go>().and_then(|g| g.0.lock().unwrap_or_else(|e| e.into_inner()).take());
+  let Some(state) = app.try_state::<Opened>() else { return OpenedList { count: 0, files: vec![], go } };
+  let mut list = state.0.lock().unwrap_or_else(|e| e.into_inner());
+  if peek.unwrap_or(false) {
+    return OpenedList { count: list.len(), files: vec![], go };
+  }
+  let files = std::mem::take(&mut *list);
+  OpenedList { count: files.len(), files, go }
+}

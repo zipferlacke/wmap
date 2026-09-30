@@ -44,6 +44,24 @@ export const recent = {
     local.set(RECENT_KEY, local.get(RECENT_KEY, []).filter((e) => recentKey(e) !== key));
   },
   clear() { local.set(RECENT_KEY, []); },
+  /**
+   * Mit einer zweiten Liste zusammenführen (App und Android Auto,
+   * data/car-share.js): je Eintrag der neuere, neueste zuerst
+   * → { list, changed (hier kam etwas dazu) }
+   */
+  merge(other) {
+    const mine = local.get(RECENT_KEY, []);
+    const by = new Map();
+    for (const e of [...mine, ...other]) {
+      if (!e?.kind) continue;
+      const k = recentKey(e);
+      if (!by.has(k) || (e.at ?? 0) > (by.get(k).at ?? 0)) by.set(k, e);
+    }
+    const list = [...by.values()].sort((a, b) => (b.at ?? 0) - (a.at ?? 0)).slice(0, RECENT_MAX * 3);
+    const changed = JSON.stringify(list) !== JSON.stringify(mine);
+    if (changed) local.set(RECENT_KEY, list);
+    return { list, changed };
+  },
 };
 
 function recentKey(e) {
@@ -184,11 +202,26 @@ ${pts}
 `;
 }
 
+/** Datei speichern (Text oder Blob) → { name } bzw. null, wenn der Dialog abgebrochen wurde */
 export function download(filename, text, type = 'application/gpx+xml') {
-  const url = URL.createObjectURL(new Blob([text], { type }));
+  const blob = text instanceof Blob ? text : new Blob([text], { type });
+  // In der App: Speichern-Dialog des Systems (Plugin „folder“) – ein Download
+  // über <a download> kommt in den WebViews der Apps nicht an
+  const core = window.__TAURI__?.core;
+  if (core) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(blob);
+    }).then((data) => core.invoke('plugin:folder|save', { name: filename, data, mime: type }))
+      .catch((err) => { if (!/abgebrochen|cancel/i.test(String(err))) throw new Error(String(err?.message ?? err)); return null; });
+  }
+  const url = URL.createObjectURL(blob);
   const a = Object.assign(document.createElement('a'), { href: url, download: filename });
   document.body.append(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return Promise.resolve({ name: filename });
 }

@@ -14,7 +14,8 @@ import { toast } from '../ui/dialogs.js';
 import { editPlace, addPlace } from '../osm/edit.js';
 import { bboxAround, esc } from '../core/geo.js';
 import { clearCategory, runCategory } from './category.js';
-import { $, afterLayout, chipHtml, current, extentToBounds, fitTo, lastHl, map, markerEl, parseTags, q, sheet, showHl, state, viewPadding } from './core.js';
+import { $, afterLayout, chipHtml, current, extentToBounds, fitTo, lastHl, map, markerEl, parseTags, q, releaseLock, sheet, showHl, state, viewPadding } from './core.js';
+import { isPoi } from './drive-target.js';
 import { showLayerInfo } from './map-clicks.js';
 import { nav } from './nav.js';
 import { clearReach, openReach, reach } from './reach.js';
@@ -111,7 +112,7 @@ export async function showPlace(f, { push = true, fly = true, over = false } = {
   const bounds = extentToBounds(f.properties.extent);
   if (fly) {
     if (bounds) afterLayout(() => fitTo(bounds));
-    else afterLayout(() => map.flyTo({ center: p, zoom: Math.max(map.getZoom(), 16), padding: viewPadding(), duration: 1200 }));
+    else afterLayout(() => { releaseLock(); map.flyTo({ center: p, zoom: Math.max(map.getZoom(), 16), padding: viewPadding(), duration: 1200 }); });
   }
 
   const show = (tags) => {
@@ -162,6 +163,16 @@ export async function showPlace(f, { push = true, fly = true, over = false } = {
   }
 }
 
+/** Ort aus OSM bearbeiten */
+function editCurrentPlace() {
+  const f = state.place;
+  if (!f?.properties.osm_type || !f.properties.osm_id) return;
+  editPlace({
+    osm: { type: { N: 'node', W: 'way', R: 'relation' }[f.properties.osm_type] ?? f.properties.osm_type, id: Number(f.properties.osm_id) },
+    tags: f.properties._tags ?? {}, point: f.geometry.coordinates, title: geocode.describe(f).title,
+  }, { toast }).then(() => { if (state.place === f && f.properties._tags) showPlace(f, { push: false, fly: false, over: !!overState }); });
+}
+
 /**
  * Knöpfe je nach Lage: normal Route/Start/Erreichbar, in der Planung
  * Ziel/Zwischenziel/Start, in der Navigation Zwischenstopp.
@@ -171,7 +182,7 @@ export function paintPlaceActions() {
   if (!f) return;
   const point = f.geometry.coordinates;
   const label = f.properties._point ? 'Punkt auf der Karte' : geocode.describe(f).title;
-  const wp = { label, point, me: false };
+  const wp = { label, point, me: false, ...(isPoi(f) ? { poi: true } : {}) };
   const toRoute = (fn) => () => { if (stack.at(-1)?.view === 'place') back(); fn(); };
   let list;
   if (nav.active) {
@@ -193,10 +204,7 @@ export function paintPlaceActions() {
       // OpenStreetMap: Ort aus OSM bearbeiten, am freien Punkt einen neuen eintragen
       f.properties._point
         ? ['add_business', 'Hier eintragen', false, () => addPlace(point, { address: f.properties._address ?? {}, toast })]
-        : f.properties.osm_type && f.properties.osm_id && ['edit_location_alt', 'Bearbeiten', false, () => editPlace({
-          osm: { type: { N: 'node', W: 'way', R: 'relation' }[f.properties.osm_type] ?? f.properties.osm_type, id: Number(f.properties.osm_id) },
-          tags: f.properties._tags ?? {}, point, title: label,
-        }, { toast }).then(() => { if (state.place === f && f.properties._tags) showPlace(f, { push: false, fly: false, over: !!overState }); })],
+        : f.properties.osm_type && f.properties.osm_id && ['edit_location_alt', 'Bearbeiten', false, () => editCurrentPlace()],
     ];
   }
   const box = $('[data-view="place"] .actions');
@@ -265,7 +273,7 @@ export function clearPlace() {
   showHl({});
 }
 
-export const placeWaypoint = (f) => ({ label: geocode.describe(f).title, point: f.geometry.coordinates, me: false });
+export const placeWaypoint = (f) => ({ label: geocode.describe(f).title, point: f.geometry.coordinates, me: false, ...(isPoi(f) ? { poi: true } : {}) });
 
 /** Feature im Photon-Format aus einem Overpass-Punkt (Kategorie-Treffer). */
 export function featureFromPoint(p) {

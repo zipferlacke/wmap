@@ -13,15 +13,15 @@
     <meta property="og:locale" content="de_DE">
     <meta property="og:title" content="WMap – Karte, Navigation und Touren">
     <meta property="og:description" content="Karte, Navigation, Bus &amp; Bahn und Tourenplaner auf Basis von OpenStreetMap – ohne Konto, ohne Werbung. Geteilter Ort oder Route öffnet sich direkt auf der Karte.">
-    <meta property="og:image" content="https://app.wuefl.de/wmap/appdata/social.png">
+    <meta property="og:image" content="https://app.wuefl.de/wmap/appdata/preview.png">
     <meta property="og:image:type" content="image/png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="WMap auf Handy und Rechner: Karte mit Route, Bus &amp; Bahn und Luftbild">
-    <meta name="twitter:card" content="summary_large_image">
+    <meta property="og:image:width" content="256">
+    <meta property="og:image:height" content="256">
+    <meta property="og:image:alt" content="WMap-Logo">
+    <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="WMap – Karte, Navigation und Touren">
     <meta name="twitter:description" content="Karte, Navigation, Bus &amp; Bahn und Tourenplaner auf Basis von OpenStreetMap – ohne Konto, ohne Werbung. Geteilter Ort oder Route öffnet sich direkt auf der Karte.">
-    <meta name="twitter:image" content="https://app.wuefl.de/wmap/appdata/social.png">
+    <meta name="twitter:image" content="https://app.wuefl.de/wmap/appdata/preview.png">
     <link rel="manifest" href="./appdata/manifest.json">
     <link rel="icon" href="./appdata/logo.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="./appdata/wmap-192.png">
@@ -31,6 +31,37 @@
     <link rel="preconnect" href="https://tiles.mapterhorn.com" crossorigin>
     <link rel="preconnect" href="https://photon.komoot.io" crossorigin>
     <link rel="preload" href="https://tiles.openfreemap.org/styles/liberty" as="fetch" crossorigin>
+    <!-- Autobildschirm (?car, js/car/car.js): gleich nur die Karte, sonst blitzt die Oberfläche kurz auf.
+         Im Auto kommt der Standort vom Standortdienst des Handys (Fused Location, wie in der App) über
+         window.__carFix (tools/android/car/CarWeb.kt) – der Standort des WebViews mischt GPS und WLAN und
+         springt im Stand hin und her. Vor allen Modulen, damit Navigation und Karte nur diesen kennen. -->
+    <script>
+      if (/[?&]car(&|=|$)/.test(location.search)) {
+        document.documentElement.classList.add('car-mode');
+        if (window.WMapCar) {
+          const subs = new Map(); let last = null; let n = 0;
+          // Nur die neueste Meldung zählt: Kommt die Seite einmal nicht nach (Handy heiß und gedrosselt),
+          // stauten sich die Meldungen sonst – jede wurde noch verarbeitet, die Karte hing immer weiter zurück
+          let waiting = null; let queued = false;
+          window.__carFix = (pos) => {
+            waiting = pos;
+            if (queued) return;
+            queued = true;
+            setTimeout(() => { queued = false; last = waiting; subs.forEach((ok) => ok(last)); });
+          };
+          const geo = {
+            watchPosition(ok) { const id = ++n; subs.set(id, ok); if (last) setTimeout(() => ok(last)); return id; },
+            clearWatch(id) { subs.delete(id); },
+            getCurrentPosition(ok, fail, o = {}) {
+              if (last) { setTimeout(() => ok(last)); return; }
+              const t = setTimeout(() => { geo.clearWatch(id); fail?.({ code: 3, message: 'Kein Standort' }); }, o.timeout ?? 20000);
+              const id = geo.watchPosition((p) => { clearTimeout(t); geo.clearWatch(id); ok(p); });
+            },
+          };
+          Object.defineProperty(navigator, 'geolocation', { configurable: true, value: geo });
+        }
+      }
+    </script>
     <link rel="stylesheet" href="./css/index.css">
     <script src="./libs/maplibre-gl/maplibre-gl.js"></script>
 </head>
@@ -233,6 +264,7 @@
                     </button>
                 </header>
                 <p class="route-status" hidden></p>
+                <p class="route-park" hidden></p>
                 <div class="route-options" role="listbox" aria-label="Routen"></div>
                 <div class="elevation"></div>
                 <section class="traffic" hidden>
@@ -285,6 +317,10 @@
                 <span class="nav-kmh"><strong>0</strong><small>km/h</small></span>
             </div>
             <div class="nav-side">
+                <!-- Aufzeichnung: grau = aus (antippen startet), rot = läuft, orange = Pause (antippen: Pause, Beenden) -->
+                <button type="button" class="button nav-rec" data-shape="round" title="Aufzeichnen">
+                    <span class="msr">radio_button_checked</span>
+                </button>
                 <button type="button" class="button nav-compass" data-shape="round" title="Norden oben">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 16 12h-8z" fill="#e03131"/><path d="M12 22 8 12h8z" fill="#9aa0a6"/></svg>
                 </button>
@@ -319,7 +355,7 @@
                     <span class="nav-place"></span>
                 </div>
                 <button type="button" class="button nav-share" data-shape="round" title="Ankunft teilen">
-                    <span class="msr">share_location</span>
+                    <span class="msr">share</span>
                 </button>
                 <button type="button" class="button nav-search" data-shape="round" title="Entlang der Route suchen">
                     <span class="msr">search</span>

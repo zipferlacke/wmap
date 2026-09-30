@@ -16,6 +16,39 @@ function withTimeout(signal) {
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
 
+/*
+ * Die öffentlichen Server verlangen, dass sich eine App zu erkennen gibt
+ * (User-Agent oder Referer), sonst 406. Der Browser schickt den Referer
+ * (app.wuefl.de) von selbst mit; die Apps laufen auf tauri://localhost bzw.
+ * http://tauri.localhost – ohne bzw. ohne eindeutigen Referer. Dort fragt
+ * darum die App selbst (Befehl „overpass“ in src-tauri/src/lib.rs) mit
+ * User-Agent „WMap/…“ und Referer app.wuefl.de/wmap. Ältere Apps ohne den
+ * Befehl: wie im Browser.
+ */
+let native = !!window.__TAURI__?.core;
+
+/** → wie fetch: { ok, status, json() } */
+function post(url, query, signal) {
+  if (!native) return fetch(url, { method: 'POST', body: new URLSearchParams({ data: query }), signal });
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(signal.reason ?? new DOMException('Abgebrochen', 'AbortError'));
+    if (signal?.aborted) { abort(); return; }
+    signal?.addEventListener('abort', abort, { once: true });
+    window.__TAURI__.core.invoke('overpass', { url, query }).then(([status, body]) => {
+      signal?.removeEventListener('abort', abort);
+      resolve({ ok: status >= 200 && status < 300, status, json: async () => JSON.parse(body) });
+    }, (err) => {
+      signal?.removeEventListener('abort', abort);
+      if (/not found|unknown|not allowed/i.test(String(err))) {
+        native = false;
+        post(url, query, signal).then(resolve, reject);
+        return;
+      }
+      reject(new TypeError(String(err)));
+    });
+  });
+}
+
 // Antwortet ein Server so lange nicht, wird zusätzlich der nächste gefragt
 const HEDGE_MS = 4000;
 const CACHE_MS = 10 * 60 * 1000;
@@ -28,7 +61,7 @@ const answers = new Map();          // Abfrage → { at, elements }
  * nächste dazu – die erste Antwort gewinnt, die anderen werden abgebrochen.
  * Gleiche Abfragen innerhalb von 10 Minuten kommen aus dem Gedächtnis.
  *
- * Wer ablehnt (429) oder überlastet ist (5xx), bekommt eine Pause und wird
+ * Wer ablehnt (406, 429) oder überlastet ist (5xx), bekommt eine Pause und wird
  * erst danach wieder gefragt – sonst hagelt es beim Verschieben der Karte
  * Absagen. `background` (Ampeln u. Ä.): nicht parallel nachfragen, nur bei
  * einer Absage der nächste Server; sind alle in der Pause, gar nicht.
@@ -43,7 +76,8 @@ export async function run(query, signal, { background = false } = {}) {
 }
 
 const resting = new Map();          // Server → Pause bis (ms)
-const rest = (url, status) => resting.set(url, Date.now() + (status === 429 ? 60000 : 20000));
+// 406/429: laut Regeln der öffentlichen Server mindestens 30 s Pause
+const rest = (url, status) => resting.set(url, Date.now() + (status === 429 ? 60000 : status === 406 ? 30000 : 20000));
 
 /** Server in Ruhe zuerst; im Hintergrund nur diese */
 function serverOrder(background) {
@@ -83,10 +117,10 @@ function hedged(query, signal, background) {
       pending += 1;
       clearTimeout(timer);
       if (!background) timer = setTimeout(start, HEDGE_MS);
-      fetch(url, { method: 'POST', body: new URLSearchParams({ data: query }), signal: withTimeout(ctrl.signal) })
+      post(url, query, withTimeout(ctrl.signal))
         .then(async (res) => {
           if (!res.ok) {
-            if (res.status === 429 || res.status >= 500) rest(url, res.status);
+            if (res.status === 406 || res.status === 429 || res.status >= 500) rest(url, res.status);
             throw new Error(res.status === 429 ? 'Overpass ist gerade ausgelastet' : `Overpass antwortet nicht (${res.status})`);
           }
           finish(resolve, (await res.json()).elements ?? []);

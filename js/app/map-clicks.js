@@ -54,7 +54,7 @@ map.on('contextmenu', (e) => showPoint(e.lngLat.toArray()));
   map.on('movestart', cancel);
 }
 
-const CLICKABLE = ['traffic-icon', 'poi-dot', 'hl-dot', 'route-alt', 'hl-fill', ...BASE_POI_LAYERS];
+const CLICKABLE = ['traffic-icon', 'poi-nr', 'poi-dot', 'hl-nr', 'hl-dot', 'route-alt', 'hl-fill', ...BASE_POI_LAYERS];
 
 /* Ebenen-Menü: Satellit, Wandern & Rad, Wanderwege, eigene Ebenen und Plugins */
 const layerMenu = mountLayerMenu(map, { toast });
@@ -87,7 +87,7 @@ map.on('click', (e) => {
   const hit = layers.length ? map.queryRenderedFeatures(e.point, { layers })[0] : null;
   const id = hit?.layer.id;
   if (id === 'traffic-icon') { const t = trafficItems[hit.properties.i]; if (t) showTrafficItem(t); return; }
-  if (id === 'poi-dot' || (id === 'hl-dot' && (state.category || reach.cat))) {
+  if (id === 'poi-dot' || id === 'poi-nr' || ((id === 'hl-dot' || id === 'hl-nr') && (state.category || reach.cat))) {
     showPlace(featureFromPoint(hit), { over: true, fly: false });
     return;
   }

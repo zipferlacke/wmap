@@ -6,7 +6,7 @@
  * Alternativen kommt schon ohne aus.
  */
 import { API, PROFILES, MAX_ROUTES } from '../core/config.js';
-import { decodePolyline, encodePolyline, cumulative, simplifyTo } from '../core/geo.js';
+import { decodePolyline, distance, encodePolyline, cumulative, fmtDistance, simplifyTo } from '../core/geo.js';
 import { valhallaPrefs } from '../ui/route-prefs.js';
 
 const ELEVATION_STEP = 30;   // Meter zwischen zwei Höhenwerten
@@ -40,13 +40,40 @@ function body(points, profile, { highways = true, alternates = 0, avoid = [], he
   };
 }
 
+/*
+ * Der Routenserver ist ein Gemeinschaftsdienst – ab und zu ist er nicht erreichbar oder lehnt ab (zu viele
+ * Anfragen). Der Browser meldet dann nur „Load failed“ bzw. „Failed to fetch“; damit kann niemand etwas
+ * anfangen. Darum: einmal von selbst wiederholen, danach eine Meldung, die sagt, was los ist – mit
+ * `retry`, damit die Oberfläche „Erneut versuchen“ anbietet (app/route-results.js).
+ */
+const RETRY_MS = 1500;
+function unreachable(busy = false) {
+  const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  const err = new Error(offline ? 'Keine Verbindung zum Netz – für die Route braucht WMap das Internet'
+    : busy ? 'Der Routenserver ist gerade überlastet – bitte gleich noch einmal versuchen'
+      : 'Der Routenserver ist gerade nicht erreichbar – bitte gleich noch einmal versuchen');
+  err.retry = true;
+  return err;
+}
+
 export async function request(payload, signal, endpoint = 'route') {
-  const res = await fetch(`${API.valhalla}/${endpoint}`, {
+  const ask = () => fetch(`${API.valhalla}/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
     signal,
   });
+  let res;
+  try { res = await ask(); } catch (err) {
+    if (err.name === 'AbortError') throw err;
+    await new Promise((ok) => { setTimeout(ok, RETRY_MS); });
+    if (signal?.aborted) throw new DOMException('Abgebrochen', 'AbortError');
+    try { res = await ask(); } catch (again) {
+      if (again.name === 'AbortError') throw again;
+      throw unreachable();
+    }
+  }
+  if (res.status === 429 || res.status >= 502) throw unreachable(true);
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.error) {
     const msg = data.error_code === 442 ? 'Keine Route zwischen diesen Punkten gefunden'
@@ -57,6 +84,52 @@ export async function request(payload, signal, endpoint = 'route') {
   }
   if (endpoint !== 'route') return data;
   return [data.trip, ...(data.alternates ?? []).map((a) => a.trip)];
+}
+
+/*
+ * Entfernung und Fahrzeit auf der Straße vom Start zu ein paar Zielen – für Listen (Suche, „In der Nähe“,
+ * Lesezeichen): Bei den ersten Treffern (ROAD_FIRST) steht dieselbe Zahl wie danach in der Routenwahl, die
+ * übrigen zeigen „≈“ und die Luftlinie – so bleibt es bei wenigen Anfragen, der Server gehört allen.
+ * Nahe Ziele gehen in eine Sammelabfrage (sources_to_targets); die rechnet der Server nur in der Umgebung
+ * (gemessen: 16 km ja, 100 km leer, über 150 km Fehler). Ferne Ziele und was leer blieb darum einzeln als
+ * Route ohne Wegbeschreibung. Gemerkt je Start (auf ~100 m) und Ziel, damit dieselbe Liste nicht zweimal fragt.
+ */
+export const ROAD_FIRST = 3;
+const ROAD_NEAR_M = 60000;
+const ROAD_FAR_MAX = ROAD_FIRST;
+const roadCache = new Map();
+
+/** Luftlinie als ungefähre Angabe: „≈ 12 km“ */
+export const fmtAbout = (m) => `≈ ${fmtDistance(m)}`;
+
+/** → je Ziel { length (m), time (s) } oder null (nicht erreichbar, zu viele ferne Ziele, kein Netz) */
+export async function roadDistances(from, points, profile = 'car', { signal } = {}) {
+  const costing = PROFILES[profile]?.costing;
+  if (!from || !costing) return points.map(() => null);
+  const opts = { costing, costing_options: { [costing]: { ...costingOptions(profile)[costing], ...valhallaPrefs(costing) } }, units: 'kilometers' };
+  const loc = ([lon, lat]) => ({ lon, lat });
+  const key = (p) => `${profile}|${JSON.stringify(opts.costing_options)}|${from[0].toFixed(3)},${from[1].toFixed(3)}|${p[0].toFixed(5)},${p[1].toFixed(5)}`;
+  const out = points.map((p) => roadCache.get(key(p)) ?? null);
+  const put = (i, length, time) => {
+    out[i] = { length, time };
+    if (roadCache.size > 600) roadCache.clear();
+    roadCache.set(key(points[i]), out[i]);
+  };
+  const open = () => points.map((_, i) => i).filter((i) => !out[i]);
+  const near = open().filter((i) => distance(from, points[i]) <= ROAD_NEAR_M);
+  if (near.length) {
+    try {
+      const data = await request({ sources: [loc(from)], targets: near.map((i) => loc(points[i])), ...opts }, signal, 'sources_to_targets');
+      (data.sources_to_targets?.[0] ?? []).forEach((c, k) => { if (Number.isFinite(c?.distance)) put(near[k], c.distance * 1000, c.time); });
+    } catch (err) { if (err.name === 'AbortError') throw err; }
+  }
+  await Promise.all(open().slice(0, ROAD_FAR_MAX).map(async (i) => {
+    try {
+      const [trip] = await request({ locations: [loc(from), loc(points[i])], ...opts, directions_type: 'none' }, signal);
+      put(i, trip.summary.length * 1000, trip.summary.time);
+    } catch (err) { if (err.name === 'AbortError') throw err; }
+  }));
+  return out;
 }
 
 /**
@@ -206,14 +279,20 @@ function parseTrip(trip) {
  * Rohdaten im 30-m-Raster rauschen; jede Zacke mitzuzählen ergibt zu viele
  * Höhenmeter. Darum erst glätten und dann nur Änderungen zählen, die eine
  * kleine Schwelle übersteigen.
+ *
+ * Start und Ziel bleiben dabei, wie sie sind (zu den Enden hin wird das
+ * Fenster schmaler), und der Rest unter der Schwelle zählt am Ende mit: So
+ * ist Anstieg − Abstieg genau der Höhenunterschied von Start und Ziel – bei
+ * einem Rundweg gleich viel hinauf wie hinunter.
  */
 function climb(elevation) {
   if (elevation.length < 2) return { ascent: 0, descent: 0, minEle: null, maxEle: null };
   const h = elevation.map(([, v]) => v);
   const smooth = h.map((_, i) => {
-    let s = 0, n = 0;
-    for (let k = Math.max(0, i - 2); k <= Math.min(h.length - 1, i + 2); k += 1) { s += h[k]; n += 1; }
-    return s / n;
+    const r = Math.min(2, i, h.length - 1 - i);
+    let s = 0;
+    for (let k = i - r; k <= i + r; k += 1) s += h[k];
+    return s / (2 * r + 1);
   });
   let ascent = 0, descent = 0, ref = smooth[0];
   const THRESHOLD = 2;
@@ -221,6 +300,8 @@ function climb(elevation) {
     const d = v - ref;
     if (d > THRESHOLD) { ascent += d; ref = v; } else if (d < -THRESHOLD) { descent -= d; ref = v; }
   }
+  const rest = smooth[smooth.length - 1] - ref;
+  if (rest > 0) ascent += rest; else descent -= rest;
   return {
     ascent: Math.round(ascent),
     descent: Math.round(descent),

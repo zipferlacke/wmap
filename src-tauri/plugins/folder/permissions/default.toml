@@ -1,5 +1,5 @@
 "$schema" = "schemas/schema.json"
 
 [default]
-description = "Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, löschen – nur im gewählten Ordner"
-permissions = ["allow-pick", "allow-info", "allow-list", "allow-read", "allow-write", "allow-remove", "allow-disconnect"]
+description = "Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, löschen – nur im gewählten Ordner; eine Datei über den Speichern-Dialog ablegen; mit WMap geöffnete GPX-Dateien abholen"
+permissions = ["allow-pick", "allow-info", "allow-list", "allow-read", "allow-write", "allow-remove", "allow-disconnect", "allow-save", "allow-opened"]

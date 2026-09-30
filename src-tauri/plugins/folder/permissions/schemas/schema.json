@@ -331,6 +331,18 @@
           "markdownDescription": "Denies the list command without any pre-configured scope."
         },
         {
+          "description": "Enables the opened command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-opened",
+          "markdownDescription": "Enables the opened command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the opened command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-opened",
+          "markdownDescription": "Denies the opened command without any pre-configured scope."
+        },
+        {
           "description": "Enables the pick command without any pre-configured scope.",
           "type": "string",
           "const": "allow-pick",
@@ -367,6 +379,18 @@
           "markdownDescription": "Denies the remove command without any pre-configured scope."
         },
         {
+          "description": "Enables the save command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-save",
+          "markdownDescription": "Enables the save command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the save command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-save",
+          "markdownDescription": "Denies the save command without any pre-configured scope."
+        },
+        {
           "description": "Enables the write command without any pre-configured scope.",
           "type": "string",
           "const": "allow-write",
@@ -379,10 +403,10 @@
           "markdownDescription": "Denies the write command without any pre-configured scope."
         },
         {
-          "description": "Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, löschen – nur im gewählten Ordner\n#### This default permission set includes:\n\n- `allow-pick`\n- `allow-info`\n- `allow-list`\n- `allow-read`\n- `allow-write`\n- `allow-remove`\n- `allow-disconnect`",
+          "description": "Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, löschen – nur im gewählten Ordner; eine Datei über den Speichern-Dialog ablegen; mit WMap geöffnete GPX-Dateien abholen\n#### This default permission set includes:\n\n- `allow-pick`\n- `allow-info`\n- `allow-list`\n- `allow-read`\n- `allow-write`\n- `allow-remove`\n- `allow-disconnect`\n- `allow-save`\n- `allow-opened`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, löschen – nur im gewählten Ordner\n#### This default permission set includes:\n\n- `allow-pick`\n- `allow-info`\n- `allow-list`\n- `allow-read`\n- `allow-write`\n- `allow-remove`\n- `allow-disconnect`"
+          "markdownDescription": "Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, löschen – nur im gewählten Ordner; eine Datei über den Speichern-Dialog ablegen; mit WMap geöffnete GPX-Dateien abholen\n#### This default permission set includes:\n\n- `allow-pick`\n- `allow-info`\n- `allow-list`\n- `allow-read`\n- `allow-write`\n- `allow-remove`\n- `allow-disconnect`\n- `allow-save`\n- `allow-opened`"
         }
       ]
     }

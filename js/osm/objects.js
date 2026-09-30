@@ -29,6 +29,17 @@ export function tags(type, id, { signal } = {}) {
   return cache.get(key);
 }
 
+/** Das ganze Objekt samt Stand (timestamp) – für „Gibt es … noch?“ (app/ask-along.js). */
+export function element(type, id, { signal } = {}) {
+  const key = `e${type}${id}`;
+  if (!cache.has(key)) {
+    const job = get(`${TYPES[type]}/${id}.json`, signal).then((d) => d.elements?.[0] ?? null);
+    cache.set(key, job);
+    job.catch(() => cache.delete(key));
+  }
+  return cache.get(key);
+}
+
 /**
  * Umriss zum Hervorheben. → { shapes } wie bei overpass.toGeoJSON
  * Knoten haben keinen, Wege kommen von der OSM-API, Relationen von Overpass.

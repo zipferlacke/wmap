@@ -2,7 +2,7 @@
  * Oberfläche zu „Mitmachen“: Fragenkarten im Sheet, Öffnungszeiten-Editor,
  * Anmelden und Hochladen.
  */
-import { QUESTS, questions, answer, skip, scan, queue, commentFor, anonNotes, editsAsNotes, remarkNotes } from './survey.js';
+import { QUESTS, questions, answer, skip, forget, scan, queue, commentFor, anonNotes, editsAsNotes, remarkNotes } from './survey.js';
 import { countOsm } from './stats.js';
 import { account, login, upload, changesetUrl } from './api.js';
 import { contribute } from '../data/trace.js';
@@ -126,12 +126,14 @@ export class SurveyView {
       <div class="quest-head">
         <span class="msr quest-icon">${esc(def.icon)}</span>
         <div><strong>${esc(def.title(q))}</strong><small>${esc(q.quest.startsWith('road') || q.quest === 'way_lit' ? sub : [q.name, sub].filter(Boolean).join(' · '))}</small></div>
-        <button type="button" class="button" data-shape="round no-background" data-act="show" title="Auf der Karte zeigen"><span class="msr">location_on</span></button>
+        <span class="quest-tools">
+          <button type="button" class="button" data-shape="round no-background" data-act="show" title="Auf der Karte zeigen"><span class="msr">location_on</span></button>
+          <button type="button" class="button" data-shape="round no-background" data-act="never" title="Frage löschen"><span class="msr">close</span></button>
+        </span>
       </div>
       ${body}
       <div class="quest-foot">
         <button type="button" class="link-button" data-act="later">Weiß nicht / später</button>
-        <button type="button" class="link-button" data-act="never">Nicht mehr fragen</button>
       </div>
     </li>`;
   }
@@ -232,7 +234,7 @@ export class SurveyView {
       skip(q);
       this.render();
     } else if (act === 'never') {
-      skip(q, { forever: true });
+      forget(q);
       this.render();
     } else if (btn.dataset.answer === '24/7') {
       this.#done(q, { hours: '24/7' });
@@ -244,7 +246,7 @@ export class SurveyView {
   #done(q, value) {
     answer(q, value);
     this.#editing = null;
-    const noOsm = (q.quest === 'detour' && value !== 'gone') || (q.quest === 'missing_way' && value === 'none');
+    const noOsm = (q.quest === 'detour' && value === 'choice') || (q.quest === 'missing_way' && value === 'none');
     if (!noOsm) {
       this.#toast(account.loggedIn() ? 'Danke! Wird hochgeladen …'
         : anonNotes.get() ? 'Danke! Geht als Hinweis an OpenStreetMap' : 'Danke! Gespeichert – hochladen nach der Anmeldung');

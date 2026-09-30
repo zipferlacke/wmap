@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="de">
+<!--
+  Beispieldaten für die Screenshots (appdata/takeshots.json, erster Eintrag): legt ein paar aufgezeichnete und
+  geplante Touren, Lesezeichen und ein Offline-Gebiet in den Speicher des Browsers, damit Übersicht, Meine Touren
+  und „Offline“ nicht leer sind. Die Strecken kommen von Valhalla (echte Wege um Göttingen – Kerstlingeröder Feld –,
+  um Rittmarshausen und in Darmstadt – Woog, Jagdschloss Kranichstein), Zeiten, Puls und Frequenz sind ausgedacht.
+  Lesezeichen: Kulturverein Rittmarshausen, Alte Feuerwache Göttingen, die Listen „Darmstadt“ und „Hannover Urlaub“.
+
+  Nur am Rechner (localhost) – der Ordner tools/ wird nicht hochgeladen. takeShots nimmt je Lauf ein eigenes,
+  leeres Profil; im eigenen Browser geöffnet landen die Beispiele dagegen bei den eigenen Daten
+  (löschen: tools/demo.html?weg).
+-->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WMap – Beispieldaten</title>
+    <style>
+        body { font: 16px/1.5 system-ui, sans-serif; margin: 2rem; }
+        li.ok::marker { content: '✓ '; }
+        li.bad { color: #c92a2a; }
+    </style>
+</head>
+
+<body>
+    <h1>Beispieldaten für die Screenshots</h1>
+    <ul id="log"></ul>
+    <script type="module">
+        import { tracks, buildTrack } from '../js/data/tracks.js';
+        import { tours, local } from '../js/data/store.js';
+        import { places } from '../js/data/saved.js';
+        import { reroute } from '../js/services/routing.js';
+        import { encodePolyline, distance } from '../js/core/geo.js';
+        import { APP_VERSION } from '../js/core/config.js';
+
+        const log = (text, ok = true) => {
+            const li = document.createElement('li');
+            li.className = ok ? 'ok' : 'bad';
+            li.textContent = text;
+            document.querySelector('#log').append(li);
+        };
+        const DAY = 864e5;
+        const IDS = ['demo-rad', 'demo-wandern', 'demo-lauf', 'demo-rudern', 'demo-feierabend', 'demo-sommer', 'demo-herbst', 'demo-winter'];
+        const TOURS = ['demo-t-weser', 'demo-t-see', 'demo-t-eichsfeld', 'demo-t-garte'];
+
+        // Ruhiges Auf und Ab um einen Mittelwert – für Puls und Frequenz
+        const wave = (i, n, mid, swing, seed) => Math.round(mid + swing * (0.6 * Math.sin(i / n * 9 + seed) + 0.4 * Math.sin(i / n * 31 + seed * 3))
+            + Math.min(1, i / (n * 0.08)) * swing * 0.5 - swing * 0.5);
+
+        /** Verlauf über Wegpunkte – eine Anfrage an Valhalla je Strecke, bei einem Fehler mit Pause noch einmal */
+        async function along(points, profile, tries = 3) {
+            for (let i = 1; ; i += 1) {
+                try { return await reroute(points, profile); } catch (e) {
+                    if (i >= tries) throw e;
+                    await new Promise((ok) => setTimeout(ok, 3000 * i));
+                }
+            }
+        }
+
+        /** Aus einem Verlauf eine Aufzeichnung: Zeiten nach Tempo (m/s), dazu Puls und Frequenz */
+        function record(coords, { id, name, profile, sport, daysAgo, hour, speed, hr, cad, source = null }) {
+            const start = new Date(Date.now() - daysAgo * DAY);
+            start.setHours(hour, 12, 0, 0);
+            let t = start.getTime();
+            const n = coords.length;
+            const pts = coords.map((c, i) => {
+                if (i) t += (distance(coords[i - 1], c) / (speed * (0.85 + 0.3 * Math.abs(Math.sin(i / n * 17))))) * 1000;
+                return [c[0], c[1], Math.round(t), hr ? wave(i, n, hr, 18, id.length) : 0, cad ? wave(i, n, cad, 6, 2) : 0, 0];
+            });
+            const track = buildTrack(pts, { kind: source ? 'health' : 'rec', profile, name });
+            return { ...track, id, sport, ...(source ? { source } : {}) };
+        }
+
+        // Rudern: kein Weg der Karte – zwei Bahnen auf dem Seeburger See
+        function lake() {
+            const [x, y] = [10.1645, 51.5655], out = [];
+            for (let lap = 0; lap < 3; lap += 1) {
+                for (let i = 0; i <= 60; i += 1) {
+                    const a = (i / 60) * 2 * Math.PI;
+                    out.push([x + Math.cos(a) * 0.0052 * (1 - lap * 0.12), y + Math.sin(a) * 0.0019 * (1 - lap * 0.12)]);
+                }
+            }
+            return out;
+        }
+
+        async function clean() {
+            for (const id of IDS) await tracks.removeQuiet(id).catch(() => {});
+            for (const id of TOURS) tours.remove?.(id);
+            for (const p of places.all().filter((x) => x.demo)) places.remove(p.id);
+            local.set('wmap.areas', (local.get('wmap.areas') ?? []).filter((a) => a.id !== 'demo-harz'));
+            for (const k of await caches.keys()) if (k.startsWith('wmap-area-demo') || k === local.get('wmap.demo.nav')) await caches.delete(k);
+        }
+
+        async function run() {
+            if (!['localhost', '127.0.0.1'].includes(location.hostname)) { log('Nur am Rechner (localhost).', false); return; }
+            await clean();
+            if (new URLSearchParams(location.search).has('weg')) { log('Beispieldaten entfernt'); return; }
+
+            // Göttingen, Rittmarshausen (Gleichen) und Darmstadt – Koordinaten aus OpenStreetMap (Photon)
+            const G = [9.9354, 51.5337];                // Göttingen, Innenstadt
+            const R = [10.1036, 51.4814];               // Rittmarshausen
+            const FELD = [10.01069, 51.52571];          // Kerstlingeröder Feld
+            const WOOG = [8.6660, 49.8722];             // Darmstadt, am Großen Woog
+            const SCHLOSS = [8.69795, 49.90014];        // Jagdschloss Kranichstein
+            const PLANS = [
+                [TOURS[0], 'An die Weser nach Hann. Münden', 'tour', [G, [9.8003, 51.5050], [9.7300, 51.4590], [9.6520, 51.4165]], 'Über Dransfeld hinunter ins Wesertal – zurück mit der Bahn.'],
+                [TOURS[1], 'Darmstadt: Woog, Oberwaldhaus, Kranichstein', 'gravel', [WOOG, [8.66651, 49.87684], [8.69715, 49.89042], SCHLOSS, [8.67819, 49.90462], WOOG], 'Durch den Ostwald zum Jagdschloss, Pause am Steinbrücker Teich.'],
+                [TOURS[2], 'Ausfahrt ins Eichsfeld', 'drive', [R, [10.2590, 51.5127], [10.1340, 51.3780], R], 'Von Rittmarshausen über Duderstadt und Heiligenstadt zurück.'],
+                [TOURS[3], 'Rund um Rittmarshausen durchs Gartetal', 'hike', [R, [10.08849, 51.48983], [10.0989, 51.50493], [10.1280, 51.4930], R], 'Über Wöllmarshausen und Sattenhausen, Einkehr in der Kulturscheune.'],
+            ];
+            /*
+             * Strecken: aus tools/demo-strecken.json, einmal berechnet (test/demo_strecken.py schreibt die Datei).
+             * So braucht die Aufnahme den Routenserver nicht – der ist ein Gemeinschaftsdienst und hat diesen
+             * Anschluss schon einmal ausgesperrt, als zwei Läufe zugleich je zehn Routen auf einmal anfragten.
+             * Fehlt die Datei oder mit ?neu: nacheinander mit Pause berechnen, nie mehrere zugleich.
+             */
+            const SPECS = [
+                // Göttingen: über Herberhausen aufs Kerstlingeröder Feld, am Hainholzhof zurück
+                ['rad', [G, [9.98648, 51.53965], FELD, [9.98044, 51.52485], G], 'bike'],
+                ['wandern', [[9.9512, 51.5330], [9.9712, 51.5240], [9.9801, 51.5152], [9.9590, 51.5196], [9.9512, 51.5330]], 'foot'],
+                // Darmstadt: einmal um den Großen Woog
+                ['lauf', [WOOG, [8.6690, 49.8745], [8.6725, 49.8732], [8.6698, 49.8712], WOOG], 'foot'],
+                // Rittmarshausen: Kerstlingerode, Beienrode, Weißenborn, Bischhausen, Bremke, Gelliehausen, Benniehausen, Wöllmarshausen
+                ['feierabend', [R, [10.10554, 51.47318], [10.11743, 51.46761], [10.12679, 51.43985], [10.08132, 51.44785], [10.0455, 51.45114], [10.05236, 51.47522], [10.05293, 51.48835], [10.08849, 51.48983], R], 'bike'],
+                ['herbst', [[9.9512, 51.5330], [9.9960, 51.5440], [10.0240, 51.5300], [9.9801, 51.5152], [9.9512, 51.5330]], 'foot'],
+                // Darmstadt: vom Woog über die Mathildenhöhe und das Oberwaldhaus zum Jagdschloss Kranichstein
+                ['darmstadt', [WOOG, [8.66651, 49.87684], [8.69715, 49.89042], SCHLOSS, [8.67819, 49.90462], WOOG], 'bike'],
+                ...PLANS.map(([id, , profile, points]) => [id, points, profile]),
+            ];
+            const fresh = new URLSearchParams(location.search).has('neu');
+            const stored = fresh ? null : await fetch('./demo-strecken.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+            // Gilt nur, wenn die Datei zu genau diesen Wegpunkten gehört
+            const sign = (points, profile) => `${profile}:${points.flat().map((v) => v.toFixed(4)).join(',')}`;
+            const routes = {};
+            if (stored && SPECS.every(([key, points, profile]) => stored[key]?.sign === sign(points, profile))) {
+                for (const [key] of SPECS) routes[key] = stored[key];
+                log(`${SPECS.length} Strecken aus demo-strecken.json`);
+            } else {
+                for (const [key, points, profile] of SPECS) {
+                    const r = await along(points, profile);
+                    routes[key] = { sign: sign(points, profile), coords: r.coords, length: r.length, time: r.time, ascent: r.ascent ?? 0, descent: r.descent ?? 0 };
+                    await new Promise((ok) => setTimeout(ok, 1200));
+                }
+                // Zum Speichern (test/demo_strecken.py)
+                window.__demoStrecken = routes;
+                log(`${SPECS.length} Strecken von Valhalla – noch nicht gespeichert (test/demo_strecken.py)`);
+            }
+            const planned = PLANS.map(([id]) => routes[id]);
+
+            const list = [
+                record(routes.rad.coords, { id: IDS[0], name: 'Radrunde zum Kerstlingeröder Feld', profile: 'bike', sport: 'biking', daysAgo: 2, hour: 17, speed: 6.4, hr: 138, cad: 82 }),
+                record(routes.wandern.coords, { id: IDS[1], name: 'Hainberg und Bismarckturm', profile: 'foot', sport: 'hiking', daysAgo: 5, hour: 10, speed: 1.35, hr: 112, cad: 0 }),
+                record(routes.lauf.coords, { id: IDS[2], name: 'Morgenlauf um den Woog', profile: 'foot', sport: 'running', daysAgo: 9, hour: 7, speed: 3.1, hr: 156, cad: 168, source: { health: 'demo-lauf', app: 'Zepp', type: 'running' } }),
+                record(lake(), { id: IDS[3], name: 'Rudern auf dem Seeburger See', profile: 'foot', sport: 'rowing', daysAgo: 13, hour: 18, speed: 3.4, hr: 149, cad: 0, source: { health: 'demo-rudern', app: 'Zepp', type: 'rowing' } }),
+                record(routes.feierabend.coords, { id: IDS[4], name: 'Feierabendrunde um Rittmarshausen', profile: 'bike', sport: 'biking', daysAgo: 24, hour: 18, speed: 6.9, hr: 144, cad: 85 }),
+                record(routes.darmstadt.coords, { id: IDS[5], name: 'Darmstadt: Woog und Jagdschloss Kranichstein', profile: 'bike', sport: 'biking', daysAgo: 75, hour: 19, speed: 6.1, hr: 131, cad: 79 }),
+                record(routes.herbst.coords, { id: IDS[6], name: 'Durch den Göttinger Wald', profile: 'foot', sport: 'hiking', daysAgo: 340, hour: 11, speed: 1.3, hr: 108, cad: 0 }),
+                record([...routes.lauf.coords, ...routes.lauf.coords.slice(1)], { id: IDS[7], name: 'Zwei Runden um den Woog', profile: 'foot', sport: 'running', daysAgo: 395, hour: 8, speed: 2.9, hr: 151, cad: 165 }),
+            ];
+            for (const t of list) await tracks.putQuiet(t);
+            log(`${list.length} aufgezeichnete Touren`);
+
+            PLANS.forEach(([id, name, profile, points, description], i) => {
+                const r = planned[i];
+                tours.save({ id, name, profile, description, points, shape: encodePolyline(r.coords, 5),
+                    stats: { length: r.length, time: r.time, ascent: r.ascent ?? 0, descent: r.descent ?? 0 } });
+            });
+            log(`${TOURS.length} geplante Touren`);
+
+            const mark = (p) => places.update(places.save(p).id, { demo: true });
+            mark({ kind: 'home', name: 'Zuhause', label: 'Rittmarshausen', point: R });
+            mark({ kind: 'work', name: 'Arbeit', label: 'Göttingen, Weender Straße', point: [9.9352, 51.5361] });
+            mark({ kind: 'fav', name: 'Kulturverein Rittmarshausen', label: 'Kulturscheune, Lindenberg 8', point: [10.10363, 51.4814] });
+            mark({ kind: 'fav', name: 'Alte Feuerwache', label: 'Göttingen, Ritterplan', point: [9.9377, 51.53584] });
+            mark({ kind: 'fav', name: 'Kerstlingeröder Feld', label: 'Göttinger Wald', point: FELD });
+            mark({ kind: 'fav', name: 'Großer Woog', label: 'Darmstadt', point: [8.66941, 49.87283], list: 'Darmstadt' });
+            mark({ kind: 'fav', name: 'Jagdschloss Kranichstein', label: 'Darmstadt', point: SCHLOSS, list: 'Darmstadt' });
+            mark({ kind: 'fav', name: 'Mathildenhöhe', label: 'Darmstadt', point: [8.66651, 49.87684], list: 'Darmstadt' });
+            mark({ kind: 'fav', name: 'Herrenhäuser Gärten', label: 'Hannover', point: [9.6975, 52.3913], list: 'Hannover Urlaub' });
+            mark({ kind: 'fav', name: 'Maschsee', label: 'Hannover', point: [9.7445, 52.3550], list: 'Hannover Urlaub' });
+            mark({ kind: 'fav', name: 'Neues Rathaus', label: 'Hannover', point: [9.7375, 52.3672], list: 'Hannover Urlaub' });
+            log('Lesezeichen: Zuhause, Arbeit, Rittmarshausen, Göttingen, Listen Darmstadt und Hannover Urlaub');
+
+            // Ein Offline-Gebiet und eine vorgeladene Navigation – nur die Einträge, ohne Kacheln
+            const ring = [[10.45, 51.86], [10.80, 51.86], [10.80, 51.68], [10.45, 51.68]];
+            local.set('wmap.areas', [...(local.get('wmap.areas') ?? []),
+                { id: 'demo-harz', name: 'Harz: Brocken und Oberharz', ring, detail: 'full', terrain: true, status: 'ok', bytes: 186e6, tiles: 7340, at: Date.now() - 4 * DAY, cache: 'wmap-area-demo-harz-1' },
+                { id: 'demo-goe', name: 'Göttingen und Umgebung', ring: [[9.80, 51.62], [10.10, 51.62], [10.10, 51.46], [9.80, 51.46]], detail: 'full', terrain: false, status: 'ok', bytes: 64e6, tiles: 2810, at: Date.now() - 11 * DAY, cache: 'wmap-area-demo-goe-1' }]);
+            await caches.open('wmap-area-demo-harz-1');
+            await caches.open('wmap-area-demo-goe-1');
+            const nav = `wmap-nav-${Date.now() - 2 * DAY}`;
+            const c = await caches.open(nav);
+            for (let i = 0; i < 48; i += 1) await c.put(`./demo-kachel-${i}`, new Response('x'));
+            local.set('wmap.demo.nav', nav);
+            log('Offline: zwei Gebiete, eine Navigation');
+
+            // Keine Willkommens- und Neuigkeiten-Dialoge auf den Bildern
+            local.set('wmap.seen', { version: APP_VERSION, messages: [] });
+            local.set('wmap.chart', 'hr');
+            log('fertig');
+        }
+
+        run().catch((e) => log(`Fehler: ${e?.message ?? e}`, false)).finally(() => { document.body.dataset.fertig = '1'; });
+    </script>
+</body>
+
+</html>
