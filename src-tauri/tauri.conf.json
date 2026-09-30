@@ -29,7 +29,10 @@
   "plugins": {
     "deep-link": {
       "desktop": { "schemes": ["geo"] },
-      "mobile": [{ "scheme": ["geo"], "appLink": false }]
+      "mobile": [
+        { "scheme": ["geo"], "appLink": false },
+        { "scheme": ["https"], "host": "app.wuefl.de", "pathPrefix": ["/wmap"], "appLink": true }
+      ]
     }
   },
   "bundle": {

@@ -103,7 +103,7 @@
 .nav-speed {
     position: absolute;
     left: .6rem;
-    bottom: calc(6.6rem + var(--safe-bottom));
+    bottom: calc(var(--nav-bar-h, 4.65rem + var(--safe-bottom)) + 1.95rem);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -138,9 +138,12 @@
 .nav-side {
     position: absolute;
     right: .6rem;
-    bottom: calc(5.4rem + var(--safe-bottom));
+    bottom: calc(var(--nav-bar-h, 4.65rem + var(--safe-bottom)) + .75rem);
     display: grid;
     gap: .5rem;
+
+    /* Melden (Stau, Unfall …) – noch nicht fertig, darum vorerst ohne Knopf */
+    .nav-report { display: none !important; }
 
     .button {
         width: 3rem;

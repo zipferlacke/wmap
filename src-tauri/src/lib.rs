@@ -43,12 +43,13 @@ pub fn run() {
       }
       #[cfg(target_os = "linux")]
       allow_geolocation(app)?;
-      // Karten-Links „geo:…“: beim Start und während die App läuft
+      // Karten-Links „geo:…“ und (Handy) geteilte Links auf app.wuefl.de/wmap:
+      // beim Start und während die App läuft
       if let Some(urls) = app.deep_link().get_current()? {
-        open_geo(app.handle(), &urls);
+        open_link(app.handle(), &urls);
       }
       let handle = app.handle().clone();
-      app.deep_link().on_open_url(move |event| open_geo(&handle, &event.urls()));
+      app.deep_link().on_open_url(move |event| open_link(&handle, &event.urls()));
       // Mit einer GPX-Datei gestartet (Doppelklick, „Öffnen mit“): die Seite
       // holt sie beim Plugin „folder“ ab (core/theme.js → import.html)
       #[cfg(desktop)]
@@ -100,16 +101,35 @@ fn open_page(app: &tauri::AppHandle, page: &str) {
   let _ = win.set_focus();
 }
 
-/// geo:-Link an die Kartenseite: `index.html?geo=…` neben der gerade offenen
-/// Seite – eingepackt oder die Webversion (tauri-start.js reicht `?geo=` beim
-/// Wechsel weiter). Ausgewertet wird er in js/app.js (openGeo).
-fn open_geo(app: &tauri::AppHandle, urls: &[Url]) {
-  let Some(link) = urls.iter().find(|u| u.scheme() == "geo") else { return };
+/// Link in der App öffnen – neben der gerade offenen Seite, eingepackt oder
+/// die Webversion:
+///   geo:…                      → `index.html?geo=…` (tauri-start.js reicht
+///                                `?geo=` beim Wechsel weiter; js/app.js openGeo)
+///   https://app.wuefl.de/wmap/… → dieselbe Seite samt `?…` und `#…` (geteilte
+///                                Orte, Routen, Touren, Listen – ui/share.js)
+fn open_link(app: &tauri::AppHandle, urls: &[Url]) {
   let Some(win) = app.get_webview_window("main") else { return };
-  let Ok(Ok(mut page)) = win.url().map(|u| u.join("index.html")) else { return };
-  page.query_pairs_mut().clear().append_pair("geo", link.as_str());
-  page.set_fragment(None);
-  let _ = win.navigate(page);
+  let Ok(here) = win.url() else { return };
+  let target = if let Some(link) = urls.iter().find(|u| u.scheme() == "geo") {
+    let Ok(mut page) = here.join("index.html") else { return };
+    page.query_pairs_mut().clear().append_pair("geo", link.as_str());
+    page.set_fragment(None);
+    page
+  } else if let Some(link) = urls.iter().find(|u| u.scheme() == "https" && u.host_str() == Some("app.wuefl.de")) {
+    // Nur Seiten von WMap: „/wmap/tour.html“ → „tour.html“, „/wmap/“ → „index.html“
+    let Some(rest) = link.path().strip_prefix("/wmap/") else { return };
+    let name = if rest.is_empty() { "index.html" } else { rest };
+    if name.contains('/') || !name.ends_with(".html") {
+      return;
+    }
+    let Ok(mut page) = here.join(name) else { return };
+    page.set_query(link.query());
+    page.set_fragment(link.fragment());
+    page
+  } else {
+    return;
+  };
+  let _ = win.navigate(target);
   let _ = win.set_focus();
 }
 

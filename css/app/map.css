@@ -101,6 +101,30 @@
    (soll „wird laufend verfolgt“ heißen, wirkt aber wie ein Blinken) */
 .maplibregl-user-location-dot::before { animation: none; display: none; }
 
+/* Kreis der Ungenauigkeit: ruhig, durchsichtig – ist der Standort genau, ganz weg
+   (map/location-dot.js) */
+.maplibregl-user-location-accuracy-circle {
+    background-color: rgb(29 161 242 / .14);
+    border: 1px solid rgb(29 161 242 / .35);
+    box-sizing: border-box;
+    transition: none;
+    &.precise { display: none; }
+}
+
+/* Blickrichtung: Kegel ab dem Rand des Punkts (Kompass bzw. GPS-Richtung) */
+.wmap-heading {
+    position: absolute;
+    left: calc(50% - 30px);
+    bottom: 50%;
+    width: 60px;
+    height: 58px;
+    transform-origin: 50% 100%;
+    background: radial-gradient(circle at 50% 100%, transparent 0 10px, rgb(29 161 242 / .5) 11px, rgb(29 161 242 / 0) 58px);
+    clip-path: polygon(50% 100%, 6% 0, 94% 0);
+    pointer-events: none;
+    &[hidden] { display: none; }
+}
+
 .floating-pill {
     position: fixed;
     z-index: 9;

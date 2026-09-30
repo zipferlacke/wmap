@@ -28,7 +28,7 @@
         background: hsl(217 90% 94%); color: var(--route); font-size: 1.4rem;
     }
     .qa-options { display: flex; flex-wrap: wrap; gap: .45rem; }
-    .qa-options .button { flex: 1 1 auto; justify-content: center; min-height: 2.8rem; font-size: var(--fs-300); }
+    .qa-options .button { flex: 1 1 auto; justify-content: center; min-height: 2.8rem; font-size: var(--fs-300); white-space: normal; text-align: center; height: auto; }
     .qa-options:empty { display: none; }
     .qa-input { display: flex; gap: .4rem; }
     .qa-input input {
@@ -42,8 +42,32 @@
     &.hold .qa-timer { display: none; }
 }
 @keyframes qa-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
-/* In der Navigation über der unteren Leiste */
-body.navigating .quick-ask { bottom: calc(5.2rem + var(--safe-bottom)); }
+/* In der Navigation über der unteren Leiste (--nav-bar-h misst nav/navigation.js) */
+body.navigating .quick-ask { bottom: calc(var(--nav-bar-h, 4.65rem + var(--safe-bottom)) + .6rem); }
+
+/* Frage unterwegs als Pille: ✕ · Frage · Bestätigen – klein, läuft von selbst ab */
+.quick-ask.pill {
+    display: flex; align-items: center; gap: .5rem;
+    width: auto; max-width: calc(100vw - 1.5rem);
+    padding: .35rem .4rem .35rem .35rem;
+    border-radius: 999px;
+    background: #1f2328; color: #fff;
+    strong { flex: 1; min-width: 0; font-size: var(--fs-300); line-height: 1.2; }
+    .qa-icon { width: 1.9rem; height: 1.9rem; font-size: 1.15rem; background: rgb(255 255 255 / .14); color: #fff; }
+    .qa-no {
+        display: grid; place-items: center; flex: none;
+        width: 2.2rem; height: 2.2rem; border: 0; border-radius: 50%;
+        background: transparent; color: #fff; cursor: pointer;
+        .msr { font-size: 1.35rem; }
+    }
+    .qa-yes {
+        flex: none; border: 0; border-radius: 999px; cursor: pointer;
+        padding: .45rem .8rem; font: inherit; font-size: var(--fs-200); font-weight: 600;
+        background: #2f9e44; color: #fff;
+    }
+    .qa-timer { left: 1rem; right: 1rem; }
+    .qa-timer span { background: rgb(255 255 255 / .6); }
+}
 
 /* ── Aufzeichnen ──────────────────────────────────────────────────────────── */
 
@@ -105,6 +129,16 @@ body.recording #search-here, body.navigating .rec { display: none !important; }
     .nav-top { margin: 0; width: auto; justify-items: stretch; }
     .nav-banner { border-radius: 0; box-shadow: none; }
     .nav-lanes { margin: 0; border-radius: 0; }
+}
+
+/* Im Mini-Fenster ist kaum Platz: oben nur der Pfeil und daneben, wie weit
+   noch – kein Text (Chrome/Edge-Fenster und Android-App gleich) */
+.pip-body .nav-banner, html.pip-mode #nav .nav-banner {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .35rem .75rem;
+    .nav-instr, .nav-toward, .nav-exit { display: none !important; }
+    .nav-icon { font-size: 2.4rem; }
+    .nav-dist { font-size: 1.9rem; line-height: 1; }
 }
 
 /* Mit Karte: sie füllt das Fenster, die Anweisung liegt oben darüber – mehr nicht */

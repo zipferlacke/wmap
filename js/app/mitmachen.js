@@ -5,6 +5,7 @@ import { local } from '../data/store.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { SurveyView } from '../osm/survey-ui.js';
 import { contribute, trace } from '../data/trace.js';
+import { alongMap } from './ask-along.js';
 import { finishLogin } from '../osm/api.js';
 import { clearCategory } from './category.js';
 import { $, SIMULATING, geolocate, map } from './core.js';
@@ -52,10 +53,12 @@ export async function askContributeOnce() {
   if (v === 'no') contribute.set(false);
 }
 
-// Standort auch ohne Navigation (Knopf „Mein Standort“, z. B. beim Spaziergang)
-geolocate.on('geolocate', (pos) => trace.add({
-  point: [pos.coords.longitude, pos.coords.latitude], accuracy: pos.coords.accuracy,
-}));
+// Standort auch ohne Navigation (Knopf „Mein Standort“, z. B. beim Spaziergang) –
+// unterwegs kommen dann auch kurze Fragen als Pille (ask-along.js)
+geolocate.on('geolocate', (pos) => {
+  trace.add({ point: [pos.coords.longitude, pos.coords.latitude], accuracy: pos.coords.accuracy });
+  if (!SIMULATING) alongMap(pos);
+});
 
 // Rückkehr von der OSM-Anmeldung ohne Popup (Meldung: osm/login-return.js)
 finishLogin().then((user) => {

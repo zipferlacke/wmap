@@ -174,6 +174,9 @@ function slice(r, a, b) {
 }
 
 const FRAME_MS = 1000 / 30;           // 30 Bilder je Sekunde reichen und sparen Strom
+// Bewegt sich nichts (Ampel, Stau, Pause), nur so oft nachsehen – statt bei
+// jedem Bild des Bildschirms (bis 120/s) aufzuwachen. Eine neue Meldung weckt sofort.
+const IDLE_MS = 250;
 
 /** Spurpfeile: OSRM-Angaben → Symbol */
 const LANE_ICON = {
@@ -194,7 +197,7 @@ export class Navigation {
   #arrived = false; #lastFix = null; #prev = null; #travel = null; #offlineSaid = 0; #rejected = 0;
   #rawAt = 0; #watchdog = null; #coarse = 0; #lastAlong = null; #still = null; #slow = 0;
   // Anzeige: Position zwischen zwei Meldungen, Kamera
-  #raf = null; #lastFrame = 0; #anim = null; #pos = null; #heading = null; #speed = 0;
+  #raf = null; #idle = null; #shown = null; #cutAt = null; #lastFrame = 0; #anim = null; #pos = null; #heading = null; #speed = 0;
   #following = true; #cam = { center: null, bearing: 0, zoom: 17, pitch: 55, tau: 0.1 };
   #target = { zoom: 17, pitch: 55 }; #context = 'urban'; #dist = Infinity;
   #place = { t: 0, point: null };
@@ -219,6 +222,11 @@ export class Navigation {
     this.#onArrive = onArrive;
     this.#onReport = onReport;
     this.#onShare = onShare;
+    // Knöpfe rechts und Tempo links stehen immer über der Leiste unten – die
+    // wird mit Gestenleiste, großer Systemschrift oder Offline-Hinweis höher
+    const bar = el.querySelector('.nav-bar');
+    // (am Dokument: auch die kurzen Fragen unterwegs – osm/quick-ask.js – richten sich danach)
+    if (bar) new ResizeObserver(() => document.documentElement.style.setProperty('--nav-bar-h', `${bar.offsetHeight}px`)).observe(bar);
     const on = (sel, fn) => el.querySelector(sel)?.addEventListener('click', fn);
     on('.nav-stop', () => this.stop());
     on('.nav-mute', () => { speech.setMuted(!speech.muted); this.#paintButtons(); });
@@ -283,6 +291,7 @@ export class Navigation {
    */
   start(route, { profile, highways, targets }) {
     this.#route = route;
+    this.#cutAt = null;
     this.#profile = profile;
     this.#highways = highways;
     this.#targets = targets.slice();
@@ -304,7 +313,7 @@ export class Navigation {
 
     this.#followPadding();
     this.#map.on('resize', this.#onResize);
-    Object.assign(this.#cam, { center: null, bearing: this.#map.getBearing(), zoom: this.#map.getZoom(), pitch: this.#map.getPitch(), tau: 0.5 });
+    Object.assign(this.#cam, { center: null, bearing: this.#map.getBearing(), zoom: this.#map.getZoom(), pitch: this.#map.getPitch(), tau: 0.3, quick: performance.now() + 3000 });
 
     // Die erste Ansage kommt direkt aus dem Klick – iOS spricht sonst gar nicht
     speech.say(this.#startText());
@@ -382,7 +391,8 @@ export class Navigation {
     this.#watchdog = null;
     this.#gpsState(null);
     cancelAnimationFrame(this.#raf);
-    this.#watch = this.#sim = this.#raf = null;
+    clearTimeout(this.#idle);
+    this.#watch = this.#sim = this.#raf = this.#idle = null;
     this.#wakeLock?.release?.().catch(() => {});
     this.#wakeLock = null;
     window.speechSynthesis?.cancel();
@@ -525,6 +535,7 @@ export class Navigation {
       to: { along, point: left ? point : pointAt(r.coords, r.cum, along), onRoute: !left },
       t0: now, dur, speed: this.#speed,
     };
+    this.#wake();
 
     // Bereits gefahrenen Teil ausblenden (etwas hinter dem Pfeil, der gleitet ja noch)
     const cut = Math.max(0, along - 25);
@@ -532,7 +543,11 @@ export class Navigation {
     this.#paintRoad(along);
     const end = r.cum[r.cum.length - 1];
     const cover = this.#cover;
-    if (cover && cover[1] > cut) {
+    // Route nur neu an die Karte geben, wenn man ein Stück weiter ist – das
+    // zerlegt sie jedes Mal neu in Kacheln (im Stand also gar nicht)
+    const cutKey = `${r.id}|${cover?.join(',')}`;
+    const same = this.#cutAt && this.#cutAt.key === cutKey && Math.abs(this.#cutAt.cut - cut) < 8;
+    if (same) { /* liegt schon so auf der Karte */ } else if (cover && cover[1] > cut) {
       // Wo die Fahrbahn mit Spuren liegt, übernimmt sie die Route
       const parts = [{ id: r.id, coords: slice(r, cut, Math.min(cover[1], end)), covered: true }];
       if (cover[1] < end) parts.push({ id: r.id, coords: slice(r, cover[1], end) });
@@ -540,6 +555,7 @@ export class Navigation {
     } else {
       showRoutes(this.#map, [{ id: r.id, coords: [start.point, ...r.coords.slice(start.index + 1)] }], r.id);
     }
+    if (!same) this.#cutAt = { key: cutKey, cut };
 
     this.#passVias(along);
     const arrived = along >= r.cum[r.cum.length - 1] - 20;
@@ -568,15 +584,34 @@ export class Navigation {
     return { along: a.to.along, point: lerp(a.from.point, a.to.point, k), onRoute: a.to.onRoute };
   }
 
-  /** Ein Bild: Pfeil setzen, Kamera nachführen. */
+  /** Nächstes Bild: in Bewegung im Takt (30/s), sonst erst nach einer Pause */
+  #schedule(ms) {
+    clearTimeout(this.#idle);
+    this.#idle = setTimeout(() => { this.#idle = null; this.#raf = requestAnimationFrame(this.#frame); }, ms);
+  }
+
+  /** Neue Meldung, Größe geändert …: gleich zeichnen, nicht erst nach der Pause */
+  #wake() {
+    if (!this.#route || !this.#idle) return;
+    clearTimeout(this.#idle);
+    this.#idle = null;
+    this.#raf = requestAnimationFrame(this.#frame);
+  }
+
   #frame = (t) => {
     if (!this.#route) return;
-    this.#raf = requestAnimationFrame(this.#frame);
-    if (t - this.#lastFrame < FRAME_MS - 2) return;
+    this.#raf = null;
+    const moving = this.#draw(t);
+    // setTimeout, dann aufs nächste Bild warten – ergibt gut 30 Bilder je Sekunde
+    this.#schedule(moving ? FRAME_MS - 8 : IDLE_MS);
+  };
+
+  /** Ein Bild: Pfeil setzen, Kamera nachführen. → hat sich etwas bewegt? */
+  #draw(t) {
     const dt = this.#lastFrame ? Math.min(0.25, (t - this.#lastFrame) / 1000) : FRAME_MS / 1000;
     this.#lastFrame = t;
     const pos = this.#currentPos(t);
-    if (!pos) return;
+    if (!pos) return false;
     this.#pos = pos;
     const r = this.#route;
 
@@ -598,16 +633,23 @@ export class Navigation {
     const shift = pos.onRoute && this.#cover && seen > 0 ? laneShiftAt(this.#extras, pos.along, this.#leftStretches()) * seen : 0;
     this.#shift += (shift - this.#shift) * (1 - Math.exp(-dt / 0.8));
     const shown = Math.abs(this.#shift) > 0.05 ? destination(pos.point, this.#heading + 90, this.#shift) : pos.point;
-    this.#marker?.setLngLat(shown).setRotation(this.#heading);
+    const last = this.#shown;
+    const markerMoved = !last || distance(last.point, shown) > 0.03 || Math.abs(((last.heading - this.#heading + 540) % 360) - 180) > 0.05;
+    if (markerMoved) {
+      this.#marker?.setLngLat(shown).setRotation(this.#heading);
+      this.#shown = { point: shown, heading: this.#heading };
+    }
 
-    if (!this.#following) { this.#paintCompass(this.#map.getBearing()); return; }
+    if (!this.#following) { this.#paintCompass(this.#map.getBearing()); return markerMoved; }
     const c = this.#cam;
     const k = 1 - Math.exp(-dt / c.tau);
     c.center = c.center ? lerp(c.center, pos.point, k) : pos.point;
     c.tau = Math.max(0.06, c.tau - dt * 0.4);       // nach dem Zentrieren erst weich, dann eng dran
-    c.bearing = approachAngle(c.bearing, navSettings.north ? 0 : this.#heading, dt, 0.7, 90);
-    c.zoom += (this.#target.zoom - c.zoom) * (1 - Math.exp(-dt / 1.6));
-    c.pitch += (this.#target.pitch - c.pitch) * (1 - Math.exp(-dt / 1.2));
+    // Beim Start zügig in die Fahreransicht (≈ 1,5 s), danach ruhig nachführen
+    const quick = t < (c.quick ?? 0);
+    c.bearing = approachAngle(c.bearing, navSettings.north ? 0 : this.#heading, dt, quick ? 0.3 : 0.7, quick ? 240 : 90);
+    c.zoom += (this.#target.zoom - c.zoom) * (1 - Math.exp(-dt / (quick ? 0.45 : 1.6)));
+    c.pitch += (this.#target.pitch - c.pitch) * (1 - Math.exp(-dt / (quick ? 0.4 : 1.2)));
     // Steht alles (Ampel, Stau), nicht neu zeichnen – spart Strom
     const m = this.#map;
     const still = Math.abs(m.getZoom() - c.zoom) < 0.002 && Math.abs(m.getPitch() - c.pitch) < 0.05
@@ -615,7 +657,8 @@ export class Navigation {
       && distance(m.getCenter().toArray(), c.center) < 0.05;
     if (!still) m.jumpTo({ center: c.center, bearing: c.bearing, zoom: c.zoom, pitch: c.pitch });
     this.#paintCompass(c.bearing);
-  };
+    return markerMoved || !still;
+  }
 
   /**
    * Wie nah und wie steil? Feste Stufen je Umgebung statt ständigem
@@ -924,6 +967,7 @@ export class Navigation {
 
   #setFollowing(on) {
     this.#following = on;
+    if (on) this.#wake();
     const btn = this.#el.querySelector('.nav-recenter');
     btn.classList.toggle('following', on);
     btn.setAttribute('aria-pressed', String(on));
@@ -971,10 +1015,12 @@ export class Navigation {
    */
   #followPadding() {
     const h = this.#map.getContainer().clientHeight;
-    this.#map.setPadding({ top: h * 0.52, bottom: Math.min(80, h * 0.1), left: 0, right: 0 });
+    // Mini-Fenster: der Punkt noch tiefer (~80 %) – oben steht nur die Entfernung
+    const mini = h < 560;
+    this.#map.setPadding({ top: h * (mini ? 0.66 : 0.52), bottom: mini ? h * 0.05 : 80, left: 0, right: 0 });
   }
 
-  #onResize = () => { if (this.#route && this.#following) this.#followPadding(); };
+  #onResize = () => { if (this.#route && this.#following) this.#followPadding(); this.#wake(); };
 
   /**
    * Verfahren: ab dem eigenen Standort neu rechnen, in Fahrtrichtung – eine
@@ -1000,6 +1046,7 @@ export class Navigation {
       if (!this.#route) return;
       route.id = this.#route.id;
       this.#route = route;
+      this.#cutAt = null;
       this.#extras = null;
       this.#reset();
       speech.say(this.#startText().replace('Die Route ist berechnet.', '').trim() || 'Neue Route berechnet.');

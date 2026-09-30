@@ -19,6 +19,8 @@ import { esc } from '../core/geo.js';
 import { APP_VERSION } from '../core/config.js';
 import { appVersion } from '../core/native.js';
 import { showChangelog } from '../ui/news.js';
+import { questions } from '../osm/survey.js';
+import { contribute } from '../data/trace.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 mountAppBar();
@@ -47,6 +49,7 @@ async function paintTiles() {
   // Nur Ansichten – Tour planen, Aufzeichnen, Fliegen und Erreichbarkeit gibt es in Karte bzw. Touren
   const active = ls.filter((l) => l.onMain && l.visible).length + xs.filter((x) => x.active).length;
   const as = areas.all();
+  const qs = contribute.get() ? questions.list().length : 0;
   const tiles = [
     { href: './index.html', icon: 'map', title: 'Karte', text: 'Suchen, Route planen, navigieren, aufzeichnen', main: true },
     { href: './wege.html?tab=geplant', icon: 'route', title: 'Geplante Touren', text: 'Zum Losfahren oder -laufen', count: ps.length ? n(ps.length, 'Tour', 'Touren') : 'noch keine' },
@@ -54,13 +57,13 @@ async function paintTiles() {
     { href: './entdecken.html', icon: 'explore', title: 'Entdecken', text: 'Wander- und Radwege, Touren von anderen' },
     { href: './plugins.html', icon: 'extension', title: 'Plugins', text: 'Luftbilder, Geologie, eigene Daten, Erweiterungen', count: active ? `${active} aktiv` : '' },
     { href: './offline.html', icon: 'download_for_offline', title: 'Offline-Karten', text: 'Gebiete aufs Gerät laden – für unterwegs ohne Netz', count: as.length ? `${n(as.length, 'Gebiet', 'Gebiete')} · ${mb(areas.bytes())}` : '' },
-    { href: './index.html?action=survey', icon: 'edit_location_alt', title: 'Mitmachen', text: 'Kurze Fragen, die OpenStreetMap verbessern' },
+    { href: './index.html?action=survey', icon: 'edit_location_alt', title: 'Mitmachen', text: 'Kurze Fragen, die OpenStreetMap verbessern', count: qs ? n(qs, 'neue Frage', 'neue Fragen') : '', hot: qs > 0 },
     { href: './sync.html', icon: 'sync', title: 'Sicherung & Synchronisation', text: 'Ordner (Nextcloud, Drive …), Health Connect, Sicherung', count: sc, warn: /Fehler/.test(sc) },
     { href: './settings.html', icon: 'settings', title: 'Einstellungen', text: 'Hell/dunkel, Navigation, Offline, Konto' },
   ];
 
   $('.dash-tiles').innerHTML = tiles.map((t) => `
-    <a class="dash-tile${t.main ? ' main' : ''}${t.warn ? ' warn' : ''}" href="${t.href}">
+    <a class="dash-tile${t.main ? ' main' : ''}${t.warn ? ' warn' : ''}${t.hot ? ' hot' : ''}" href="${t.href}">
       <span class="msr dash-bg" aria-hidden="true">${t.icon}</span>
       <span class="msr dash-icon">${t.icon}</span>
       <strong>${esc(t.title)}</strong>

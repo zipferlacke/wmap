@@ -112,6 +112,46 @@ const done = arguments[arguments.length - 1];
 })().then(done, (e) => done('FEHLER ' + e + ' ' + e.stack));
 """
 
+# Abstand: der Punkt auf der Karte (geolocationApi) alle 2 s, mit Navigation jede Sekunde, danach wieder 2 s
+GPS_INTERVAL = r"""
+const done = arguments[arguments.length - 1];
+(async () => {
+  const calls = [];
+  const chans = [];
+  window.__TAURI__ = { core: {
+    Channel: class { static n = 0; constructor() { this.id = ++this.constructor.n; chans.push(this); } },
+    invoke: async (cmd, args) => {
+      calls.push([cmd.split('|')[1], args?.options?.timeout ?? args?.channelId ?? null]);
+      if (/permission/.test(cmd)) return { location: 'granted', coarseLocation: 'granted' };
+      return null;
+    },
+  } };
+  Object.defineProperty(navigator, 'userAgent', { get: () => 'Mozilla/5.0 (Linux; Android 15; Pixel 9)' });
+  let now = Date.now();
+  Date.now = () => now;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const fix = (dx = 0) => chans.at(-1).onmessage({ coords: { longitude: 9.9368 + dx, latitude: 51.5413, accuracy: 8, speed: 0 }, timestamp: now });
+  const { geo, geolocationApi } = await import('./js/core/native.js?test-gps-int');
+  const api = geolocationApi();
+  const dot = api.watchPosition(() => {}, () => {}, { enableHighAccuracy: true });
+  await wait(100);
+  fix();                                   // steht: erst 1 s …
+  now += 16000; fix();                     // … nach 15 s alle 5 s …
+  await wait(100);
+  now += 50000; fix();                     // … nach einer Minute alle 30 s
+  await wait(100);
+  const nav = geo.watch(() => {}, null, {});   // Navigation: jede Sekunde
+  await wait(100);
+  geo.clear(nav);
+  await wait(700);                          // wieder 30 s
+  fix(0.001);                               // 70 m weiter: sofort wieder jede Sekunde
+  await wait(100);
+  api.clearWatch(dot);
+  await wait(700);
+  return calls.filter(([c]) => /watch/.test(c)).map(([c, v]) => `${c}:${v}`);
+})().then(done, (e) => done('FEHLER ' + e + ' ' + e.stack));
+"""
+
 # Ohne Recht aufs Plugin (Capability fehlt): über navigator.geolocation weiter
 GPS_WEB = r"""
 const done = arguments[arguments.length - 1];
@@ -168,6 +208,15 @@ with Browser(width=420, height=900) as b:
     print('Standort stimmt:', ok)
     if not ok:
         b.errors.append(('standort', 'Ergebnis falsch'))
+
+    b.open('sync.html', wait=2)
+    i = b.d.execute_async_script(GPS_INTERVAL)
+    print('Abstand:', i)
+    ok = i == ['watch_position:1000', 'clear_watch:1', 'watch_position:5000', 'clear_watch:2', 'watch_position:30000',
+               'clear_watch:3', 'watch_position:1000', 'clear_watch:4', 'watch_position:30000', 'clear_watch:5', 'watch_position:1000', 'clear_watch:6']
+    print('Karte je nach Bewegung 1/5/30 s, Navigation 1 s stimmt:', ok)
+    if not ok:
+        b.errors.append(('abstand', 'Ergebnis falsch'))
 
     b.open('sync.html', wait=2)
     w = b.d.execute_async_script(GPS_WEB)

@@ -23,7 +23,7 @@ import { tours, shapeOf, coordsOf, encodeShare, decodeShare, toGpx, download, lo
 import { sheet as sidePanel } from '../../libs/wuefl-libs/userDialog/userDialog.js';
 import { mountLayerMenu } from '../ui/layer-menu.js';
 import { ask, toast } from '../ui/dialogs.js';
-import { share } from '../ui/share.js';
+import { share, pageUrl } from '../ui/share.js';
 import * as geocode from '../services/geocode.js';
 import { distance, nearestOnLine, pointAt, simplifyTo, bbox, cumulative, fmtDistance, fmtDuration, esc } from '../core/geo.js';
 import { setupStages } from '../ui/tour-stages.js';
@@ -931,7 +931,7 @@ async function shareTour() {
   if (tour.points.length < 2) { toast('Erst eine Strecke planen'); return; }
   const name = tour.name || nameInput.value || 'Tour';
   const code = await encodeShare({ ...tour, name });
-  share({ title: 'Tour teilen', text: `Tour: ${name}`, url: `${location.origin}${location.pathname.replace(/[^/]*$/, '')}tour.html#t=${code}` }, toast);
+  share({ title: 'Tour teilen', text: `Tour: ${name}`, url: `${pageUrl('tour.html')}#t=${code}` }, toast);
 }
 
 /* GPX mit Höhen */

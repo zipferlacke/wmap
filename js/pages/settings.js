@@ -7,7 +7,7 @@
 import { offlineSetting } from '../data/offline.js';
 import { contribute, trace } from '../data/trace.js';
 import { account, login } from '../osm/api.js';
-import { queue, anonNotes } from '../osm/survey.js';
+import { queue, anonNotes, alongSetting } from '../osm/survey.js';
 import { OSM_AUTH } from '../core/config.js';
 import { esc } from '../core/geo.js';
 import { navSettings } from '../nav/navigation.js';
@@ -58,6 +58,11 @@ const render = () => {
         </select>
       </label>
       ${toggle('nav3d', '3D-Ansicht in der Navigation', 'Geneigt aus Fahrersicht; aus: flach von oben.', navSettings.threeD)}
+      <div class="settings-select settings-along">
+        <span><strong>Kurze Fragen unterwegs</strong><small>„Neuer Weg?“, „Gesperrt?“, „Gibt es … noch?“, „Immer noch Stau?“ als kleine Pille, die von selbst verschwindet – in der Navigation und mit dem Standortpunkt auf der Karte, unbeantwortet danach unter Mitmachen. Nur mit Mitmachen.</small></span>
+        <span class="settings-checks">${[['foot', 'Zu Fuß'], ['bike', 'Rad'], ['car', 'Auto']].map(([m, l]) => `
+          <label><input type="checkbox" name="along" value="${m}" ${alongSetting.get(m) ? 'checked' : ''}> ${l}</label>`).join('')}</span>
+      </div>
       ${toggle('saver', 'Datensparmodus', 'Keine 3D-Höhendaten und keine Offline-Karten.', dataSaver())}
       <button type="button" class="button settings-row" data-act="voice"><span class="msr">record_voice_over</span> Stimme für Ansagen</button>
       <button type="button" class="button settings-row" data-act="fuel"><span class="msr">local_gas_station</span> Spritpreise einrichten</button>
@@ -135,6 +140,7 @@ root.addEventListener('change', (e) => {
   if (t.name === 'theme') theme.set(t.value);
   if (t.name === 'navzoom') navSettings.zoom = t.value;
   if (t.name === 'nav3d') navSettings.threeD = t.checked;
+  if (t.name === 'along') alongSetting.set(t.value, t.checked);
   if (t.name === 'saver') {
     // Die Karte schaltet beim nächsten Öffnen (map/map.js liest dieselbe Einstellung)
     local.set('wmap.datasaver', t.checked);

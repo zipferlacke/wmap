@@ -119,6 +119,27 @@ Beim Start holt `js/core/theme.js` die Seite über `opened` ab (`go`, nur
 einmal) – in der eingepackten Kopie erst auf der Webversion bzw. in
 `tauri-start.js`, wenn es ohne Netz bei der Kopie bleibt.
 
+## Geteilte Links (`https://app.wuefl.de/wmap/…`)
+
+Geteilte Orte, Routen, Touren und Listen zeigen immer auf die Webversion
+(`pageUrl`/`base` in `js/ui/share.js`, nie `tauri.localhost`). Die
+Android-App meldet sich für diese Links an (`plugins.deep-link.mobile`,
+`appLink: true`); `open_link` in `src/lib.rs` öffnet dieselbe Seite samt
+`?…` und `#…` neben der gerade offenen – nur `*.html` direkt unter `/wmap/`.
+
+Damit Android sie ohne Rückfrage an die App gibt (App Links), muss
+`https://app.wuefl.de/.well-known/assetlinks.json` die Fingerabdrücke der
+Signaturschlüssel nennen – Vorlage `appdata/assetlinks.json` (bisher nur die
+Debug-App). Dazu gehören:
+
+- **Play Store:** der App-Signaturschlüssel aus der Play Console (Einrichten →
+  App-Integrität → App-Signatur, SHA-256).
+- **APK von wuefl.de:** der Upload-Schlüssel –
+  `keytool -list -v -keystore .secrets/wmap-upload.jks -alias wmap | grep SHA256`.
+
+Ohne die Datei geht es trotzdem: App-Info → „Standardmäßig öffnen“ → Link
+hinzufügen. Am Rechner nimmt der Browser https-Links selbst an.
+
 ## Karten-Links (`geo:`)
 
 WMap meldet sich für `geo:`-Links an (`plugins.deep-link` in

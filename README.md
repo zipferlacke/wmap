@@ -231,6 +231,13 @@ Start mit **Los** unter einer Route. Die Karte wechselt in die Fahreransicht.
 - Der Pfeil gleitet zwischen zwei GPS-Meldungen auf der Straße entlang
   (30 Bilder/s). Kommt eine Meldung spät (Tunnel, Häuserschlucht), rollt er
   bis zu **4 s** mit dem letzten Tempo weiter.
+- **Start:** in gut 1,5 s in der Fahreransicht (Zoom, Neigung, Richtung
+  die ersten 3 s zügig), danach wird ruhig nachgeführt.
+- **Strom:** Bewegt sich nichts (Ampel, Pause), wird nicht gezeichnet und nur
+  alle 250 ms nachgesehen statt bei jedem Bild des Bildschirms (bis 120/s);
+  eine neue Meldung weckt sofort. Die Route wird nur neu an die Karte
+  gegeben, wenn man ≥ 8 m weiter ist (sie wird dabei jedes Mal neu in
+  Kacheln zerlegt).
 - Die Richtung folgt der Straße voraus (Blick 12–55 m nach vorn, je nach
   Tempo), nicht der sprunghaften GPS-Richtung.
 - **Im Stand** wandert das GPS um einige Meter und meldet ein kleines Tempo.
@@ -283,8 +290,13 @@ eigene Standort liegt im unteren Drittel, damit man voraus sieht.
   folgen und der Knopf wird **farblos**; Antippen holt sie zurück.
 - **Kompass:** Fahrtrichtung oben ↔ Norden oben.
 - **Übersicht:** ganze Restroute im Bild.
-- **Stumm**, **Suchen** (entlang der Route), **Melden**, **Teilen**
-  (Ankunftszeit als Link), **Beenden**. Nach dem Beenden ist die Route weg.
+- **Stumm**, **Suchen** (entlang der Route), **Teilen** (Ankunftszeit als
+  Link), **Beenden**. Nach dem Beenden ist die Route weg. **Melden** (Glocke)
+  ist vorerst ausgeblendet (`.nav-report` in `css/app/navigation.css`), bis
+  es fertig ist.
+- Knöpfe rechts und Tempo links stehen immer über der Leiste unten – deren
+  Höhe misst ein ResizeObserver (`--nav-bar-h`; Gestenleiste, große
+  Systemschrift, Offline-Hinweis).
 
 **Ansagen**
 
@@ -689,6 +701,34 @@ das noch nicht erlaubt ist (Standort-Knopf, Navigation, Aufzeichnen, Route
 ab „Mein Standort“), und unter Einstellungen → Berechtigungen. Beim Start
 der Karte wird nicht gefragt – ohne Freigabe bleibt die letzte Ansicht.
 
+**Standort in der App** (`js/core/native.js`): eine gemeinsame Abfrage über
+das Plugin „geolocation“ für alle – so oft, wie der Eifrigste es braucht:
+Navigation und Aufzeichnen jede Sekunde, der Punkt auf der Karte (MapLibres
+Standort-Knopf, über `geolocationApi` statt `navigator.geolocation`) je nach
+Bewegung: in Bewegung jede Sekunde, wer steht, nach 15 s alle 5 s, nach einer
+Minute alle 30 s (`geo.retime`). Beim Losgehen meldet der
+Beschleunigungssensor (`devicemotion`) Schritte bzw. Fahrt gleich – dann
+sofort wieder jede Sekunde. Fehlt das Recht aufs Plugin, geht es über den
+Standort des WebViews (dort bestimmt der Browser den Abstand).
+
+**Ruhiger Punkt auf der Karte** (`js/core/smooth.js`, auch im Browser): Nah
+an der letzten Stelle und ohne Fahrt bleibt der Punkt stehen, die Meldungen
+werden im Hintergrund gemittelt (genaue zählen mehr) – höchstens alle 10 s
+rückt er auf das Mittel, wenn es sich ≥ 3 m verschoben hat. Sonst geht er ¾
+zur neuen Meldung (ungenauere zählen weniger), in Fahrt mit Richtung und
+Tempo des GPS vorausgerechnet, damit er nicht hinterherhinkt. Ausreißer
+(Sprung, der nicht zum Tempo passt, oder viel ungenauer) werden verworfen,
+drei hintereinander gelten. Zwischen zwei Meldungen gleitet der Punkt
+(nur der Marker, die Karte wird dafür nicht neu gezeichnet). Im Stand kommt
+nichts Neues – auch die Karte muss nicht nachgeführt werden.
+
+**Punkt, Kreis, Richtung** (`js/map/location-dot.js`): Der Kreis der
+Ungenauigkeit ist blau durchsichtig und ruhig (geglättete Ungenauigkeit, kein
+Pulsieren); ist der Standort genau (≤ 12 m), ist er ganz weg. Die
+Blickrichtung zeigt ein Kegel am Punkt – in Fahrt die Richtung des GPS,
+sonst der Kompass (`deviceorientationabsolute`). MapLibre selbst kennt keine
+Richtung (`showUserHeading` gibt es nur bei Mapbox).
+
 ## 15. Sicherung & Synchronisation: Ordner, Health Connect
 
 Eigene Seite `sync.html` (Kachel in der Übersicht; Einstellungen → Daten und
@@ -807,7 +847,9 @@ In der App schickt `js/core/theme.js` beim Start einer Seite zu
 
 - **Teilen per Link** – ohne Server, alles steckt in der Adresse: ein Ort,
   „Hier bin ich“ (mit Uhrzeit), eine Route mit Profil und Wegpunkten, eine
-  Tour (`tour.html#t=…`), in der Navigation die Ankunftszeit.
+  Tour (`tour.html#t=…`), in der Navigation die Ankunftszeit. Die Links
+  zeigen immer auf `app.wuefl.de/wmap/` – auch aus den Apps; die
+  Android-App öffnet sie selbst (src-tauri/README.md, „Geteilte Links“).
 - **Standort anfragen:** Link schicken; wer ihn öffnet, schickt seinen
   Standort zurück.
 - **Teilen-Dialog:** Teilen-Menü des Geräts, Text mit Link kopieren oder nur
@@ -818,8 +860,9 @@ In der App schickt `js/core/theme.js` beim Start einer Seite zu
   schließt, rechts „Im Browser öffnen“. Android: Custom Tab des Systems,
   Rechner: eigenes Fenster. Im Browser wie gewohnt ein neuer Tab.
 - **Bild in Bild** während der Navigation – überall nur die Karte mit dem
-  eigenen Standort und oben die nächste Anweisung, keine Knöpfe, Leisten oder
-  Zeiten (`js/nav/pip.js`):
+  eigenen Standort (weit unten, ~80 %) und oben der Pfeil der nächsten
+  Anweisung mit der Entfernung; kein Text, keine Knöpfe, Leisten oder Zeiten
+  (`js/nav/pip.js`):
   - **Android-App:** Wischt man die App weg (oder drückt Home), geht sie von
     selbst ins Mini-Fenster – die ganze App, per `html.pip-mode`
     (`css/app/dialogs.css`) auf Karte und Anweisung reduziert. Der Knopf in
@@ -837,9 +880,41 @@ In der App schickt `js/core/theme.js` beim Start einer Seite zu
 
 - **Mitmachen:** Nach einer Fahrt kurze Fragen zu Orten, an denen man
   nachweislich war („Kostet das Parken hier etwas?“, „Hat die Bäckerei noch
-  diese Zeiten?“, Belag, Beleuchtung, fehlende Wege). Zu Fuß/Rad im
-  Vorbeigehen (≤ 30 m), mit dem Auto nur, wo man angehalten hat. Öffnungszeiten
-  mit Wochen-Editor, „Rund um die Uhr“ und „Gibt es nicht mehr“.
+  diese Zeiten?“, Belag, Beleuchtung). Öffnungszeiten und Parkplätze nur,
+  wo man angehalten hat (≥ 3 min) – im Vorbeigehen sieht man sie nicht.
+  Öffnungszeiten mit Wochen-Editor, „Rund um die Uhr“ und „Gibt es nicht
+  mehr“. Jede Frage hat ein ✕ (vergessen – kommt man wieder vorbei, darf sie wiederkommen);
+  „Weiß nicht / später“ stellt sie einen Tag zurück. Die Übersicht zeigt
+  bei „Mitmachen“, wie viele Fragen offen sind.
+- **Fragen unterwegs** (`js/app/ask-along.js`) – in der Navigation und
+  ohne sie, wenn man mit dem Standortpunkt unterwegs ist (Fortbewegung dann
+  nach dem Tempo; „Gesperrt?“ nur in der Navigation), als kleine Pille (`quickAsk({ pill: true })`): links ✕, die Frage, rechts
+  „Bestätigen“ in Grün; sie läuft nach 12 s von selbst ab und steht dann am
+  Ende in der Liste, ✕ heißt vergessen. Keine Höchstzahl, aber zwischen
+  zwei Pillen 2 min oder 1 km:
+  - **„Neue Straße?“ / „Neuer Weg?“** – mindestens 200 m am Stück mehr als
+    30 m neben jedem Weg der Karte (Schicht `transportation` der
+    Kartenkacheln), nur in Bewegung und bei Genauigkeit ≤ 20 m; Bestätigen
+    schickt einen Hinweis mit dem Verlauf.
+  - **„Gesperrt?“** – nach einer Neuberechnung erst, wenn man ≥ 100 m neben
+    der alten Route ist (zurück auf ihr: keine Frage).
+  - **„Gibt es … noch?“** – Läden und Lokale direkt am Weg (zu Fuß 15 m,
+    Rad 20 m, Auto 25 m und nur langsamer als 30 km/h), seit über zwei
+    Jahren unbestätigt – nach dem Vorbeikommen; Bestätigen setzt
+    `check_date`. Die Orte kommen aus den Kartenkacheln (Schicht `poi`, kein
+    Netz); erst nach dem Vorbeikommen fragt eine Anfrage bei der OSM-API nach
+    genau diesem Ort (Art, Stand). Im Auto nur Läden an der eigenen Straße:
+    Liegt eine andere Straße fürs Auto ≥ 8 m näher am Laden (Rückseite,
+    Parallelstraße), wird nicht gefragt.
+  - **Meldungen auf der Route** („Immer noch Stau?“, „Immer noch
+    gesperrt?“, „Baustelle noch da?“ – Autobahn-Verkehrslage und geteilte
+    Meldungen, `js/app/report.js`) kommen immer sofort als Pille
+    (`urgent`), auch kurz nach einer anderen, die sie wegschiebt; ✕ heißt
+    „nicht mehr da“, die Antwort geht an die Meldung.
+  - Die Abfrage der Kartenkacheln für „Neuer Weg?“ (lokal, kein Netz) läuft
+    höchstens alle 5 s bzw. 25 m.
+  Je Fortbewegung abschaltbar (Einstellungen → Unterwegs: Zu Fuß, Rad,
+  Auto); dann kommen „Neuer Weg?“ und „Gesperrt?“ gleich in die Liste.
 - Hochladen mit OSM-Konto direkt in die Karte, sonst anonym als Hinweis.
   Das OSM-Konto ist zugleich das WMap-Konto (Abschnitt 18).
   Die Anmeldung braucht eine **OAuth-Client-ID** in `OSM_AUTH` in
@@ -915,7 +990,7 @@ In der App schickt `js/core/theme.js` beim Start einer Seite zu
   wird: **Konto verbinden** führt zu Einstellungen → Konto
   (`settings.html#osm`), **Als Hinweis senden** schickt es anonym als Hinweis.
 - **Meldungen unterwegs** (Stau, Unfall, Baustelle) mit kurzer Rückfrage für
-  andere („Baustelle noch da? Ja/Nein“). Autobahn-Verkehrslage aus den offenen
+  andere als Pille („Immer noch Stau?“, siehe Fragen unterwegs). Autobahn-Verkehrslage aus den offenen
   Daten der Autobahn GmbH.
 
 ## 18. WMap-Konto (OpenStreetMap) und Server

@@ -640,7 +640,7 @@ content.addEventListener('click', async (e) => {
   if (act === 'tour') {
     try { const saved = tours.save(asTour(t)); location.href = `./tour.html?id=${encodeURIComponent(saved.id)}`; } catch (err) { toast(err.message); }
   } else if (act === 'share') {
-    share({ title: t.name, text: t.name, url: async () => `${location.origin}${location.pathname.replace(/[^/]*$/, '')}tour.html#t=${await encodeShare('start' in t ? asTour(t) : t)}` }, toast);
+    share({ title: t.name, text: t.name, url: async () => `${pageUrl('tour.html')}#t=${await encodeShare('start' in t ? asTour(t) : t)}` }, toast);
   } else if (act === 'gpx') {
     download(`${(t.name || 'weg').replace(/[^\wäöüß]+/gi, '-')}.gpx`, 'start' in t ? trackGpx(t) : toGpx(t, coordsOf(t.shape)));
   } else if (act === 'delete') {

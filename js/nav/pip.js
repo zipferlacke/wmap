@@ -2,8 +2,9 @@
  * Bild in Bild: die Navigation in einem kleinen Fenster, das über anderen
  * Apps und Tabs liegen bleibt – wie bei Google Maps.
  *
- * Zu sehen ist nur die Karte mit dem Standort und oben die nächste Anweisung –
- * keine Knöpfe, Leisten oder Zeiten.
+ * Zu sehen ist nur die Karte mit dem Standort (weit unten) und oben der Pfeil
+ * der nächsten Anweisung mit der Entfernung – kein Text, keine Knöpfe, Leisten
+ * oder Zeiten; im Mini-Fenster ist kaum Platz.
  *
  *   Android-App    die ganze App, im Mini-Fenster auf Karte und Anweisung
  *                  reduziert (html.pip-mode, css/app/dialogs.css) – beim
@@ -113,7 +114,7 @@ export class NavPip {
   /* ── Safari: Canvas als Video ──────────────────────────────────────────── */
 
   async #openVideo() {
-    this.#canvas = Object.assign(document.createElement('canvas'), this.#map ? { width: 540, height: 720 } : { width: 540, height: 170 });
+    this.#canvas = Object.assign(document.createElement('canvas'), this.#map ? { width: 540, height: 720 } : { width: 540, height: 130 });
     this.#video = Object.assign(document.createElement('video'), { muted: true, playsInline: true });
     this.#video.srcObject = this.#canvas.captureStream(5);
     this.#drawCanvas();
@@ -151,22 +152,17 @@ export class NavPip {
     const c = this.#canvas, ctx = c.getContext('2d');
     const $ = (s) => this.#nav.querySelector(s);
     const text = (s) => ($(s) && !$(s).hidden ? $(s).textContent.trim() : '');
-    const BANNER = 170;
+    // Oben nur der Pfeil und daneben, wie weit noch – im Mini-Fenster ist kaum Platz
+    const BANNER = 130;
     if (this.#map) this.#drawMap(ctx, BANNER);
     ctx.fillStyle = '#1a73e8';
     ctx.fillRect(0, 0, c.width, BANNER);
     ctx.fillStyle = '#fff';
     ctx.font = '100px "Material Symbols Rounded"';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text('.nav-icon') || 'navigation', 22, 85);
-    ctx.font = 'bold 56px system-ui, sans-serif';
-    ctx.fillText(text('.nav-dist'), 150, 50, c.width - 168);
-    ctx.font = '600 32px system-ui, sans-serif';
-    ctx.fillText(text('.nav-instr'), 150, 102, c.width - 168);
-    ctx.font = '26px system-ui, sans-serif';
-    ctx.globalAlpha = 0.85;
-    ctx.fillText(text('.nav-toward'), 150, 142, c.width - 168);
-    ctx.globalAlpha = 1;
+    ctx.fillText(text('.nav-icon') || 'navigation', 22, BANNER / 2);
+    ctx.font = 'bold 84px system-ui, sans-serif';
+    ctx.fillText(text('.nav-dist'), 150, BANNER / 2 + 4, c.width - 168);
   }
 
   /** Karte unter dem Banner: ausgeschnitten um den eigenen Standort, dazu der Pfeil */
@@ -182,9 +178,9 @@ export class NavPip {
     const h = c.height - top;
     const scale = Math.max(c.width / src.width, h / src.height);
     const sw = c.width / scale, sh = h / scale;
-    // Der Standort bleibt im unteren Drittel – wie in der Navigation
+    // Der Standort weit unten (~80 %) – man sieht mehr vom Weg voraus
     const sx = Math.min(Math.max(mx - sw / 2, 0), src.width - sw);
-    const sy = Math.min(Math.max(my - sh * 0.7, 0), src.height - sh);
+    const sy = Math.min(Math.max(my - sh * 0.8, 0), src.height - sh);
     ctx.drawImage(src, sx, sy, sw, sh, 0, top, c.width, h);
     if (!me) return;
     // Pfeil: Drehung aus dem transform des Markers (rotateZ bzw. rotate)

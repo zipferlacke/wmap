@@ -10,6 +10,9 @@ import { STYLE_URL, TERRAIN_TILES } from '../core/config.js';
 import { local } from '../data/store.js';
 import { byId } from '../core/categories.js';
 import { theme } from '../core/theme.js';
+import { geo, geolocationApi } from '../core/native.js';
+import { smoothGeolocation } from '../core/smooth.js';
+import { enhanceDot } from './location-dot.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const fc = (features) => ({ type: 'FeatureCollection', features });
@@ -117,15 +120,24 @@ export function createMap(container, {
     ],
   }), 'bottom-left');
   collapseAttribution(map.getContainer());
+  keepSized(map);
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 
+  // App: Der Punkt auf der Karte nutzt dieselbe Standortabfrage wie die
+  // Navigation (Plugin, core/native.js) – in Bewegung jede Sekunde, im Stand
+  // seltener bis alle 30 s. Überall geglättet (core/smooth.js): im Stand ruhig, Ausreißer weg
+  const base = geo.native ? geolocationApi() : navigator.geolocation;
+  if (base) Object.defineProperty(navigator, 'geolocation', { configurable: true, value: smoothGeolocation(base) });
   const geolocate = new maplibregl.GeolocateControl({
     positionOptions: { enableHighAccuracy: true },
     trackUserLocation: true,
-    showUserHeading: true,
+    // Kreis ruhig (geglättete Ungenauigkeit), bei genauem Standort weg – map/location-dot.js
+    showAccuracyCircle: true,
   });
   map.addControl(geolocate, 'top-right');
   guardGeolocate(map, geolocate);
+  // Punkt gleitet, ruhiger Kreis, Blickrichtung (map/location-dot.js)
+  enhanceDot(map, geolocate);
 
   map.on('load', () => {
     // Mapterhorn liefert in Deutschland bis Zoom 16, darüber gibt es nur 404 –
@@ -1110,6 +1122,26 @@ export function showHover(map, lngLat) {
  * Android-App: Der Standort-Knopf fragt erst über den Dialog zu den
  * Berechtigungen (ui/permissions.js) – ohne Freigabe täte er sonst nichts.
  */
+/**
+ * Karte so groß wie ihr Platz: Hat der Platz beim Start noch keine Größe (App
+ * startet, Seite noch nicht gelayoutet), nimmt MapLibre 400 × 300 und
+ * übersieht die erste Änderung danach (sein ResizeObserver verwirft den
+ * ersten Aufruf) – die Karte blieb dann klein in der Ecke, bis man neu lud.
+ * Darum selbst nachsehen und bei Abweichung anpassen.
+ */
+function keepSized(map) {
+  const fit = () => {
+    const box = map.getContainer();
+    const c = map.getCanvas();
+    if (!box.clientWidth || !box.clientHeight) return;
+    if (Math.abs(c.clientWidth - box.clientWidth) > 1 || Math.abs(c.clientHeight - box.clientHeight) > 1) map.resize();
+  };
+  new ResizeObserver(fit).observe(map.getContainer());
+  map.once('load', fit);
+  addEventListener('pageshow', fit);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) fit(); });
+}
+
 function guardGeolocate(map, geolocate) {
   if (!window.__TAURI__ || !/Android/i.test(navigator.userAgent)) return;
   let ok = false;

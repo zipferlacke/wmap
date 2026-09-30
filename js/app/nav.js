@@ -17,6 +17,7 @@ import { nearestOnLine, pointAt, simplifyTo, fmtDistance, esc, cumulative } from
 import { renderResultList, tilePointsAlong } from './category.js';
 import { $, $$, SIMULATING, chipHtml, current, map, state } from './core.js';
 import { askAfterTrip, askContributeOnce } from './mitmachen.js';
+import { alongStart, alongStop, alongFix, alongReroute } from './ask-along.js';
 import { askParking, checkTrafficPassed, reportHere } from './report.js';
 import { leaveRouteMode } from './route-plan.js';
 import { clearRoutes } from './route-results.js';
@@ -32,6 +33,7 @@ export const nav = new Navigation(map, $('#nav'), {
   onExit({ arrived }) {
     forgetNav();
     pip.close();
+    alongStop();
     // Fahrt in „Meine Wege“ merken
     if (recorder.kind === 'nav') {
       recorder.stop().then((t) => {
@@ -48,6 +50,8 @@ export const nav = new Navigation(map, $('#nav'), {
   onRoute(route, { again, ...opts }) {
     rememberNav({ route, ...opts, destination: navDestination });
     if (!again) loadSharedReports(route);
+    // Kurze Fragen unterwegs (Neuer Weg?, Gesperrt?, Gibt es … noch?)
+    if (!again && !SIMULATING) alongStart(route, opts.profile);
     // again: nur Spuren/Tempolimits nachgeladen – Karte ist schon gespeichert
     if (!again) keepOffline(route);
   },
@@ -57,6 +61,7 @@ export const nav = new Navigation(map, $('#nav'), {
     if (!SIMULATING) trace.add(fix);
     if (!SIMULATING && recorder.kind === 'nav') recorder.add(fix);
     checkTrafficPassed(fix.point);
+    if (!SIMULATING) alongFix(fix);
   },
   onArrive: (point, profile) => { if (profile === 'car') askParking(point); },
   onReport: (point) => reportHere(point),
@@ -69,7 +74,8 @@ export const nav = new Navigation(map, $('#nav'), {
       url: () => placeUrl(point ?? to, 'Unterwegs', { at: Date.now() }),
     }, toast);
   },
-  onReroute: (ev) => trips.reroute(ev),
+  // Abgewichen: „Gesperrt?“ erst, wenn man wirklich ≥ 100 m neben der alten Route ist (ask-along.js)
+  onReroute: (ev) => alongReroute(ev),
 });
 window.__wmap.nav = nav;
 
