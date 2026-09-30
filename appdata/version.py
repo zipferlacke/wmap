@@ -4,7 +4,9 @@ Versionsnummer überall eintragen – aus dem obersten Eintrag im Changelog
 von appdata/messages.json:
 
     python3 appdata/version.py           eintragen, zeigt was sich ändert
-    python3 appdata/version.py --pruefen nur prüfen (Rückgabe 1, wenn etwas abweicht)
+    python3 appdata/version.py --pruefen nur prüfen (Rückgabe 1, wenn etwas abweicht;
+                                         ohne libs/wuefl-libs, etwa im Export von
+                                         git-release, ohne deren Dateien)
 
 Ziele:
     js/core/config.js           APP_VERSION (Anzeige, Neuigkeiten, minVersion)
@@ -81,12 +83,25 @@ def app_files():
     return EXTRA + [x for x in files if x not in EXTRA]
 
 
+LIBS = 'libs/wuefl-libs/'
+
+
 def write_files(check):
     path = ROOT / 'appdata/sw-files.json'
-    text = json.dumps(app_files(), ensure_ascii=False, indent=0) + '\n'
+    files = app_files()
+    text = json.dumps(files, ensure_ascii=False, indent=0) + '\n'
     old = path.read_text(encoding='utf-8') if path.exists() else ''
     if old == text:
         return None
+    # git-release prüft einen Export (git archive) – dort fehlt libs/wuefl-libs
+    # (Verweis aufs Nachbarprojekt, in .gitignore). Dann nur den Rest vergleichen.
+    if check and not (ROOT / LIBS).is_dir():
+        try:
+            before = [x for x in json.loads(old) if not x.startswith(LIBS)]
+        except ValueError:
+            before = None
+        if before == [x for x in files if not x.startswith(LIBS)]:
+            return None
     if not check:
         path.write_text(text, encoding='utf-8')
     return 'appdata/sw-files.json: Dateiliste neu'
