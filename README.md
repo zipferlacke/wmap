@@ -233,6 +233,14 @@ Start mit **Los** unter einer Route. Die Karte wechselt in die Fahreransicht.
   bis zu **4 s** mit dem letzten Tempo weiter.
 - Die Richtung folgt der Straße voraus (Blick 12–55 m nach vorn, je nach
   Tempo), nicht der sprunghaften GPS-Richtung.
+- **Im Stand** wandert das GPS um einige Meter und meldet ein kleines Tempo.
+  Zwei ruhige Meldungen hintereinander (unter 0,5 m/s) → der Pfeil hält in
+  der Mitte der beiden, Tempo **0**. Er läuft erst wieder, wenn das GPS
+  Fahrt misst (ab 0,9 m/s) oder man sich weiter entfernt als die doppelte
+  Ungenauigkeit (mindestens 12 m).
+- Der Pfeil sitzt im unteren Drittel; der Rand oben wird bei jeder
+  Größenänderung neu berechnet – so bleibt er auch im kleinen Bild in Bild
+  sichtbar.
 - Der Pfeil bleibt auf der Straße, bis **3 Meldungen hintereinander mehr als
   40 m** daneben liegen – erst dann gilt man als abgekommen und die Route wird
   neu berechnet (danach 10 s Pause bis zur nächsten Neuberechnung).
@@ -288,6 +296,11 @@ eigene Standort liegt im unteren Drittel, damit man voraus sieht.
 - Nach einem Manöver, wenn das nächste weit ist: „2 Kilometer der Route folgen.“
 - Die Stimme ist wählbar (Einstellungen → Stimme); deutsche Stimmen der großen
   Anbieter werden bevorzugt.
+- **Android-App:** Das WebView kennt keine Web-Sprachausgabe
+  (`speechSynthesis`) – dort spricht Android selbst (TextToSpeech über
+  `window.WMapAndroid.speak`, `tools/android/MainActivity.kt`); Musik wird
+  währenddessen leiser. Stimme und Tempo aus den Android-Einstellungen
+  („Sprachausgabe“).
 
 **Spurleiste:** Vor einer Kreuzung (bis 700 m vorher) zeigt die Leiste oben
 alle Spuren mit Pfeilen; die richtigen sind hervorgehoben.
@@ -804,16 +817,21 @@ In der App schickt `js/core/theme.js` beim Start einer Seite zu
   nicht im Fenster von WMap, sondern darüber mit einer Leiste – ✕ links
   schließt, rechts „Im Browser öffnen“. Android: Custom Tab des Systems,
   Rechner: eigenes Fenster. Im Browser wie gewohnt ein neuer Tab.
-- **Bild in Bild** während der Navigation:
+- **Bild in Bild** während der Navigation – überall nur die Karte mit dem
+  eigenen Standort und oben die nächste Anweisung, keine Knöpfe, Leisten oder
+  Zeiten (`js/nav/pip.js`):
   - **Android-App:** Wischt man die App weg (oder drückt Home), geht sie von
-    selbst ins Mini-Fenster – die ganze App, also Karte und Anweisung; Knöpfe,
-    Suche und Leisten verschwinden darin. Der Knopf in der Navigation geht
-    sofort hinein. Ab Android 12 schaltet das System selbst, bei 8–11 WMap
-    beim Verlassen. Die Karte läuft im Mini-Fenster weiter.
-  - **Chrome, Edge, neue Firefox:** der Knopf schiebt die Karte samt
-    Anweisung in ein Mini-Fenster über anderen Apps und Tabs; schließt man es,
-    kehrt die Karte zurück.
-  - **Safari:** nur die Anweisung, als Video.
+    selbst ins Mini-Fenster – die ganze App, per `html.pip-mode`
+    (`css/app/dialogs.css`) auf Karte und Anweisung reduziert. Der Knopf in
+    der Navigation geht sofort hinein. Ab Android 12 schaltet das System
+    selbst, bei 8–11 WMap beim Verlassen. Karte und GPS laufen im
+    Mini-Fenster weiter (`MainActivity.kt` setzt die Plugins nach der Pause
+    gleich wieder fort; wird das Fenster weggewischt, ruhen sie).
+  - **Chrome, Edge am Rechner, neue Firefox:** der Knopf schiebt die Karte
+    samt Anweisung in ein Mini-Fenster über anderen Apps und Tabs
+    (Document Picture-in-Picture); schließt man es, kehrt die Karte zurück.
+  - **Chrome am Handy, Safari:** Video-Bild-in-Bild – Karte (nach jedem
+    Kartenbild kopiert), Standortpfeil und Anweisung auf ein Canvas gemalt.
 
 ## 17. Mitmachen bei OpenStreetMap, Meldungen
 
@@ -845,31 +863,39 @@ In der App schickt `js/core/theme.js` beim Start einer Seite zu
   Ort bearbeitet, Ort neu; direkt in die Karte oder als Hinweis. Auf dem Gerät
   (Einstellungen → Mitmachen: „Du hast über WMap …“) und anonym auf dem Server.
 - **Orte bearbeiten und eintragen** (osm/edit.js): in der Ortskarte
-  **Bearbeiten** (Name, Beschreibung – `description`, kurz und sachlich –,
-  Öffnungszeiten, Telefon, Website, Veranstaltungen – `website:events`, wie
-  WMap sie für Programme nutzt –, Bild eines Orts aus OSM; neben jedem Feld
-  steht klein der OSM-Schlüssel). Bild: ein Link zu einem freien Foto
-  (`image`); ein Link auf Wikimedia Commons wird zu
-  `wikimedia_commons=File:…`. Telefon und Website ändern den Tag, den es
-  schon gibt (`contact:phone`, `contact:website`), statt einen zweiten
-  anzulegen.
-  **Angaben** – je Art dieselben Felder wie in der Ortskarte
-  (`SCHEMA` in ui/poi-info.js, `editFields()`): Zahl (Stellplätze,
-  Ladepunkte, Höhe …), Auswahl (Gebühr, Belag, Zugang, Art …), Häkchen
-  (Kraftstoffe `fuel:…`, Bezahlung `payment:…` – abhaken entfernt ein
-  „yes“), an Ladesäulen je Stecker Anzahl und Leistung (`socket:type2`,
-  `socket:type2:output` …). Beim Eintragen passen sich die Angaben der
-  gewählten Art an. **Tipp auf eine Angabe in der Ortskarte** (auch auf
-  „unbekannt“, dort mit Stift) öffnet das Bearbeiten direkt an diesem Feld
-  (`data-edit`, app/place.js).
-  **Merkmale** (aufklappbar): Lieferdienst, Zum Mitnehmen, Bio, Vegan,
-  Vegetarisch, Draußen sitzen, WLAN, Drive-in, Rollstuhl – je Ja/Nur/Nein.
-  Die Ortskarte zeigt sie wie bei Google unter dem Namen („Bäckerei ·
-  Lieferdienst · Bio“), darunter die Beschreibung (ui/poi-info.js `TRAITS`).
-  **Alle Tags** (aufklappbar): die Rohdaten, eine Zeile `Schlüssel=Wert` –
-  ändern, ergänzen, Zeile löschen = Tag entfernen; was man oben in den
-  Feldern ändert, läuft dort gleich mit und gilt vorrangig. Beim Eintragen
-  heißt der Block „Weitere Tags“ und kommt zu den Angaben dazu.
+  **Bearbeiten**; neben jedem Feld steht klein der OSM-Schlüssel. Der Dialog
+  von oben nach unten:
+  1. **Name**.
+  2. **Angaben** – je Art dieselben Felder wie in den Kacheln der Ortskarte
+     (`SCHEMA` in ui/poi-info.js, `editFields()`), auch die „unbekannten“:
+     Zahl (Stellplätze, Ladepunkte, Höhe …), Auswahl (Gebühr, Belag, Zugang,
+     Art …), Häkchen (Kraftstoffe `fuel:…`, Bezahlung `payment:…` – abhaken
+     entfernt ein „yes“), an Ladesäulen je Stecker Anzahl und Leistung
+     (`socket:type2`, `socket:type2:output` …), Öffnungszeiten.
+  3. **Grundlegendes**, soweit nicht schon bei den Angaben: Beschreibung
+     (`description`, kurz und sachlich), Öffnungszeiten, Telefon, Website.
+     Telefon und Website ändern den Tag, den es schon gibt (`contact:phone`,
+     `contact:website`), statt einen zweiten anzulegen.
+  4. **Ausgefülltes** aus dem Rest – Adresse, Programm (`website:events`, wie
+     WMap es für Veranstaltungen nutzt), Bild, Merkmale mit Wert.
+  5. **Weiteres** (zugeklappt): dieselben Felder, solange sie leer sind, und
+     am Ende immer **Alle Tags**.
+
+  Die Kacheln der Ortskarte selbst öffnen nichts – bearbeitet wird nur über
+  den Knopf. Bild: ein Link zu einem freien Foto (`image`); ein Link auf
+  Wikimedia Commons wird zu `wikimedia_commons=File:…`.
+  **Merkmale:** Lieferdienst, Zum Mitnehmen, Bio, Vegan, Vegetarisch, Draußen
+  sitzen, WLAN, Drive-in, Rollstuhl – je Ja/Nur/Nein (was schon bei den
+  Angaben steht, nicht noch einmal). Die Ortskarte zeigt sie wie bei Google
+  unter dem Namen („Bäckerei · Lieferdienst · Bio“), darunter die
+  Beschreibung (ui/poi-info.js `TRAITS`).
+  **Alle Tags:** die Rohdaten, eine Zeile `Schlüssel=Wert` – ändern,
+  ergänzen, Zeile löschen = Tag entfernen; was man oben in den Feldern
+  ändert, läuft dort gleich mit und gilt vorrangig.
+  **Eintragen:** Art (mit Suche), Marke, Name, die Angaben der gewählten Art
+  (passen sich beim Wechsel an), Beschreibung, Öffnungszeiten, Telefon,
+  Website, Adresse; unter „Weiteres“ Programm, Bild, Merkmale und „Weitere
+  Tags“, die zu den Angaben dazukommen.
   Die **Öffnungszeiten** als aufklappbarer Block (osm/hours-editor.js):
   Montag bis Sonntag und Feiertage untereinander, rechts die Zeiten (mehrere
   je Tag, schmale Felder fürs Handy), „+ Zeit“, bei Feiertagen „wie
@@ -975,6 +1001,9 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
   wird er gelöscht; reicht der Platz vorher nicht, weicht zuerst die
   **älteste** Navigation. Schon vorhandene Kacheln werden übernommen statt
   neu geladen. Höhendaten nicht – ohne Netz bleibt die Karte darum flach.
+  Ohne Service Worker (App mit eingepackter Oberfläche – `http://tauri.localhost`
+  darf keinen anmelden) lädt die Seite selbst vor, sechs zugleich; die
+  Kacheln liegen dann im HTTP-Cache des WebViews (`saveRouteOffline`).
 - **Offline-Karten** (`offline.html`, Kachel in der Übersicht, Link in den
   Einstellungen): Gebiete als Rechteck (zwei Ecken ziehen) oder freie Form
   (Punkte tippen) aufs Gerät laden. Vorher steht die Größe da – geschätzt

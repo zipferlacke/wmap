@@ -3,6 +3,12 @@ package de.wuefl.wmap
 // Von tools/android-einbinden.py nach src-tauri/gen/android kopiert – hier ändern, nicht dort.
 
 import android.app.PictureInPictureParams
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import java.util.Locale
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
@@ -15,8 +21,14 @@ import androidx.core.view.WindowInsetsCompat
 
 /**
  * Bild in Bild: Während einer Navigation geht WMap beim Verlassen (Home,
- * Rauswischen) von selbst ins Mini-Fenster – die ganze App, also Karte und
- * Anweisung. Die Seite schaltet das über window.WMapAndroid (js/nav/pip.js).
+ * Rauswischen) von selbst ins Mini-Fenster – die ganze App, von der Seite auf
+ * Karte und Anweisung reduziert (html.pip-mode). Die Seite schaltet das über
+ * window.WMapAndroid (js/nav/pip.js). Karte und GPS laufen dort weiter,
+ * obwohl die Activity pausiert ist (keepAwake).
+ *
+ * Ansagen: Das WebView kennt keine Web-Sprachausgabe (speechSynthesis) –
+ * darum spricht Android selbst (TextToSpeech, WMapAndroid.speak/stopSpeaking,
+ * genutzt von js/nav/navigation.js); Musik wird dabei leiser (Audio-Fokus).
  *
  * Ränder: Die App zeichnet bis unter Statusleiste und Gestenleiste
  * (edge-to-edge). Das WebView meldet dafür kein env(safe-area-inset-*) –
@@ -25,12 +37,45 @@ import androidx.core.view.WindowInsetsCompat
  */
 class MainActivity : TauriActivity() {
   private var web: WebView? = null
+  // Ansagen der Navigation: Das WebView kennt keine Web-Sprachausgabe
+  private var tts: TextToSpeech? = null
+  @Volatile private var ttsReady = false
+  private val speechAttrs = AudioAttributes.Builder()
+    .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+    .build()
+  // Musik währenddessen leiser, danach wieder laut
+  private val focus by lazy {
+    AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK).setAudioAttributes(speechAttrs).build()
+  }
+  private val audio by lazy { getSystemService(AudioManager::class.java) }
   @Volatile private var pipWanted = false
+  // Im Bild in Bild die Plugins nach der Pause gleich wieder fortgesetzt (GPS)
+  private var keptAwake = false
   @Volatile private var insetsJson = "null"
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    tts = TextToSpeech(this) { status ->
+      val t = tts ?: return@TextToSpeech
+      if (status != TextToSpeech.SUCCESS) return@TextToSpeech
+      t.language = Locale.GERMANY
+      t.setAudioAttributes(speechAttrs)
+      t.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+        override fun onStart(id: String?) { audio.requestAudioFocus(focus) }
+        override fun onDone(id: String?) { if (!t.isSpeaking) audio.abandonAudioFocusRequest(focus) }
+        @Deprecated("Deprecated in Java")
+        override fun onError(id: String?) { audio.abandonAudioFocusRequest(focus) }
+      })
+      ttsReady = true
+    }
+  }
+
+  override fun onDestroy() {
+    tts?.shutdown()
+    tts = null
+    super.onDestroy()
   }
 
   override fun onWebViewCreate(webView: WebView) {
@@ -61,6 +106,19 @@ class MainActivity : TauriActivity() {
     @JavascriptInterface fun enterPip() {
       runOnUiThread { enterPipNow() }
     }
+
+    /** Ansage sprechen (die vorige bricht ab) → false, solange die Sprachausgabe nicht bereit ist */
+    @JavascriptInterface fun speak(text: String): Boolean {
+      val t = tts ?: return false
+      if (!ttsReady) return false
+      t.speak(text, TextToSpeech.QUEUE_FLUSH, null, "wmap")
+      return true
+    }
+
+    @JavascriptInterface fun stopSpeaking() {
+      tts?.stop()
+      audio.abandonAudioFocusRequest(focus)
+    }
   }
 
   private fun params(): PictureInPictureParams? {
@@ -85,15 +143,40 @@ class MainActivity : TauriActivity() {
     if (pipWanted && Build.VERSION.SDK_INT in 26..30) enterPipNow()
   }
 
-  // Tauri hält die WebView beim Pausieren an – im Bild in Bild soll die Karte aber weiterlaufen
+  // Tauri hält beim Pausieren die WebView an und die Plugins – das Standort-
+  // Plugin beendet dann die Abfrage. Im Bild in Bild soll die Navigation aber
+  // weiterlaufen: Karte und GPS gleich wieder an.
   override fun onPause() {
     super.onPause()
-    if (Build.VERSION.SDK_INT >= 24 && isInPictureInPictureMode) web?.onResume()
+    if (Build.VERSION.SDK_INT >= 24 && isInPictureInPictureMode) keepAwake()
+  }
+
+  private fun keepAwake() {
+    web?.onResume()
+    if (keptAwake) return
+    getPluginManager().onResume(this)
+    keptAwake = true
+  }
+
+  override fun onResume() {
+    super.onResume()
+    keptAwake = false
+  }
+
+  // Mini-Fenster weggewischt: jetzt doch ruhen – kein GPS im Hintergrund
+  override fun onStop() {
+    if (keptAwake) {
+      getPluginManager().onPause(this)
+      keptAwake = false
+    }
+    super.onStop()
   }
 
   override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
     super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-    if (isInPictureInPictureMode) web?.onResume()
+    // Manche Android-Versionen melden das Bild in Bild erst nach onPause
+    if (isInPictureInPictureMode && !lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) keepAwake()
+    else if (isInPictureInPictureMode) web?.onResume()
     web?.evaluateJavascript(
       "document.documentElement.classList.toggle('pip-mode', $isInPictureInPictureMode); dispatchEvent(new Event('resize'));",
       null,

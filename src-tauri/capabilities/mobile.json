@@ -11,9 +11,11 @@
   ],
   "permissions": [
     "core:default",
-    "geolocation:default",
     "geolocation:allow-check-permissions",
     "geolocation:allow-request-permissions",
+    "geolocation:allow-watch-position",
+    "geolocation:allow-clear-watch",
+    "geolocation:allow-get-current-position",
     "health:default",
     "folder:default",
     "browser:default"

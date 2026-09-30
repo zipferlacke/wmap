@@ -116,9 +116,7 @@ export async function showPlace(f, { push = true, fly = true, over = false } = {
 
   const show = (tags) => {
     const info = describePoi(tags, { name: d.title, fallbackType: d.type });
-    // Antippbar erst mit den echten Tags aus OSM – dann öffnet ein Tipp das Bearbeiten dort
-    const editable = !!(f.properties._tags && f.properties.osm_type && f.properties.osm_id && !f.properties._point);
-    facts.innerHTML = info.facts.length || info.status || info.website ? poiCard(info, { editable }) : '';
+    facts.innerHTML = info.facts.length || info.status || info.website ? poiCard(info) : '';
     if (!d.type && info.type) $('.place-sub', view).textContent = [info.type, d.subtitle].filter(Boolean).join(' · ');
   };
 
@@ -164,26 +162,15 @@ export async function showPlace(f, { push = true, fly = true, over = false } = {
   }
 }
 
-/** Ort aus OSM bearbeiten – `focus`: Dialog an diesem Feld öffnen (Tipp auf eine Angabe der Ortskarte) */
-function editCurrentPlace(focus = null) {
+/** Ort aus OSM bearbeiten */
+function editCurrentPlace() {
   const f = state.place;
   if (!f?.properties.osm_type || !f.properties.osm_id) return;
   editPlace({
     osm: { type: { N: 'node', W: 'way', R: 'relation' }[f.properties.osm_type] ?? f.properties.osm_type, id: Number(f.properties.osm_id) },
-    tags: f.properties._tags ?? {}, point: f.geometry.coordinates, title: geocode.describe(f).title, focus,
+    tags: f.properties._tags ?? {}, point: f.geometry.coordinates, title: geocode.describe(f).title,
   }, { toast }).then(() => { if (state.place === f && f.properties._tags) showPlace(f, { push: false, fly: false, over: !!overState }); });
 }
-
-// Angaben der Ortskarte antippen (auch „unbekannt“) → Bearbeiten an dieser Stelle
-const factsBox = document.querySelector('[data-view="place"] .place-facts');
-factsBox?.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-edit]');
-  if (el && !e.target.closest('a')) editCurrentPlace(el.dataset.edit);
-});
-factsBox?.addEventListener('keydown', (e) => {
-  const el = e.target.closest('[data-edit]');
-  if (el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); editCurrentPlace(el.dataset.edit); }
-});
 
 /**
  * Knöpfe je nach Lage: normal Route/Start/Erreichbar, in der Planung

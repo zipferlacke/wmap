@@ -3,6 +3,9 @@ package de.wuefl.wmap.folder
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.drawable.Icon
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
@@ -61,11 +64,27 @@ class WriteArgs {
  *   des Systems ablegen (ACTION_CREATE_DOCUMENT), z. B. den ZIP-Export.
  *   opened { peek } – GPX-Dateien aus „Öffnen mit“ (ACTION_VIEW) und „Teilen“
  *   (ACTION_SEND): beim Start und während die App läuft (dann gleich zur
- *   Seite import.html); `peek` zählt nur.
+ *   Seite import.html); `peek` zählt nur. Dazu `go`: die Seite eines
+ *   Shortcuts, mit dem die App gestartet wurde (einmal, dann null).
+ *
+ * Shortcuts (lange auf das App-Symbol drücken): dieselben wie in der Web-App
+ * (appdata/manifest.json) – dynamisch angelegt, weil eine statische
+ * shortcuts.xml den Paketnamen fest bräuchte (Debug: de.wuefl.wmap.debug).
  *
  * `slot` (optional, alle Befehle): welcher Ordner – leer ist der für
  * Sicherung & Synchronisation, „layers“ der für eigene Ebenen (Plugins).
  */
+/** Shortcut: Kennung, Beschriftung kurz/lang, Symbol, Seite (relativ zur offenen) */
+private class Shortcut(val id: String, val short: String, val long: String, val icon: Int, val page: String)
+
+private const val ACTION_GO = "de.wuefl.wmap.SHORTCUT"
+private const val EXTRA_GO = "wmap.go"
+private val SHORTCUTS = listOf(
+    Shortcut("route", "Route", "Route planen", R.drawable.wmap_shortcut_route, "index.html?action=route"),
+    Shortcut("record", "Aufzeichnen", "Aufzeichnen", R.drawable.wmap_shortcut_record, "index.html?action=record"),
+    Shortcut("tours", "Touren", "Meine Touren", R.drawable.wmap_shortcut_tours, "wege.html?tab=geplant"),
+)
+
 @TauriPlugin
 class FolderPlugin(private val activity: Activity) : Plugin(activity) {
     private val prefs = activity.getSharedPreferences("wmap_folder", Context.MODE_PRIVATE)
@@ -75,20 +94,45 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
     private val ids = HashMap<String, String>()
     // Mit WMap geöffnete Dateien, bis die Seite sie abholt
     private val opened = ArrayList<JSObject>()
+    // Seite aus dem Shortcut, mit dem die App gestartet wurde – bis die Seite fragt
+    private var go: String? = null
     private var web: WebView? = null
 
     override fun load(webView: WebView) {
         super.load(webView)
         web = webView
         take(activity.intent)
+        go = shortcut(activity.intent)
+        publishShortcuts()
     }
 
-    // Läuft die App schon: Datei merken und zur Seite zum Öffnen
+    // Läuft die App schon: Datei merken und zur Seite zum Öffnen bzw. zur Seite des Shortcuts
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (take(intent)) web?.post {
-            web?.evaluateJavascript("location.assign(new URL('import.html', location.href))", null)
-        }
+        val page = if (take(intent)) "import.html" else shortcut(intent) ?: return
+        web?.post { web?.evaluateJavascript("location.assign(new URL('$page', location.href))", null) }
+    }
+
+    /** Shortcuts beim Launcher anlegen (bei jedem Start – so stimmen sie nach einem Update) */
+    private fun publishShortcuts() {
+        try {
+            val manager = activity.getSystemService(ShortcutManager::class.java) ?: return
+            manager.dynamicShortcuts = SHORTCUTS.map { s ->
+                ShortcutInfo.Builder(activity, s.id)
+                    .setShortLabel(s.short)
+                    .setLongLabel(s.long)
+                    .setIcon(Icon.createWithResource(activity, s.icon))
+                    .setIntent(Intent(activity, activity.javaClass).setAction(ACTION_GO).putExtra(EXTRA_GO, s.id))
+                    .build()
+            }
+        } catch (e: Exception) { /* Launcher ohne Shortcuts */ }
+    }
+
+    /** Seite des Shortcuts aus dem Intent (einmal) */
+    private fun shortcut(intent: Intent?): String? {
+        if (intent?.action != ACTION_GO || intent.getBooleanExtra("wmap.taken", false)) return null
+        intent.putExtra("wmap.taken", true)
+        return SHORTCUTS.find { it.id == intent.getStringExtra(EXTRA_GO) }?.page
     }
 
     /** GPX aus dem Intent lesen (höchstens 50 MB) → true, wenn etwas dazukam */
@@ -132,7 +176,10 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
         if (!peek) { opened.forEach { files.put(it) } }
         val count = opened.size
         if (!peek) opened.clear()
-        invoke.resolve(JSObject().put("count", count).put("files", files))
+        val result = JSObject().put("count", count).put("files", files)
+        go?.let { result.put("go", it) }
+        go = null
+        invoke.resolve(result)
     }
 
     private fun key(slot: String): String {

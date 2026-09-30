@@ -1,6 +1,7 @@
 """Abgleich mit Fortschritt (data/folder.js, pages/sync.js): Fortschritt je Datei, Abbruch mittendrin →
 der nächste Abgleich liest nur den Rest, Seite zeigt „x von n (… %)“; Knöpfe mit Ordner (ändern, exportieren) und ohne (synchronisieren, importieren, exportieren).
-Standort in der App (core/native.js): eine gemeinsame Abfrage für alle, jede Sekunde statt alle 10 s."""
+Standort in der App (core/native.js): eine gemeinsame Abfrage für alle, jede Sekunde statt alle 10 s; ohne Recht aufs
+Plugin („not allowed“) weiter über den Standort des WebViews."""
 import json
 import sys
 import time
@@ -111,6 +112,37 @@ const done = arguments[arguments.length - 1];
 })().then(done, (e) => done('FEHLER ' + e + ' ' + e.stack));
 """
 
+# Ohne Recht aufs Plugin (Capability fehlt): über navigator.geolocation weiter
+GPS_WEB = r"""
+const done = arguments[arguments.length - 1];
+(async () => {
+  const web = [];
+  window.__TAURI__ = { core: {
+    Channel: class { constructor() { this.id = 1; } },
+    invoke: async (cmd) => {
+      if (/permission/.test(cmd)) return { location: 'granted', coarseLocation: 'granted' };
+      throw `geolocation.${cmd.split('|')[1]} not allowed. Permissions associated with this command: geolocation:allow-watch-position`;
+    },
+  } };
+  Object.defineProperty(navigator, 'userAgent', { get: () => 'Mozilla/5.0 (Linux; Android 15; Pixel 9)' });
+  Object.defineProperty(navigator, 'geolocation', { get: () => ({
+    watchPosition: (ok) => { web.push('watch'); setTimeout(() => ok({ coords: { latitude: 51.5, longitude: 9.9, accuracy: 5 } }), 10); return web.length; },
+    clearWatch: () => web.push('clear'),
+    getCurrentPosition: (ok) => { web.push('once'); ok({ coords: { latitude: 51.5, longitude: 9.9, accuracy: 5 } }); },
+  }) });
+  const { geo } = await import('./js/core/native.js?test-gps-web');
+  const got = [];
+  const failed = [];
+  const a = geo.watch(() => got.push('a'), (e) => failed.push(e.code));
+  await new Promise((r) => setTimeout(r, 200));
+  const b = geo.watch(() => got.push('b'), (e) => failed.push(e.code));
+  await new Promise((r) => setTimeout(r, 200));
+  geo.once(() => got.push('once'), (e) => failed.push(e.code));
+  geo.clear(a); geo.clear(b);
+  return { got, failed, web, native: geo.native };
+})().then(done, (e) => done('FEHLER ' + e + ' ' + e.stack));
+"""
+
 with Browser(width=420, height=900) as b:
     b.d.set_script_timeout(120)
     b.open('sync.html', wait=3)
@@ -136,4 +168,13 @@ with Browser(width=420, height=900) as b:
     print('Standort stimmt:', ok)
     if not ok:
         b.errors.append(('standort', 'Ergebnis falsch'))
+
+    b.open('sync.html', wait=2)
+    w = b.d.execute_async_script(GPS_WEB)
+    print(json.dumps(w, ensure_ascii=False))
+    ok = isinstance(w, dict) and w['failed'] == [] and sorted(w['got']) == ['a', 'b', 'once'] and w['native'] is False \
+        and w['web'].count('watch') == 2 and w['web'].count('clear') == 2
+    print('Ohne Recht aufs Plugin stimmt:', ok)
+    if not ok:
+        b.errors.append(('standort-web', 'Ergebnis falsch'))
     sys.exit(b.report())

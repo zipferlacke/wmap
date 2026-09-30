@@ -52,6 +52,10 @@
       "debugApplicationIdSuffix": ".debug",
       "minSdkVersion": 26
     },
+    "linux": {
+      "deb": { "desktopTemplate": "wmap.desktop" },
+      "rpm": { "desktopTemplate": "wmap.desktop" }
+    },
     "fileAssociations": [
       {
         "ext": ["gpx"],

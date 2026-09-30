@@ -102,6 +102,23 @@ Android über Intent-Filter für „Öffnen mit“ und „Teilen“
 (`opened`), die Seite `import.html` fragt, ob sie als aufgezeichnete Tour
 gespeichert oder als geplante Tour geöffnet wird (README, Abschnitt 15).
 
+## Shortcuts (lange aufs App-Symbol)
+
+Dieselben drei wie in der Web-App (`shortcuts` in `appdata/manifest.json`):
+Route planen (`index.html?action=route`), Aufzeichnen
+(`index.html?action=record`), Meine Touren (`wege.html?tab=geplant`). Das
+Manifest liest nur der Browser – die Apps melden sie selbst an:
+
+| System | Wie |
+|---|---|
+| Android | folder-Plugin (`FolderPlugin.kt`) legt sie bei jedem Start als dynamische Shortcuts an (`ShortcutManager`, Symbole unter `plugins/folder/android/src/main/res/drawable/`). Eine statische `shortcuts.xml` bräuchte den Paketnamen fest – der Debug-Build heißt `de.wuefl.wmap.debug`. Intent `de.wuefl.wmap.SHORTCUT` mit der Kennung; läuft die App schon, geht es gleich zur Seite (`onNewIntent`) |
+| Linux (deb, rpm) | eigene Vorlage `wmap.desktop` (`bundle.linux.*.desktopTemplate`, sonst wie die von Tauri) mit drei `[Desktop Action …]`: `wmap --wmap-go=index.html?action=route` … – im Menü bzw. Dock per Rechtsklick. Zweiter Start: single-instance bringt das offene Fenster auf die Seite (`open_page` in `src/lib.rs`); erster Start: das folder-Plugin merkt sie (`shortcut_page`, nur Seitennamen) |
+| Windows, macOS | noch nicht (Sprungliste bzw. Dock-Menü bräuchten eigenen Code) |
+
+Beim Start holt `js/core/theme.js` die Seite über `opened` ab (`go`, nur
+einmal) – in der eingepackten Kopie erst auf der Webversion bzw. in
+`tauri-start.js`, wenn es ohne Netz bei der Kopie bleibt.
+
 ## Karten-Links (`geo:`)
 
 WMap meldet sich für `geo:`-Links an (`plugins.deep-link` in
@@ -178,7 +195,7 @@ Synchronisation.
 | `list` | `.gpx`/`.json`/`.geojson`/`.js` bis 5 Ebenen tief → `{ files: [{ path, modified }] }` |
 | `read { path }` / `write { path, text }` / `remove { path }` | Pfade relativ zum Ordner mit „/“; `..` und absolute Pfade lehnt das Plugin ab; `write` legt fehlende Ordner an |
 | `disconnect` | Ordner vergessen (Android: Freigabe zurückgeben) |
-| `opened { peek }` | mit WMap geöffnete GPX-Dateien → `{ count, files: [{ name, text }] }`; `peek` zählt nur, sonst abholen. Android: Intents `VIEW`/`SEND` (`onNewIntent` → gleich `import.html`), Rechner: `open_paths()` aus `src/lib.rs` (Argumente beim Start, zweiter Start, macOS `RunEvent::Opened`) |
+| `opened { peek }` | mit WMap geöffnete GPX-Dateien → `{ count, files: [{ name, text }], go? }`; `peek` zählt nur, sonst abholen; `go`: Seite des Shortcuts, mit dem die App gestartet wurde (einmal). Android: Intents `VIEW`/`SEND` (`onNewIntent` → gleich `import.html`), Rechner: `open_paths()` aus `src/lib.rs` (Argumente beim Start, zweiter Start, macOS `RunEvent::Opened`) |
 | `save { name, data, mime }` | eine Datei (Base64) über den Speichern-Dialog ablegen → `{ name }`; Android `ACTION_CREATE_DOCUMENT`, Rechner Dialog von `rfd`. Nutzt `download()` in `js/data/store.js` in der App (ZIP-Export, GPX) – `<a download>` kommt in den WebViews nicht an |
 
 - **Android** (`FolderPlugin.kt`): `ACTION_OPEN_DOCUMENT_TREE`, die Freigabe

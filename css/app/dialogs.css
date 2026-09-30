@@ -101,32 +101,32 @@ body.recording #search-here, body.navigating .rec { display: none !important; }
     margin: 0;
     overflow: hidden;
     background: var(--route);
-    .pip-nav { position: static; inset: auto; display: grid; grid-template-rows: auto 1fr; min-height: 100vh; pointer-events: auto; }
+    .pip-nav { position: static; inset: auto; display: grid; grid-template-rows: auto; min-height: 100vh; pointer-events: auto; }
     .nav-top { margin: 0; width: auto; justify-items: stretch; }
     .nav-banner { border-radius: 0; box-shadow: none; }
     .nav-lanes { margin: 0; border-radius: 0; }
-    .nav-gps { display: none; }
-    .pip-eta {
-        display: flex; justify-content: center; align-items: center; gap: .6rem;
-        padding: .35rem .75rem;
-        font-size: var(--fs-500);
-        color: #fff;
-        .nav-eta { color: #fff; }
-        .nav-offline { display: none; }
-    }
 }
 
-/* Mit Karte: sie füllt das Fenster, die Anweisung liegt oben darüber */
+/* Mit Karte: sie füllt das Fenster, die Anweisung liegt oben darüber – mehr nicht */
 .pip-body.pip-map {
     background: var(--surface);
     #map { position: fixed; inset: 0; }
-    .pip-nav { position: fixed; inset: 0 0 auto; min-height: 0; z-index: 2; grid-template-rows: auto auto; }
-    .pip-eta { background: rgb(0 0 0 / .55); font-size: var(--fs-300); }
-    .maplibregl-ctrl-top-right, .maplibregl-ctrl-bottom-left { display: none; }
+    .pip-nav { position: fixed; inset: 0 0 auto; min-height: 0; z-index: 2; grid-template-rows: auto; }
+    .maplibregl-control-container { display: none; }
 }
 
 /* Android-App im Bild in Bild (MainActivity.kt setzt html.pip-mode): nur die
-   Karte und die Anweisung – Knöpfe sind im Mini-Fenster nicht zu treffen */
+   Karte mit dem Standort und oben die nächste Anweisung – Knöpfe, Leisten,
+   Spuren, Ankunftszeit sind im Mini-Fenster weder lesbar noch zu treffen */
+html.pip-mode {
+    body > :not(main, script),
+    main > :not(#map, #nav),
+    #map .maplibregl-control-container,
+    #nav > :not(.nav-top),
+    #nav .nav-top > :not(.nav-banner) { display: none !important; }
+    #nav .nav-top { margin: 0; width: 100%; max-width: none; }
+    #nav .nav-banner { border-radius: 0; box-shadow: none; }
+}
 
 /* Eigenschaften eines Objekts (eigene Ebenen) */
 .prop-table {

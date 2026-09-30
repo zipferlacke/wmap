@@ -23,6 +23,11 @@ const OFF_ROUTE_M = 40;
 const OFF_ROUTE_FIXES = 3;
 const REROUTE_PAUSE_MS = 10000;
 const GPS_RESTART_MS = 20000;         // so lange ohne Position: Standortabfrage neu starten
+// Stehen: darunter (m/s) gilt eine Meldung als ruhig, zwei ruhige halten den Pfeil fest …
+const STILL_SPEED = 0.5;
+// … bis das GPS Fahrt misst oder man sich so weit (m, mindestens) entfernt
+const MOVE_SPEED = 0.9;
+const STILL_RADIUS = 12;
 
 /* ── Sprache ──────────────────────────────────────────────────────────────── */
 
@@ -40,6 +45,10 @@ function voiceScore(v) {
   if (v.default) s += 1;
   return s;
 }
+
+// Android-App: Das WebView kennt keine Web-Sprachausgabe – dort spricht
+// Android selbst (TextToSpeech, tools/android/MainActivity.kt)
+const androidSpeech = () => typeof window.WMapAndroid?.speak === 'function';
 
 const speech = {
   muted: (() => { try { return localStorage.getItem('wmap.muted') === '1'; } catch { return false; } })(),
@@ -62,7 +71,9 @@ const speech = {
     this.pickVoice();
   },
   say(text, { force = false } = {}) {
-    if ((this.muted && !force) || !text || !window.speechSynthesis) return;
+    if ((this.muted && !force) || !text) return;
+    if (androidSpeech()) { try { window.WMapAndroid.speak(text); } catch { /* ältere App */ } return; }
+    if (!window.speechSynthesis) return;
     const go = () => {
       const u = new SpeechSynthesisUtterance(text);
       u.lang = this.voice?.lang ?? 'de-DE';
@@ -85,6 +96,7 @@ const speech = {
   setMuted(m) {
     this.muted = m;
     if (m) window.speechSynthesis?.cancel();
+    if (m && androidSpeech()) { try { window.WMapAndroid.stopSpeaking(); } catch { /* ältere App */ } }
     try { localStorage.setItem('wmap.muted', m ? '1' : '0'); } catch { /* egal */ }
   },
 };
@@ -101,7 +113,8 @@ export function openVoiceDialog() {
     <h2><span class="msr">record_voice_over</span> Stimme für Ansagen</h2>
     ${list.length ? `<select class="voice-select" aria-label="Stimme">${list.map((v) => `
       <option value="${esc(v.name)}" ${v === speech.voice ? 'selected' : ''}>${esc(v.name)}${v.localService ? '' : ' · online'}</option>`).join('')}
-    </select>` : '<p>Dieser Browser bietet keine deutsche Stimme an.</p>'}
+    </select>` : androidSpeech() ? '<p>Die App spricht mit der Sprachausgabe von Android – Stimme und Tempo stellst du in den Android-Einstellungen unter „Sprachausgabe“ ein.</p>'
+      : '<p>Dieser Browser bietet keine deutsche Stimme an.</p>'}
     <p>Klingt es blechern oder verzerrt, ist meist eine einfache Systemstimme (eSpeak) gewählt.
        „Google Deutsch“ in Chrome oder die Stimmen von Android, Windows und macOS klingen deutlich besser.</p>
     <div class="confirm-actions">
@@ -179,7 +192,7 @@ export class Navigation {
   // Fortschritt auf der Route
   #index = 0; #current = -1; #said = new Map(); #off = 0; #lastReroute = 0; #rerouting = false;
   #arrived = false; #lastFix = null; #prev = null; #travel = null; #offlineSaid = 0; #rejected = 0;
-  #rawAt = 0; #watchdog = null; #coarse = 0; #lastAlong = null;
+  #rawAt = 0; #watchdog = null; #coarse = 0; #lastAlong = null; #still = null; #slow = 0;
   // Anzeige: Position zwischen zwei Meldungen, Kamera
   #raf = null; #lastFrame = 0; #anim = null; #pos = null; #heading = null; #speed = 0;
   #following = true; #cam = { center: null, bearing: 0, zoom: 17, pitch: 55, tau: 0.1 };
@@ -289,9 +302,8 @@ export class Navigation {
     this.#marker = new maplibregl.Marker({ element: arrow, rotationAlignment: 'map', pitchAlignment: 'map' })
       .setLngLat(route.coords[0]).addTo(this.#map);
 
-    // Eigener Punkt im unteren Drittel (~70 %) – man sieht mehr vom Weg voraus
-    const h = this.#map.getContainer().clientHeight;
-    this.#map.setPadding({ top: h * 0.52, bottom: 80, left: 0, right: 0 });
+    this.#followPadding();
+    this.#map.on('resize', this.#onResize);
     Object.assign(this.#cam, { center: null, bearing: this.#map.getBearing(), zoom: this.#map.getZoom(), pitch: this.#map.getPitch(), tau: 0.5 });
 
     // Die erste Ansage kommt direkt aus dem Klick – iOS spricht sonst gar nicht
@@ -384,6 +396,7 @@ export class Navigation {
     showHover(this.#map, null);
     showNavExtras(this.#map, {});
     this.#clearRoad();
+    this.#map.off('resize', this.#onResize);
     this.#map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
     this.#map.easeTo({ pitch: 0, bearing: 0, duration: 600 });
     this.#onExit?.({ arrived: this.#arrived });
@@ -393,6 +406,8 @@ export class Navigation {
     this.#index = 0;
     this.#clearRoad();
     this.#lastAlong = null;
+    this.#still = null;
+    this.#slow = 0;
     this.#current = -1;
     this.#said = new Map();
     this.#off = 0;
@@ -440,6 +455,26 @@ export class Navigation {
     }
     this.#rejected = 0;
 
+    // Stehen: Das GPS wandert auch im Stand um einige Meter und meldet ein
+    // kleines Tempo. Zwei ruhige Meldungen hintereinander → Pfeil hält, wo er
+    // ist, Tempo 0 – bis das GPS Fahrt misst oder man sich wirklich entfernt.
+    const raw = point;
+    const measured = Number.isFinite(speed) && speed >= 0 ? speed : null;
+    if (this.#still) {
+      const radius = Math.max(STILL_RADIUS, Math.min(accuracy ?? 0, 40) * 2);
+      if (distance(this.#still, raw) < radius && (measured ?? 0) < MOVE_SPEED) { point = this.#still; speed = 0; }
+      else { this.#still = null; this.#slow = 0; }
+    } else if (prev) {
+      const pace = measured ?? distance(prev.raw, raw) / Math.max(0.3, (now - prev.t) / 1000);
+      this.#slow = pace < STILL_SPEED ? this.#slow + 1 : 0;
+      if (this.#slow >= 2) {
+        // Mitte der beiden ruhigen Meldungen – dorthin gleitet der Pfeil noch, dann steht er
+        this.#still = lerp(prev.raw, raw, 0.5);
+        point = this.#still;
+        speed = 0;
+      }
+    }
+
     // Erst in der Nähe der letzten Stelle suchen, nur bei großem Abstand überall
     let snap = nearestOnLine(r.coords, r.cum, point, Math.max(0, this.#index - 5), this.#index + 400);
     if (snap.offset > OFF_ROUTE_M) {
@@ -455,10 +490,10 @@ export class Navigation {
     let v = Number.isFinite(speed) && speed >= 0 ? speed : null;
     if (v === null && prev && onRouteNow && this.#lastAlong !== null) v = Math.max(0, snap.along - this.#lastAlong) / dt;
     else if (v === null && prev) v = distance(prev.point, point) / dt;
-    this.#speed = prev ? this.#speed * 0.7 + (v ?? 0) * 0.3 : v ?? 0;
+    this.#speed = this.#still ? 0 : prev ? this.#speed * 0.7 + (v ?? 0) * 0.3 : v ?? 0;
     this.#lastAlong = onRouteNow ? snap.along : null;
 
-    const fix = { point, heading, speed: this.#speed, accuracy: accuracy ?? 0, t: now };
+    const fix = { point, raw, heading, speed: this.#speed, accuracy: accuracy ?? 0, t: now };
     this.#lastFix = fix;
     this.#onFix?.(fix);
     if (this.#coarse < 3) this.#gpsState(null);
@@ -926,11 +961,20 @@ export class Navigation {
     this.#map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
     this.#map.fitBounds([[w, s], [e, n]], { padding: { top, bottom, left: 32, right: 80 }, pitch: 0, bearing: 0, duration: 900, maxZoom: 16 });
     // Nach dem Überblick wieder mit Rand oben folgen
-    this.#map.once('moveend', () => {
-      const h = this.#map.getContainer().clientHeight;
-      if (this.#route) this.#map.setPadding({ top: h * 0.52, bottom: 80, left: 0, right: 0 });
-    });
+    this.#map.once('moveend', () => { if (this.#route) this.#followPadding(); });
   }
+
+  /**
+   * Eigener Punkt im unteren Drittel (~70 %) – man sieht mehr vom Weg voraus.
+   * In Pixeln, darum bei jeder Größenänderung neu: Im Bild in Bild ist die
+   * Karte nur gut 300 px hoch, der Rand vom Vollbild schöbe den Pfeil hinaus.
+   */
+  #followPadding() {
+    const h = this.#map.getContainer().clientHeight;
+    this.#map.setPadding({ top: h * 0.52, bottom: Math.min(80, h * 0.1), left: 0, right: 0 });
+  }
+
+  #onResize = () => { if (this.#route && this.#following) this.#followPadding(); };
 
   /**
    * Verfahren: ab dem eigenen Standort neu rechnen, in Fahrtrichtung – eine

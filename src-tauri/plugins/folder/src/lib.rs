@@ -14,7 +14,10 @@
 //!   opened { peek }     GPX-Dateien, mit denen WMap geöffnet wurde („Öffnen
 //!                       mit“, Teilen, Doppelklick) → { count, files: [{ name, text }] };
 //!                       `peek`: nur zählen, sonst abholen (danach leer).
-//!                       Rechner: die App gibt sie mit open_paths() herein
+//!                       Rechner: die App gibt sie mit open_paths() herein.
+//!                       Dazu `go`: die Seite eines Shortcuts, mit dem WMap
+//!                       gestartet wurde (einmal) – Android legt die Shortcuts
+//!                       selbst an, Rechner: open_page() aus der App
 //!
 //! Alle Befehle nehmen `slot` (optional): leer = Ordner für Sicherung &
 //! Synchronisation, „layers“ = Ordner für eigene Ebenen (Plugins).
@@ -30,7 +33,7 @@ use tauri::{
 #[cfg(desktop)]
 mod desktop;
 #[cfg(desktop)]
-pub use desktop::open_paths;
+pub use desktop::{open_page, open_paths, shortcut_page};
 
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
   let builder = Builder::new("folder");

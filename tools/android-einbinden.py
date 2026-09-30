@@ -11,6 +11,8 @@ aufgerufen von `tauri-android wmap` (wuefl_products/tools) vor jedem Bauen:
   tools/android/MainActivity.kt → Bild in Bild während der Navigation
                              (beim Rauswischen von selbst, siehe js/nav/pip.js)
   supportsPictureInPicture → an die <activity>
+  Sprachausgabe            → <queries> für TTS_SERVICE (ab Android 11 sieht
+                             die App den Dienst sonst nicht – keine Ansagen)
   GPX öffnen               → Intent-Filter an die <activity>: „Öffnen mit“
                              (VIEW) und „Teilen“ (SEND) für GPX-Dateien; das
                              folder-Plugin nimmt sie an (opened → import.html)
@@ -101,6 +103,16 @@ GPX_FILTER = f"""            {GPX_MARKE}
             </intent-filter>
 """
 
+# Ab Android 11 nur sichtbar, was im Manifest steht – für TextToSpeech der Dienst
+TTS_MARKE = "<!-- wmap:tts -->"
+TTS_QUERIES = f"""    {TTS_MARKE}
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+"""
+
 BERECHTIGUNGEN = [
     '<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',
     '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />',
@@ -137,6 +149,8 @@ def main() -> int:
     if fehlend:
         zeilen = "".join(f"    {b}\n" for b in fehlend)
         text = text.replace("    <application", zeilen + "\n    <application", 1)
+    if TTS_MARKE not in text:
+        text = text.replace("    <application", TTS_QUERIES + "\n    <application", 1)
     if GPX_MARKE not in text:
         text = text.replace("        </activity>", GPX_FILTER + "        </activity>", 1)
     if "supportsPictureInPicture" not in text:
@@ -150,7 +164,7 @@ def main() -> int:
         shutil.copyfile(PROJEKT / "tools/android/MainActivity.kt", ziel)
     min_sdk()
     signatur()
-    print("==> WMap-Teile eingesetzt (Symbol, Standort, Bild in Bild, GPX öffnen"
+    print("==> WMap-Teile eingesetzt (Symbol, Standort, Bild in Bild, Sprachausgabe, GPX öffnen"
           + (", Upload-Signatur)" if SIGNATUR.is_file() else ")"))
     return 0
 

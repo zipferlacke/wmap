@@ -2,18 +2,22 @@
  * Bild in Bild: die Navigation in einem kleinen Fenster, das über anderen
  * Apps und Tabs liegen bleibt – wie bei Google Maps.
  *
- *   Android-App    die ganze App (Karte samt Anweisung) – beim Rauswischen
- *                  während der Navigation von selbst, sonst per Knopf
- *                  (MainActivity.kt, Schnittstelle window.WMapAndroid)
+ * Zu sehen ist nur die Karte mit dem Standort und oben die nächste Anweisung –
+ * keine Knöpfe, Leisten oder Zeiten.
+ *
+ *   Android-App    die ganze App, im Mini-Fenster auf Karte und Anweisung
+ *                  reduziert (html.pip-mode, css/app/dialogs.css) – beim
+ *                  Rauswischen während der Navigation von selbst, sonst per
+ *                  Knopf (MainActivity.kt, Schnittstelle window.WMapAndroid)
  *   Chrome, Edge,  Document Picture-in-Picture: die Karte selbst wandert ins
  *   neue Firefox   Mini-Fenster, darüber die Anweisung (gleiches HTML und CSS)
- *   Safari         nur die Anweisung, auf ein Canvas gemalt und als Video ins
- *                  Bild-in-Bild geschickt
+ *   Chrome Android Video-Bild-in-Bild: Karte (nach jedem Kartenbild kopiert,
+ *   Safari         dazu der Standortpfeil) und die Anweisung auf ein Canvas
+ *                  gemalt, das als Video ins Mini-Fenster geht
  *   sonst          keine Schnittstelle – der Knopf bleibt weg
  *
- * Gespiegelt wird der Kopf der Navigation (#nav .nav-top) samt Ankunftszeit;
- * ein MutationObserver hält das Fenster aktuell, die Navigation selbst weiß
- * davon nichts.
+ * Gespiegelt wird die Anweisung (#nav .nav-banner); ein MutationObserver hält
+ * das Fenster aktuell, die Navigation selbst weiß davon nichts.
  */
 const ANDROID = () => typeof window.WMapAndroid?.enterPip === 'function';
 const DOC_PIP = 'documentPictureInPicture' in window;
@@ -39,7 +43,7 @@ export function autoPip() {
 }
 
 export class NavPip {
-  #nav; #map; #win = null; #box = null; #home = null; #video = null; #canvas = null; #observer = null; #frame = 0;
+  #nav; #map; #win = null; #box = null; #home = null; #video = null; #canvas = null; #observer = null; #frame = 0; #drawn = 0;
 
   /**
    * @param nav  die Navigationsansicht (#nav)
@@ -109,23 +113,37 @@ export class NavPip {
   /* ── Safari: Canvas als Video ──────────────────────────────────────────── */
 
   async #openVideo() {
-    this.#canvas = Object.assign(document.createElement('canvas'), { width: 640, height: 300 });
+    this.#canvas = Object.assign(document.createElement('canvas'), this.#map ? { width: 540, height: 720 } : { width: 540, height: 170 });
     this.#video = Object.assign(document.createElement('video'), { muted: true, playsInline: true });
-    this.#video.srcObject = this.#canvas.captureStream(4);
+    this.#video.srcObject = this.#canvas.captureStream(5);
     this.#drawCanvas();
+    // Die Karte nur direkt nach dem Zeichnen kopieren – danach ist ihr Bild leer
+    this.#map?.on('render', this.#onRender);
     await this.#video.play();
     await this.#video.requestPictureInPicture();
-    this.#video.addEventListener('leavepictureinpicture', () => { this.#observer?.disconnect(); this.#observer = null; }, { once: true });
+    this.#video.addEventListener('leavepictureinpicture', () => {
+      this.#map?.off('render', this.#onRender);
+      this.#observer?.disconnect();
+      this.#observer = null;
+    }, { once: true });
   }
+
+  #onRender = () => {
+    const now = performance.now();
+    if (now - this.#drawn < 200) return;
+    this.#drawn = now;
+    this.#drawCanvas();
+  };
 
   #render() {
     if (this.#win) {
-      const top = this.#nav.querySelector('.nav-top').cloneNode(true);
-      const eta = this.#nav.querySelector('.nav-times')?.cloneNode(true);
-      if (eta) eta.classList.add('pip-eta');
-      this.#box.replaceChildren(...[top, eta].filter(Boolean));
+      const top = document.createElement('div');
+      top.className = 'nav-top';
+      top.append(this.#nav.querySelector('.nav-banner').cloneNode(true));
+      this.#box.replaceChildren(top);
     } else if (this.#canvas) {
-      this.#drawCanvas();
+      if (this.#map) this.#map.triggerRepaint();   // zeichnet in #onRender
+      else this.#drawCanvas();
     }
   }
 
@@ -133,24 +151,60 @@ export class NavPip {
     const c = this.#canvas, ctx = c.getContext('2d');
     const $ = (s) => this.#nav.querySelector(s);
     const text = (s) => ($(s) && !$(s).hidden ? $(s).textContent.trim() : '');
+    const BANNER = 170;
+    if (this.#map) this.#drawMap(ctx, BANNER);
     ctx.fillStyle = '#1a73e8';
-    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillRect(0, 0, c.width, BANNER);
     ctx.fillStyle = '#fff';
-    ctx.font = '120px "Material Symbols Rounded"';
+    ctx.font = '100px "Material Symbols Rounded"';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text('.nav-icon') || 'navigation', 28, 118);
-    ctx.font = 'bold 68px system-ui, sans-serif';
-    ctx.fillText(text('.nav-dist'), 180, 80, c.width - 200);
-    ctx.font = '600 38px system-ui, sans-serif';
-    ctx.fillText(text('.nav-instr'), 180, 145, c.width - 200);
-    ctx.font = '30px system-ui, sans-serif';
+    ctx.fillText(text('.nav-icon') || 'navigation', 22, 85);
+    ctx.font = 'bold 56px system-ui, sans-serif';
+    ctx.fillText(text('.nav-dist'), 150, 50, c.width - 168);
+    ctx.font = '600 32px system-ui, sans-serif';
+    ctx.fillText(text('.nav-instr'), 150, 102, c.width - 168);
+    ctx.font = '26px system-ui, sans-serif';
     ctx.globalAlpha = 0.85;
-    ctx.fillText(text('.nav-toward'), 180, 192, c.width - 200);
+    ctx.fillText(text('.nav-toward'), 150, 142, c.width - 168);
     ctx.globalAlpha = 1;
-    ctx.fillStyle = 'rgb(0 0 0 / .18)';
-    ctx.fillRect(0, 232, c.width, 68);
-    ctx.fillStyle = '#fff';
-    ctx.font = '600 34px system-ui, sans-serif';
-    ctx.fillText(`${text('.nav-eta')}  ·  ${text('.nav-remaining')}`, 28, 267, c.width - 56);
   }
+
+  /** Karte unter dem Banner: ausgeschnitten um den eigenen Standort, dazu der Pfeil */
+  #drawMap(ctx, top) {
+    const c = this.#canvas;
+    const src = this.#map.getCanvas();
+    if (!src.width) return;
+    const box = src.getBoundingClientRect();
+    const k = src.width / box.width;                  // CSS-Pixel → Pixel der Karte
+    const me = document.querySelector('.nav-me')?.getBoundingClientRect();
+    const mx = me ? (me.left + me.width / 2 - box.left) * k : src.width / 2;
+    const my = me ? (me.top + me.height / 2 - box.top) * k : src.height * 0.7;
+    const h = c.height - top;
+    const scale = Math.max(c.width / src.width, h / src.height);
+    const sw = c.width / scale, sh = h / scale;
+    // Der Standort bleibt im unteren Drittel – wie in der Navigation
+    const sx = Math.min(Math.max(mx - sw / 2, 0), src.width - sw);
+    const sy = Math.min(Math.max(my - sh * 0.7, 0), src.height - sh);
+    ctx.drawImage(src, sx, sy, sw, sh, 0, top, c.width, h);
+    if (!me) return;
+    // Pfeil: Drehung aus dem transform des Markers (rotateZ bzw. rotate)
+    const deg = Number(document.querySelector('.nav-me').style.transform.match(/rotate(?:Z)?\((-?[\d.]+)deg\)/)?.[1] ?? 0);
+    const x = (mx - sx) * scale, y = top + (my - sy) * scale;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    ctx.arc(0, 0, 26, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = 'rgb(0 0 0 / .35)';
+    ctx.shadowBlur = 6;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.rotate((deg * Math.PI) / 180);
+    ctx.beginPath();
+    ctx.moveTo(0, -17); ctx.lineTo(12, 13); ctx.lineTo(0, 6); ctx.lineTo(-12, 13); ctx.closePath();
+    ctx.fillStyle = '#1a73e8';
+    ctx.fill();
+    ctx.restore();
+  }
+
 }

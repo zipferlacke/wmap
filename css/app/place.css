@@ -243,12 +243,3 @@ textarea.share-link {
     p { grid-column: 1 / -1; color: var(--muted); font-size: var(--fs-100); }
     &.closed strong { color: var(--muted); }
 }
-
-/* Angaben antippen → Bearbeiten an dieser Stelle (poiCard editable, app/place.js) */
-.poi-facts > div.editable, .poi-hours-wrap.editable {
-    cursor: pointer;
-    transition: background-color 150ms ease;
-    &:hover, &:focus-visible { background: color-mix(in srgb, var(--route) 12%, var(--surface-2)); outline: none; }
-}
-.poi-facts > div.unknown.editable dd { display: flex; align-items: center; gap: .3rem; }
-.poi-edit-hint { font-size: 1rem; color: var(--route); font-weight: 400; }

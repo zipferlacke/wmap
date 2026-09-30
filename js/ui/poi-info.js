@@ -5,8 +5,7 @@
  * „unbekannt“ – so sieht man auch, was OSM (noch) nicht weiß.
  *
  * Jedes Feld sagt auch, wie man es bearbeitet (Zahl, Auswahl, Häkchen,
- * Stecker …): osm/edit.js baut daraus den Dialog je Art, ein Tipp auf das
- * Feld in der Karte öffnet ihn an dieser Stelle (data-edit).
+ * Stecker …): osm/edit.js zeigt dieselben Felder oben im Dialog je Art.
  */
 import { CATEGORIES, searchFilters } from '../core/categories.js';
 import { esc } from '../core/geo.js';
@@ -338,7 +337,7 @@ export function describePoi(tags = {}, { name, fallbackType } = {}) {
   const facts = [];
   for (const [label, icon, get, required, edit] of schema) {
     const value = get(tags);
-    if (value || required) facts.push({ label, icon, value: value ?? 'unbekannt', unknown: !value, edit: edit?.key ?? null });
+    if (value || required) facts.push({ label, icon, value: value ?? 'unbekannt', unknown: !value });
   }
   const web = tags.website ?? tags['contact:website'] ?? tags.url;
   return {
@@ -359,11 +358,8 @@ export function describePoi(tags = {}, { name, fallbackType } = {}) {
 /** Unter dem Namen: Art und Merkmale */
 const subline = (info) => [info.type !== info.name ? info.type : null, ...(info.traits ?? [])].filter(Boolean).join(' · ');
 
-/**
- * Karte fürs Popup und fürs Sheet. `compact` zeigt nur das Wichtigste;
- * `editable`: Felder antippbar (data-edit – das Sheet öffnet das Bearbeiten dort).
- */
-export function poiCard(info, { compact = false, editable = false } = {}) {
+/** Karte fürs Popup und fürs Sheet. `compact` zeigt nur das Wichtigste. */
+export function poiCard(info, { compact = false } = {}) {
   const c = info.category;
   const table = compact ? null : hoursTable(info.hours);
   const facts = (compact ? info.facts.slice(0, 5) : info.facts).filter((f) => !(table && f.label === 'Öffnungszeiten'));
@@ -376,9 +372,9 @@ export function poiCard(info, { compact = false, editable = false } = {}) {
       ${info.status ? `<p class="poi-status ${info.open ? 'open' : 'closed'}">${esc(info.status)}</p>` : ''}
       ${!compact && info.description ? `<p class="poi-desc">${esc(info.description)}</p>` : ''}
       ${facts.length ? `<dl class="poi-facts">${facts.map((f) => `
-        <div class="${f.unknown ? 'unknown' : ''}${f.edit && editable ? ' editable' : ''}"${f.edit && editable ? ` data-edit="${esc(f.edit)}" role="button" tabindex="0" title="${esc(f.label)} bearbeiten"` : ''}><dt><span class="msr">${f.icon}</span>${esc(f.label)}</dt>
-        <dd>${esc(f.value).replaceAll('\n', '<br>')}${f.edit && editable && f.unknown ? '<span class="msr poi-edit-hint">edit</span>' : ''}</dd></div>`).join('')}</dl>` : ''}
-      ${table ? `<div class="poi-hours-wrap${editable ? ' editable" data-edit="opening_hours" role="button" tabindex="0" title="Öffnungszeiten bearbeiten' : ''}"><h4><span class="msr">schedule</span> Öffnungszeiten</h4>${table}</div>` : ''}
+        <div class="${f.unknown ? 'unknown' : ''}"><dt><span class="msr">${f.icon}</span>${esc(f.label)}</dt>
+        <dd>${esc(f.value).replaceAll('\n', '<br>')}</dd></div>`).join('')}</dl>` : ''}
+      ${table ? `<div class="poi-hours-wrap"><h4><span class="msr">schedule</span> Öffnungszeiten</h4>${table}</div>` : ''}
       ${!compact && info.links.length ? `<div class="poi-links">${info.links.map((l) => `
         <a class="chip" href="${esc(l.url)}" target="_blank" rel="noopener"><span class="msr">${l.icon}</span>${esc(l.label)}</a>`).join('')}</div>` : ''}
     </div>`;

@@ -224,6 +224,33 @@ pub struct Opened(std::sync::Mutex<Vec<OpenedFile>>);
 pub struct OpenedList {
   count: usize,
   files: Vec<OpenedFile>,
+  /// Seite eines Shortcuts, mit dem WMap gestartet wurde (einmal)
+  #[serde(skip_serializing_if = "Option::is_none")]
+  go: Option<String>,
+}
+
+/// Seite aus dem Shortcut beim Start – bis die Seite fragt
+#[derive(Default)]
+pub struct Go(std::sync::Mutex<Option<String>>);
+
+/// Shortcut aus der .desktop-Datei (`--wmap-go=index.html?action=route`):
+/// nur eine Seite neben der offenen – Kleinbuchstaben, Ziffern, `._?=&-`
+pub fn shortcut_page<I: IntoIterator<Item = S>, S: AsRef<std::ffi::OsStr>>(args: I) -> Option<String> {
+  args.into_iter().find_map(|a| {
+    let page = a.as_ref().to_str()?.strip_prefix("--wmap-go=")?;
+    let ok = page.contains(".html")
+      && !page.contains("..")
+      && page.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "._?=&-".contains(c));
+    ok.then(|| page.to_string())
+  })
+}
+
+/// Mit einem Shortcut gestartet: merken, core/theme.js holt die Seite über `opened`
+pub fn open_page<R: Runtime>(app: &AppHandle<R>, page: String) {
+  if app.try_state::<Go>().is_none() {
+    app.manage(Go::default());
+  }
+  *app.state::<Go>().0.lock().unwrap_or_else(|e| e.into_inner()) = Some(page);
 }
 
 const MAX_OPEN: u64 = 50 * 1024 * 1024;
@@ -252,14 +279,16 @@ pub fn open_paths<R: Runtime>(app: &AppHandle<R>, paths: impl IntoIterator<Item 
   list.len() > before
 }
 
-/// Geöffnete Dateien: `peek` nur zählen, sonst abholen (danach ist die Liste leer)
+/// Geöffnete Dateien: `peek` nur zählen, sonst abholen (danach ist die Liste
+/// leer); die Seite eines Shortcuts kommt immer mit und nur einmal
 #[command]
 pub fn opened<R: Runtime>(app: AppHandle<R>, peek: Option<bool>) -> OpenedList {
-  let Some(state) = app.try_state::<Opened>() else { return OpenedList { count: 0, files: vec![] } };
+  let go = app.try_state::<Go>().and_then(|g| g.0.lock().unwrap_or_else(|e| e.into_inner()).take());
+  let Some(state) = app.try_state::<Opened>() else { return OpenedList { count: 0, files: vec![], go } };
   let mut list = state.0.lock().unwrap_or_else(|e| e.into_inner());
   if peek.unwrap_or(false) {
-    return OpenedList { count: list.len(), files: vec![] };
+    return OpenedList { count: list.len(), files: vec![], go };
   }
   let files = std::mem::take(&mut *list);
-  OpenedList { count: files.len(), files }
+  OpenedList { count: files.len(), files, go }
 }

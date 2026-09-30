@@ -9,10 +9,15 @@
  * in onPause, onResume startet sie neu). Fehlt die Freigabe, kommt vorher der Dialog
  * zu den Berechtigungen (ui/permissions.js); mit `ask: false` in den
  * Optionen (Start der Karte) wird still abgelehnt.
+ *
+ * Darf die Seite das Plugin nicht aufrufen („… not allowed“ – Capability
+ * fehlt, z. B. in einer älteren App, die diese Oberfläche aus dem Netz lädt),
+ * geht es über den Standort des WebViews weiter.
  */
 const core = window.__TAURI__?.core;
 // Das Plugin gibt es nur in den Handy-Apps (siehe src-tauri/Cargo.toml)
-const nativeGeo = !!core && /Android|iPhone|iPad/i.test(navigator.userAgent);
+let nativeGeo = !!core && /Android|iPhone|iPad/i.test(navigator.userAgent);
+const notAllowed = (err) => /not allowed/i.test(String(err));
 
 const DENIED = { code: 1, message: 'Standortfreigabe verweigert' };
 /** Freigabe da? Sonst erst der Dialog (nicht beim still gemeinten Abfragen) */
@@ -43,6 +48,13 @@ function startShared(options) {
   core.invoke('plugin:geolocation|watch_position', { options: { ...toNative(options), timeout: INTERVAL_MS }, channel })
     .catch((err) => {
       if (shared?.channel === channel) shared = null;
+      if (notAllowed(err)) {
+        // Ohne Recht aufs Plugin: alle Wartenden über den WebView-Standort
+        nativeGeo = false;
+        for (const l of listeners) l.web = navigator.geolocation.watchPosition(l.ok, l.fail, options);
+        listeners.clear();
+        return;
+      }
       const e = { code: /denied|permission/i.test(String(err)) ? 1 : 2, message: String(err) };
       for (const l of listeners) l.fail?.(e);
     });
@@ -60,15 +72,16 @@ function stopShared() {
 
 /** Positionsmeldung wie bei navigator.geolocation: { coords, timestamp } */
 export const geo = {
-  native: nativeGeo,
+  get native() { return nativeGeo; },
 
   /** → Kennung zum Beenden */
   watch(ok, fail, options = {}) {
     if (!nativeGeo) return navigator.geolocation.watchPosition(ok, fail, options);
-    const id = { ok, fail, native: true, cleared: false };
+    const id = { ok, fail, native: true, cleared: false, web: null };
     allowed(options).then((yes) => {
       if (id.cleared) return;
       if (!yes) { fail?.(DENIED); return; }
+      if (!nativeGeo) { id.web = navigator.geolocation.watchPosition(ok, fail, options); return; }
       listeners.add(id);
       startShared(options);
     });
@@ -79,6 +92,7 @@ export const geo = {
     if (id === null || id === undefined) return;
     if (!id?.native) { navigator.geolocation.clearWatch(id); return; }
     id.cleared = true;
+    if (id.web !== null) navigator.geolocation.clearWatch(id.web);
     listeners.delete(id);
     stopShared();
   },
@@ -87,8 +101,13 @@ export const geo = {
     if (!nativeGeo) { navigator.geolocation.getCurrentPosition(ok, fail, options); return; }
     allowed(options).then((yes) => {
       if (!yes) { fail?.(DENIED); return; }
+      if (!nativeGeo) { navigator.geolocation.getCurrentPosition(ok, fail, options); return; }
       core.invoke('plugin:geolocation|get_current_position', { options: toNative(options) })
-        .then(ok, (err) => fail?.({ code: /denied|permission/i.test(String(err)) ? 1 : 2, message: String(err) }));
+        .then(ok, (err) => {
+          if (!notAllowed(err)) { fail?.({ code: /denied|permission/i.test(String(err)) ? 1 : 2, message: String(err) }); return; }
+          nativeGeo = false;
+          navigator.geolocation.getCurrentPosition(ok, fail, options);
+        });
     });
   },
 

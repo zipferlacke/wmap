@@ -74,9 +74,14 @@ apply();
 
 // App: Kam eine GPX-Datei über „Öffnen mit“, „Teilen“ oder Doppelklick? Dann
 // zur Seite zum Öffnen (pages/import.js holt sie beim Plugin „folder“ ab).
+// Mit einem Shortcut gestartet (lange aufs App-Symbol, Rechtsklick im Menü)?
+// Dann zu dessen Seite (`go`, z. B. index.html?action=route).
 // Nicht in der eingepackten Kopie, die gleich zur Webversion wechselt (tauri-start.js).
 if (window.__TAURI__?.core && !window.__wmapStarting && !/\/import\.html$/.test(location.pathname)) {
   window.__TAURI__.core.invoke('plugin:folder|opened', { peek: true })
-    .then((r) => { if (r?.count) location.assign('./import.html'); })
+    .then((r) => {
+      if (r?.count) location.assign('./import.html');
+      else if (r?.go) location.assign(new URL(r.go, location.href));
+    })
     .catch(() => { /* ältere App ohne „opened“ */ });
 }

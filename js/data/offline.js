@@ -108,8 +108,9 @@ export function styleAssets(map) {
  * → Promise<{ tiles, loaded, failed }>; onProgress(done, total)
  */
 export async function saveRouteOffline(map, route, { onProgress } = {}) {
-  if (!('serviceWorker' in navigator)) throw new Error('Offline-Karten gehen in diesem Browser nicht');
-  const reg = await navigator.serviceWorker.ready;
+  // Ohne Service Worker (App mit eingepackter Oberfläche: http://tauri.localhost
+  // darf keinen anmelden) käme `ready` nie – dann lädt die Seite selbst vor
+  const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
   const { template, urls } = styleAssets(map);
   if (!template) throw new Error('Kartenquelle noch nicht geladen');
 
@@ -122,6 +123,7 @@ export async function saveRouteOffline(map, route, { onProgress } = {}) {
   // Der Browser soll den Cache nicht bei Platzmangel still wegräumen
   navigator.storage?.persist?.().catch(() => {});
 
+  if (!reg?.active) return prefetchHere(all, tiles.length, onProgress);
   return new Promise((resolve) => {
     const ch = new MessageChannel();
     ch.port1.onmessage = ({ data }) => {
@@ -130,6 +132,23 @@ export async function saveRouteOffline(map, route, { onProgress } = {}) {
     };
     reg.active.postMessage({ type: 'prefetch', urls: all }, [ch.port2]);
   });
+}
+
+/** Selbst laden – landet im HTTP-Cache des Browsers bzw. WebViews (6 zugleich) */
+async function prefetchHere(urls, tiles, onProgress) {
+  let done = 0;
+  let failed = 0;
+  let next = 0;
+  const worker = async () => {
+    while (next < urls.length) {
+      const u = urls[next++];
+      try { if (!(await fetch(u)).ok) failed += 1; } catch { failed += 1; }
+      done += 1;
+      onProgress?.(done, urls.length);
+    }
+  };
+  await Promise.all(Array.from({ length: 6 }, worker));
+  return { tiles, loaded: done - failed, failed };
 }
 
 /* ── Laufende Navigation merken ───────────────────────────────────────────── */

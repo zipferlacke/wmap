@@ -1,10 +1,18 @@
-"""Ort bearbeiten (osm/edit.js): Beschreibung, Merkmale, alle Tags (entfernen), was hochgeladen würde; Ortskarte mit Merkmalen.
-OSM wird im Browser nachgestellt (fetch abgefangen) – nichts geht an den echten Server."""
+"""Ort bearbeiten (osm/edit.js): Reihenfolge (Name, Angaben wie in der Ortskarte, Grundlegendes, Ausgefülltes, zugeklappt
+„Weiteres“ mit „Alle Tags“ am Ende), Beschreibung, Merkmale, alle Tags (entfernen), was hochgeladen würde; Ortskarte mit
+Merkmalen, Angaben nicht antippbar. OSM wird im Browser nachgestellt (fetch abgefangen) – nichts geht an den echten Server."""
 import sys
 import time
 from common import Browser
 
 TAGS = {'name': 'Bäckerei Test', 'shop': 'bakery', 'opening_hours': 'Mo-Fr 08:00-18:00', 'delivery': 'no', 'fixme': 'prüfen', 'website': 'https://example.org/?a=b'}
+
+# Oberste Ebene des Formulars und was unter „Weiteres“ steht
+ORDER = """const f = document.querySelector('dialog .osm-form');
+const top = [...f.children].map((el) => el.matches('.osm-facts') ? ['Angaben', [...el.querySelectorAll('[name]:not([name=gone])')].map((n) => n.name.replace(/^(socket|payment):.*/, '$1:'))]
+  : el.matches('details.osm-more') ? 'Weiteres' : el.matches('.osm-traits') ? 'Merkmale' : el.matches('.oh-block') ? 'opening_hours' : el.querySelector('[name]')?.name);
+const more = [...f.querySelectorAll('details.osm-more [name]')].map((n) => n.name);
+return { top: top.map((x) => Array.isArray(x) ? [x[0], [...new Set(x[1])]] : x), more, open: f.querySelector('details.osm-more').open };"""
 
 SETUP = """
 const tags = arguments[0];
@@ -31,6 +39,13 @@ with Browser(width=420, height=900) as b:
     b.d.execute_async_script('const done = arguments[arguments.length - 1]; (async () => {' + SETUP + '})().then(done, (e) => done(String(e)))', TAGS)
     time.sleep(.8)
     print('Felder:', b.js("return [...document.querySelectorAll('dialog .osm-field > span, dialog .osm-more > summary')].map((s) => s.innerText.split('\\n')[0].trim())"))
+    order = b.js(ORDER)
+    print('Aufbau:', order)
+    ok_order = order['top'] == ['name', ['Angaben', ['opening_hours', 'cuisine', 'outdoor_seating', 'wheelchair', 'phone']], 'description', 'website', 'Merkmale', 'Weiteres'] \
+        and order['more'][-1] == '_raw' and 'organic' in order['more'] and 'delivery' not in order['more'] and 'addr:street' in order['more'] and not order['open']
+    print('Aufbau stimmt:', ok_order)
+    if not ok_order:
+        b.errors.append(('aufbau', 'Reihenfolge im Dialog falsch'))
     raw = b.js("return document.querySelector('dialog textarea[name=_raw]').value")
     print('Alle Tags:', raw.replace('\n', ' | '))
     b.js("""const d = document.querySelector('dialog');
@@ -63,21 +78,23 @@ with Browser(width=420, height=900) as b:
     print('Ortskarte:', card)
     if not card or 'Lieferdienst' not in (card[0] or '') or 'Nur Bio' not in (card[0] or ''):
         b.errors.append(('karte', 'Merkmale fehlen'))
-    # Ladesäule: Angaben je Art – direkt an den Steckern geöffnet (Tipp auf „unbekannt“ in der Karte)
+    # Ladesäule: Angaben je Art oben (mit Öffnungszeiten), die Kacheln der Ortskarte öffnen nichts
     CHARGE = {'amenity': 'charging_station', 'name': 'Ladesäule Test', 'contact:website': 'https://alt.example'}
     card = b.d.execute_async_script("""const done = arguments[arguments.length - 1];
       import('./js/ui/poi-info.js').then((m) => {
-        const el = document.createElement('div'); el.innerHTML = m.poiCard(m.describePoi(arguments[0]), { editable: true });
-        done([...el.querySelectorAll('.poi-facts [data-edit]')].map((x) => [x.dataset.edit, x.classList.contains('unknown')]));
+        const el = document.createElement('div'); el.innerHTML = m.poiCard(m.describePoi(arguments[0]));
+        done([[...el.querySelectorAll('.poi-facts > div')].map((x) => x.innerText.replace(/\\s+/g, ' ').trim()), el.querySelectorAll('[data-edit], [role=button]').length]);
       });""", CHARGE)
-    print('Ortskarte Ladesäule (antippbar):', card)
-    if ['socket:', True] not in card or ['capacity', True] not in card:
-        b.errors.append(('karte', 'Stecker/Ladepunkte nicht antippbar'))
-    b.d.execute_async_script('const done = arguments[arguments.length - 1]; (async () => {' + SETUP.replace(
-        "title: tags.name }", "title: tags.name, focus: 'socket:' }") + '})().then(done, (e) => done(String(e)))', CHARGE)
+    print('Ortskarte Ladesäule:', card)
+    if card[1]:
+        b.errors.append(('karte', 'Kacheln sind noch antippbar'))
+    b.d.execute_async_script('const done = arguments[arguments.length - 1]; (async () => {' + SETUP + '})().then(done, (e) => done(String(e)))', CHARGE)
     time.sleep(.8)
-    print('Angaben:', b.js("return [...document.querySelectorAll('dialog .osm-facts > .osm-field > span, dialog .osm-facts > fieldset > legend')].map((s) => s.innerText.split('\\n')[0].trim())"))
-    print('Angesprungen:', b.js("return document.querySelector('dialog .osm-focus')?.dataset.edit"))
+    order = b.js(ORDER)
+    print('Aufbau Ladesäule:', order)
+    if order['top'] != ['name', ['Angaben', ['capacity', 'socket:', 'fee', 'operator', 'opening_hours', 'access', 'payment:']], 'description', 'phone', 'contact:website', 'Weiteres'] \
+            or order['more'][-1] != '_raw':
+        b.errors.append(('aufbau', 'Reihenfolge Ladesäule falsch'))
     b.js("""const d = document.querySelector('dialog');
       const set = (sel, v) => { const e = d.querySelector(sel); e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); };
       set('input[name="socket:type2"]', '2');

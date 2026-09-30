@@ -44,7 +44,10 @@
     window.__wmapStarting = false;
     // Ohne Netz bleibt es bei dieser Kopie – eine geöffnete Datei dann hier abholen
     window.__TAURI__?.core?.invoke('plugin:folder|opened', { peek: true })
-      .then((r) => { if (r?.count) location.assign('./import.html'); }).catch(() => {});
+      .then((r) => {
+        if (r?.count) location.assign('./import.html');
+        else if (r?.go) location.assign(new URL(r.go, location.href));
+      }).catch(() => {});
   };
 
   const ctl = new AbortController();

@@ -1,0 +1,27 @@
+[Desktop Entry]
+Categories={{categories}}
+{{#if comment}}
+Comment={{comment}}
+{{/if}}
+Exec={{exec}} %u
+StartupWMClass={{exec}}
+Icon={{icon}}
+Name={{name}}
+Terminal=false
+Type=Application
+{{#if mime_type}}
+MimeType={{mime_type}}
+{{/if}}
+Actions=route;record;tours;
+
+[Desktop Action route]
+Name=Route planen
+Exec=wmap "--wmap-go=index.html?action=route"
+
+[Desktop Action record]
+Name=Aufzeichnen
+Exec=wmap "--wmap-go=index.html?action=record"
+
+[Desktop Action tours]
+Name=Meine Touren
+Exec=wmap "--wmap-go=wege.html?tab=geplant"

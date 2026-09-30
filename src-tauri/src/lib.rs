@@ -7,12 +7,15 @@ use tauri_plugin_deep_link::DeepLinkExt;
 pub fn run() {
   let builder = tauri::Builder::default();
   // Rechner: zweiter Start durch einen geo:-Link → Link geht ans offene Fenster
-  // (muss vor deep-link stehen); durch eine GPX-Datei (Doppelklick) → Import
+  // (muss vor deep-link stehen); durch eine GPX-Datei (Doppelklick) → Import;
+  // über einen Shortcut der .desktop-Datei (--wmap-go=…) → dessen Seite
   #[cfg(desktop)]
   let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
     let cwd = std::path::PathBuf::from(cwd);
-    if tauri_plugin_folder::open_paths(app, args.iter().skip(1).map(|a| cwd.join(a))) {
-      open_import(app);
+    if let Some(page) = tauri_plugin_folder::shortcut_page(&args) {
+      open_page(app, &page);
+    } else if tauri_plugin_folder::open_paths(app, args.iter().skip(1).map(|a| arg_path(&cwd, a))) {
+      open_page(app, "import.html");
     }
     if let Some(win) = app.get_webview_window("main") {
       let _ = win.unminimize();
@@ -49,7 +52,16 @@ pub fn run() {
       // Mit einer GPX-Datei gestartet (Doppelklick, „Öffnen mit“): die Seite
       // holt sie beim Plugin „folder“ ab (core/theme.js → import.html)
       #[cfg(desktop)]
-      tauri_plugin_folder::open_paths(app.handle(), std::env::args_os().skip(1).map(std::path::PathBuf::from));
+      {
+        let cwd = std::env::current_dir().unwrap_or_default();
+        let args = std::env::args_os().skip(1).map(|a| arg_path(&cwd, &a.to_string_lossy()));
+        tauri_plugin_folder::open_paths(app.handle(), args);
+      }
+      // Über einen Shortcut gestartet: die Seite holt sie ebenso ab (→ dorthin)
+      #[cfg(desktop)]
+      if let Some(page) = tauri_plugin_folder::shortcut_page(std::env::args_os()) {
+        tauri_plugin_folder::open_page(app.handle(), page);
+      }
       Ok(())
     })
     .build(tauri::generate_context!())
@@ -60,21 +72,31 @@ pub fn run() {
       if let tauri::RunEvent::Opened { urls } = &_event {
         let paths = urls.iter().filter_map(|u| u.to_file_path().ok());
         if tauri_plugin_folder::open_paths(_app, paths) {
-          open_import(_app);
+          open_page(_app, "import.html");
         }
       }
     });
 }
 
-/// Neue GPX-Datei, während die App läuft: zur Seite zum Öffnen (import.html)
-/// neben der gerade offenen – eingepackt oder die Webversion
+/// Datei aus den Argumenten: Pfad oder file://-Link (die .desktop-Datei gibt
+/// mit `%u` Links weiter – nötig für geo:, Dateimanager schicken dann file://)
 #[cfg(desktop)]
-fn open_import(app: &tauri::AppHandle) {
+fn arg_path(cwd: &std::path::Path, arg: &str) -> std::path::PathBuf {
+  Url::parse(arg)
+    .ok()
+    .filter(|u| u.scheme() == "file")
+    .and_then(|u| u.to_file_path().ok())
+    .unwrap_or_else(|| cwd.join(arg))
+}
+
+/// Während die App läuft: zu einer Seite neben der gerade offenen – eingepackt
+/// oder die Webversion (neue GPX-Datei → import.html, Shortcut → seine Seite)
+#[cfg(desktop)]
+fn open_page(app: &tauri::AppHandle, page: &str) {
   let Some(win) = app.get_webview_window("main") else { return };
-  let Ok(Ok(mut page)) = win.url().map(|u| u.join("import.html")) else { return };
-  page.set_query(None);
-  page.set_fragment(None);
-  let _ = win.navigate(page);
+  let Ok(Ok(mut url)) = win.url().map(|u| u.join(page)) else { return };
+  url.set_fragment(None);
+  let _ = win.navigate(url);
   let _ = win.set_focus();
 }
 
