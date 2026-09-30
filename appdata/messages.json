@@ -1,8 +1,8 @@
 {
     "welcome": [
-        "<b>WMap</b> ist eine Karte ohne Tracking: suchen, navigieren, Routen planen, Touren/Touren planen und aufzeichnen – zu Fuß, mit dem Rad, dem Auto und mit Bus &amp; Bahn.",
-        "Alles beruht auf offenen Daten von OpenStreetMap. Du brauchst kein Konto, und hast volle Kontrolle über deine Daten.",
-        "Tippe oben einen Ort, eine Adresse oder einfach „Bäckerei“ ein – oder auf <span class=\"msr\">directions</span>, um umliegende Bäckereien zu finden."
+        "<b>WMap</b> ist eine Karte ohne Tracking: suchen, navigieren, Routen und Touren planen und aufzeichnen – zu Fuß, mit dem Rad, dem Auto und mit Bus &amp; Bahn.",
+        "Alles beruht auf offenen Daten von OpenStreetMap. Du brauchst kein Konto und hast volle Kontrolle über deine Daten.",
+        "Tippe oben einen Ort, eine Adresse oder einfach „Bäckerei“ ein, um Bäckereien in der Nähe zu finden – oder auf <span class=\"msr\">directions</span>, um eine Route zu planen."
     ],
     "minVersion": "2.1.0",
     "minAppVersion": "2.1.0",
