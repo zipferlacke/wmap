@@ -34,6 +34,16 @@ export const historySetting = {
 
 const db = store('tracks');
 
+/*
+ * Aus Health Connect übernommen und dann gelöscht: nicht beim nächsten
+ * Abruf wieder holen (js/services/health.js fragt hier nach).
+ */
+const HEALTH_GONE = 'wmap.health.gone';
+export const healthGone = {
+  all: () => new Set(local.get(HEALTH_GONE, []) ?? []),
+  add(id) { if (id) local.set(HEALTH_GONE, [...new Set([...(local.get(HEALTH_GONE, []) ?? []), id])].slice(-5000)); },
+};
+
 export const tracks = {
   /** Alle Wege, neueste zuerst. */
   async all() {
@@ -43,7 +53,13 @@ export const tracks = {
   async put(track) { await db.put(track); changed({ kind: 'track', id: track.id }); },
   /** Speichern ohne Meldung – für den Abgleich */
   putQuiet: (track) => db.put(track),
-  async remove(id) { await db.remove(id); changed({ kind: 'track', id, removed: true }); },
+  async remove(id) { await this.removeQuiet(id); changed({ kind: 'track', id, removed: true }); },
+  /** Löschen ohne Meldung – für den Abgleich (sonst gälte es als „hier gelöscht“) */
+  async removeQuiet(id) {
+    const t = await db.get(id).catch(() => null);
+    healthGone.add(t?.source?.health);
+    await db.remove(id);
+  },
   async rename(id, name) {
     const t = await this.get(id);
     if (t) await this.put({ ...t, name, updated: Date.now() });
@@ -207,6 +223,8 @@ export function parseGpx(text, profile = null) {
   if (doc.querySelector('parsererror')) throw new Error('Keine gültige GPX-Datei');
   const out = [];
   const fileName = doc.querySelector('metadata > name')?.textContent?.trim();
+  // Aus Health Connect (von WMap geschrieben): dasselbe Training erkennen
+  const health = doc.querySelector('metadata > keywords')?.textContent?.match(/\bwmap-hc:(\S+)/)?.[1] ?? null;
   for (const trk of doc.querySelectorAll('trk, rte')) {
     const pts = [...trk.querySelectorAll('trkpt, rtept')];
     if (pts.length < 2) continue;
@@ -222,7 +240,8 @@ export function parseGpx(text, profile = null) {
     const name = trk.querySelector(':scope > name')?.textContent?.trim() || fileName || 'Importierter Weg';
     const type = trk.querySelector(':scope > type')?.textContent?.trim();
     const t = buildTrack(points, { kind: 'gpx', profile: profile ?? (PROFILE_GROUP[type] ? type : 'foot'), name });
-    if (t) out.push(profile || PROFILE_GROUP[type] ? t : guessProfile(t));
+    const one = t && (profile || PROFILE_GROUP[type] ? t : guessProfile(t));
+    if (one) out.push(health ? { ...one, source: { health } } : one);
   }
   return out;
 }
@@ -239,7 +258,7 @@ export function trackGpx(t) {
   const pts = coords.map(([lon, lat], i) => `      <trkpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}"><time>${new Date(t.start + (t.times?.[i] ?? 0) * 1000).toISOString()}</time>${ext(i)}</trkpt>`).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="WMap" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
-  <metadata><name>${esc(t.name)}</name><time>${new Date(t.start).toISOString()}</time><keywords>wmap:${esc(t.id)}</keywords></metadata>
+  <metadata><name>${esc(t.name)}</name><time>${new Date(t.start).toISOString()}</time><keywords>wmap:${esc(t.id)}${t.source?.health ? ` wmap-hc:${esc(t.source.health)}` : ''}</keywords></metadata>
   <trk>
     <name>${esc(t.name)}</name>
     <type>${esc(t.profile)}</type>

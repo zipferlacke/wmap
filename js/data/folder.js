@@ -10,6 +10,7 @@
  *   WMap/Aufgezeichnete Touren/2026/09 September/2026-09-27 Radtour am Samstag….gpx
  *   WMap/Bus & Bahn/2026-09-30 08.15 Göttingen → Kassel.json   je gemerkte Verbindung
  *   WMap/Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen
+ *   WMap/Gelöscht.json                     was auf einem Gerät gelöscht wurde (ein Jahr)
  *
  * Heißt der verbundene Ordner selbst „WMap“, entfällt die Ebene. Dateien aus
  * der alten Ordnung (Geplant/, Abgeschlossen/, Gemerkt.json) ziehen beim
@@ -24,7 +25,14 @@
  *   nur in WMap         → Datei schreiben – oder, wenn die Datei schon mal da
  *                         war und im Ordner gelöscht wurde, auch hier löschen
  *   beides geändert     → das Neuere gewinnt
- *   in WMap gelöscht    → Datei löschen
+ *   in WMap gelöscht    → Datei löschen und in Gelöscht.json eintragen
+ *   in Gelöscht.json    → auch hier löschen, nie wieder schreiben – so weiß
+ *                         es jedes Gerät, auch eins, das noch nie oder lange
+ *                         nicht abgeglichen hat (sonst schriebe es die Datei
+ *                         mit seinem alten Stand zurück)
+ * Derselbe Weg zweimal (in einer neuen App schon aus Health Connect geholt,
+ * im Ordner noch mit der ID der alten App): bleibt einmal, mit der ID aus dem
+ * Ordner.
  * Geändert heißt: andere Änderungszeit und anderer Inhalt als beim letzten
  * Abgleich (manche Cloud-Ordner unter Android melden keine Zeit).
  *
@@ -45,6 +53,8 @@ import { connections, mergePlaces, mergeSaved } from './saved.js';
 const kv = store('kv');
 const KEY = 'folder';
 const DELETED = 'wmap.folder.deleted';   // in WMap gelöscht, Datei noch löschen
+const GONE_KEEP_MS = 365 * 24 * 3600 * 1000;   // so lange steht Gelöschtes in Gelöscht.json
+const REVIVED = 'wmap.folder.revived';   // gelöscht, dann hier wieder angelegt (ZIP, Import) – gilt wieder
 const AUTO = 'wmap.sync.auto';            // 'off' | 'start' (beim Öffnen und nach Änderungen) | 'every30' (dazu alle 30 min)
 
 const core = typeof window !== 'undefined' ? window.__TAURI__?.core : null;
@@ -266,7 +276,16 @@ async function syncAll(c, be) {
   for (const t of await tracks.all()) locals.set(t.id, { kind: 'track', item: t });
   for (const t of tours.all()) locals.set(t.id, { kind: 'tour', item: t });
   for (const x of connections.all()) locals.set(x.id, { kind: 'conn', item: x });
-  const deleted = new Set(local.get(DELETED, []));
+  // Gelöscht: hier seit dem letzten Abgleich und auf allen Geräten (Gelöscht.json)
+  const gonePath = `${base}Gelöscht.json`;
+  const goneFile = at(gonePath);
+  let goneThere = {};
+  if (goneFile) { try { goneThere = JSON.parse(await be.read(gonePath)).deleted ?? {}; } catch { /* kaputt: neu schreiben */ } }
+  const gone = { ...goneThere };
+  for (const id of local.get(DELETED, []) ?? []) gone[id] ??= Date.now();
+  for (const id of local.get(REVIVED, []) ?? []) delete gone[id];
+  for (const [id, when] of Object.entries(gone)) if (Date.now() - when > GONE_KEEP_MS) delete gone[id];
+  const deleted = new Set(Object.keys(gone));
   const index = c.index ?? {};
   const next = {};
   const seen = new Set();
@@ -325,7 +344,9 @@ async function syncAll(c, be) {
     const sameTime = known && f.lastModified && f.lastModified === known.at;
     let text = null;
     if (!sameTime) text = await be.read(f.path).catch(() => null);
-    if (!sameTime && text === null) continue;
+    // Nicht lesbar (Cloud-Ordner hakt): bekannt bleibt bekannt – sonst hielte
+    // das Gerät die Datei später für neu und schriebe sie nach dem Löschen zurück
+    if (!sameTime && text === null) { if (known) next[f.path] = known; continue; }
     const id = (text !== null ? idIn(f.path, text) : null) ?? known?.id ?? null;
     // Von WMap geschrieben (mit ID) – nur solche Dateien ziehen um
     const ours = text !== null ? !!idIn(f.path, text) : !!known?.ours;
@@ -338,13 +359,16 @@ async function syncAll(c, be) {
     const mine = id ? locals.get(id) : null;
 
     if (!mine) {
-      const got = await importFile({ ...f, text }, id);
+      const got = await importFile({ ...f, text }, id, null, index);
       if (got) {
+        // Derselbe Weg war hier schon unter anderer ID (Health Connect): die aus dem Ordner gilt
+        if (got.replaced) locals.delete(got.replaced);
         seen.add(got.id);
         if (!locals.has(got.id)) out.imported += 1;
         const entry = await entryOf(got.id);
-        // Eigene Dateien (mit WMap-ID) ziehen in die neue Ordnung um
-        if (entry && ours && dirname(f.path) !== dirname(pathOf(entry.kind, entry.item, base))) {
+        // Eigene Dateien (mit WMap-ID) ziehen in die neue Ordnung um; zusammengelegt
+        // (Health Connect): neu schreiben, damit die Kennung auch im Ordner steht
+        if (entry && ours && (got.replaced || dirname(f.path) !== dirname(pathOf(entry.kind, entry.item, base)))) {
           await put(f.path, entry, serialize(entry));
         } else next[f.path] = { id: got.id, kind: got.kind, at: f.lastModified, hash: hash(text), rev: got.rev, ours };
       }
@@ -383,9 +407,9 @@ async function syncAll(c, be) {
   for (const [id, entry] of locals) {
     if (seen.has(id)) continue;
     await step();
-    if (Object.values(index).some((v) => v.id === id)) {
-      // War schon im Ordner und ist dort weg: dort gelöscht
-      if (entry.kind === 'track') await trackStore.remove(id);
+    if (deleted.has(id) || Object.values(index).some((v) => v.id === id)) {
+      // Auf einem Gerät gelöscht bzw. war schon im Ordner und ist dort weg
+      if (entry.kind === 'track') await tracks.removeQuiet(id);
       else if (entry.kind === 'conn') connections.removeQuiet(id);
       else tourRemoveQuiet(id);
       out.removed += 1;
@@ -402,10 +426,14 @@ async function syncAll(c, be) {
   if (merged.changed) await be.write(bmPath, merged.text);
 
   out.settings = await syncSettings(c, be, at(`${base}settings.json`), `${base}settings.json`);
+  if (JSON.stringify(gone) !== JSON.stringify(goneThere)) {
+    await be.write(gonePath, JSON.stringify({ app: 'WMap', note: 'Auf einem Gerät gelöscht – nicht wieder anlegen', deleted: gone }, null, 1));
+  }
   if (legacy) await be.remove(legacy.path);
 
   c.index = next;
   local.set(DELETED, []);
+  local.set(REVIVED, []);
   return out;
 }
 
@@ -530,7 +558,7 @@ function serialize({ kind, item }) {
  * Weg, unter „Geplante Touren/“ eine Tour, unter „Bus & Bahn/“ eine
  * Verbindung, sonst: mit Zeitstempeln ein Weg. → { id, kind, rev } oder null
  */
-async function importFile(f, id, before = null) {
+async function importFile(f, id, before = null, index = {}) {
   try {
     if (CONN_DIR.test(f.path)) {
       const c = JSON.parse(f.text);
@@ -545,7 +573,8 @@ async function importFile(f, id, before = null) {
       const t = tourFromGpx(f.text, f.path);
       if (!t) return null;
       // Ordner neu verbunden: dieselbe Tour nicht doppelt
-      const twin = !before && !id && tours.all().find((x) => x.shape === t.shape);
+      // gleicher Verlauf und gleicher Name – nur der Verlauf wäre zu grob (dieselbe Runde zweimal geplant)
+      const twin = !before && !id && tours.all().find((x) => x.shape === t.shape && x.name === t.name);
       if (twin) return { id: twin.id, kind: 'tour', rev: rev(twin) };
       const tour = { ...t, id: id ?? before?.id ?? tours.newId(), created: before?.created ?? f.lastModified, updated: f.lastModified || Date.now(), preview: before?.shape === t.shape ? before.preview : null };
       tours.put(tour);
@@ -553,9 +582,21 @@ async function importFile(f, id, before = null) {
     }
     const [t] = parseGpx(f.text);
     if (!t) return null;
-    const twin = !before && !id && (syncTracks ?? await tracks.all()).find((x) => sameTrack(x, t));
-    if (twin) return { id: twin.id, kind: 'track', rev: rev(twin) };
-    const track = { ...before, ...t, id: id ?? before?.id ?? t.id, updated: f.lastModified || Date.now() };
+    const all = syncTracks ?? await tracks.all();
+    const twin = !before && all.find((x) => x.id !== id && sameTrack(x, t));
+    // Ohne ID (fremde Datei) bzw. der Zwilling liegt selbst schon im Ordner: bleibt der Zwilling
+    if (twin && (!id || Object.values(index).some((v) => v.id === twin.id))) return { id: twin.id, kind: 'track', rev: rev(twin) };
+    if (twin) {
+      // Hier neu (z. B. aus Health Connect), im Ordner mit ID von woanders: dieselbe
+      // Aufzeichnung – sie übernimmt die ID aus dem Ordner, Name und Messwerte von hier bleiben
+      const track = { ...t, ...twin, id, source: { ...t.source, ...twin.source }, updated: f.lastModified || Date.now() };
+      await trackStore.remove(twin.id);
+      await tracks.putQuiet(track);
+      if (syncTracks) syncTracks.splice(syncTracks.indexOf(twin), 1, track);
+      return { id, kind: 'track', rev: track.updated, replaced: twin.id };
+    }
+    const source = before?.source || t.source ? { ...before?.source, ...t.source } : undefined;
+    const track = { ...before, ...t, id: id ?? before?.id ?? t.id, ...(source ? { source } : {}), updated: f.lastModified || Date.now() };
     await tracks.putQuiet(track);
     syncTracks?.push(track);
     return { id: track.id, kind: 'track', rev: track.updated };
@@ -598,7 +639,13 @@ export function tourFromGpx(text, path = '') {
 
 let timer = null;
 addEventListener('wmap:data', (e) => {
-  if (e.detail?.removed) local.set(DELETED, [...new Set([...local.get(DELETED, []), e.detail.id])]);
+  const id = e.detail?.id;
+  if (id && e.detail.removed) local.set(DELETED, [...new Set([...local.get(DELETED, []), id])]);
+  // Wieder angelegt (ZIP einspielen, Import, Bearbeiten): nicht mehr als gelöscht führen
+  else if (id) {
+    local.set(DELETED, (local.get(DELETED, []) ?? []).filter((x) => x !== id));
+    local.set(REVIVED, [...new Set([...(local.get(REVIVED, []) ?? []), id])].slice(-500));
+  }
   clearTimeout(timer);
   timer = setTimeout(async () => {
     await syncing?.catch(() => {});

@@ -10,7 +10,8 @@
  *                      Health Connect), 'app' (App-Info), 'location'
  *   healthSessions()   Freigabe prüfen bzw. erfragen, dann alle Trainings
  *   importHealth(list) Routen holen und als Wege speichern – schon
- *                      übernommene (gleiche ID oder gleicher Weg) nicht doppelt;
+ *                      übernommene (gleiche ID oder gleicher Weg) nicht doppelt,
+ *                      gelöschte nicht wieder (tracks.js healthGone);
  *                      dazu die Messwerte (Puls, Frequenz, Leistung) je Punkt
  *   fillHealthValues() Messwerte für früher übernommene Wege nachladen
  *   syncHealth()       Neues holen – von Hand oder automatisch beim Öffnen
@@ -20,7 +21,7 @@
  * Rückfrage heraus; sonst fragt es je Training nach. Lehnt man einmal ab,
  * fragt der Import für den Rest nicht mehr und zählt sie nur.
  */
-import { tracks, buildTrack, guessProfile, sameTrack, defaultName } from '../data/tracks.js';
+import { tracks, buildTrack, guessProfile, sameTrack, defaultName, healthGone } from '../data/tracks.js';
 import { local } from '../data/store.js';
 
 const core = window.__TAURI__?.core;
@@ -143,9 +144,9 @@ export async function healthSessions({ days = 3650 } = {}) {
 const WORD = { running: 'Lauf', running_treadmill: 'Lauf', hiking: 'Wanderung', biking: 'Radtour', walking: 'Spaziergang' };
 const nameFor = (type, t) => defaultName(t.profile, t.start).replace(/^\S+/, WORD[type] ?? typeName(type));
 
-/** Schon übernommen? (gleiche ID) – für den Überblick vor dem Import */
+/** Schon übernommen (gleiche ID) oder übernommen und wieder gelöscht? – für den Überblick vor dem Import */
 export async function knownHealthIds() {
-  return new Set((await tracks.all()).map((t) => t.source?.health).filter(Boolean));
+  return new Set([...(await tracks.all()).map((t) => t.source?.health).filter(Boolean), ...healthGone.all()]);
 }
 
 /**
@@ -157,7 +158,7 @@ export async function knownHealthIds() {
  */
 export async function importHealth(sessions, { onProgress, ask: askFirst = true } = {}) {
   const have = await tracks.all();
-  const seen = new Set(have.map((t) => t.source?.health).filter(Boolean));
+  const seen = new Set([...have.map((t) => t.source?.health).filter(Boolean), ...healthGone.all()]);
   const out = { added: 0, known: 0, dup: 0, empty: 0, denied: 0 };
   let ask = askFirst;
   for (const [i, s] of sessions.entries()) {
@@ -181,7 +182,15 @@ export async function importHealth(sessions, { onProgress, ask: askFirst = true 
     if (!profile) t = guessProfile(t);
     t = { ...t, name: s.title || nameFor(s.type, t), source: { health: s.id, app: s.app, type: s.type } };
     t = await withValues(t, s.end);
-    if (have.some((x) => sameTrack(x, t))) { out.dup += 1; continue; }
+    // Derselbe Weg ist schon da (z. B. aus dem Ordner, von der alten App): nicht
+    // doppelt – aber merken, dass er aus Health Connect kommt, damit er beim
+    // nächsten Abruf als bekannt gilt und nicht wieder geholt wird
+    const twin = have.find((x) => sameTrack(x, t));
+    if (twin) {
+      if (!twin.source?.health) await tracks.put({ ...twin, source: { ...twin.source, ...t.source }, updated: Date.now() });
+      out.dup += 1;
+      continue;
+    }
     await tracks.put(t);
     have.push(t);
     out.added += 1;

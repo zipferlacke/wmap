@@ -10,7 +10,7 @@
     "changelog": [
         {
             "version": "2.1.0",
-            "date": "2026-09-29",
+            "date": "2026-09-30",
             "changes": [
                 "Mitmachen wurde neugestaltet: kurze Fragen kommen beim Navigieren bzw. am Ende einer beendeten Navigation, einzeln einstellbar in den Einstellungen im Punkt 'Navigation'.",
                 "Editieren von Orten/Punkten auf der Karte wurde vereinfacht: Dialoge wurden auf die jeweilige Art zugeschnitten.",
@@ -23,6 +23,7 @@
                 "Fix: Navigation in der Android-App – GPS nicht verfügbar trotz GPS, fehlende Ansagen",
                 "Fix: GPS wandert im Stand und das Tempo bei der Navigation war nicht 0",
                 "Fix: Kategoriesuche und Orte entlang der Route kamen in den Apps nicht oder nur langsam",
+                "Fix: Auf einem Gerät gelöschte Touren kamen über den Ordner-Abgleich von anderen Geräten zurück",
                 "Fix: Die Karte war ab und zu nach dem Start nur klein in der Ecke",
                 "Fix: Kleinere Darstellungsfehler (Knöpfe in der Navigation, lange Antworten, geteilte Touren)"
             ]

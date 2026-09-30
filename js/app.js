@@ -45,12 +45,17 @@ if (!freshView && !/[?&](view|q|from|to|reach|geo|ort|tour)=/.test(location.sear
   addEventListener('wmap:location', flyHome, { once: true });
 }
 
-map.on('moveend', debounce(() => {
+const saveView = () => {
   if (nav.active) return;
   local.set('wmap.view', {
     center: map.getCenter().toArray(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), at: Date.now(),
   });
-}, 400));
+};
+map.on('moveend', debounce(saveView, 400));
+// Auch beim Verlassen sofort – wer gleich danach die Seite wechselt oder die
+// App schließt, verlöre sonst die letzte Bewegung
+addEventListener('pagehide', saveView);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveView(); });
 
 
 function keysDialog() {

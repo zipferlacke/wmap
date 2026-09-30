@@ -779,7 +779,8 @@ WMap/
 ├─ Geplante Touren/Harzer Hexenstieg.gpx
 ├─ Aufgezeichnete Touren/2026/09 September/2026-09-20 Radtour am Samstagnachmittag.gpx
 ├─ Bus & Bahn/2026-09-30 08.15 Göttingen → Kassel.json   je gemerkte Verbindung
-└─ Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen mit Listen
+├─ Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen mit Listen
+└─ Gelöscht.json                     auf einem Gerät Gelöschtes (IDs, ein Jahr)
 ```
 
 - Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene. Dateien
@@ -795,6 +796,19 @@ WMap/
   Automatik), sonst mit „Jetzt abgleichen“:
   - nur im Ordner → übernehmen; nur in WMap → Datei schreiben
   - im Ordner gelöscht → auch in WMap weg; in WMap gelöscht → Datei weg
+    und Eintrag in `Gelöscht.json` (ein Jahr) – jedes Gerät löscht es dann
+    auch und schreibt es nie zurück, auch eins, das den Ordner neu verbunden
+    hat oder lange nicht abgeglichen hat (sein Gedächtnis, welche Dateien
+    schon da waren, reicht dafür nicht). Wieder angelegt (ZIP einspielen,
+    Import, Bearbeiten) → gilt wieder
+  - eine Datei ist einmal nicht lesbar (Cloud-Ordner hakt) → bleibt bekannt
+  - derselbe Weg zweimal – in einer neuen App schon aus Health Connect
+    geholt, im Ordner mit der ID der alten App: bleibt einmal, mit der ID aus
+    dem Ordner; GPX tragen dazu die Kennung aus Health Connect
+    (`wmap-hc:…` neben `wmap:ID`). Health Connect holt Gelöschtes nicht
+    wieder und erkennt Wege aus dem Ordner am Start (± 5 s) und der Länge
+  - Doppelte ohne ID (fremde GPX): Weg an Start und Länge, geplante Tour an
+    Verlauf und Name
   - beides geändert → das Neuere gewinnt; geändert heißt: andere Zeit und
     anderer Inhalt als beim letzten Abgleich (manche Cloud-Ordner unter
     Android melden keine Zeit)
