@@ -38,8 +38,9 @@ gewollt?“) und als Grundlage für Erklärungen in der App.
 20. [Offline und Datenverbrauch](#20-offline-und-datenverbrauch)
 21. [Was wo gespeichert wird](#21-was-wo-gespeichert-wird)
 22. [Aufruf per Link](#22-aufruf-per-link)
-23. [Werkzeuge](#werkzeuge)
-24. [Entwicklung](#entwicklung)
+23. [Android Auto](#23-android-auto)
+24. [Werkzeuge](#werkzeuge)
+25. [Entwicklung](#entwicklung)
 
 ---
 
@@ -1164,10 +1165,69 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 | `?ort=…`, `?route=…`, `?anfrage=…` | Geteiltes |
 | `?geo=geo:51.53,9.93?q=…` | Karten-Link einer anderen App (`geo:`) – Punkt, Punkt mit Namen oder Suche |
 | `?sim`, `?tempo=4` | Navigation simulieren |
+| `?car` | Karte für den Autobildschirm (Android Auto, siehe [23](#23-android-auto)) |
 | `wege.html?tab=geplant`, `?tour=ID`, `?id=ID` | Meine Touren |
 | `entdecken.html#wege\|andere`, `?view=lon,lat,zoom` | Entdecken |
 | `offline.html?neu` | Offline-Karten: gleich ein neues Gebiet wählen |
 | `plugins.html?f=layer\|extension\|own\|active`, `?id=…` | Plugins |
+
+## 23. Android Auto
+
+Mit dem Handy am Auto erscheint WMap in Android Auto als Navigations-App.
+Das Auto zeigt dabei nur Googles Vorlagen – eigene Oberflächen lässt
+Android Auto nicht zu (Ablenkung). WMap malt einzig die Karte selbst:
+
+- **Start:** links eine feste Such-„Leiste“ – **Suchen** und daneben das
+  Routen-Symbol (Ziel wählen, ein Tipp plant gleich die Route). Sie bleibt
+  stehen; die Leisten des Autos blendet Android Auto nach ein paar Sekunden
+  aus. Rechts von oben: Übersicht (nur mit Route), +, −, Standort.
+- **Suchen:** oben das Suchfeld, rechts der Umschalter **Meine Touren** /
+  **Orte** (Reiter erlaubt Android Auto nur auf der Startseite). Orte leer:
+  **In der Nähe** (Parkplatz und Tanken als Knöpfe, antippen: alle
+  Kategorien als Raster), dann Zuhause, Arbeit, Lesezeichen und die letzten
+  Ziele – die führen gleich zur Route. Meine Touren: die geplanten Touren,
+  das Suchfeld filtert.
+- **Standort-Knopf wie in der Navigation am Handy:** ◎, solange die Karte
+  nicht folgt, sonst Pfeil (geneigt) bzw. Kompass (flach); antippen holt
+  zurück bzw. wechselt geneigt ↔ flach (Neigen mit zwei Fingern reicht das
+  Auto nicht an Apps weiter).
+- **Fahren ohne Route wie in der Navigation:** Pfeil statt Punkt, beim
+  Fahren (ab ~7 km/h) auf der Straße (nächste Autostraße aus den
+  Kartenkacheln, passend zur Fahrtrichtung), die Karte folgt geneigt; immer sichtbar Tempo,
+  Tempolimit (Valhalla `/locate`, höchstens alle 10 s) und der
+  Straßenname (`js/car/drive.js`). Beim Navigieren kommen Tempo und Limit
+  von der Navigation.
+- **Orte antippen** auf der Karte (Parkplatz, Laden, Treffer): wie der
+  Dialog in der App – Art, Entfernung, Adresse, Öffnungszeiten, dazu
+  „Route“ und „Abbrechen“, Merken als Stern oben.
+- **Routenwahl** mit Dauer und Länge der Varianten, „Los“ startet die
+  Navigation: Pfeil, Entfernung, Straße und Ankunftszeit in der Vorlage des
+  Autos, Ansagen über die Lautsprecher des Autos, Ton aus, „In der Nähe“
+  unterwegs, Übersicht der ganzen Route; beendet wird mit dem ✕ neben der
+  Ankunftszeit (von Android Auto, auch wo Anweisung und Zeit stehen, legt
+  das Auto fest).
+- **Kurze Fragen zum Mitmachen** (Pillen, „Immer noch Stau?“) kommen als
+  Hinweis des Autos mit „Ja“ / „Nein“.
+- Ohne Standort-Freigabe fragt das Auto am Handy danach.
+- „Navigiere zu …“ aus anderen Apps oder per Sprache (`geo:`) öffnet die
+  Routenwahl bzw. die Suche.
+
+Technik: Die Vorlagen stehen in `tools/android/car/` (Kotlin, Car App
+Library), `tools/android-einbinden.py` setzt sie ins erzeugte Android-Projekt.
+Die Karte ist die Webversion mit `?car` (`js/car/car.js`, `js/car/drive.js`, `css/app/car.css`)
+in einem eigenen WebView auf der Kartenfläche des Autos (virtuelles Display);
+sie beantwortet die Fragen der Vorlagen – Suche, Kategorien, Ort, Routen,
+Touren – mit derselben Logik wie die App. Weil sie wie die App von
+app.wuefl.de kommt, teilt sie deren Speicher: dieselben Touren und
+Lesezeichen. Die Debug-Fassung lädt sie vom Rechner
+(`adb reverse tcp:8080 tcp:8080`), sonst ebenfalls aus dem Netz.
+
+Ausprobieren ohne Auto: Android Auto auf dem Handy → Version zehnmal
+antippen → Entwicklereinstellungen → „Unbekannte Quellen“ an (sonst fehlt
+eine nicht aus dem Play Store installierte App) → Menü „Head Unit Server
+starten“; am Rechner `adb forward tcp:5277 tcp:5277` und die Desktop Head
+Unit (SDK-Paket `extras;google;auto`; auf ARM-Linux über muvm/FEX, siehe
+`tools/README.md`).
 
 ## Werkzeuge
 

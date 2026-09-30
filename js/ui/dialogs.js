@@ -49,6 +49,8 @@ export function ask({ icon = 'help', title, text = '', html = '', buttons, read 
  * ein Knopf daneben, und die Meldung bleibt länger stehen.
  */
 export function toast(text, { action } = {}) {
+  // Autobildschirm: auch dort kurz zeigen (car/car.js)
+  window.wmapCarToast?.(text);
   let el = document.getElementById('toast');
   if (!el) {
     el = Object.assign(document.createElement('div'), { id: 'toast', role: 'status' });

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android Auto: WMap nutzt die Vorlagen des Autos (tools/android/car) -->
+<automotiveApp>
+    <uses name="template" />
+</automotiveApp>

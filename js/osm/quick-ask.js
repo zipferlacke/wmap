@@ -15,6 +15,9 @@
  * → 'yes' (bestätigt), 'no' (✕) oder null (abgelaufen)
  * urgent: true (Meldungen: „Immer noch Stau?“) – schiebt eine gerade
  * gezeigte Pille weg (sie endet mit null) und kommt sofort.
+ *
+ * Auf dem Autobildschirm (car/car.js) kommt die Frage als Hinweis des Autos
+ * mit „Ja“/„Nein“ bzw. den ersten zwei Knöpfen; mit Textfeld gar nicht.
  */
 import { esc } from '../core/geo.js';
 
@@ -30,6 +33,8 @@ export function quickAsk(opts) {
 }
 
 function show(opts) {
+  // Autobildschirm: als Hinweis des Autos (car/car.js)
+  if (window.wmapCarAsk) return window.wmapCarAsk(opts, (fn) => { closePill = fn; });
   return opts.pill ? pill(opts) : card(opts);
 }
 

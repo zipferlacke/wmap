@@ -21,6 +21,10 @@ aufgerufen von `tauri-android wmap` (wuefl_products/tools) vor jedem Bauen:
                              braucht 26 – ein früher erzeugtes Projekt hat 24)
   Upload-Signatur          → app/build.gradle.kts, wenn es die Schlüssel-
                              datei gibt (für `tauri-android wmap release`)
+  Android Auto             → tools/android/car/*.kt nach …/wmap/car/, ihre
+                             Symbole (res/), Car App Library in Gradle, im
+                             Manifest Dienst, Berechtigungen und
+                             automotive_app_desc (WMap als Navigations-App)
 
 Mehrfach aufrufbar: alles wird nur einmal eingetragen.
 
@@ -113,13 +117,60 @@ TTS_QUERIES = f"""    {TTS_MARKE}
     </queries>
 """
 
+# Android Auto (tools/android/car): Navigations-App mit eigener Kartenfläche
+CAR_LIB = 'implementation("androidx.car.app:app:1.7.0")'
+# Standort im Auto wie in der App (Fused Location – das Standort-Plugin bringt es nur für sich mit)
+CAR_LOC = 'implementation("com.google.android.gms:play-services-location:21.3.0")'
+CAR_MARKE = "<!-- wmap:car -->"
+CAR_DIENST = f"""        {CAR_MARKE}
+        <service
+            android:name=".car.WMapCarService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.NAVIGATION" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.car.app.action.NAVIGATE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="geo" />
+            </intent-filter>
+        </service>
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="5" />
+"""
+
 BERECHTIGUNGEN = [
     '<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',
     '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />',
     # Navigation mit ausgeschaltetem Bildschirm
     '<uses-permission android:name="android.permission.WAKE_LOCK" />',
     '<uses-feature android:name="android.hardware.location.gps" android:required="false" />',
+    # Android Auto: Navigationsvorlagen und eigene Kartenfläche
+    '<uses-permission android:name="androidx.car.app.NAVIGATION_TEMPLATES" />',
+    '<uses-permission android:name="androidx.car.app.ACCESS_SURFACE" />',
 ]
+
+
+def auto() -> None:
+    """Android Auto: Kotlin, Symbole und die Car App Library."""
+    quelle = PROJEKT / "tools/android/car"
+    ziel = next((APP / "src/main/java").rglob("MainActivity.kt"), None)
+    if ziel:
+        (ziel.parent / "car").mkdir(exist_ok=True)
+        for kt in quelle.glob("*.kt"):
+            shutil.copyfile(kt, ziel.parent / "car" / kt.name)
+    shutil.copytree(quelle / "res", APP / "src/main/res", dirs_exist_ok=True)
+    datei = APP / "build.gradle.kts"
+    text = datei.read_text(encoding="utf-8")
+    for lib in (CAR_LIB, CAR_LOC):
+        if lib not in text:
+            text = text.replace("dependencies {\n", "dependencies {\n    " + lib + "\n", 1)
+    datei.write_text(text, encoding="utf-8")
 
 
 def min_sdk() -> None:
@@ -153,6 +204,8 @@ def main() -> int:
         text = text.replace("    <application", TTS_QUERIES + "\n    <application", 1)
     if GPX_MARKE not in text:
         text = text.replace("        </activity>", GPX_FILTER + "        </activity>", 1)
+    if CAR_MARKE not in text:
+        text = text.replace("    </application>", CAR_DIENST + "    </application>", 1)
     if "supportsPictureInPicture" not in text:
         text = text.replace('android:name=".MainActivity"',
                             'android:name=".MainActivity"\n            android:supportsPictureInPicture="true"', 1)
@@ -162,9 +215,10 @@ def main() -> int:
     ziel = next((APP / "src/main/java").rglob("MainActivity.kt"), None)
     if ziel:
         shutil.copyfile(PROJEKT / "tools/android/MainActivity.kt", ziel)
+    auto()
     min_sdk()
     signatur()
-    print("==> WMap-Teile eingesetzt (Symbol, Standort, Bild in Bild, Sprachausgabe, GPX öffnen"
+    print("==> WMap-Teile eingesetzt (Symbol, Standort, Bild in Bild, Sprachausgabe, GPX öffnen, Android Auto"
           + (", Upload-Signatur)" if SIGNATUR.is_file() else ")"))
     return 0
 

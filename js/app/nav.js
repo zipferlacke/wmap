@@ -76,6 +76,8 @@ export const nav = new Navigation(map, $('#nav'), {
   },
   // Abgewichen: „Gesperrt?“ erst, wenn man wirklich ≥ 100 m neben der alten Route ist (ask-along.js)
   onReroute: (ev) => alongReroute(ev),
+  // Für den Autobildschirm (car/car.js)
+  onGuidance: (g) => dispatchEvent(new CustomEvent('wmap:guidance', { detail: g })),
 });
 window.__wmap.nav = nav;
 
@@ -93,7 +95,10 @@ let navDestination = '';
 /** Gerade navigierte geplante Tour (app.js, „?tour=“) – wird immer aufgezeichnet */
 let tourNavigated = null;
 export const navTour = { set: (t) => { tourNavigated = t; } };
-$('.start-nav').addEventListener('click', async () => {
+$('.start-nav').addEventListener('click', () => startNav());
+
+/** Navigation auf der gewählten Route starten (Knopf „Starten“, Autobildschirm) */
+export async function startNav() {
   const r = current();
   if (!r) return;
   await askContributeOnce();
@@ -110,7 +115,7 @@ $('.start-nav').addEventListener('click', async () => {
     });
   }
   nav.start(r, { profile: state.profile, highways: prefs.highways, targets: state.points.slice(1) });
-});
+}
 
 /*
  * Offline: Karte entlang der Route vorladen, damit Funklöcher unterwegs

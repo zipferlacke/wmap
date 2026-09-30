@@ -15,6 +15,10 @@ export const $$ = (s, root = document) => [...root.querySelectorAll(s)];
  * Startansicht: dort weitermachen, wo man aufgehört hat (gleich danach ggf.
  * der neuere Ausschnitt aus dem Ordner bzw. der eigene Standort – app.js).
  */
+/** Autobildschirm (Android Auto, car/car.js): nur die Karte, die Vorlagen zeichnet das Auto */
+export const CAR = new URLSearchParams(location.search).has('car');
+if (CAR) document.documentElement.classList.add('car-mode');
+
 const lastView = local.get('wmap.view');
 export const { map, geolocate } = createMap('map', lastView ? {
   center: lastView.center, zoom: lastView.zoom, pitch: lastView.pitch ?? 0, bearing: lastView.bearing ?? 0,
@@ -71,6 +75,17 @@ export function myPosition({ ask = true } = {}) {
  * Rand, rechts neben den Knöpfen. Alles, was eingepasst wird, landet mittig darin.
  */
 export function viewPadding() {
+  // Auto: frei ist, was seine Vorlagen nicht verdecken (car/car.js)
+  if (map.carInsets) {
+    const i = map.carInsets;
+    const { clientWidth: w, clientHeight: h } = map.getContainer();
+    const pad = { top: i.top + 24, bottom: i.bottom + 24, left: i.left + 24, right: i.right + 24 };
+    // Kleiner Bildschirm, breite Liste: mindestens 160 × 120 frei lassen
+    const over = pad.left + pad.right - (w - 160);
+    if (over > 0) { pad.left = Math.max(0, pad.left - over); }
+    if (pad.top + pad.bottom > h - 120) { pad.top = 12; pad.bottom = 12; }
+    return pad;
+  }
   // Rechner: Dialoge stehen links unter der Suche – die Karte rechts ist frei
   const sheet = $('#sheet');
   if (!matchMedia('(max-width: 700px)').matches && sheet.open) {
@@ -99,7 +114,10 @@ export function fitTo([w, s, e, n], maxZoom = 16, { flat = false } = {}) {
   // gar nichts („cannot fit“). Darum flach einpassen – nah genug dran neigt
   // die 3D-Automatik danach wieder.
   const opts = { padding, maxZoom, pitch: 0, ...(flat ? { bearing: 0 } : {}) };
-  if (map.cameraForBounds([[w, s], [e, n]], opts)) {
+  // MapLibre wirft teils statt „passt nicht“ zu melden (sehr wenig Platz)
+  let fits = null;
+  try { fits = map.cameraForBounds([[w, s], [e, n]], opts); } catch { fits = null; }
+  if (fits) {
     map.fitBounds([[w, s], [e, n]], { ...opts, duration: 800 });
   } else {
     // Selten findet MapLibre direkt nach einem Flug mit Gelände keine Lösung –

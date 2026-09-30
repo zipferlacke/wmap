@@ -18,6 +18,8 @@ try { if (localStorage.getItem('wmap.osm.return')) import('../osm/login-return.j
 const KEY = 'wmap.theme';
 const system = matchMedia('(prefers-color-scheme: dark)');
 let last = null;
+/** Autobildschirm: Tag/Nacht bestimmt das Auto (car/car.js) – nicht gespeichert */
+let forced = null;
 
 export const theme = {
   /** 'system' | 'light' | 'dark' */
@@ -31,13 +33,18 @@ export const theme = {
     apply(value);
   },
   get dark() { return last ?? isDark(this.get()); },
+  /** Nur für diese Seite hell (false) oder dunkel (true), null = wieder wie gewählt */
+  force(dark) {
+    forced = dark === null ? null : dark ? 'dark' : 'light';
+    apply();
+  },
 };
 
 function isDark(choice) {
   return choice === 'dark' || (choice === 'system' && system.matches);
 }
 
-function apply(choice = theme.get()) {
+function apply(choice = forced ?? theme.get()) {
   const root = document.documentElement;
   root.style.colorScheme = choice === 'system' ? '' : choice;
   const dark = isDark(choice);
@@ -69,7 +76,7 @@ if (window.WMapAndroid?.insets) {
 }
 
 system.addEventListener('change', () => apply());
-addEventListener('storage', (e) => { if (e.key === KEY) apply(); });
+addEventListener('storage', (e) => { if (e.key === KEY && !forced) apply(); });
 apply();
 
 // App: Kam eine GPX-Datei über „Öffnen mit“, „Teilen“ oder Doppelklick? Dann

@@ -189,7 +189,7 @@ const LANE_ICON = {
 /* ── Navigation ───────────────────────────────────────────────────────────── */
 
 export class Navigation {
-  #map; #el; #onExit; #onRoute; #onFix; #onReroute; #onSearch; #onArrive; #onReport; #onShare;
+  #map; #el; #onExit; #onRoute; #onFix; #onReroute; #onSearch; #onArrive; #onReport; #onShare; #onGuidance; #guide = null;
   #route = null; #profile = 'car'; #highways = true; #targets = []; #extras = null;
   #watch = null; #sim = null; #wakeLock = null; #marker = null; #targetMarkers = [];
   #roadFor = null; #cover = null; #shift = 0; #lefts = null; #towards = new Map();
@@ -211,8 +211,12 @@ export class Navigation {
    * @param opts.onSearch   „Entlang der Route suchen“ gedrückt
    * @param opts.onArrive   am Ziel angekommen (Punkt des Ziels, Profil)
    * @param opts.onReport   „Melden“ gedrückt (eigener Standort)
+   * @param opts.onGuidance nach jeder Meldung die Anweisung als Daten – für
+   *                        den Autobildschirm (car/car.js): { type (Valhalla),
+   *                        exit, dist, street, toward, next, left, secs } bzw.
+   *                        { arrived: true }
    */
-  constructor(map, el, { onExit, onRoute, onFix, onReroute, onSearch, onArrive, onReport, onShare } = {}) {
+  constructor(map, el, { onExit, onRoute, onFix, onReroute, onSearch, onArrive, onReport, onShare, onGuidance } = {}) {
     this.#map = map;
     this.#el = el;
     this.#onExit = onExit;
@@ -223,6 +227,7 @@ export class Navigation {
     this.#onArrive = onArrive;
     this.#onReport = onReport;
     this.#onShare = onShare;
+    this.#onGuidance = onGuidance;
     // Knöpfe rechts und Tempo links stehen immer über der Leiste unten – die
     // wird mit Gestenleiste, großer Systemschrift oder Offline-Hinweis höher
     const bar = el.querySelector('.nav-bar');
@@ -416,6 +421,7 @@ export class Navigation {
 
   #reset() {
     this.#index = 0;
+    this.#guide = null;
     this.#clearRoad();
     this.#lastAlong = null;
     this.#still = null;
@@ -818,6 +824,10 @@ export class Navigation {
     const then = $('.nav-then');
     then.hidden = !next || next.at - m.at > 250;
     if (!then.hidden) then.innerHTML = `Dann <span class="msr">${esc(maneuverIcon(next))}</span>`;
+    this.#guide = {
+      type: m.via ? 'via' : m.type, exit: m.roundabout_exit_count ?? null, dist, street,
+      toward: p.toward?.length ? `Richtung ${p.toward.join(', ')}` : '', next: then.hidden ? null : next.type,
+    };
     return dist;
   }
 
@@ -856,6 +866,7 @@ export class Navigation {
     const $ = (s) => this.#el.querySelector(s);
     $('.nav-eta').textContent = fmtClock(new Date(Date.now() + secs * 1000));
     $('.nav-remaining').textContent = `${fmtDuration(secs)} · ${fmtDistance(left)}`;
+    if (this.#guide) this.#onGuidance?.({ ...this.#guide, left, secs });
   }
 
   /** Aktuelles Tempo und – wenn bekannt – das erlaubte. */
@@ -901,6 +912,7 @@ export class Navigation {
     $('.nav-lanes').hidden = true;
     $('.nav-then').hidden = true;
     $('.nav-remaining').textContent = '0 min · 0 m';
+    this.#onGuidance?.({ arrived: true, street: last?.instruction ?? '' });
     this.#onArrive?.(this.#route.coords.at(-1), this.#profile);
   }
 
@@ -1010,10 +1022,19 @@ export class Navigation {
     const rest = r.coords.slice(this.#index);
     let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
     for (const [x, y] of rest) { w = Math.min(w, x); e = Math.max(e, x); s = Math.min(s, y); n = Math.max(n, y); }
-    const top = this.#el.querySelector('.nav-top').getBoundingClientRect().bottom + 24;
-    const bottom = this.#el.querySelector('.nav-bar').getBoundingClientRect().height + 24;
+    // Autobildschirm: frei ist, was die Vorlagen des Autos lassen (car/car.js)
+    const car = this.#map.carInsets;
+    const padding = car ? { top: car.top + 24, bottom: car.bottom + 24, left: car.left + 24, right: car.right + 24 } : {
+      top: this.#el.querySelector('.nav-top').getBoundingClientRect().bottom + 24,
+      bottom: this.#el.querySelector('.nav-bar').getBoundingClientRect().height + 24, left: 32, right: 80,
+    };
     this.#map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
-    this.#map.fitBounds([[w, s], [e, n]], { padding: { top, bottom, left: 32, right: 80 }, pitch: 0, bearing: 0, duration: 900, maxZoom: 16 });
+    const opts = { padding, pitch: 0, bearing: 0, maxZoom: 16 };
+    // Passt es nicht (kleine Fläche, viel Rand), findet MapLibre keine Lösung – dann nur hin
+    let fits = null;
+    try { fits = this.#map.cameraForBounds([[w, s], [e, n]], opts); } catch { fits = null; }
+    if (fits) this.#map.fitBounds([[w, s], [e, n]], { ...opts, duration: 900 });
+    else this.#map.easeTo({ center: [(w + e) / 2, (s + n) / 2], zoom: 11, pitch: 0, bearing: 0, duration: 900 });
     // Nach dem Überblick wieder mit Rand oben folgen
     this.#map.once('moveend', () => { if (this.#route) this.#followPadding(); });
   }
@@ -1025,6 +1046,13 @@ export class Navigation {
    */
   #followPadding() {
     const h = this.#map.getContainer().clientHeight;
+    // Autobildschirm: der Punkt unten in der Fläche, die die Vorlagen frei lassen (car/car.js)
+    const car = this.#map.carInsets;
+    if (car) {
+      const free = Math.max(100, h - car.top - car.bottom);
+      this.#map.setPadding({ top: car.top + free * 0.55, bottom: car.bottom + 16, left: car.left, right: car.right });
+      return;
+    }
     // Mini-Fenster: der Punkt noch tiefer (~80 %) – oben steht nur die Entfernung
     const mini = h < 560;
     this.#map.setPadding({ top: h * (mini ? 0.66 : 0.52), bottom: mini ? h * 0.05 : 80, left: 0, right: 0 });

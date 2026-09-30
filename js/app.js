@@ -17,7 +17,7 @@ import { parseGeoUri } from './core/geo-uri.js';
 import { appNews } from './ui/news.js';
 import { autoSync } from './data/auto-sync.js';
 import { folder } from './data/folder.js';
-import { $, debounce, map, myPosition, q, state } from './app/core.js';
+import { $, CAR, debounce, map, myPosition, q, state } from './app/core.js';
 import { fly } from './app/map-clicks.js';
 import { openSurvey } from './app/mitmachen.js';
 import { nav, navTour, resumeNav } from './app/nav.js';
@@ -46,7 +46,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * bewegt hat. Ist beides älter als ein Tag: zum eigenen Standort.
  * Mit Link-Parametern (siehe fromUrl) bestimmt der Link, wohin es geht.
  */
-if (!/[?&](view|q|from|to|reach|geo|ort|tour)=/.test(location.search)) {
+if (!CAR && !/[?&](view|q|from|to|reach|geo|ort|tour)=/.test(location.search)) {
   let touched = false;
   map.on('movestart', (e) => { if (e.originalEvent) touched = true; });
   const flyHome = () => myPosition({ ask: false })
@@ -64,7 +64,8 @@ if (!/[?&](view|q|from|to|reach|geo|ort|tour)=/.test(location.search)) {
 }
 
 const saveView = ({ now = false } = {}) => {
-  if (nav.active) return;
+  // Im Auto nicht: der Ausschnitt dort ist ein anderer als am Handy
+  if (nav.active || CAR) return;
   const view = { center: map.getCenter().toArray(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), at: Date.now() };
   local.set('wmap.view', view);
   // In den Ordner: beim Verlassen, sonst höchstens alle 2 Minuten (data/folder.js)
@@ -278,12 +279,15 @@ async function answerRequest(from) {
   } catch (err) { toast(err.message); }
 }
 
+// Autobildschirm (Android Auto): Vorlagen des Autos statt Oberfläche, keine Dialoge
+if (CAR) import('./car/car.js');
 if (map.loaded()) fromUrl(); else map.once('load', fromUrl);
-if (map.loaded()) resumeNav(); else map.once('load', resumeNav);
+if (!CAR) { if (map.loaded()) resumeNav(); else map.once('load', resumeNav); }
 // Willkommen, Neues nach einem Update, Nachrichten – nur beim normalen Start,
 // nicht wenn ein Link etwas öffnet und nicht in einer fortgesetzten Navigation
 map.once('idle', () => {
   const linked = /[?&](view|q|from|to|reach|action|ort|route|anfrage|geo|sim|tour)\b/.test(location.search);
+  if (CAR) return;
   appNews({ dialogs: !linked && !nav.active });
   // Ordner und Health Connect still abgleichen (wenn eingeschaltet) – nicht während einer Navigation
   if (!nav.active) autoSync();

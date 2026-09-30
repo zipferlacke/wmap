@@ -10,8 +10,9 @@
     "changelog": [
         {
             "version": "2.1.0",
-            "date": "2026-09-30",
+            "date": "2026-10-01",
             "changes": [
+                "Android Auto Unterstützung: Karte mit Suche, Route, Meine Touren und Orten in der Nähe (Parkplätze, Tankstellen …), Orte antippen, Navigation mit Ansagen und kurzen Fragen zum Mitmachen",
                 "Mitmachen wurde neugestaltet: kurze Fragen kommen beim Navigieren bzw. am Ende einer beendeten Navigation, einzeln einstellbar in den Einstellungen im Punkt 'Navigation'.",
                 "Editieren von Orten/Punkten auf der Karte wurde vereinfacht: Dialoge wurden auf die jeweilige Art zugeschnitten.",
                 "GPX-Dateien können mit WMap geöffnet werden – als aufgezeichnete Tour oder als geplante Tour",

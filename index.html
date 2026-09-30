@@ -31,6 +31,29 @@
     <link rel="preconnect" href="https://tiles.mapterhorn.com" crossorigin>
     <link rel="preconnect" href="https://photon.komoot.io" crossorigin>
     <link rel="preload" href="https://tiles.openfreemap.org/styles/liberty" as="fetch" crossorigin>
+    <!-- Autobildschirm (?car, js/car/car.js): gleich nur die Karte, sonst blitzt die Oberfläche kurz auf.
+         Im Auto kommt der Standort vom Standortdienst des Handys (Fused Location, wie in der App) über
+         window.__carFix (tools/android/car/CarWeb.kt) – der Standort des WebViews mischt GPS und WLAN und
+         springt im Stand hin und her. Vor allen Modulen, damit Navigation und Karte nur diesen kennen. -->
+    <script>
+      if (/[?&]car(&|=|$)/.test(location.search)) {
+        document.documentElement.classList.add('car-mode');
+        if (window.WMapCar) {
+          const subs = new Map(); let last = null; let n = 0;
+          window.__carFix = (pos) => { last = pos; subs.forEach((ok) => ok(pos)); };
+          const geo = {
+            watchPosition(ok) { const id = ++n; subs.set(id, ok); if (last) setTimeout(() => ok(last)); return id; },
+            clearWatch(id) { subs.delete(id); },
+            getCurrentPosition(ok, fail, o = {}) {
+              if (last) { setTimeout(() => ok(last)); return; }
+              const t = setTimeout(() => { geo.clearWatch(id); fail?.({ code: 3, message: 'Kein Standort' }); }, o.timeout ?? 20000);
+              const id = geo.watchPosition((p) => { clearTimeout(t); geo.clearWatch(id); ok(p); });
+            },
+          };
+          Object.defineProperty(navigator, 'geolocation', { configurable: true, value: geo });
+        }
+      }
+    </script>
     <link rel="stylesheet" href="./css/index.css">
     <script src="./libs/maplibre-gl/maplibre-gl.js"></script>
 </head>

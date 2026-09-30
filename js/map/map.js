@@ -279,6 +279,9 @@ function autoThreeD(map) {
   const exaggeration = () => (map.getZoom() >= 14 ? 1 : map.getZoom() >= 12 ? 1.25 : TERRAIN_EXAGGERATION);
   const source = () => (document.body.classList.contains('navigating') ? 'terrain-lo' : 'terrain');
   const terrain = (on) => {
+    // Autobildschirm (car/car.js): ohne Gelände – darübergelegt werden Route
+    // und Fahrspuren mit gröberem Zoom gezeichnet und wirken dann blass
+    if (document.documentElement.classList.contains('car-mode')) on = false;
     if (!!map.getTerrain() === on) return;
     ours = true;
     map.setTerrain(on ? { source: source(), exaggeration: exaggeration() } : null);

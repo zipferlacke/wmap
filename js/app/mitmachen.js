@@ -8,7 +8,7 @@ import { contribute, trace } from '../data/trace.js';
 import { alongMap } from './ask-along.js';
 import { finishLogin } from '../osm/api.js';
 import { clearCategory } from './category.js';
-import { $, SIMULATING, geolocate, map } from './core.js';
+import { $, CAR, SIMULATING, geolocate, map } from './core.js';
 import { clearPlace } from './place.js';
 import { clearReach } from './reach.js';
 import { leaveRouteMode } from './route-plan.js';
@@ -41,7 +41,7 @@ export async function askAfterTrip() {
 /** Beim ersten Navigieren einmal erklären, dass der Weg aufgezeichnet wird. */
 export async function askContributeOnce() {
   // Simulation (Screenshots, Tests): nichts dazwischenschieben
-  if (!contribute.get() || local.get('wmap.contribute.seen') || SIMULATING) return;
+  if (!contribute.get() || local.get('wmap.contribute.seen') || SIMULATING || CAR) return;
   local.set('wmap.contribute.seen', true);
   const v = await ask({
     icon: 'volunteer_activism', title: 'Mitmachen bei OpenStreetMap',
