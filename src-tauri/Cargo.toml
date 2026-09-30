@@ -31,6 +31,9 @@ tauri-plugin-health = { path = "plugins/health" }
 tauri-plugin-folder = { path = "plugins/folder" }
 # Weblinks über der App öffnen – Leiste mit ✕ und „Im Browser öffnen“ (eigenes Plugin)
 tauri-plugin-browser = { path = "plugins/browser" }
+# Overpass mit Kennung fragen (User-Agent, Referer) – der WebView schickt auf
+# tauri:// keinen Referer, overpass-api.de lehnt dann mit 406 ab
+ureq = "3"
 
 # Rechner: ein Klick auf einen geo:-Link bei offener App startet keine zweite,
 # sondern gibt den Link an das offene Fenster

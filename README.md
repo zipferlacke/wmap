@@ -95,8 +95,20 @@ Man startet immer mit der Karte.
   Ampeln). Geholt wird in Feldern von etwa 1 km: nur Felder im Blick, die
   noch fehlen – beim Verschieben der neue Streifen, beim Zurückschieben
   nichts. Die Abfrage fragt die Server nacheinander statt parallel; ein
-  Server, der ablehnt (429) oder überlastet ist (5xx), bekommt 60 bzw. 20 s
-  Pause – das gilt für alle Overpass-Abfragen der App.
+  Server, der ablehnt (429 bzw. 406) oder überlastet ist (5xx), bekommt 60,
+  30 bzw. 20 s Pause – das gilt für alle Overpass-Abfragen der App.
+- **Overpass und Kennung:** Die öffentlichen Server verlangen einen
+  User-Agent oder Referer, der die App eindeutig erkennen lässt (sonst 406;
+  [Nutzungsregeln](https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances):
+  unter 10 000 Abfragen und 1 GB am Tag, nach 406/429 mindestens 30 s
+  Pause). Im Browser schickt der Browser den Referer `app.wuefl.de` mit. Die
+  Apps laufen auf `tauri://localhost` bzw. `http://tauri.localhost` – ohne
+  bzw. ohne eindeutigen Referer; dort fragt die App selbst (Befehl
+  `overpass` in `src-tauri/src/lib.rs`, nur die Server aus
+  `API.overpass`) mit User-Agent `WMap/<Version> (+https://wuefl.de/wmap)`
+  und Referer `https://app.wuefl.de/wmap/`. Eine E-Mail braucht es nicht.
+  Für eine App für alle raten die Regeln langfristig zu einem eigenen
+  Overpass-Server.
 - **Kartenbild:** OpenFreeMap „Liberty“ mit deutschen Namen (`name:de` vor
   `name`; bei nicht-lateinischer Schrift steht der deutsche Name vorn und das
   Original darunter). Gebäude haben Farben nach Nutzung und Schatten am Boden,

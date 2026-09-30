@@ -33,6 +33,7 @@ pub fn run() {
   // Weblinks über der App (js/core/links.js): Custom Tab bzw. eigenes Fenster
   let builder = builder.plugin(tauri_plugin_browser::init());
   builder
+    .invoke_handler(tauri::generate_handler![overpass])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -151,4 +152,41 @@ fn allow_geolocation(app: &tauri::App) -> tauri::Result<()> {
     })?;
   }
   Ok(())
+}
+
+/// Nur diese Server (js/core/config.js API.overpass) – kein allgemeiner Abruf aus der Seite
+const OVERPASS: [&str; 3] = [
+  "https://overpass-api.de/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+];
+
+/// Overpass-Anfrage aus den Apps (js/services/overpass.js). Die Regeln der
+/// öffentlichen Server verlangen einen User-Agent oder Referer, der die App
+/// eindeutig erkennen lässt – beides hier. → (Status, Antwort)
+#[tauri::command]
+async fn overpass(url: String, query: String) -> Result<(u16, String), String> {
+  if !OVERPASS.contains(&url.as_str()) {
+    return Err(format!("Kein Overpass-Server: {url}"));
+  }
+  tauri::async_runtime::spawn_blocking(move || {
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+      .timeout_global(Some(std::time::Duration::from_secs(45)))
+      .http_status_as_error(false)
+      .user_agent(concat!("WMap/", env!("CARGO_PKG_VERSION"), " (+https://wuefl.de/wmap)"))
+      .build()
+      .into();
+    let mut res = agent
+      .post(&url)
+      .header("Referer", "https://app.wuefl.de/wmap/")
+      .header("Accept", "application/json")
+      .send_form([("data", query.as_str())])
+      .map_err(|e| e.to_string())?;
+    let status = res.status().as_u16();
+    // Große Antworten (Umrisse) – bis 64 MB statt der üblichen 10 MB
+    let body = res.body_mut().with_config().limit(64 * 1024 * 1024).read_to_string().map_err(|e| e.to_string())?;
+    Ok((status, body))
+  })
+  .await
+  .map_err(|e| e.to_string())?
 }
