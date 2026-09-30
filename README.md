@@ -30,7 +30,7 @@ gewollt?“) und als Grundlage für Erklärungen in der App.
 12. [Aufzeichnen](#12-aufzeichnen)
 13. [Entdecken](#13-entdecken)
 14. [Plugins und eigene Ebenen](#14-plugins-und-eigene-ebenen)
-15. [Sicherung & Synchronisation: Ordner, Health Connect, ZIP](#15-sicherung--synchronisation-ordner-health-connect-zip)
+15. [Sicherung & Synchronisation: Ordner, Health Connect](#15-sicherung--synchronisation-ordner-health-connect)
 16. [Teilen, Standort anfragen, Bild in Bild](#16-teilen-standort-anfragen-bild-in-bild)
 17. [Mitmachen bei OpenStreetMap, Meldungen](#17-mitmachen-bei-openstreetmap-meldungen)
 18. [WMap-Konto (OpenStreetMap) und Server](#18-wmap-konto-openstreetmap-und-server)
