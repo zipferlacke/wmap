@@ -1,4 +1,4 @@
-"""Standortpunkt glätten (core/smooth.js): im Stand bleibt der Punkt ruhig und rückt nur selten auf das Mittel,
+"""Standortpunkt glätten (core/smooth.js): im Stand bleibt der Punkt ruhig und rückt nur selten auf das Mittel – auch wenn das GPS dabei 1–2 m/s meldet,
 in Fahrt folgt er ohne großen Rückstand, ein einzelner Ausreißer wird verworfen, drei hintereinander gelten."""
 import json
 import sys
@@ -15,11 +15,12 @@ const done = (v) => { window.__result = JSON.stringify(v); };
   const pos = (x, y, acc, speed = null, heading = null) => ({ coords: { longitude: x, latitude: y, accuracy: acc, speed, heading }, timestamp: (t += 1000) });
   const s = smoother();
 
-  // Stehen: 60 s Rauschen ±6 m, Tempo klein
-  s(pos(at[0], at[1], 8, 0));
+  // Stehen: 60 s Rauschen ±3 m bei 20 m Ungenauigkeit
+  s(pos(at[0], at[1], 20, 0));
   let out = 0, far = 0;
   for (let i = 0; i < 60; i++) {
-    const r = s(pos(at[0] + (Math.random() - 0.5) * 12 * k, at[1] + (Math.random() - 0.5) * 12 * m, 8, Math.random() * 0.4));
+    // Tempo wie am Handy bei schwachem Signal: 0,9–1,9 m/s, obwohl man steht
+    const r = s(pos(at[0] + (Math.random() - 0.5) * 6 * k, at[1] + (Math.random() - 0.5) * 6 * m, 20, 0.9 + Math.random()));
     if (r) { out++; far = Math.max(far, distance(at, [r.coords.longitude, r.coords.latitude])); }
   }
 

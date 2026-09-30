@@ -27,11 +27,46 @@ const RESET_MS = 30000;        // so lange nichts: neu anfangen
 
 const lerp = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
 
+/**
+ * Tempo, dem man trauen kann: Bei schwachem Signal meldet das GPS auch im
+ * Stand 1–2 m/s (gemessen am Handy: 3–7 km/h, der Punkt rührte sich dabei
+ * kaum). Gezählt wird das Tempo nur, wenn man in den letzten 8 s auch
+ * wirklich so weit gekommen ist – mindestens 6 m bzw. die halbe
+ * Ungenauigkeit (höchstens 8 m) und gut ein Drittel dessen, was das Tempo
+ * verspricht, dazu in den letzten 5 s mindestens 3–5 m. Sonst 0. Mit gutem
+ * Signal meldet das GPS im Stand ohnehin 0 – dann hält man sofort; mit
+ * Rauschen nach gut 5 s.
+ * → (point, speed, accuracy, ms) => Tempo (m/s) oder null
+ */
+export function trustedSpeed() {
+  const win = [];
+  return (p, speed, acc, t) => {
+    const v = Number.isFinite(speed) && speed >= 0 ? speed : null;
+    win.push({ p, t, v: v ?? 0 });
+    while (win.length > 1 && t - win[0].t > 8000) win.shift();
+    if (win.length < 3) return v;                  // noch zu wenig gesehen
+    const dt = (t - win[0].t) / 1000;
+    const moved = distance(win[0].p, p);
+    const promised = (win.reduce((sum, w) => sum + w.v, 0) / win.length) * dt;
+    // Die Schwelle wächst mit der Ungenauigkeit, aber höchstens auf 8 m – sonst
+    // gälte langsames Gehen bei schwachem Signal als Stehen
+    const real = moved >= Math.max(6, Math.min((acc ?? 0) * 0.5, 8)) && moved >= promised * 0.35;
+    // … und auch in den letzten 5 s vorangekommen (3–5 m je nach Ungenauigkeit) –
+    // so zählt ein Halt schon nach gut 5 s, auch wenn davor noch Fahrt im Fenster liegt
+    const recent = win.filter((w) => t - w.t <= 5000);
+    const r0 = recent[0];
+    const lately = !r0 || r0 === win.at(-1) || distance(r0.p, p) >= Math.max(3, Math.min((acc ?? 0) * 0.25, 5),
+      (recent.reduce((sum, w) => sum + w.v, 0) / recent.length) * ((t - r0.t) / 1000) * 0.35);
+    return real && lately ? v ?? moved / dt : 0;
+  };
+}
+
 /** → (position) => geglättete position oder null (nichts Neues) */
 export function smoother() {
   let est = null;              // { p, acc, t, speed, heading }
   let hold = null;             // { w, x, y, t } gewichtetes Mittel im Stand
   let rejected = 0;
+  const trust = trustedSpeed();
 
   const out = (pos, p, acc, speed, heading) => ({
     timestamp: pos.timestamp,
@@ -45,9 +80,9 @@ export function smoother() {
     const c = pos.coords;
     const p = [c.longitude, c.latitude];
     const acc = c.accuracy ?? 30;
-    const speed = Number.isFinite(c.speed) && c.speed >= 0 ? c.speed : null;
-    const heading = Number.isFinite(c.heading) ? c.heading : null;
     const t = pos.timestamp ?? Date.now();
+    const speed = trust(p, c.speed, acc, t);
+    const heading = Number.isFinite(c.heading) ? c.heading : null;
 
     if (!est || t - est.t > RESET_MS) {
       est = { p, acc, t, speed: speed ?? 0, heading };

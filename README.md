@@ -243,8 +243,14 @@ Start mit **Los** unter einer Route. Die Karte wechselt in die Fahreransicht.
 - **Im Stand** wandert das GPS um einige Meter und meldet ein kleines Tempo.
   Zwei ruhige Meldungen hintereinander (unter 0,5 m/s) → der Pfeil hält in
   der Mitte der beiden, Tempo **0**. Er läuft erst wieder, wenn das GPS
-  Fahrt misst (ab 0,9 m/s) oder man sich weiter entfernt als die doppelte
-  Ungenauigkeit (mindestens 12 m).
+  zweimal hintereinander Fahrt misst (ab 0,9 m/s) oder man sich weiter
+  entfernt als die doppelte Ungenauigkeit (mindestens 12 m).
+- Bei schwachem Signal meldet das GPS auch im Stand 1–2 m/s (am Handy
+  gemessen). Das Tempo zählt darum nur, wenn man in den letzten 8 s auch
+  vorangekommen ist (≥ 6–8 m je nach Ungenauigkeit, gut ein Drittel dessen,
+  was das Tempo verspricht) und in den letzten 5 s ≥ 3–5 m – sonst 0
+  (`trustedSpeed` in `core/smooth.js`, ebenso für den Punkt auf der Karte
+  und wie oft er fragt).
 - Der Pfeil sitzt im unteren Drittel; der Rand oben wird bei jeder
   Größenänderung neu berechnet – so bleibt er auch im kleinen Bild in Bild
   sichtbar.

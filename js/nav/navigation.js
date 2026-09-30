@@ -18,6 +18,7 @@ import { showRoutes, showHover, showNavExtras, showNavRoad, ROAD_ZOOM } from '..
 import { routeExtras, limitAt, lanesAt, roadFeatures, laneShiftAt } from './extras.js';
 import { phrases, laneHint } from './voice.js';
 import { reverse } from '../services/geocode.js';
+import { trustedSpeed } from '../core/smooth.js';
 
 const OFF_ROUTE_M = 40;
 const OFF_ROUTE_FIXES = 3;
@@ -197,7 +198,7 @@ export class Navigation {
   #arrived = false; #lastFix = null; #prev = null; #travel = null; #offlineSaid = 0; #rejected = 0;
   #rawAt = 0; #watchdog = null; #coarse = 0; #lastAlong = null; #still = null; #slow = 0;
   // Anzeige: Position zwischen zwei Meldungen, Kamera
-  #raf = null; #idle = null; #shown = null; #cutAt = null; #lastFrame = 0; #anim = null; #pos = null; #heading = null; #speed = 0;
+  #trust = trustedSpeed(); #fast = 0; #raf = null; #idle = null; #shown = null; #cutAt = null; #lastFrame = 0; #anim = null; #pos = null; #heading = null; #speed = 0;
   #following = true; #cam = { center: null, bearing: 0, zoom: 17, pitch: 55, tau: 0.1 };
   #target = { zoom: 17, pitch: 55 }; #context = 'urban'; #dist = Infinity;
   #place = { t: 0, point: null };
@@ -292,6 +293,7 @@ export class Navigation {
   start(route, { profile, highways, targets }) {
     this.#route = route;
     this.#cutAt = null;
+    this.#trust = trustedSpeed();
     this.#profile = profile;
     this.#highways = highways;
     this.#targets = targets.slice();
@@ -418,6 +420,7 @@ export class Navigation {
     this.#lastAlong = null;
     this.#still = null;
     this.#slow = 0;
+    this.#fast = 0;
     this.#current = -1;
     this.#said = new Map();
     this.#off = 0;
@@ -465,6 +468,10 @@ export class Navigation {
     }
     this.#rejected = 0;
 
+    // Tempo nur, wenn man auch vorankommt – bei schwachem Signal meldet das
+    // GPS im Stand 1–2 m/s (core/smooth.js)
+    speed = this.#trust(point, speed, accuracy, now);
+
     // Stehen: Das GPS wandert auch im Stand um einige Meter und meldet ein
     // kleines Tempo. Zwei ruhige Meldungen hintereinander → Pfeil hält, wo er
     // ist, Tempo 0 – bis das GPS Fahrt misst oder man sich wirklich entfernt.
@@ -472,8 +479,10 @@ export class Navigation {
     const measured = Number.isFinite(speed) && speed >= 0 ? speed : null;
     if (this.#still) {
       const radius = Math.max(STILL_RADIUS, Math.min(accuracy ?? 0, 40) * 2);
-      if (distance(this.#still, raw) < radius && (measured ?? 0) < MOVE_SPEED) { point = this.#still; speed = 0; }
-      else { this.#still = null; this.#slow = 0; }
+      // Losfahren: zwei Meldungen mit Fahrt hintereinander – eine einzelne ist eher Rauschen
+      this.#fast = (measured ?? 0) >= MOVE_SPEED ? this.#fast + 1 : 0;
+      if (distance(this.#still, raw) < radius && this.#fast < 2) { point = this.#still; speed = 0; }
+      else { this.#still = null; this.#slow = 0; this.#fast = 0; }
     } else if (prev) {
       const pace = measured ?? distance(prev.raw, raw) / Math.max(0.3, (now - prev.t) / 1000);
       this.#slow = pace < STILL_SPEED ? this.#slow + 1 : 0;
@@ -500,7 +509,8 @@ export class Navigation {
     let v = Number.isFinite(speed) && speed >= 0 ? speed : null;
     if (v === null && prev && onRouteNow && this.#lastAlong !== null) v = Math.max(0, snap.along - this.#lastAlong) / dt;
     else if (v === null && prev) v = distance(prev.point, point) / dt;
-    this.#speed = this.#still ? 0 : prev ? this.#speed * 0.7 + (v ?? 0) * 0.3 : v ?? 0;
+    // Steht man laut Prüfung (Tempo 0), gleich 0 zeigen – nicht erst langsam abklingen
+    this.#speed = this.#still || v === 0 ? 0 : prev ? this.#speed * 0.7 + (v ?? 0) * 0.3 : v ?? 0;
     this.#lastAlong = onRouteNow ? snap.along : null;
 
     const fix = { point, raw, heading, speed: this.#speed, accuracy: accuracy ?? 0, t: now };

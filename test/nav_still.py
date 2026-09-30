@@ -21,14 +21,16 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   document.querySelector('.start-nav').click();
   for (let i = 0; i < 100 && !nav.active; i++) await wait(100);
   const r = nav.route;
-  // Ein Stück auf der Route, dort stehen und rauschen (±6 m, kleines Tempo)
+  // Ein Stück auf der Route, dort stehen und rauschen – wie am Handy bei schwachem
+  // Signal gemessen: ±3 m, Ungenauigkeit 20 m, das GPS meldet trotzdem 0,9–1,9 m/s
   const [lon, lat] = r.coords[Math.min(3, r.coords.length - 1)];
-  const fix = (x, y, speed) => send({ coords: { longitude: x, latitude: y, accuracy: 8, speed, heading: null }, timestamp: Date.now() });
+  const fix = (x, y, speed, accuracy = 8) => send({ coords: { longitude: x, latitude: y, accuracy, speed, heading: null }, timestamp: Date.now() });
   const m = 1 / 111000;
   const kmh = () => document.querySelector('.nav-kmh strong').textContent;
   const standing = [];
-  for (let i = 0; i < 8; i++) {
-    fix(lon + (Math.random() - 0.5) * 12 * m * 1.6, lat + (Math.random() - 0.5) * 12 * m, 0.1 + Math.random() * 0.4);
+  // Mit Rauschen im Tempo hält der Pfeil nach gut 5 s (core/smooth.js trustedSpeed)
+  for (let i = 0; i < 16; i++) {
+    fix(lon + (Math.random() - 0.5) * 6 * m * 1.6, lat + (Math.random() - 0.5) * 6 * m, 0.9 + Math.random(), 20);
     await wait(700);
     standing.push([Math.round(nav.along * 10) / 10, kmh()]);
   }
@@ -53,8 +55,8 @@ with Browser(width=420, height=860) as b:
     r = json.loads(b.wait("return window.__result", 60))
     print(json.dumps(r, ensure_ascii=False))
     # Die ersten Meldungen: der Pfeil gleitet vom Start der Route zum Standpunkt – danach hält er
-    held = [a for a, _ in r['standing'][4:]]
-    still = isinstance(r, dict) and max(held) - min(held) < 0.5 and all(k == '0' for _, k in r['standing'][4:])
+    held = [a for a, _ in r['standing'][10:]]
+    still = isinstance(r, dict) and max(held) - min(held) < 0.5 and all(k == '0' for _, k in r['standing'][10:])
     moving = r['walking'][-1][0] > r['standing'][-1][0] + 10 and r['walking'][-1][1] != '0'
     print('Im Stand ruhig:', still, '· läuft wieder mit:', moving)
     if not (still and moving):

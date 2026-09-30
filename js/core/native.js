@@ -14,6 +14,8 @@
  * fehlt, z. B. in einer älteren App, die diese Oberfläche aus dem Netz lädt),
  * geht es über den Standort des WebViews weiter.
  */
+import { trustedSpeed } from './smooth.js';
+
 const core = window.__TAURI__?.core;
 // Das Plugin gibt es nur in den Handy-Apps (siehe src-tauri/Cargo.toml)
 let nativeGeo = !!core && /Android|iPhone|iPad/i.test(navigator.userAgent);
@@ -161,7 +163,7 @@ export function geolocationApi() {
 /*
  * Wie oft der Punkt auf der Karte fragt: in Bewegung jede Sekunde, wer steht,
  * nach 15 s alle 5 s, nach einer Minute alle 30 s – das GPS ruht dazwischen.
- * Bewegung: das GPS misst Tempo oder man ist weiter weg als die Ungenauigkeit
+ * Bewegung: das GPS misst Tempo (dem man trauen kann, core/smooth.js) oder man ist weiter weg als die Ungenauigkeit
  * (mindestens 10 m). Damit man beim Losgehen nicht bis zu 30 s wartet, meldet
  * der Beschleunigungssensor Schritte oder Fahrt gleich (devicemotion) – dann
  * sofort wieder jede Sekunde. Navigation und Aufzeichnen fragen ohnehin jede
@@ -172,6 +174,7 @@ const PACE_AFTER = [0, 15000, 60000];
 
 function paced() {
   let id = null, anchor = null, stillSince = Date.now(), level = 0, shakes = [];
+  const trust = trustedSpeed();
   const set = (l) => {
     if (l === level) return;
     level = l;
@@ -196,7 +199,7 @@ function paced() {
       const c = pos.coords;
       const p = [c.longitude, c.latitude];
       const far = anchor && Math.hypot((p[0] - anchor[0]) * 111320 * Math.cos((p[1] * Math.PI) / 180), (p[1] - anchor[1]) * 110540) > Math.max(10, c.accuracy ?? 0);
-      if (!anchor || far || (c.speed ?? 0) >= 1) { anchor = p; moved(); return; }
+      if (!anchor || far || (trust(p, c.speed, c.accuracy, pos.timestamp ?? Date.now()) ?? 0) >= 1) { anchor = p; moved(); return; }
       const still = Date.now() - stillSince;
       set(still >= PACE_AFTER[2] ? 2 : still >= PACE_AFTER[1] ? 1 : 0);
     },
