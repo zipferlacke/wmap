@@ -225,6 +225,9 @@ export function parseGpx(text, profile = null) {
   const fileName = doc.querySelector('metadata > name')?.textContent?.trim();
   // Aus Health Connect (von WMap geschrieben): dasselbe Training erkennen
   const health = doc.querySelector('metadata > keywords')?.textContent?.match(/\bwmap-hc:(\S+)/)?.[1] ?? null;
+  // Von WMap geschrieben: Messwerte aus allen Punkten und die Herkunft (trackGpx)
+  const own = [...(doc.querySelector('metadata > extensions')?.children ?? [])].find((e) => e.localName === 'track');
+  const num = (k) => (own?.hasAttribute(k) && Number.isFinite(Number(own.getAttribute(k))) ? Number(own.getAttribute(k)) : null);
   for (const trk of doc.querySelectorAll('trk, rte')) {
     const pts = [...trk.querySelectorAll('trkpt, rtept')];
     if (pts.length < 2) continue;
@@ -240,8 +243,15 @@ export function parseGpx(text, profile = null) {
     const name = trk.querySelector(':scope > name')?.textContent?.trim() || fileName || 'Importierter Weg';
     const type = trk.querySelector(':scope > type')?.textContent?.trim();
     const t = buildTrack(points, { kind: 'gpx', profile: profile ?? (PROFILE_GROUP[type] ? type : 'foot'), name });
-    const one = t && (profile || PROFILE_GROUP[type] ? t : guessProfile(t));
-    if (one) out.push(health ? { ...one, source: { health } } : one);
+    let one = t && (profile || PROFILE_GROUP[type] ? t : guessProfile(t));
+    if (!one) continue;
+    // Nur wenn die Datei noch die Punkte hat, zu denen die Werte gehören
+    if (own && num('points') === points.length) {
+      const kind = ['rec', 'nav', 'gpx', 'health'].includes(own.getAttribute('kind')) ? own.getAttribute('kind') : one.kind;
+      const src = { ...(own.getAttribute('app') ? { app: own.getAttribute('app') } : {}), ...(own.getAttribute('type') ? { type: own.getAttribute('type') } : {}) };
+      one = { ...one, kind, length: num('length') ?? one.length, moving: num('moving') ?? one.moving, top: num('top') ?? one.top, ...(Object.keys(src).length ? { source: src } : {}) };
+    }
+    out.push(health ? { ...one, source: { ...one.source, health } } : one);
   }
   return out;
 }
@@ -256,9 +266,14 @@ export function trackGpx(t) {
     return tpx || pw ? `<extensions>${pw}${tpx ? `<gpxtpx:TrackPointExtension>${tpx}</gpxtpx:TrackPointExtension>` : ''}</extensions>` : '';
   };
   const pts = coords.map(([lon, lat], i) => `      <trkpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}"><time>${new Date(t.start + (t.times?.[i] ?? 0) * 1000).toISOString()}</time>${ext(i)}</trkpt>`).join('\n');
+  // Die Datei enthält nur die vereinfachten Punkte: was aus allen gemessen
+  // wurde (Strecke, Zeit in Bewegung, Spitze) und woher der Weg kommt, steht
+  // daneben – sonst wäre er auf dem nächsten Gerät kürzer und nur noch „GPX“
+  const attrs = { points: coords.length, kind: t.kind, length: t.length, moving: t.moving, top: t.top, app: t.source?.app, type: t.source?.type };
+  const own = `<extensions><wmap:track ${Object.entries(attrs).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => `${k}="${esc(v)}"`).join(' ')}/></extensions>`;
   return `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="WMap" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
-  <metadata><name>${esc(t.name)}</name><time>${new Date(t.start).toISOString()}</time><keywords>wmap:${esc(t.id)}${t.source?.health ? ` wmap-hc:${esc(t.source.health)}` : ''}</keywords></metadata>
+<gpx version="1.1" creator="WMap" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" xmlns:wmap="https://app.wuefl.de/wmap/gpx">
+  <metadata><name>${esc(t.name)}</name><time>${new Date(t.start).toISOString()}</time><keywords>wmap:${esc(t.id)}${t.source?.health ? ` wmap-hc:${esc(t.source.health)}` : ''}</keywords>${own}</metadata>
   <trk>
     <name>${esc(t.name)}</name>
     <type>${esc(t.profile)}</type>
@@ -294,7 +309,41 @@ export function guessProfile(t) {
   return { ...t, profile: v > 9 ? 'car' : v > 3.2 ? 'bike' : 'foot' };
 }
 
-/** Derselbe Weg schon da? (gleicher Start, fast gleiche Länge) – gegen doppelte Importe */
-export const sameTrack = (a, b) => Math.abs(a.start - b.start) < 5000 && Math.abs(a.length - b.length) <= Math.max(50, a.length * 0.02);
+/** Ende eines Wegs in ms (ältere Wege haben kein `end`) */
+export const trackEnd = (t) => t.end ?? t.start + (t.times?.at(-1) ?? 0) * 1000;
+
+/**
+ * Derselbe Weg schon da? – dieselbe Aufzeichnung, gegen doppelte Importe:
+ * gleicher Start (± 5 s) und fast gleiche Länge (2 %). Oder gleicher Start
+ * und gleiches Ende bei bis zu 15 % anderer Länge: eine GPX-Datei, die eine
+ * ältere WMap geschrieben hat, enthält nur die vereinfachten Punkte – wieder
+ * eingelesen ist der Weg etwas kürzer als das Training aus Health Connect.
+ */
+export function sameTrack(a, b) {
+  if (Math.abs(a.start - b.start) >= 5000) return false;
+  const diff = Math.abs(a.length - b.length);
+  if (diff <= Math.max(50, a.length * 0.02)) return true;
+  return Math.abs(trackEnd(a) - trackEnd(b)) < 5000 && diff <= Math.max(a.length, b.length) * 0.15;
+}
+
+/**
+ * Dieselbe Aktivität – als dieselbe Datei (sameTrack) oder aus zwei Quellen,
+ * etwa mit der Uhr (Health Connect) und mit dem Handy aufgezeichnet oder als
+ * GPX in den Ordner gelegt. Start, Dauer und Kilometer weichen dann etwas ab
+ * (anderer erster Punkt, andere Punktdichte): die Zeiten überlappen zu 80 %
+ * des kürzeren, die Längen liegen 15 % beieinander, die Gebiete berühren sich.
+ *
+ * Beim Import bleiben solche Paare beide stehen – welche Strecke bleibt,
+ * entscheidet man beim Zusammenführen (data/duplicates.js).
+ */
+export function sameActivity(a, b) {
+  if (sameTrack(a, b)) return true;
+  const shorter = Math.min(trackEnd(a) - a.start, trackEnd(b) - b.start);
+  const overlap = Math.min(trackEnd(a), trackEnd(b)) - Math.max(a.start, b.start);
+  if (shorter < 60000 || overlap < shorter * 0.8) return false;
+  if (Math.abs(a.length - b.length) > Math.max(200, Math.max(a.length, b.length) * 0.15)) return false;
+  const [A, B] = [a.bbox, b.bbox];
+  return !A || !B || (A[0] <= B[2] && B[0] <= A[2] && A[1] <= B[3] && B[1] <= A[3]);
+}
 
 export const PROFILE_GROUP = { car: 'car', drive: 'car', bike: 'bike', road: 'bike', tour: 'bike', gravel: 'bike', mtb: 'bike', foot: 'foot', walk: 'foot', hike: 'foot' };

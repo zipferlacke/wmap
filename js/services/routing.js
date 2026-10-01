@@ -206,14 +206,20 @@ function parseTrip(trip) {
  * Rohdaten im 30-m-Raster rauschen; jede Zacke mitzuzählen ergibt zu viele
  * Höhenmeter. Darum erst glätten und dann nur Änderungen zählen, die eine
  * kleine Schwelle übersteigen.
+ *
+ * Start und Ziel bleiben dabei, wie sie sind (zu den Enden hin wird das
+ * Fenster schmaler), und der Rest unter der Schwelle zählt am Ende mit: So
+ * ist Anstieg − Abstieg genau der Höhenunterschied von Start und Ziel – bei
+ * einem Rundweg gleich viel hinauf wie hinunter.
  */
 function climb(elevation) {
   if (elevation.length < 2) return { ascent: 0, descent: 0, minEle: null, maxEle: null };
   const h = elevation.map(([, v]) => v);
   const smooth = h.map((_, i) => {
-    let s = 0, n = 0;
-    for (let k = Math.max(0, i - 2); k <= Math.min(h.length - 1, i + 2); k += 1) { s += h[k]; n += 1; }
-    return s / n;
+    const r = Math.min(2, i, h.length - 1 - i);
+    let s = 0;
+    for (let k = i - r; k <= i + r; k += 1) s += h[k];
+    return s / (2 * r + 1);
   });
   let ascent = 0, descent = 0, ref = smooth[0];
   const THRESHOLD = 2;
@@ -221,6 +227,8 @@ function climb(elevation) {
     const d = v - ref;
     if (d > THRESHOLD) { ascent += d; ref = v; } else if (d < -THRESHOLD) { descent -= d; ref = v; }
   }
+  const rest = smooth[smooth.length - 1] - ref;
+  if (rest > 0) ascent += rest; else descent -= rest;
   return {
     ascent: Math.round(ascent),
     descent: Math.round(descent),

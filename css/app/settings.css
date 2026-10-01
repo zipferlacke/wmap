@@ -103,6 +103,19 @@
         pre { margin: .4rem 0; padding: .6rem .7rem; border-radius: .6rem; background: var(--surface-2); overflow-x: auto; font-size: var(--fs-100); line-height: 1.5; }
     }
     .sync-note { display: flex; gap: .4rem; align-items: flex-start; .msr { font-size: 1.1rem; } }
+    /* Doppelte Touren: je Tour wählen, welche Aufzeichnung bleibt */
+    .dup-list { display: flex; flex-direction: column; gap: .6rem; max-height: 26rem; overflow-y: auto; }
+    .dup-group {
+        margin: 0; padding: .5rem .7rem .6rem; border: 1px solid var(--line); border-radius: .7rem;
+        display: flex; flex-direction: column; gap: .35rem; min-width: 0;
+        legend { padding: 0 .3rem; font-weight: 600; font-size: var(--fs-200); small { font-weight: 400; color: var(--muted); } }
+    }
+    .dup-option {
+        display: flex; align-items: flex-start; gap: .5rem; cursor: pointer; font-size: var(--fs-200);
+        input { flex: none; width: auto; margin: .2rem 0 0; }
+        span { display: flex; flex-direction: column; min-width: 0; }
+        small { color: var(--muted); }
+    }
 }
 .sync .sync-progress {
     height: .4rem; border-radius: 999px; overflow: hidden; background: var(--surface-2);

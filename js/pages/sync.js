@@ -14,11 +14,11 @@
  */
 import { mountAppBar } from '../ui/appbar.js';
 import { ask, toast } from '../ui/dialogs.js';
-import { esc } from '../core/geo.js';
+import { esc, fmtDistance, fmtDuration } from '../core/geo.js';
 import { download } from '../data/store.js';
-import { restore } from '../data/tracks.js';
+import { restore, trackEnd, sameTrack } from '../data/tracks.js';
 import { folder, zipBackup, restoreZip, importFolder, syncSummary } from '../data/folder.js';
-import { healthAvailable, healthStatus, healthSync, syncHealth, healthSyncing } from '../services/health.js';
+import { healthAvailable, healthStatus, healthSync, syncHealth, healthSyncing, appName } from '../services/health.js';
 import { showPermissions } from '../ui/permissions.js';
 import { autoSync } from '../data/auto-sync.js';
 import { findDuplicates, removeDuplicates } from '../data/duplicates.js';
@@ -159,6 +159,18 @@ async function healthHtml() {
 
 /* ── Doppelte ─────────────────────────────────────────────────────────────── */
 
+/** Welche Aufzeichnung je doppelter Tour bleibt (IDs) – gemerkt, solange die Seite offen ist */
+const dupKeep = new Set();
+
+/** Woher eine Aufzeichnung kommt – „Health Connect · Zepp“, „GPX-Datei“, „Mit WMap aufgezeichnet“ */
+const dupOrigin = (t) => (t.kind === 'health' ? `Health Connect${t.source?.app ? ` · ${appName(t.source.app)}` : ''}`
+  : t.kind === 'gpx' ? 'GPX-Datei' : t.kind === 'nav' ? 'Bei der Navigation aufgezeichnet' : 'Mit WMap aufgezeichnet');
+const dupFacts = (t) => [
+  fmtDistance(t.length), fmtDuration((trackEnd(t) - t.start) / 1000),
+  ...[['hr', 'Puls'], ['cad', 'Frequenz'], ['pow', 'Leistung']].filter(([k]) => t[k]?.some((v) => v > 0)).map(([, l]) => l),
+].join(' · ');
+const dupDate = (t) => new Date(t.start).toLocaleString('de-DE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
 async function duplicatesHtml() {
   if (folder.busy || healthSyncing()) return '';
   const d = await findDuplicates().catch(() => null);
@@ -167,11 +179,26 @@ async function duplicatesHtml() {
     d.tracks.length ? `${d.tracks.reduce((n, g) => n + g.length - 1, 0)} aufgezeichnete` : '',
     d.tours.length ? `${d.tours.reduce((n, g) => n + g.length - 1, 0)} geplante` : '',
   ].filter(Boolean).join(' und ');
-  return `<section class="sync-dups">
+  // Zu wählen gibt es nur bei zwei verschiedenen Aufzeichnungen (Uhr und Handy);
+  // dieselbe Aufzeichnung zweimal (aus dem Ordner wieder eingelesen) braucht keine Frage
+  const groups = d.tracks.map((g, i) => {
+    if (g.every((t) => sameTrack(g[0], t))) return '';
+    const keep = g.find((t) => dupKeep.has(t.id)) ?? g[0];
+    return `<fieldset class="dup-group">
+      <legend>${esc(keep.name || 'Ohne Namen')} <small>${esc(dupDate(keep))}</small></legend>
+      ${g.map((t) => `<label class="dup-option">
+        <input type="radio" name="dup-${i}" value="${esc(t.id)}" ${t === keep ? 'checked' : ''}>
+        <span><strong>${esc(dupOrigin(t))}</strong><small>${esc(dupFacts(t))}</small></span>
+      </label>`).join('')}
+    </fieldset>`;
+  }).join('');
+  return `<section class="sync-dups" id="doppelt">
     <h3><span class="msr">content_copy</span> Doppelte Touren</h3>
-    ${status('content_copy', `${what} ${d.count === 1 ? 'Tour gibt' : 'Touren gibt'} es doppelt – etwa aus Health Connect und aus dem Ordner einer früheren App.`, 'warn')}
+    ${status('content_copy', `${what} ${d.count === 1 ? 'Tour gibt' : 'Touren gibt'} es doppelt – etwa mit der Uhr und dem Handy aufgezeichnet oder aus Health Connect und aus dem Ordner.`, 'warn')}
+    ${groups ? `<p class="settings-hint">Diese Touren gibt es aus zwei Quellen. Wähle je Tour, welche Aufzeichnung bleibt – ihre Strecke, Zeit und Kilometer gelten. Puls, Frequenz und Leistung der anderen kommen dazu.</p>
+    <div class="dup-list">${groups}</div>` : ''}
     <div class="sync-actions">
-      <button type="button" class="button primary" data-act="dedupe"><span class="msr">delete_sweep</span> Duplikate entfernen</button>
+      <button type="button" class="button primary" data-act="dedupe"><span class="msr">merge</span> Zusammenführen</button>
     </div>
   </section>`;
 }
@@ -243,12 +270,13 @@ root.addEventListener('click', async (e) => {
   if (act === 'perms') { await showPermissions({ reason: 'health' }); render(); }
   if (act === 'dedupe') {
     const d = await findDuplicates();
-    const v = await ask({ icon: 'delete_sweep', title: `${d.count} ${d.count === 1 ? 'Duplikat' : 'Duplikate'} entfernen?`,
-      text: 'Von jeder doppelten Tour bleibt eine – die mit den meisten Angaben (Puls, Herkunft aus Health Connect). Auf anderen Geräten verschwinden die Doppelten beim nächsten Abgleich ebenfalls.',
-      buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Entfernen', primary: true }] });
+    const v = await ask({ icon: 'merge', title: `${d.count} doppelte ${d.count === 1 ? 'Tour' : 'Touren'} zusammenführen?`,
+      text: 'Von jeder doppelten Tour bleibt die gewählte Aufzeichnung, Puls, Frequenz und Leistung der anderen kommen dazu. Auf anderen Geräten verschwinden die Doppelten beim nächsten Abgleich ebenfalls.',
+      buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Zusammenführen', primary: true }] });
     if (v !== 'yes') return;
-    const n = await removeDuplicates();
-    toast(`${n} ${n === 1 ? 'Duplikat' : 'Duplikate'} entfernt`);
+    const n = await removeDuplicates([...root.querySelectorAll('.dup-option input:checked')].map((el) => el.value));
+    dupKeep.clear();
+    toast(`${n} doppelte ${n === 1 ? 'Tour' : 'Touren'} zusammengeführt`);
     render();
   }
   if (act === 'backup') {
@@ -259,6 +287,12 @@ root.addEventListener('click', async (e) => {
 
 root.addEventListener('change', async (e) => {
   const t = e.target;
+  if (t.closest('.dup-option')) {
+    // Wahl merken – die Seite zeichnet sich bei jedem Abgleich neu
+    for (const el of t.closest('.dup-group').querySelectorAll('input')) dupKeep.delete(el.value);
+    dupKeep.add(t.value);
+    return;
+  }
   const label = Object.fromEntries(AUTO)[t.value];
   if (t.name === 'folder-auto') { folder.auto = t.value; toast(`Ordner: ${label}`); }
   if (t.name === 'health-auto') {

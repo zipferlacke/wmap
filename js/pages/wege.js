@@ -19,6 +19,7 @@ import { createMap, showHover } from '../map/map.js';
 import { heightsAlong } from '../services/routing.js';
 import { ElevationProfile } from '../ui/elevation.js';
 import { tracks, trackCoords, trackGpx, parseGpx, sameTrack, PROFILE_GROUP } from '../data/tracks.js';
+import { findDuplicates } from '../data/duplicates.js';
 import { tours, shapeOf, coordsOf, encodeShare, toGpx, download, local } from '../data/store.js';
 import { metrics, laps, lapLine } from '../data/track-stats.js';
 import { PROFILES } from '../core/config.js';
@@ -170,6 +171,9 @@ function showList({ push = false } = {}) {
       <input type="search" placeholder="${isOrte ? 'Suchen – Name, Liste, Ort …' : isBahn ? 'Suchen – Ort, Linie, Datum …' : isPlan ? 'Suchen – Name, Beschreibung, Rad, Wandern …' : 'Suchen – Name, Ort, Jahr, Monat …'}" value="${esc(query[tab])}" aria-label="Suchen">
     </form>
     ${(isOrte ? (ownPlaces.length || sharedList ? [1] : []) : isBahn ? conns : isPlan ? planned : all).length ? '' : empty}
+    ${isBahn || isOrte ? '' : `<a class="wege-sync-hint wege-dup-hint" href="./sync.html#doppelt" hidden>
+      <span class="msr">content_copy</span><span></span><span class="msr">chevron_right</span>
+    </a>`}
     <div class="wege-groups"></div>
     <a class="wege-sync-hint" href="./sync.html">
       <span class="msr">sync</span>
@@ -178,6 +182,16 @@ function showList({ push = false } = {}) {
       <span class="msr">chevron_right</span>
     </a>`;
   paintGroups();
+  // Dieselbe Tour aus zwei Quellen (Uhr und Handy, Health Connect und Ordner): hier Bescheid sagen
+  const dup = content.querySelector('.wege-dup-hint');
+  if (dup) {
+    findDuplicates().then((d) => {
+      const n = (isPlan ? d.tours : d.tracks).reduce((sum, g) => sum + g.length - 1, 0);
+      if (!n || !dup.isConnected) return;
+      dup.children[1].innerHTML = `<strong>${n} ${n === 1 ? 'Tour gibt' : 'Touren gibt'} es doppelt</strong> – zusammenführen und wählen, welche Aufzeichnung bleibt`;
+      dup.hidden = false;
+    }).catch(() => {});
+  }
   page.open();
   // Gewählter Reiter sichtbar – am Handy scrollen die Reiter
   const sel = content.querySelector('[role="tab"][aria-selected="true"]');

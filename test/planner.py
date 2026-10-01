@@ -1,4 +1,4 @@
-"""Tourenplaner: Punkt-Menü (Rundweg, zum Start/Ziel machen) und Suche als Vorschau statt gleich anzuhängen."""
+"""Tourenplaner: Punkt-Menü (Rundweg, zum Start/Ziel machen), im Rundweg gleich viel hinauf wie hinunter, und Suche als Vorschau statt gleich anzuhängen."""
 import sys
 import time
 from common import Browser
@@ -8,6 +8,8 @@ PTS = "return [...document.querySelectorAll('.wp-marker:not(.found)')].map(m => 
 
 with Browser(width=1200, height=850) as b:
     b.open('tour.html', wait=4)
+    b.js("window.__wmap.map.jumpTo({ center: [9.962, 51.530], zoom: 13.5 })")
+    time.sleep(3)
     canvas = b.css('.maplibregl-canvas')
     from selenium.webdriver.common.action_chains import ActionChains
     for x, y in [(-150, -80), (0, -120), (150, -40)]:
@@ -19,6 +21,11 @@ with Browser(width=1200, height=850) as b:
     b.js("[...document.querySelectorAll('.popup.context button')].find(x => /Rundweg/.test(x.innerText)).click()")
     time.sleep(1.5)
     print('Rundweg:', b.js(PTS))
+    # Rundweg: gleich viel hinauf wie hinunter
+    b.wait("return !document.querySelector('.tour-status').textContent && document.querySelector('.st-up').textContent !== '–'", 30)
+    up, down = b.js("return [document.querySelector('.st-up').textContent, document.querySelector('.st-down').textContent]")
+    print('Höhenmeter im Rundweg:', up, down)
+    balanced = up == down and up not in ('–', '0 m')
     b.js("document.querySelectorAll('.wp-marker.via')[1].click()")
     print('Menü Punkt 2 im Rundweg:', b.js(MENU))
     # Lage eines Markers in Koordinaten (unabhängig davon, wohin die Karte schwenkt)
@@ -41,9 +48,12 @@ with Browser(width=1200, height=850) as b:
     print('Vorschau:', b.js("return !!document.querySelector('.wp-marker.found')"), '– Punkte unverändert:', len(b.js(PTS)) == n0)
     print('Menü Treffer:', b.js(MENU))
     b.shot('planer-treffer')
-    b.js("[...document.querySelectorAll('.popup.context button')].find(x => /Einfügen/.test(x.innerText))?.click()")
+    b.js("[...document.querySelectorAll('.popup.context button')].find(x => /Einfügen|anhängen/.test(x.innerText))?.click()")
     time.sleep(1.5)
-    print('Nach „Einfügen“:', len(b.js(PTS)) == n0 + 1, b.js(PTS))
+    print('Nach „Einfügen“ bzw. „Anhängen“:', len(b.js(PTS)) == n0 + 1, b.js(PTS))
     # Routing-Server am Limit (429) ist kein Fehler von WMap
     b.errors = [e for e in b.errors if 'valhalla' not in e[1]]
+    if not balanced:
+        print('FALSCH Rundweg: Anstieg und Abstieg verschieden')
+        sys.exit(1)
     sys.exit(b.report())

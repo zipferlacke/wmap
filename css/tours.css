@@ -250,6 +250,10 @@ body.readonly {
     > .button { flex: 1 1 9rem; justify-content: center; cursor: pointer; background: var(--surface-2); }
 }
 /* Unten: Hinweis auf „Sicherung & Abgleich“ */
+/* Hinweis auf doppelte Touren – über der Liste */
+.wege-dup-hint[hidden] { display: none; }
+.wege-dup-hint > .msr:first-child { color: #e8590c; }
+
 .wege-sync-hint {
     display: flex; align-items: center; gap: .6rem;
     margin-top: .25rem;

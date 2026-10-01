@@ -809,12 +809,27 @@ WMap/
     dem Ordner; GPX tragen dazu die Kennung aus Health Connect
     (`wmap-hc:…` neben `wmap:ID`). Health Connect holt Gelöschtes nicht
     wieder und erkennt Wege aus dem Ordner am Start (± 5 s) und der Länge
-  - Doppelte ohne ID (fremde GPX): Weg an Start und Länge, geplante Tour an
-    Verlauf und Name
-  - schon vorhandene Doppelte: Abschnitt „Doppelte Touren“ mit „Duplikate
-    entfernen“ auf dieser Seite, nur wenn es welche gibt
-    (`js/data/duplicates.js`) – je Gruppe bleibt der Eintrag mit den meisten
-    Angaben (Kennung aus Health Connect, Puls & Co.), die anderen werden
+  - Doppelte ohne ID (fremde GPX): Weg an Start und Länge (`sameTrack` in
+    `js/data/tracks.js`: Start ± 5 s und Länge ± 2 % – oder gleicher Start
+    und gleiches Ende bei bis zu 15 % anderer Länge, so kommt eine GPX-Datei
+    einer älteren WMap zurück, die nur die vereinfachten Punkte enthielt);
+    geplante Tour an Verlauf und Name
+  - GPX-Dateien von WMap tragen neben den vereinfachten Punkten, was aus
+    allen gemessen wurde (Strecke, Zeit in Bewegung, Spitze) und die Herkunft
+    (`<wmap:track …/>` in `metadata/extensions`) – auf dem nächsten Gerät ist
+    der Weg derselbe, nicht kürzer und nicht nur „GPX“
+  - dieselbe Aktivität aus zwei Quellen (mit der Uhr über Health Connect und
+    mit dem Handy aufgezeichnet, oder als GPX in den Ordner gelegt –
+    `sameActivity`: Zeiten überlappen zu 80 %, Längen bis 15 % verschieden,
+    Gebiete berühren sich): beide bleiben erst stehen, zusammengeführt wird
+    unter „Doppelte Touren“ – dort wählt man je Tour, welche Aufzeichnung
+    bleibt; Puls, Frequenz und Leistung der anderen kommen nach der Uhrzeit
+    dazu
+  - schon vorhandene Doppelte: Abschnitt „Doppelte Touren“ mit
+    „Zusammenführen“ auf dieser Seite, nur wenn es welche gibt
+    (`js/data/duplicates.js`) – je Gruppe bleibt die gewählte Aufzeichnung,
+    ohne Wahl der Eintrag mit den meisten Angaben (Kennung aus Health
+    Connect, Puls & Co.), die anderen werden
     gelöscht und stehen damit in `Gelöscht.json`
   - `Kartenausschnitt.json`: beim Start der Karte steht sie sofort am
     Ausschnitt dieser App, gleich danach wird nur diese Datei gelesen (nicht
