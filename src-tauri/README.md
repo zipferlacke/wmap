@@ -19,6 +19,7 @@ was Tauri zum Verpacken braucht. Nichts davon wird auf den Server geladen
 | `plugins/health/` | eigenes Plugin: Trainings und Routen aus Health Connect (Android, Kotlin) – siehe unten |
 | `plugins/folder/` | eigenes Plugin: Ordner verbinden (Android: Speicherzugriff des Systems, Kotlin; Rechner: Ordnerdialog, Rust) – siehe unten |
 | `plugins/browser/` | eigenes Plugin: Weblinks über der App (Android: Custom Tab; Rechner: Fenster mit Leiste), Android: teilen, Zwischenablage |
+| `plugins/geolocation/` | Kopie von `tauri-plugin-geolocation` 2.4.0 mit Korrektur (Android: `watchPosition` beantwortet seinen Aufruf – sonst hing die App nach acht Aufrufen), eingebunden über `[patch.crates-io]`; siehe `plugins/geolocation/WMAP.md` |
 | `tauri-start.js` | wechselt beim Start zur Webversion, wenn sie erreichbar ist (s. u.) |
 | `icons/` | App-Icons, erzeugt mit `cargo tauri icon ../appdata/wmap-512.png` (Android: `tools/android-symbole.py`, mit Rand zum Maskieren) |
 | `web-kopieren.sh` | kopiert die Web-Dateien vor jedem Build nach `web/` und bindet `tauri-start.js` in deren `index.html` ein |

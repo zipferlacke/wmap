@@ -40,7 +40,7 @@ const VERSION = '2.1.0';            // von appdata/version.py – neue Nummer = 
 // Stand der Dateien (Prüfsumme über alles in sw-files.json, von version.py):
 // dieselbe Nummer noch einmal hochgeladen ist trotzdem ein neuer Service Worker
 // mit eigenem Speicher – Alt und Neu mischen sich nie
-const BUILD = 'a0719ad7c1';
+const BUILD = 'a8c4ade4ba';
 const APP = `wmap-app-${VERSION}-${BUILD}`;
 const APP_PREFIX = 'wmap-app-';
 const SHARE = 'wmap-share';

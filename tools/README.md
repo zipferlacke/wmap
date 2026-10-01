@@ -14,19 +14,59 @@ takeshots wmap                    # Docker-Server (Port 8080) muss laufen
 takeshots wmap --eigener-server   # startet selbst einen Server auf 8765
 ```
 
-Ergebnis in `appdata/images/`: `screenshot-{narrow,wide}-{1..8}{,_light}.png`,
-passend zu den Einträgen in `appdata/manifest.json`.
+Ergebnis in `appdata/images/`: `screenshot-{narrow,wide}-{1..13}{,_light}.png`
+(1–6 stehen in `appdata/manifest.json`), daraus die Werbebilder in
+`appdata/werbung/`.
 
 | Nr. | Ansicht |
 |---|---|
 | 1 | Göttingen in 3D |
 | 2 | Parkplätze im Kartenausschnitt |
-| 3 | Café mit Öffnungszeiten |
+| 3 | Ort mit Adresse und Knöpfen |
 | 4 | Radroute mit Höhenprofil |
 | 5 | Navigation (simuliert) |
 | 6 | Erreichbarkeit mit Bäckereien |
 | 7 | Entdecken: Wege im Harz |
 | 8 | Übersicht |
+| 9 | Aufgezeichnete Tour mit Puls-Diagramm |
+| 10 | Meine Touren: Aufgezeichnet |
+| 11 | Tourenplaner |
+| 12 | Bus & Bahn: Göttingen → Kassel |
+| 13 | Seite „Offline“ |
+
+**Beispieldaten:** Der erste Eintrag der Config öffnet `tools/demo.html`. Die
+Seite legt Touren (Strecken von Valhalla, Zeiten und Puls ausgedacht),
+geplante Touren, Lesezeichen und zwei Offline-Gebiete in den Speicher –
+takeShots nimmt je Lauf ein leeres Profil, darum bei jedem Lauf neu. Nur auf
+localhost; im eigenen Browser geöffnet landen die Beispiele bei den eigenen
+Daten (`tools/demo.html?weg` entfernt sie wieder).
+
+### Werbebilder (`appdata/werbung/`)
+
+`handy-N-….png` (1080×1920) und `breit-N-….png` (3840×2160) in derselben
+Reihenfolge. **Der Play Store nimmt höchstens acht Screenshots – das sind
+`handy-1` bis `handy-8`**; alle weiteren sieht man nur auf wuefl.de/wmap
+(dort als WebP in `wuefl/wmap/img/`, die Diashow in `wuefl/wmap/index.html`).
+
+| Nr. | Bild | Play Store |
+|---|---|---|
+| 1 | Titel | ja |
+| 2 | Karte in 3D | ja |
+| 3 | Suche | ja |
+| 4 | Route | ja |
+| 5 | Navigation | ja |
+| 6 | Android Auto | ja |
+| 7 | Touren aufzeichnen und auswerten | ja |
+| 8 | Entdecken | ja |
+| 9 | Bus & Bahn | nur Webseite |
+| 10 | Tour planen | nur Webseite |
+| 11 | Erreichbar | nur Webseite |
+| 12 | Offline | nur Webseite |
+| 13 | Auf allen Geräten | nur Webseite |
+
+Die Texte für den Play Store stehen in `appdata/store/de-DE/`
+(`short_description.txt` höchstens 80 Zeichen, `full_description.txt`
+höchstens 4000).
 
 Hinweise:
 
@@ -35,9 +75,8 @@ Hinweise:
   antworten müssen. Ist ein Bild leer oder halb fertig, dort `wait` erhöhen.
 - Overpass ist manchmal überlastet; dann fehlen in Bild 2 und 6 die Flächen
   bzw. Treffer – einfach das eine Bild noch einmal aufnehmen.
-- Icons und Logo (`appdata/wmap-*.png`, `appdata/logo.svg`) fehlen noch.
 - **Android Auto** (`screenshot-auto{,_light}.png`, 1920×720, für die
-  Werbebilder `*-9-auto`) nimmt takeShots nicht auf: im Simulator
+  Werbebilder `*-6-auto`) nimmt takeShots nicht auf: im Simulator
   (`tools/android-auto.sh id3`) eine Navigation fahren, dann
   `echo "screenshot $HOME/.cache/wmap-dhu/x.png" >> ~/.cache/wmap-dhu/eingabe`
   und das Auto-Bild herausschneiden (`magick x.png -crop 1920x720+0+180`).
@@ -54,3 +93,25 @@ x86-64-Paket, socat reicht den Port 5277 aus der VM zum Rechner durch.
 Auf dem Handy: Android Auto → Version zehnmal antippen → ⋮ →
 Entwicklereinstellungen → „Unbekannte Quellen“ an; dann ⋮ → „Head Unit
 Server starten“.
+
+```bash
+tools/android-auto.sh          # Bildschirm der DHU
+tools/android-auto.sh id3      # wie ein Auto: id3, mercedes, golf, klein (tools/dhu/*.ini)
+```
+
+- **Kabel statt WLAN:** Hängt das Handy per Kabel und per WLAN an adb, nimmt
+  das Skript das Kabel. Über WLAN meldet sich adb bei jedem Aussetzer mit
+  anderem Port neu an – die Weiterleitungen (5277 zum Head Unit Server, 8080
+  für die Karte vom Rechner) sind dann weg und die DHU endet mit „Failed to
+  read from transport“. Das Skript wartet, bis das Handy wieder da ist, und
+  startet die DHU neu (das Fenster zu schließen beendet es).
+- **Befehle an die laufende DHU** (in der VM hat sie keine Eingabe, darum
+  über eine Datei): `echo night >> ~/.cache/wmap-dhu/eingabe`, ebenso `day`
+  und `screenshot <datei>`. `tap` nimmt die DHU nicht an – bedient wird mit
+  der Maus im Fenster.
+- **Was Android Auto mit den Vorlagen macht** (welcher Schritt von fünf,
+  warum ein Bildschirm leer bleibt): `adb shell setprop log.tag.CarApp.H.Dis
+  VERBOSE` (ebenso `CarApp`, `CarApp.H`, `CarApp.H.Tem`), dann `adb logcat |
+  grep CarApp`. Gilt bis zum Neustart des Handys.
+- Mit zwei adb-Verbindungen zum selben Handy braucht jeder eigene adb-Befehl
+  `ANDROID_SERIAL=<Seriennummer>`.

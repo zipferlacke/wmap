@@ -2,7 +2,7 @@
     "id": "wmap",
     "name": "WMap – Karte, Routen & Navigation",
     "short_name": "WMap",
-    "description": "3D-Karte mit tippfehlertoleranter Suche, Routenplanung mit Alternativen, Höhenprofil, Navigation mit Ansagen, Baustellen auf der Autobahn und Orten in der Nähe – auf Basis offener Daten.",
+    "description": "Karte in 3D mit Suche, Routen zu Fuß, mit Rad, Auto, Bus & Bahn, Navigation mit Ansagen, Touren planen, aufzeichnen und auswerten – auf Basis von OpenStreetMap, ohne Konto und ohne Werbung.",
     "lang": "de",
     "dir": "ltr",
     "start_url": "../index.html",
