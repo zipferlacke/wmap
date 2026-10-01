@@ -782,8 +782,28 @@ WMap/
 ├─ Bus & Bahn/2026-09-30 08.15 Göttingen → Kassel.json   je gemerkte Verbindung
 ├─ Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen mit Listen
 ├─ Gelöscht.json                     auf einem Gerät Gelöschtes (IDs, ein Jahr)
-└─ Kartenausschnitt.json             wo die Karte zuletzt stand
+├─ Kartenausschnitt.json             wo die Karte zuletzt stand
+└─ Inhalt.json                       Verzeichnis: je Datei ID, Art, Fingerabdruck, Stand
 ```
+
+- **Es gilt die Ordnung:** Abgeglichen wird nur, was unter `Geplante Touren/`,
+  `Aufgezeichnete Touren/` (mit beliebigen Unterordnern) und `Bus & Bahn/`
+  liegt. Was woanders im Ordner liegt, wird nicht gelesen.
+- **Schnell durch das Verzeichnis `Inhalt.json`:** Jede WMap trägt dort ein,
+  was sie geschrieben oder gelesen hat. Ein Abgleich holt die Liste des
+  Ordners (Namen, Änderungszeit) und das Verzeichnis – den Inhalt einer
+  Datei nur, wenn sie neu ist (nicht im Verzeichnis: von Hand hineingelegt),
+  sich laut Änderungszeit bzw. Verzeichnis geändert hat oder hier fehlt.
+  Manche Cloud-Ordner unter Android melden keine Änderungszeit; dort gilt
+  der Fingerabdruck aus dem Verzeichnis, sonst würde jedes Mal alles
+  gelesen. Ein neu verbundener Ordner, dessen Einträge hier schon da sind,
+  wird ebenfalls nicht gelesen (gleiche ID, gleicher Fingerabdruck). Das
+  Verzeichnis ist nur eine Abkürzung – was da ist, sagt die Liste des
+  Ordners; fehlt oder irrt es, wird gelesen. Was gelesen werden muss (erster
+  Abgleich eines neuen Geräts), kommt zu viert zugleich.
+- **Von Hand im Ordner:** eine Datei in die Ordnung gelegt → wird
+  übernommen und ins Verzeichnis eingetragen; eine Datei gelöscht, die das
+  Gerät schon kannte → der Eintrag verschwindet auch in WMap.
 
 - Heißt der verbundene Ordner selbst „WMap“, entfällt diese Ebene. Dateien
   aus der alten Ordnung (`Geplant/`, `Abgeschlossen/<Jahr>/`, `Gemerkt.json`)
@@ -845,9 +865,10 @@ WMap/
     übernehmen; beim ersten Abgleich eines Geräts gilt die Datei. Nicht
     dabei: Konten, Verlauf, Kartenausschnitt (eigene Datei, s. u.).
 - Erkannt wird eine Datei am Stichwort `wmap:ID` (GPX) bzw. an der `id`
-  (JSON). Fremde GPX (Garmin, Komoot-Export …) dürfen irgendwo im Ordner
-  liegen – mit Zeiten werden sie ein Weg, sonst eine Tour; sie bleiben, wo
-  sie sind. Puls, Frequenz, Leistung bleiben erhalten.
+  (JSON). Fremde GPX (Garmin, Komoot-Export …) gehören in `Geplante
+  Touren/` (wird eine Tour) bzw. `Aufgezeichnete Touren/` (mit Zeiten ein
+  Weg); sie bleiben, wo sie dort liegen. Puls, Frequenz, Leistung bleiben
+  erhalten.
 - **Wo es geht:**
   - **WMap-App** (Android, Linux, macOS, Windows): eigenes Plugin
     `src-tauri/plugins/folder` – Android wählt den Ordner über den

@@ -14,7 +14,7 @@ const done = (v) => { window.__result = JSON.stringify(v); };
 (async () => {
   const { folder } = await import('./js/data/folder.js');
   const { tracks, buildTrack, trackGpx } = await import('./js/data/tracks.js');
-  // 60 Wege von einem anderen Gerät (mit WMap-ID, alle im Januar), Lesen dauert je 60 ms
+  // 60 Wege von einem anderen Gerät (mit WMap-ID, alle im Januar), Lesen dauert je 240 ms (vier zugleich)
   const files = new Map();
   let clock = 5000;
   for (let k = 0; k < 60; k += 1) {
@@ -31,7 +31,7 @@ const done = (v) => { window.__result = JSON.stringify(v); };
     read: async (p) => {
       reads += 1;
       if (reads > fail) return { match() { throw new Error('Seite gewechselt'); } };
-      await new Promise((r) => setTimeout(r, 60));
+      await new Promise((r) => setTimeout(r, 240));
       return files.get(p).text;
     },
     write: async (p, text) => { clock += 1; files.set(p, { text, modified: clock }); return clock; },

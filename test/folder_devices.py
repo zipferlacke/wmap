@@ -6,7 +6,11 @@
 3. Hier gelöscht: steht in Gelöscht.json; Health Connect holt ihn nicht wieder (healthGone).
 4. Gelöscht und wieder eingespielt (ZIP): gilt wieder, die Datei kommt zurück.
 5. Datei einmal nicht lesbar: bleibt bekannt – dort gelöscht heißt dann hier auch gelöscht.
-6. Kartenausschnitt über den Ordner (Kartenausschnitt.json): schreiben, nicht zu oft, lesen."""
+6. Kartenausschnitt über den Ordner (Kartenausschnitt.json): schreiben, nicht zu oft, lesen.
+7. Verzeichnis (Inhalt.json): ein Ordner ohne Änderungszeiten wird beim zweiten Abgleich nicht noch einmal gelesen.
+8. Ordner neu verbunden (Index weg), Einträge noch da: laut Verzeichnis gleich – keine Datei wird gelesen.
+9. Die Ordnung gilt: von Hand hineingelegt (unter „Aufgezeichnete Touren/“) kommt dazu, irgendwo abgelegt nicht.
+10. Von Hand im Ordner gelöscht: der Eintrag verschwindet hier, das Verzeichnis nennt die Datei nicht mehr."""
 import json
 import sys
 from common import Browser
@@ -95,6 +99,50 @@ out.sixFirst = await folder.writeView(view, { now: true });
 out.sixThrottled = await folder.writeView({ ...view, zoom: 15, at: Date.now() });          // gleich danach: nicht schon wieder
 out.sixRead = (await folder.readView())?.zoom;
 out.sixIgnored = (await folder.sync(), [...files.keys()].some((p) => p.endsWith('Kartenausschnitt.json')));
+
+// ── 7. Verzeichnis: Ordner ohne Änderungszeiten ──
+// (wie manche Cloud-Ordner unter Android) – gezählt wird, welche Touren und Wege gelesen werden
+let reads = [];
+const noTime = {
+  ...be,
+  list: async () => [...files].map(([path]) => ({ path, lastModified: 0 })),
+  read: async (p) => { if (/\.gpx$/.test(p)) reads.push(p); return be.read(p); },
+  write: async (p, text) => { await be.write(p, text); return 0; },
+};
+const mk = (k, name) => ({ ...buildTrack(pts.map(([x, y, ms]) => [x + k * 0.02, y, ms + k * 864e5]), { kind: 'rec', profile: 'foot', name }), id: `m${k}` });
+for (let k = 1; k <= 3; k += 1) await tracks.putQuiet(mk(k, `Verzeichnis ${k}`));
+folder._useBackend(noTime, 'Nextcloud');
+await folder.sync();                               // erster Abgleich mit diesem Ordner: liest, was da ist, schreibt die drei
+reads = [];
+out.sevenSecond = await folder.sync();
+out.sevenReads = reads.length;
+const manifest = () => JSON.parse(files.get('WMap/Inhalt.json').text).files;
+out.sevenListed = Object.values(manifest()).filter((v) => /^m\d$/.test(v.id)).length;
+
+// ── 8. Neu verbunden: Index weg, Einträge da ──
+folder._useBackend(noTime, 'Nextcloud');
+reads = [];
+out.eight = await folder.sync();
+out.eightReads = reads.length;
+out.eightCount = (await tracks.all()).filter((t) => /^m\d$/.test(t.id)).length;
+
+// ── 9. Von Hand hineingelegt – in die Ordnung und irgendwohin ──
+const hand = trackGpx(mk(7, 'Von Hand')).replace(/<keywords>[^<]*<\/keywords>/, '');
+files.set('WMap/Aufgezeichnete Touren/2026/09 September/Von Hand.gpx', { text: hand, modified: 0 });
+files.set('WMap/Sonstiges/Irgendwo.gpx', { text: trackGpx(mk(8, 'Irgendwo')).replace(/<keywords>[^<]*<\/keywords>/, ''), modified: 0 });
+reads = [];
+out.nine = await folder.sync();
+out.nineReads = reads.map((p) => p.split('/').pop());
+out.nineNames = (await tracks.all()).map((t) => t.name).filter((n) => /Von Hand|Irgendwo/.test(n));
+out.nineListed = Object.keys(manifest()).some((p) => p.endsWith('Von Hand.gpx'));
+
+// ── 10. Von Hand gelöscht ──
+const gonePath = [...files.keys()].find((p) => p.includes('Verzeichnis 2'));
+files.delete(gonePath);
+out.ten = await folder.sync();
+out.tenNames = (await tracks.all()).map((t) => t.name).filter((n) => /Verzeichnis/.test(n)).sort();
+out.tenListed = Object.keys(manifest()).some((p) => p.includes('Verzeichnis 2'));
+out.tenFiles = [...files.keys()].some((p) => p.includes('Verzeichnis 2'));
 return out;
 """
 
@@ -112,6 +160,10 @@ with Browser() as b:
         '4. wieder eingespielt → gilt wieder': 'Leinerunde' in r['fourTours'] and any('Leinerunde' in p for p in r['fourFiles']) and 'tourB' not in r['fourGone'],
         '5. einmal nicht lesbar, dann dort gelöscht → hier weg': 'Werrarunde' not in r['fiveTours'] and not any('Werrarunde' in p for p in r['fiveFiles']),
         '6. Kartenausschnitt: schreiben, nicht zu oft, lesen, Abgleich lässt ihn stehen': r['sixFirst'] and not r['sixThrottled'] and r['sixRead'] == 14.2 and r['sixIgnored'],
+        '7. Verzeichnis: ohne Änderungszeiten wird beim zweiten Abgleich nichts gelesen': r['sevenReads'] == 0 and r['sevenListed'] == 3 and r['sevenSecond']['imported'] == 0 and r['sevenSecond']['written'] == 0,
+        '8. neu verbunden, Einträge da: laut Verzeichnis gleich – nichts gelesen, nichts doppelt': r['eightReads'] == 0 and r['eightCount'] == 3 and r['eight']['imported'] == 0 and r['eight']['written'] == 0,
+        '9. von Hand in die Ordnung gelegt kommt dazu (nur sie wird gelesen), irgendwo abgelegt nicht': r['nineReads'] == ['Von Hand.gpx'] and r['nineNames'] == ['Von Hand'] and r['nineListed'],
+        '10. von Hand gelöscht → Eintrag weg, nicht mehr im Verzeichnis, nicht zurückgeschrieben': r['tenNames'] == ['Verzeichnis 1', 'Verzeichnis 3'] and not r['tenListed'] and not r['tenFiles'],
     }
     for k, v in checks.items():
         print(('ok    ' if v else 'FALSCH') + ' ' + k)

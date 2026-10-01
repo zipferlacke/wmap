@@ -62,9 +62,11 @@ const TREE = `<details class="sync-tree"><summary>Ordnerstruktur erklärt</summa
 ├─ Aufgezeichnete Touren/
 │  └─ 2026/09 September/    je Weg eine GPX-Datei (mit Puls &amp; Co.)
 ├─ Bus &amp; Bahn/              je gemerkte Verbindung eine JSON-Datei
-└─ Lesezeichen.json         Zuhause, Arbeit, Lesezeichen und Listen</pre>
+├─ Lesezeichen.json         Zuhause, Arbeit, Lesezeichen und Listen
+└─ Inhalt.json              Verzeichnis für den schnellen Abgleich</pre>
   <p class="settings-hint">Jede WMap, die denselben Ordner verbindet, liest ihn ein und gleicht mit ab. Heißt der Ordner selbst „WMap“, entfällt die Ebene.
-    GPX-Dateien von woanders (Garmin, Komoot …) dürfen irgendwo darin liegen.</p></details>`;
+    GPX-Dateien von woanders (Garmin, Komoot …) legst du in „Geplante Touren“ bzw. „Aufgezeichnete Touren“ – woanders im Ordner werden sie nicht gelesen.
+    Löschst du dort eine Datei, verschwindet der Eintrag auch in WMap.</p></details>`;
 
 /*
  * Knöpfe: Importieren liest einen Ordner einmal ein (App: Ordnerdialog,
