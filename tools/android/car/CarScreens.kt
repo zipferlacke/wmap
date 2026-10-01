@@ -504,7 +504,7 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
           else openItem(carContext, s, this, o, route)
         })
       }
-      il.setNoItemsMessage(if (tours) "Keine geplanten Touren" else "Nichts gefunden")
+      il.setNoItemsMessage(if (tours) "Keine Touren fürs Auto geplant" else "Nichts gefunden")
       b.setItemList(il.build())
     }
     return b.build()

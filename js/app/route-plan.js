@@ -9,7 +9,7 @@ import { mountRoutePrefs } from '../ui/route-prefs.js';
 import { toast } from '../ui/dialogs.js';
 import { nearestOnLine, esc } from '../core/geo.js';
 import { clearCategory } from './category.js';
-import { $, $$, afterLayout, current, debounce, map, markerEl, state } from './core.js';
+import { $, $$, CAR, afterLayout, current, debounce, map, markerEl, state } from './core.js';
 import { placeWaypoint, removePlaceMarker } from './place.js';
 import { clearReach } from './reach.js';
 import { clearRoutes, computeRoutes, fitRoute, routeCtl } from './route-results.js';
@@ -115,8 +115,10 @@ const routePrefs = mountRoutePrefs($$('.route-prefs-open'), $('#route-prefs'), {
 });
 
 export function setProfile(p) {
+  // Im Auto wird jede Route mit dem Auto gerechnet (Fahrzeit, Straßen) – und die Wahl am Handy bleibt, wie sie ist
+  if (CAR) p = 'car';
   state.profile = p;
-  local.set('wmap.profile', p);
+  if (!CAR) local.set('wmap.profile', p);
   $$('input[name="profile"]').forEach((r) => { r.checked = r.value === p; });
   $('#add-via').hidden = !!PROFILES[p].transit;
   $('.transit-when').hidden = !PROFILES[p].transit;

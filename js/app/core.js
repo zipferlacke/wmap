@@ -26,7 +26,8 @@ export const { map, geolocate } = createMap('map', lastView ? {
 
 export const state = {
   mode: 'search',
-  profile: PROFILES[local.get('wmap.profile')]?.nav ? local.get('wmap.profile') : 'car',
+  // Im Auto immer das Auto – die letzte Wahl am Handy (Rad, zu Fuß) gilt dort nicht
+  profile: !CAR && PROFILES[local.get('wmap.profile')]?.nav ? local.get('wmap.profile') : 'car',
   waypoints: [],        // { label, point: [lon, lat] | null, me: bool }
   points: [],           // aufgelöste Punkte der letzten Berechnung
   routes: [],

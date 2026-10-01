@@ -275,24 +275,27 @@ async function routeToPoint(point, label) {
 
 /* ── Touren ──────────────────────────────────────────────────────────────── */
 
+/** Fürs Auto geplant? – Wander- und Radtouren gehören nicht auf den Autobildschirm */
+const forCar = (t) => PROFILES[t.profile]?.costing === 'auto';
+
 function tourList() {
-  return tours.all().filter((t) => t.points?.length >= 2).slice(0, 40).map((t) => ({
+  return tours.all().filter((t) => t.points?.length >= 2 && forCar(t)).slice(0, 40).map((t) => ({
     id: t.id, title: t.name || 'Tour',
     sub: [t.stats?.length ? fmtDistance(t.stats.length) : null, PROFILES[t.profile]?.label].filter(Boolean).join(' · '),
     icon: PROFILES[t.profile]?.icon ?? 'route',
   }));
 }
 
-/** Geplante Tour als Route (wie „?tour=“ in app.js) – das Profil bleibt ihres */
+/** Geplante Tour als Route (wie „?tour=“ in app.js) – gerechnet wird mit dem Auto */
 async function tour(id) {
   const t = tours.get(id);
   if (!t?.points?.length) throw new Error('Die Tour gibt es auf diesem Gerät nicht');
+  if (!forCar(t)) throw new Error('Die Tour ist nicht fürs Auto geplant');
   if (nav.active) nav.stop();
   pauseDrive();
   clearPlace();
   clearRoutes({ keepSheet: true });
-  const costing = PROFILES[t.profile]?.costing;
-  setProfile(costing === 'bicycle' ? 'bike' : costing === 'auto' ? 'car' : 'foot');
+  setProfile('car');
   navTour.set(t);
   const n = t.points.length;
   enterRoute({ waypoints: t.points.map((point, i) => ({ label: i === 0 ? `Start: ${t.name}` : i === n - 1 ? t.name : `${t.name} · ${i}`, point, me: false })), push: false });
@@ -444,7 +447,7 @@ const methods = {
     if (!nav.active) resumeDrive();
     return true;
   },
-  /** Meine Touren – mit Text nur die, deren Name passt */
+  /** Meine Touren – die fürs Auto geplanten; mit Text nur die, deren Name passt */
   async tours(text = '') {
     shareSync();
     const w = fold(text).split(/\s+/).filter(Boolean);

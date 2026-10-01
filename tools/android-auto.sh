@@ -43,15 +43,22 @@ if [[ "$(uname -m)" != x86_64 && ! -e "$DIR/libc++.so.1" ]]; then
   rm -rf "$tmp"
 fi
 
-# Dasselbe Handy über mehrere Wege verbunden (Kabel, WLAN): eines nehmen
-[[ -n "${ANDROID_SERIAL:-}" ]] || export ANDROID_SERIAL="$(adb devices | awk '$2 == "device" { print $1; exit }')"
-adb forward tcp:5277 tcp:5277 >/dev/null
-adb reverse tcp:8080 tcp:8080 >/dev/null || true
+# Verbindung zum Handy: Port 5277 (Head Unit Server) und 8080 (Karte vom Rechner).
+# Dasselbe Handy über mehrere Wege verbunden (Kabel, WLAN): das Kabel nehmen –
+# über WLAN meldet sich adb bei jedem Aussetzer neu an (anderer Port), dann sind
+# die Weiterleitungen weg und die DHU verliert das Handy.
+FEST="${ANDROID_SERIAL:-}"
+verbinden() {
+  if [[ -z "$FEST" ]]; then
+    ANDROID_SERIAL="$(adb devices | awk '$2 == "device" && $1 !~ /[:.]/ { print $1; exit }')"
+    [[ -n "$ANDROID_SERIAL" ]] || ANDROID_SERIAL="$(adb devices | awk '$2 == "device" { print $1; exit }')"
+    export ANDROID_SERIAL
+  fi
+  [[ -n "$ANDROID_SERIAL" ]] || return 1
+  adb forward tcp:5277 tcp:5277 >/dev/null 2>&1 || return 1
+  adb reverse tcp:8080 tcp:8080 >/dev/null 2>&1 || true
+}
 echo "==> Head Unit Server auf dem Handy gestartet? (Android Auto → ⋮ → Head Unit Server starten)"
-
-if [[ "$(uname -m)" == x86_64 ]]; then
-  cd "$DIR" && exec ./desktop-head-unit "$@"
-fi
 
 # ARM: in der muvm-VM, Port 5277 über das Gateway (= Rechner) durchreichen
 run="$DIR/run-vm.sh"
@@ -68,5 +75,28 @@ tail -f "$DIR/eingabe" | ./desktop-head-unit $* > "$DIR/dhu.log" 2>&1
 kill %1 2>/dev/null
 EOF
 chmod +x "$run"
-echo "==> DHU in muvm (Protokoll: $DIR/dhu.log)"
-exec muvm "$run"
+
+# Reißt die Verbindung zum Handy ab (WLAN-adb), startet die DHU von selbst neu,
+# sobald das Handy wieder da ist. Das Fenster zu schließen beendet das Skript.
+for versuch in $(seq 1 40); do
+  wartet=0
+  until verbinden; do
+    [[ $wartet == 1 ]] || echo "==> Handy nicht per adb erreichbar – warte (Kabel anstecken oder WLAN-Debugging prüfen) …"
+    wartet=1
+    sleep 3
+  done
+  if [[ "$ANDROID_SERIAL" =~ [:.] ]]; then echo "==> Handy über WLAN ($ANDROID_SERIAL) – mit Kabel läuft die DHU stabiler"; fi
+  if [[ "$(uname -m)" == x86_64 ]]; then
+    (cd "$DIR" && ./desktop-head-unit "$@" 2>&1 | tee "$DIR/dhu.log") || true
+  else
+    echo "==> DHU in muvm (Protokoll: $DIR/dhu.log)"
+    muvm "$run" || true
+  fi
+  ende="$(tail -n 4 "$DIR/dhu.log" 2>/dev/null | tr -d '\0')"
+  if [[ "$ende" == *"Failed to read from transport"* || "$ende" == *"Ping timeout"* ]]; then
+    echo "==> Verbindung zum Handy abgerissen ($(date +%T)) – starte die DHU neu"
+    sleep 2
+    continue
+  fi
+  break
+done

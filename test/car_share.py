@@ -3,7 +3,8 @@ Adresse als die App (Debug-Fassung), hat sie einen anderen Browser-Speicher – 
 gemeinsamen Speicher von Android ab (window.WMapAndroid.shareGet/shareSet), hier nachgestellt: die App unter
 localhost, das Auto unter 127.0.0.1.
 1. App: geplante Touren (ohne Vorschaubild), Lesezeichen, zuletzt Gefahrenes und Einstellungen liegen im gemeinsamen Speicher.
-2. Auto (eigener, leerer Speicher): „Meine Touren“ listet die Touren der App, „Ziel wählen“ Zuhause und Lesezeichen.
+2. Auto (eigener, leerer Speicher): „Meine Touren“ listet die fürs Auto geplanten Touren der App (keine Wander- oder
+   Radtouren), „Ziel wählen“ Zuhause und Lesezeichen.
 3. Im Auto gemerkter Ort kommt in der App an; ein dort gelöschter verschwindet im Auto.
 4. Gleiche Adresse (fertige App): gemeinsamer Browser-Speicher – das Auto fasst die Touren nicht an.
 5. Die eingepackte Kopie, die gleich zur Webversion wechselt, legt nichts ab."""
@@ -54,8 +55,9 @@ with Browser(width=900, height=600) as b:
     # ── 1. App ──
     b.open('wege.html', wait=3)
     b.js("""localStorage.setItem('wmap.tours', JSON.stringify([
-      { id: 'tA', name: 'Harzrunde', profile: 'hike', points: [[10.5, 51.8], [10.6, 51.8]], shape: '_p~iF~ps|U_ulLnnqC', stats: { length: 7000 }, updated: 5, preview: 'data:image/png;base64,AAAA' },
-      { id: 'tB', name: 'Leinerunde', profile: 'tour', points: [[9.9, 51.5], [9.95, 51.52]], shape: 'abc', stats: { length: 21000 }, updated: 9 }]));
+      { id: 'tA', name: 'Harzrunde', profile: 'drive', points: [[10.5, 51.8], [10.6, 51.8]], shape: '_p~iF~ps|U_ulLnnqC', stats: { length: 7000 }, updated: 5, preview: 'data:image/png;base64,AAAA' },
+      { id: 'tB', name: 'Leinerunde', profile: 'drive', points: [[9.9, 51.5], [9.95, 51.52]], shape: 'abc', stats: { length: 21000 }, updated: 9 },
+      { id: 'tW', name: 'Wanderung', profile: 'hike', points: [[9.9, 51.5], [9.95, 51.52]], shape: 'abc', stats: { length: 9000 }, updated: 2 }]));
       localStorage.setItem('wmap.saved', JSON.stringify({ connections: [], deleted: {}, places: [
         { id: 'p1', kind: 'home', name: 'Zuhause', label: 'Rittmarshausen', point: [10.03, 51.47], updated: 10 },
         { id: 'p2', kind: 'fav', name: 'Kulturscheune', label: '', point: [10.031, 51.471], list: 'Allgemein', updated: 11 }] }));
@@ -72,7 +74,7 @@ with Browser(width=900, height=600) as b:
     app = json.loads(shared['app'])
     print('gemeinsamer Speicher:', {k: len(v) for k, v in shared.items()}, app['origin'])
     checks = {
-        '1. App legt Touren ohne Vorschaubild ab, mit ihrer Adresse': [t['id'] for t in app['tours']] == ['tB', 'tA'] and all('preview' not in t for t in app['tours']) and 'localhost' in app['origin'],
+        '1. App legt Touren ohne Vorschaubild ab, mit ihrer Adresse': [t['id'] for t in app['tours']] == ['tB', 'tA', 'tW'] and all('preview' not in t for t in app['tours']) and 'localhost' in app['origin'],
         '1. … Lesezeichen, Ziele und Einstellungen': len(json.loads(shared['places'])['places']) == 2 and json.loads(shared['recent'])[0]['to']['label'] == 'Göttingen Bahnhof' and app['settings'].get('wmap.voice') == '"Anna"',
         '5. eingepackte Kopie vor dem Wechsel legt nichts ab': starting == [],
     }
@@ -85,7 +87,7 @@ with Browser(width=900, height=600) as b:
     targets = call(b, 'targets')['items']
     print('Auto vorher:', [t['title'] for t in empty['items']], '– danach:', [(t['title'], t['sub']) for t in items], [t['title'] for t in targets])
     checks['2. Auto ohne gemeinsamen Speicher: keine Touren (so war es in der Debug-Fassung)'] = empty['items'] == []
-    checks['2. Auto: „Meine Touren“ zeigt die Touren der App'] = [t['title'] for t in items] == ['Leinerunde', 'Harzrunde']
+    checks['2. Auto: „Meine Touren“ zeigt die fürs Auto geplanten Touren der App, die Wanderung nicht'] = [t['title'] for t in items] == ['Leinerunde', 'Harzrunde']
     checks['2. Auto: Zuhause, Lesezeichen und letztes Ziel'] = [t['title'] for t in targets][:3] == ['Zuhause', 'Kulturscheune', 'Göttingen Bahnhof']
     checks['2. Auto: Stimme wie in der App'] = b.js("return localStorage.getItem('wmap.voice')") == '"Anna"'
 

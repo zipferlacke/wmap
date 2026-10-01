@@ -1,6 +1,7 @@
 """Autobildschirm (js/car/car.js) im Browser: index.html?car zeigt nur die Karte; die Schnittstelle für Kotlin
 (wmapCar.call → window.__carOut) liefert Kategorien, Parkplätze in der Nähe (erst aus den Kacheln, dann mit
-Overpass), freie Fahrt (Pfeil auf der Straße, Tempo, Straßenname), Suche mit Kategorie, Ort mit Details, Route mit Auswahl, geplante Tour und Navigation mit Anweisungen
+Overpass), freie Fahrt (Pfeil auf der Straße, Tempo, Straßenname), Suche mit Kategorie, Ort mit Details, Route mit Auswahl, geplante Tour (nur
+die fürs Auto geplanten, gerechnet immer mit dem Auto) und Navigation mit Anweisungen
 als Daten; kurze Fragen kommen als Hinweis mit Ja/Nein und die Antwort zurück."""
 import json
 import sys
@@ -118,11 +119,20 @@ with Browser(width=800, height=480) as b:
     time.sleep(.5)
     answered = b.js("return window.__asked")
 
-    b.js("localStorage.setItem('wmap.tours', JSON.stringify([{ id: 'tcar', name: 'Zum Kiessee', profile: 'car', points: [[9.9355, 51.5335], [9.9265, 51.5185]], stats: { length: 2100 } }]))")
+    # Fürs Auto geplant (drive) steht in „Meine Touren“, die Wanderung nicht; gerechnet wird immer mit dem Auto –
+    # auch wenn am Handy zuletzt das Rad gewählt war (dessen Wahl bleibt, wie sie ist)
+    b.js("""localStorage.setItem('wmap.profile', '"bike"');
+      localStorage.setItem('wmap.tours', JSON.stringify([
+      { id: 'tcar', name: 'Zum Kiessee', profile: 'drive', points: [[9.9355, 51.5335], [9.9265, 51.5185]], stats: { length: 2100 } },
+      { id: 'tfoot', name: 'Wallrunde', profile: 'hike', points: [[9.9355, 51.5335], [9.9265, 51.5185]], stats: { length: 3000 } }]))""")
     ts = call(b, 'tours')
-    print('Touren:', ts)
+    print('Touren:', ts and [(t['id'], t['sub']) for t in ts['items']])
     tr = call(b, 'tour', 'tcar')
     print('Tour als Route:', tr and tr['title'], tr and len(tr['routes']))
+    profile = b.js("return [window.__wmap.state.profile, localStorage.getItem('wmap.profile')]")
+    print('Wanderung im Auto:', end=' ')
+    foot = call(b, 'tour', 'tfoot')
+    print('Profil im Auto / am Handy gemerkt:', profile)
     call(b, 'clear')
     b.shot('car')
 
@@ -137,6 +147,7 @@ with Browser(width=800, height=480) as b:
         'Navigation mit Anweisungen als Daten': ok_start and bool(guide) and 'dist' in guide[-1] and ended,
         'Frage als Hinweis, Antwort kommt an': bool(ask) and answered == 'yes',
         'Tour als Route': bool(ts) and ts['items'][0]['id'] == 'tcar' and bool(tr),
+        'nur fürs Auto geplante Touren, gerechnet mit dem Auto': bool(ts) and [t['id'] for t in ts['items']] == ['tcar'] and foot is None and profile == ['car', '"bike"'],
     }
     for k, v in checks.items():
         print(('ok    ' if v else 'FALSCH') + ' ' + k)
