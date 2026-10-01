@@ -12,7 +12,8 @@
  *                   und exportieren
  *   Health Connect  Trainings holen (Fortschritt am Knopf, am Ende nur eine
  *                   Meldung), automatisch wie oben, Freigaben (nur Android-App)
- *   Doppelte        nur wenn es welche gibt: „Duplikate entfernen“ (data/duplicates.js)
+ *   Doppelte        nur wenn es welche gibt: je Tour wählen, wessen Strecke (GPS) bleibt und –
+ *                   bei mehreren mit Messwerten – wessen Gesundheitsdaten (data/duplicates.js)
  */
 import { mountAppBar } from '../ui/appbar.js';
 import { ask, toast } from '../ui/dialogs.js';
@@ -23,7 +24,7 @@ import { folder, zipBackup, restoreZip, importFolder, syncSummary } from '../dat
 import { healthAvailable, healthStatus, healthSync, syncHealth, healthSyncing, appName } from '../services/health.js';
 import { showPermissions } from '../ui/permissions.js';
 import { autoSync } from '../data/auto-sync.js';
-import { findDuplicates, removeDuplicates } from '../data/duplicates.js';
+import { findDuplicates, removeDuplicates, valueKinds } from '../data/duplicates.js';
 
 const root = document.querySelector('.sync');
 const WHEN = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -171,16 +172,25 @@ async function healthHtml() {
 
 /* ── Doppelte ─────────────────────────────────────────────────────────────── */
 
-/** Welche Aufzeichnung je doppelter Tour bleibt (IDs) – gemerkt, solange die Seite offen ist */
+/** Welche Aufzeichnung je doppelter Tour bleibt und von welcher die Gesundheitsdaten kommen (IDs) – gemerkt, solange die Seite offen ist */
 const dupKeep = new Set();
+const dupVals = new Set();
+const VALUE_NAME = { hr: 'Puls', cad: 'Frequenz', pow: 'Leistung' };
 
 /** Woher eine Aufzeichnung kommt – „Health Connect · Zepp“, „GPX-Datei“, „Mit WMap aufgezeichnet“ */
 const dupOrigin = (t) => (t.kind === 'health' ? `Health Connect${t.source?.app ? ` · ${appName(t.source.app)}` : ''}`
   : t.kind === 'gpx' ? 'GPX-Datei' : t.kind === 'nav' ? 'Bei der Navigation aufgezeichnet' : 'Mit WMap aufgezeichnet');
+const dupPoints = (t) => (t.stub ? t.n : t.times?.length) || 0;
+/** Strecke: Kilometer, Dauer, wie fein aufgezeichnet */
 const dupFacts = (t) => [
   fmtDistance(t.length), fmtDuration((trackEnd(t) - t.start) / 1000),
-  ...[['hr', 'Puls'], ['cad', 'Frequenz'], ['pow', 'Leistung']].filter(([k]) => (t.stub ? t.has?.includes(k) : t[k]?.some((v) => v > 0))).map(([, l]) => l),
-].join(' · ');
+  dupPoints(t) ? `${dupPoints(t).toLocaleString('de-DE')} Punkte` : '',
+].filter(Boolean).join(' · ');
+/** Gesundheitsdaten: was gemessen wurde, beim Puls der Schnitt */
+function dupValues(t) {
+  const hr = (t.hr ?? []).filter((v) => v > 0);
+  return valueKinds(t).map((k) => (k === 'hr' && hr.length ? `Puls (Ø ${Math.round(hr.reduce((a, b) => a + b, 0) / hr.length)})` : VALUE_NAME[k])).join(' · ');
+}
 const dupDate = (t) => new Date(t.start).toLocaleString('de-DE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 async function duplicatesHtml() {
@@ -196,18 +206,28 @@ async function duplicatesHtml() {
   const groups = d.tracks.map((g, i) => {
     if (g.every((t) => sameTrack(g[0], t))) return '';
     const keep = g.find((t) => dupKeep.has(t.id)) ?? g[0];
+    // Gesundheitsdaten: zu wählen nur, wenn mehrere Aufzeichnungen welche haben
+    const measured = g.filter((t) => valueKinds(t).length);
+    const from = measured.find((t) => dupVals.has(t.id)) ?? (measured.includes(keep) ? keep : measured[0]);
     return `<fieldset class="dup-group">
       <legend>${esc(keep.name || 'Ohne Namen')} <small>${esc(dupDate(keep))}</small></legend>
+      <p class="dup-q"><span class="msr">route</span> Strecke (GPS) von</p>
       ${g.map((t) => `<label class="dup-option">
         <input type="radio" name="dup-${i}" value="${esc(t.id)}" ${t === keep ? 'checked' : ''}>
         <span><strong>${esc(dupOrigin(t))}</strong><small>${esc(dupFacts(t))}</small></span>
       </label>`).join('')}
+      ${measured.length > 1 ? `<p class="dup-q"><span class="msr">monitor_heart</span> Gesundheitsdaten von</p>
+      ${measured.map((t) => `<label class="dup-option dup-values">
+        <input type="radio" name="dupv-${i}" value="${esc(t.id)}" ${t === from ? 'checked' : ''}>
+        <span><strong>${esc(dupOrigin(t))}</strong><small>${esc(dupValues(t))}</small></span>
+      </label>`).join('')}`
+    : measured.length ? `<p class="dup-q dup-one"><span class="msr">monitor_heart</span> Gesundheitsdaten: ${esc(dupOrigin(measured[0]))} – ${esc(dupValues(measured[0]))}</p>` : ''}
     </fieldset>`;
   }).join('');
   return `<section class="sync-dups" id="doppelt">
     <h3><span class="msr">content_copy</span> Doppelte Touren</h3>
     ${status('content_copy', `${what} ${d.count === 1 ? 'Tour gibt' : 'Touren gibt'} es doppelt – etwa mit der Uhr und dem Handy aufgezeichnet oder aus Health Connect und aus dem Ordner.`, 'warn')}
-    ${groups ? `<p class="settings-hint">Diese Touren gibt es aus zwei Quellen. Wähle je Tour, welche Aufzeichnung bleibt – ihre Strecke, Zeit und Kilometer gelten. Puls, Frequenz und Leistung der anderen kommen dazu.</p>
+    ${groups ? `<p class="settings-hint">Diese Touren gibt es aus mehreren Quellen. Wähle je Tour, wessen Strecke bleibt – ihre Zeit und Kilometer gelten. Gesundheitsdaten (Puls, Frequenz, Leistung) kommen dazu; haben mehrere Aufzeichnungen welche, wählst du auch, von welcher.</p>
     <div class="dup-list">${groups}</div>` : ''}
     <div class="sync-actions">
       <button type="button" class="button primary" data-act="dedupe"><span class="msr">merge</span> Zusammenführen</button>
@@ -283,11 +303,13 @@ root.addEventListener('click', async (e) => {
   if (act === 'dedupe') {
     const d = await findDuplicates();
     const v = await ask({ icon: 'merge', title: `${d.count} doppelte ${d.count === 1 ? 'Tour' : 'Touren'} zusammenführen?`,
-      text: 'Von jeder doppelten Tour bleibt die gewählte Aufzeichnung, Puls, Frequenz und Leistung der anderen kommen dazu. Auf anderen Geräten verschwinden die Doppelten beim nächsten Abgleich ebenfalls.',
+      text: 'Von jeder doppelten Tour bleibt die gewählte Strecke mit den gewählten Gesundheitsdaten. Auf anderen Geräten verschwinden die Doppelten beim nächsten Abgleich ebenfalls.',
       buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Zusammenführen', primary: true }] });
     if (v !== 'yes') return;
-    const n = await removeDuplicates([...root.querySelectorAll('.dup-option input:checked')].map((el) => el.value));
+    const picked = (sel) => [...root.querySelectorAll(`${sel} input:checked`)].map((el) => el.value);
+    const n = await removeDuplicates(picked('.dup-option:not(.dup-values)'), picked('.dup-values'));
     dupKeep.clear();
+    dupVals.clear();
     toast(`${n} doppelte ${n === 1 ? 'Tour' : 'Touren'} zusammengeführt`);
     render();
   }
@@ -301,8 +323,9 @@ root.addEventListener('change', async (e) => {
   const t = e.target;
   if (t.closest('.dup-option')) {
     // Wahl merken – die Seite zeichnet sich bei jedem Abgleich neu
-    for (const el of t.closest('.dup-group').querySelectorAll('input')) dupKeep.delete(el.value);
-    dupKeep.add(t.value);
+    const set = t.closest('.dup-values') ? dupVals : dupKeep;
+    for (const el of t.closest('.dup-group').querySelectorAll(`input[name="${t.name}"]`)) set.delete(el.value);
+    set.add(t.value);
     return;
   }
   if (t.name === 'folder-keep') {

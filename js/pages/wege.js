@@ -199,7 +199,7 @@ function showList({ push = false } = {}) {
     findDuplicates().then((d) => {
       const n = (isPlan ? d.tours : d.tracks).reduce((sum, g) => sum + g.length - 1, 0);
       if (!n || !dup.isConnected) return;
-      dup.children[1].innerHTML = `<strong>${n} ${n === 1 ? 'Tour gibt' : 'Touren gibt'} es doppelt</strong> – zusammenführen und wählen, welche Aufzeichnung bleibt`;
+      dup.children[1].innerHTML = `<strong>${n} ${n === 1 ? 'Tour gibt' : 'Touren gibt'} es doppelt</strong> – zusammenführen und wählen, wessen Strecke und Gesundheitsdaten bleiben`;
       dup.hidden = false;
     }).catch(() => {});
   }

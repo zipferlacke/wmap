@@ -10,8 +10,11 @@
  *
  * Je Gruppe bleibt eine Aufzeichnung – vorgeschlagen die mit den meisten
  * Angaben (Kennung aus Health Connect, Puls & Co., Beschreibung), wählen
- * kann man jede. Was nur die anderen haben, kommt dazu (merge): Kennung,
- * Beschreibung und Puls, Frequenz, Leistung – nach der Uhrzeit auf die
+ * kann man jede: ihre Strecke (GPS), Zeit und Kilometer gelten. Haben
+ * mehrere Aufzeichnungen Gesundheitsdaten (zwei Uhren, Uhr und Brustgurt),
+ * wählt man auch, von welcher Puls, Frequenz und Leistung kommen
+ * (withValuesFrom). Was sonst nur die anderen haben, kommt dazu (merge):
+ * Kennung, Beschreibung und fehlende Messwerte – nach der Uhrzeit auf die
  * Punkte der bleibenden übertragen. Die anderen werden normal gelöscht – der
  * Ordner-Abgleich trägt sie in Gelöscht.json ein, andere Geräte löschen sie
  * dann auch.
@@ -54,6 +57,26 @@ export function merge(keep, other) {
   return out;
 }
 
+/** Hat die Aufzeichnung Gesundheitsdaten (Puls, Frequenz, Leistung)? – auch für Karteikarten */
+export const valueKinds = (t) => VALUES.filter((k) => hasValues(t, k));
+
+/**
+ * Die Gesundheitsdaten von `src` gelten: Puls, Frequenz und Leistung, die
+ * `src` hat, ersetzen die von `keep` (nach der Uhrzeit auf dessen Punkte
+ * übertragen). Passt die Zeit nicht (kein Wert in 60 s Nähe), bleibt, was
+ * `keep` hatte.
+ */
+export function withValuesFrom(keep, src) {
+  if (!src || src === keep || keep.stub || src.stub) return keep;
+  let out = keep;
+  for (const k of VALUES) {
+    if (!hasValues(src, k)) continue;
+    const v = valuesAt(src, k, keep);
+    if (v) out = { ...out, [k]: v };
+  }
+  return out;
+}
+
 /** → { tracks: [[vorgeschlagen, …doppelt]], tours: [[behalten, …doppelt]], count } */
 export async function findDuplicates() {
   const list = (await tracks.all()).sort((a, b) => a.start - b.start);
@@ -90,11 +113,14 @@ export async function findDuplicates() {
 }
 
 /**
- * Zusammenführen. `keepIds`: welche Aufzeichnung je Gruppe bleibt (IDs) –
- * ohne Wahl die vorgeschlagene. → Anzahl entfernt
+ * Zusammenführen. `keepIds`: welche Aufzeichnung je Gruppe bleibt (IDs, ihre
+ * Strecke gilt) – ohne Wahl die vorgeschlagene. `valueIds`: von welcher die
+ * Gesundheitsdaten kommen – ohne Wahl die der bleibenden, sonst was die
+ * anderen haben. → Anzahl entfernt
  */
-export async function removeDuplicates(keepIds = []) {
+export async function removeDuplicates(keepIds = [], valueIds = []) {
   const chosen = new Set(keepIds);
+  const values = new Set(valueIds);
   const found = await findDuplicates();
   let n = 0;
   for (const cards of found.tracks) {
@@ -102,7 +128,7 @@ export async function removeDuplicates(keepIds = []) {
     const group = await Promise.all(cards.map((t) => tracks.full(t).catch(() => t)));
     const keep = group.find((t) => chosen.has(t.id)) ?? group[0];
     const rest = group.filter((t) => t !== keep);
-    const merged = rest.reduce(merge, keep);
+    const merged = rest.reduce(merge, withValuesFrom(keep, group.find((t) => values.has(t.id))));
     if (merged !== keep) await tracks.put({ ...merged, updated: Date.now() });
     for (const other of rest) { await tracks.remove(other.id); n += 1; }
   }

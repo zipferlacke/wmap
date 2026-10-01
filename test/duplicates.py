@@ -1,7 +1,9 @@
 """Doppelte Touren (data/duplicates.js) auf „Sicherung & Synchronisation“: ohne Doppelte kein Abschnitt; mit doppeltem
 Weg (aus Health Connect mit Puls, dieselbe Aufzeichnung aus dem Ordner und dieselbe Aktivität als GPX aus einer
 anderen Quelle – anderer Start, weniger Punkte, kürzer) und doppelter geplanter Tour erscheint „Zusammenführen“ mit
-der Wahl, welche Aufzeichnung bleibt. Gewählt wird die GPX: sie bleibt und bekommt Kennung und Puls der anderen.
+der Wahl, wessen Strecke (GPS) bleibt und – weil zwei Aufzeichnungen Puls haben – von welcher die Gesundheitsdaten
+kommen. Gewählt wird die Strecke der GPX mit dem Puls aus Health Connect: sie bleibt, bekommt dessen Kennung und Puls
+(120 statt ihrer eigenen 150).
 Dazu: eine von WMap geschriebene GPX-Datei kommt mit derselben Strecke, Zeit und Herkunft zurück (nicht kürzer),
 und eine alte Datei ohne diese Angaben gilt trotzdem als derselbe Weg."""
 import json
@@ -19,7 +21,8 @@ const done = arguments[arguments.length - 1];
   await tracks.put({ ...a, id: 'old1' });
   await tracks.put({ ...a, id: 'hc1', kind: 'health', name: 'Lauf am Sonntagmorgen', source: { health: 'S1', app: 'com.fitbit' }, hr: a.times.map(() => 120) });
   // Dieselbe Aktivität als GPX aus der Uhr-App: 40 s später begonnen, weniger Punkte, etwas kürzer
-  await tracks.put({ ...buildTrack(pts.slice(4).filter((_, i) => i % 3 === 0), { kind: 'gpx', profile: 'foot', name: 'Lauf (GPX)' }), id: 'gpx1' });
+  const g = buildTrack(pts.slice(4).filter((_, i) => i % 3 === 0), { kind: 'gpx', profile: 'foot', name: 'Lauf (GPX)' });
+  await tracks.put({ ...g, id: 'gpx1', hr: g.times.map(() => 150) });
   // Zur selben Zeit, aber woanders (GPX eines anderen): kein Duplikat
   await tracks.put({ ...buildTrack(pts.map(([x, y, ms]) => [x + 1, y, ms + 30000]), { kind: 'gpx', profile: 'foot', name: 'Woanders' }), id: 'far' });
   // Ein anderer Weg (einen Tag später) – kein Duplikat
@@ -46,7 +49,8 @@ const done = arguments[arguments.length - 1];
   const { tracks } = await import('./js/data/tracks.js');
   const { tours } = await import('./js/data/store.js');
   const t = await tracks.all();
-  return { tracks: t.map((x) => [x.id, x.source?.health ?? null, (x.hr ?? []).some((v) => v > 0)]).sort(), tours: tours.all().map((x) => x.id).sort() };
+  const mean = (a) => { const v = (a ?? []).filter((x) => x > 0); return v.length ? Math.round(v.reduce((p, c) => p + c, 0) / v.length) : 0; };
+  return { tracks: t.map((x) => [x.id, x.source?.health ?? null, mean(x.hr)]).sort(), tours: tours.all().map((x) => x.id).sort() };
 })().then(done, (e) => done('FEHLER ' + e));
 """
 
@@ -63,11 +67,14 @@ with Browser() as b:
     b.open('sync.html', wait=3)
     shown = b.wait("return document.querySelector('.sync-dups')?.textContent.replace(/\\s+/g, ' ').trim()", 10)
     print('Abschnitt:', shown)
-    options = b.js("return [...document.querySelectorAll('.dup-option')].map((o) => [o.querySelector('input').value, o.querySelector('input').checked, o.innerText.replace(/\\s+/g, ' ').trim()])")
-    print('Auswahl:', options)
+    OPTS = "return [...document.querySelectorAll(arguments[0])].map((o) => [o.querySelector('input').value, o.querySelector('input').checked, o.innerText.replace(/\\s+/g, ' ').trim()])"
+    options = b.js(OPTS, '.dup-option:not(.dup-values)')
+    values = b.js(OPTS, '.dup-values')
+    print('Strecke von:', options)
+    print('Gesundheitsdaten von:', values)
     b.js("document.querySelector('.sync-dups').scrollIntoView()")
     b.shot('doppelt')
-    # Nicht die vorgeschlagene (Health Connect), sondern die GPX soll bleiben
+    # Nicht die vorgeschlagene Strecke (Health Connect), sondern die der GPX soll bleiben – der Puls aber aus Health Connect
     b.js("const r = document.querySelector('.dup-option input[value=gpx1]'); r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true }))")
     b.js("document.querySelector('[data-act=dedupe]').click()")
     b.wait("return document.querySelector('dialog[open] button[value=yes]')", 5)
@@ -77,8 +84,9 @@ with Browser() as b:
     state = b.d.execute_async_script(STATE)
     print('danach:', json.dumps(state), '· Abschnitt noch da:', after)
     ok = (not before and hint and '2 Touren gibt es doppelt' in hint and shown and '2 aufgezeichnete und 1 geplante' in shown and not after
-          and isinstance(state, dict) and state['tracks'] == [['far', None, False], ['gpx1', 'S1', True], ['other', None, False]]
-          and [o[0] for o in options] == ['hc1', 'old1', 'gpx1'] and options[0][1] and 'Health Connect' in options[0][2] and 'Puls' in options[0][2]
+          and isinstance(state, dict) and state['tracks'] == [['far', None, 0], ['gpx1', 'S1', 120], ['other', None, 0]]
+          and [(v[0], v[1]) for v in values] == [('hc1', True), ('gpx1', False)] and 'Puls (Ø 120)' in values[0][2] and 'Gesundheitsdaten von' in shown and 'Strecke (GPS) von' in shown
+          and [o[0] for o in options] == ['hc1', 'gpx1', 'old1'] and options[0][1] and 'Health Connect' in options[0][2] and 'Punkte' in options[0][2]
           and isinstance(setup, dict) and setup['roundtrip'][0] == setup['roundtrip'][1] and setup['roundtrip'][2] == setup['roundtrip'][3]
           and setup['roundtrip'][4] == 'health' and setup['roundtrip'][5] == {'app': 'com.huami.watch.hmwatchmanager', 'type': 'running', 'health': 'S9'}
           and setup['old'][0] < setup['roundtrip'][0] and setup['old'][1] == 'gpx' and setup['old'][2] is True
