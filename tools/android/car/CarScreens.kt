@@ -110,6 +110,20 @@ private fun mapStrip(ctx: CarContext, s: WMapSession): ActionStrip = ActionStrip
   }) { s.web.call("recenter") })
   .build()
 
+/**
+ * Kopf eines Unterbildschirms: Zurück, Titel und – ab dem zweiten Schritt – ein
+ * ✕ ganz zurück zur Karte (sonst tippt man sich Bildschirm für Bildschirm
+ * zurück). `extra`: weiteres Symbol davor (Merken).
+ */
+private fun header(screen: Screen, title: String, extra: Action? = null): Header {
+  val b = Header.Builder().setTitle(title).setStartHeaderAction(Action.BACK)
+  extra?.let { b.addEndHeaderAction(it) }
+  if (screen.screenManager.stackSize > 2) {
+    b.addEndHeaderAction(iconAction(screen.carContext, R.drawable.wmap_car_close) { screen.screenManager.popToRoot() })
+  }
+  return b.build()
+}
+
 private fun distance(m: Double): Distance = when {
   m < 100 -> Distance.create(((m / 10).roundToInt() * 10).toDouble(), Distance.UNIT_METERS)
   m < 1000 -> Distance.create(((m / 50).roundToInt() * 50).toDouble(), Distance.UNIT_METERS)
@@ -336,8 +350,7 @@ open class ListScreen(
   }
 
   override fun onGetTemplate(): Template {
-    val b = PlaceListNavigationTemplate.Builder()
-      .setHeader(Header.Builder().setTitle(title).setStartHeaderAction(Action.BACK).build())
+    val b = PlaceListNavigationTemplate.Builder().setHeader(header(this, title))
     val list = items
     if (list == null && extra.isEmpty()) b.setLoading(true)
     else {
@@ -369,7 +382,7 @@ class NearbyScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx) {
 
   override fun onGetTemplate(): Template {
     val b = GridTemplate.Builder()
-    if (carContext.api(CarAppApiLevels.LEVEL_7)) b.setHeader(Header.Builder().setTitle("In der Nähe").setStartHeaderAction(Action.BACK).build())
+    if (carContext.api(CarAppApiLevels.LEVEL_7)) b.setHeader(header(this, "In der Nähe"))
     else {
       @Suppress("DEPRECATION") b.setTitle("In der Nähe")
       @Suppress("DEPRECATION") b.setHeaderAction(Action.BACK)
@@ -387,10 +400,19 @@ class NearbyScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx) {
   }
 }
 
-/** Treffer einer Kategorie – erst aus den Kartenkacheln, dann vollständig */
+/**
+ * Treffer einer Kategorie – erst aus den Kartenkacheln, dann vollständig. Ein
+ * Treffer führt gleich zur Routenwahl mit „Los“ (Entfernung und geöffnet/zu
+ * stehen schon in der Zeile): Android Auto erlaubt nur fünf Bildschirme
+ * hintereinander, mit dem Ort dazwischen blieb die Routenwahl leer.
+ */
 class CategoryScreen(ctx: CarContext, s: WMapSession, private val id: String, title: String) :
   ListScreen(ctx, s, title, "Nichts in der Nähe gefunden") {
   private var token = -1
+
+  override fun pick(o: JSONObject) {
+    if (o.has("key")) screenManager.push(RoutePreviewScreen(carContext, s) { d -> s.web.call("routeTo", o.optString("key"), done = d) })
+  }
   private val update: (JSONObject) -> Unit = { o ->
     if (o.optInt("token") == token) {
       items = o.optJSONArray("items").objects()
@@ -420,13 +442,17 @@ class CategoryScreen(ctx: CarContext, s: WMapSession, private val id: String, ti
  * Suche: oben das Suchfeld, rechts der Umschalter „Meine Touren“ / „Orte“
  * (wie zwei Reiter – echte Reiter erlaubt Android Auto nur auf der
  * Startseite). Orte leer: „In der Nähe“ (Parkplatz, Tanken als Knöpfe),
- * dann Zuhause, Arbeit, Lesezeichen, zuletzt gefahren. Meine Touren: alle
- * geplanten, das Suchfeld filtert.
+ * dann Zuhause, Arbeit, Lesezeichen, zuletzt gefahren. „In der Nähe“ klappt
+ * hier in der Liste auf (Parkplätze, Tanken, Laden …) – ein eigener
+ * Bildschirm dafür wäre einer zu viel (höchstens fünf hintereinander).
+ * Meine Touren: die fürs Auto geplanten, das Suchfeld filtert.
  * `route`: über das Routen-Symbol – ein Ort führt gleich zur Route.
  */
 class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String = "", private val route: Boolean = false) : Screen(ctx) {
   private var text = initial
   private var tours = false
+  /** „In der Nähe“ aufgeklappt: die Liste zeigt die Kategorien */
+  private var nearbyOpen = false
   private var items: List<JSONObject>? = null
   private var nearby: List<JSONObject> = emptyList()
   private var seq = 0
@@ -457,7 +483,7 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
   private fun nearbyRow(): Row {
     val b = Row.Builder().setTitle("In der Nähe").addText("Parkplätze, Tanken, Laden, Pause …")
       .setImage(CarIcons.res(carContext, R.drawable.wmap_car_nearby, CarIcons.BLUE))
-      .setOnClickListener { screenManager.push(NearbyScreen(carContext, s)) }
+      .setOnClickListener { nearbyOpen = true; invalidate() }
     if (carContext.api(CarAppApiLevels.LEVEL_8)) {
       nearby.filter { it.optString("id") in listOf("parking", "fuel") }.forEach { c ->
         b.addAction(Action.Builder().setIcon(CarIcons.png(c.optString("png")))
@@ -466,13 +492,14 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
     }
     return try { b.build() } catch (_: Exception) {
       Row.Builder().setTitle("In der Nähe").addText("Parkplätze, Tanken, Laden, Pause …").setBrowsable(true)
-        .setOnClickListener { screenManager.push(NearbyScreen(carContext, s)) }.build()
+        .setOnClickListener { nearbyOpen = true; invalidate() }.build()
     }
   }
 
   override fun onGetTemplate(): Template {
     val b = SearchTemplate.Builder(object : SearchTemplate.SearchCallback {
       override fun onSearchTextChanged(searchText: String) {
+        if (searchText.isNotEmpty()) nearbyOpen = false
         text = searchText
         main.removeCallbacks(later)
         main.postDelayed(later, 450)
@@ -490,11 +517,23 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
       .setActionStrip(ActionStrip.Builder().addAction(
         Action.Builder().setTitle(if (tours) "Orte" else "Meine Touren")
           .setIcon(CarIcons.res(carContext, if (tours) R.drawable.wmap_car_search else R.drawable.wmap_car_tours))
-          .setOnClickListener { tours = !tours; items = null; query(); invalidate() }.build(),
+          .setOnClickListener { tours = !tours; nearbyOpen = false; items = null; query(); invalidate() }.build(),
       ).build())
     if (text.isNotEmpty()) b.setInitialSearchText(text)
     val list = items
-    if (list == null) b.setLoading(true)
+    if (nearbyOpen && !tours && nearby.isNotEmpty()) {
+      // Die Kategorien statt der Treffer – zurück zur Suche über die erste Zeile
+      val il = ItemList.Builder()
+      il.addItem(Row.Builder().setTitle("In der Nähe").addText("Zurück zu Zielen und Suche")
+        .setImage(CarIcons.res(carContext, R.drawable.wmap_car_nearby, CarIcons.BLUE))
+        .setOnClickListener { nearbyOpen = false; invalidate() }.build())
+      nearby.forEach { c ->
+        il.addItem(Row.Builder().setTitle(c.optString("title")).setBrowsable(true)
+          .apply { c.optString("png").takeIf { it.isNotEmpty() }?.let { setImage(CarIcons.png(it)) } }
+          .setOnClickListener { screenManager.push(CategoryScreen(carContext, s, c.optString("id"), c.optString("title"))) }.build())
+      }
+      b.setItemList(il.build())
+    } else if (list == null) b.setLoading(true)
     else {
       val il = ItemList.Builder()
       if (!tours && text.length < 2) il.addItem(nearbyRow())
@@ -566,7 +605,7 @@ class PlaceScreen(ctx: CarContext, private val s: WMapSession, place: JSONObject
         }
       }.build() else null
     val content = PaneTemplate.Builder(pane.build()).apply {
-      if (carContext.api(CarAppApiLevels.LEVEL_7)) setHeader(Header.Builder().setTitle(title).setStartHeaderAction(Action.BACK).apply { star?.let { addEndHeaderAction(it) } }.build())
+      if (carContext.api(CarAppApiLevels.LEVEL_7)) setHeader(header(this@PlaceScreen, title, star))
       else {
         @Suppress("DEPRECATION") setTitle(title)
         @Suppress("DEPRECATION") setHeaderAction(Action.BACK)
@@ -605,7 +644,7 @@ class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private va
   override fun onGetTemplate(): Template {
     val r = result
     val b = RoutePreviewNavigationTemplate.Builder()
-      .setHeader(Header.Builder().setTitle(r?.optString("title")?.ifEmpty { "Route" } ?: "Route").setStartHeaderAction(Action.BACK).build())
+      .setHeader(header(this, r?.optString("title")?.ifEmpty { "Route" } ?: "Route"))
     if (r == null) b.setLoading(true)
     else {
       val routes = r.optJSONArray("routes").objects()
