@@ -182,6 +182,15 @@ class HealthPlugin(private val activity: Activity) : Plugin(activity) {
             is ExerciseRouteResult.ConsentRequired -> o.put("route", "consent")
             else -> o.put("route", "none")
         }
+        // Abschnitte und Runden: manche Apps legen hier Wiederholungen ab (Ruderschläge, Bahnen) –
+        // [Start, Ende, Art, Wiederholungen] bzw. [Start, Ende, Meter]
+        val segments = JSArray()
+        for (g in s.segments) segments.put(JSArray().put(g.startTime.toEpochMilli()).put(g.endTime.toEpochMilli()).put(g.segmentType).put(g.repetitions))
+        o.put("segments", segments)
+        val laps = JSArray()
+        for (l in s.laps) laps.put(JSArray().put(l.startTime.toEpochMilli()).put(l.endTime.toEpochMilli()).put(l.length?.inMeters ?: 0.0))
+        o.put("laps", laps)
+        s.notes?.let { o.put("notes", it) }
         return o
     }
 
