@@ -67,6 +67,8 @@ class WMapSession : Session() {
   private var alertId = 0
   private val alerts = HashMap<Int, Int>()
   private var pendingIntent: Intent? = null
+  /** Was die Startkarte öffnet, sobald sie wieder oben liegt (ein Bildschirm ersetzt einen anderen, CarScreens.kt) */
+  var afterHome: (() -> Unit)? = null
   /** Listen, die auf Nachschub warten (Kategorie: erst Kacheln, dann Overpass) */
   val listListeners = ArrayList<(JSONObject) -> Unit>()
 
