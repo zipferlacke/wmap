@@ -162,9 +162,16 @@ class CarWeb(private val ctx: CarContext, private val onEvent: (String, Any?) ->
     sendInsets()
   }
 
+  /*
+   * Die Fläche geht auch weg, wenn das Auto eine Vorlage ohne Karte zeigt
+   * (Suche, Listen). Die Seite muss dann weiter antworten – Suchen, „Meine
+   * Touren“, Ziele kommen von ihr. Darum hier NICHT web.onPause(): Das hielt
+   * Timer und Netz der Seite an (gemessen: setTimeout und fetch kamen nicht
+   * mehr zurück), „Meine Touren“ blieb leer und die Suche ohne Treffer.
+   * Gezeichnet wird ohne Fläche ohnehin nicht.
+   */
   override fun onSurfaceDestroyed(container: SurfaceContainer) {
     display?.surface = null
-    web?.onPause()
   }
 
   /** Was die Vorlagen frei lassen – dorthin passt die Seite Route und Standort ein */
@@ -218,6 +225,9 @@ class CarWeb(private val ctx: CarContext, private val onEvent: (String, Any?) ->
       mediaPlaybackRequiresUserGesture = false
       userAgentString = "$userAgentString WMapCar/${BuildConfig.VERSION_NAME}"
     }
+    // Auch ohne sichtbare Fläche (Suche, Listen im Auto) wichtig bleiben – sonst
+    // stuft Android den Prozess der Seite herab und sie antwortet nicht mehr
+    w.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
     w.addJavascriptInterface(Bridge(), "WMapCar")
     w.addJavascriptInterface(Speech(), "WMapAndroid")
     w.webChromeClient = object : WebChromeClient() {

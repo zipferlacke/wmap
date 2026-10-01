@@ -1372,6 +1372,12 @@ gemeinsamem Speicher fasst das Auto nichts an. Die App legt beim Start und
 nach jeder Änderung ab, das Auto liest beim Start und bevor es Touren oder
 Ziele auflistet. Die App muss dafür einmal geöffnet gewesen sein.
 
+Zeigt das Auto eine Vorlage ohne Karte (Suche, Listen), nimmt es der App die
+Kartenfläche weg. Die Seite läuft dann weiter (`CarWeb.onSurfaceDestroyed`
+hält sie nicht an, ihr Prozess bleibt wichtig) – sie beantwortet ja gerade
+dann die Suche, „Meine Touren“ und die Ziele. Angehalten kamen Timer und
+Netz der Seite nicht mehr zurück: die Listen blieben leer.
+
 Ausprobieren ohne Auto: Android Auto auf dem Handy → Version zehnmal
 antippen → Entwicklereinstellungen → „Unbekannte Quellen“ an (sonst fehlt
 eine nicht aus dem Play Store installierte App) → Menü „Head Unit Server
