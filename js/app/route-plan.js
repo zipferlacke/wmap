@@ -27,6 +27,8 @@ export const isSet = (w) => w.me || !!w.point;
 export function enterRoute({ to = null, from = null, waypoints = null, push = true } = {}) {
   const wasRoute = state.mode === 'route';
   state.mode = 'route';
+  // Für den Standort als Pfeil (map/location-dot.js, css/app/map.css)
+  document.body.classList.add('route-view');
   $('#search-form').hidden = true;
   $('#route-form').hidden = false;
   suggest.hide();
@@ -57,6 +59,7 @@ export function enterRoute({ to = null, from = null, waypoints = null, push = tr
 export function leaveRouteMode() {
   if (state.mode !== 'route') return;
   state.mode = 'search';
+  document.body.classList.remove('route-view');
   routeCtl?.abort();
   state.waypoints = [];
   state.avoid = [];

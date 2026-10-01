@@ -5,6 +5,8 @@
  *   Punkt und Kreis   gleiten zwischen zwei Meldungen, statt zu springen
  *   Kreis             blau durchsichtig, so groß wie die Ungenauigkeit – ruhig,
  *                     ohne Pulsieren; ist der Standort genau (≤ 12 m), ganz weg
+ *   Routenansicht     statt Punkt und Kegel der Pfeil der Navigation (weiße Scheibe, blauer Pfeil),
+ *                     gedreht in Blickrichtung – der Start „Mein Standort“ hat sonst kein Zeichen
  *   Blickrichtung     Kegel am Punkt: in Fahrt die Richtung des GPS, sonst der
  *                     Kompass (deviceorientationabsolute) – MapLibre selbst
  *                     kennt keine Richtung
@@ -24,11 +26,14 @@ export function enhanceDot(map, geolocate) {
   let gpsAt = 0;                   // letzte Meldung mit Fahrt
   let compassOn = false;
   let cone = null;
+  let arrow = null;
 
   const paint = () => {
     if (!cone) return;
     cone.hidden = heading === null;
     if (heading !== null) cone.style.transform = `rotate(${heading - map.getBearing()}deg)`;
+    // Ohne bekannte Richtung zeigt der Pfeil nach Norden der Karte
+    if (arrow) arrow.style.transform = `rotate(${(heading ?? 0) - map.getBearing()}deg)`;
   };
 
   const turnTo = (deg) => {
@@ -70,6 +75,12 @@ export function enhanceDot(map, geolocate) {
       cone.className = 'wmap-heading';
       cone.hidden = true;
       geolocate._dotElement.prepend(cone);
+      // Routenansicht: der Standort als Pfeil wie in der Navigation (nur dort sichtbar, css/app/map.css)
+      arrow = document.createElement('div');
+      arrow.className = 'wmap-arrow';
+      arrow.innerHTML = '<span class="msr">navigation</span>';
+      geolocate._dotElement.append(arrow);
+      paint();
       map.on('rotate', paint);
     }
     const c = pos.coords;

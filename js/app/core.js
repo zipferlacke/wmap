@@ -86,6 +86,20 @@ async function showDot() {
 }
 map.once('load', () => setTimeout(showDot, 300));
 
+/*
+ * Die Karte geht von selbst woanders hin (Route einpassen, Ort zeigen): Der Standort-Knopf lässt los.
+ * MapLibre tut das nur, wenn man die Karte verschiebt – ein Flug mit Zoom gilt ihm nicht als „weg vom
+ * Standort“, und mit der nächsten Standortmeldung holte es die Karte zurück: Die Routenübersicht sprang
+ * dann jedes Mal wieder zum eigenen Standort. Der Punkt bleibt, nur das Folgen endet.
+ */
+export function releaseLock() {
+  if (!['ACTIVE_LOCK', 'WAITING_ACTIVE'].includes(geolocate._watchState)) return;
+  geolocate._watchState = 'BACKGROUND';
+  const btn = geolocate._geolocateButton;
+  btn?.classList.remove('maplibregl-ctrl-geolocate-waiting', 'maplibregl-ctrl-geolocate-active');
+  btn?.classList.add('maplibregl-ctrl-geolocate-background');
+}
+
 /** `ask: false`: ohne Freigabe nicht nachfragen (Start der Karte) */
 export function myPosition({ ask = true } = {}) {
   return new Promise((resolve, reject) => {
@@ -138,6 +152,7 @@ export function viewPadding() {
  */
 export function fitTo([w, s, e, n], maxZoom = 16, { flat = false } = {}) {
   if (flat) map.quietFit = true;
+  releaseLock();
   const padding = viewPadding();
   // Ein Rand, den die Karte noch trägt (freie Fahrt im Auto, Folgen der Navigation), zählt MapLibre zum neuen
   // dazu – die Route läge dann winzig in einem Bruchteil der freien Fläche

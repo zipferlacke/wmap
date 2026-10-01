@@ -130,7 +130,14 @@ Man startet immer mit der Karte.
   „Mein Standort“ keinen eigenen Startpunkt hat –, ohne dass die Karte
   dafür verschoben wird (`showDot` in `js/app/core.js`: der Standort-Knopf
   startet „im Hintergrund“). Ein Tipp auf den Knopf springt wie gewohnt
-  hin. Gefragt wird beim Start nicht.
+  hin. Gefragt wird beim Start nicht. In der **Routenansicht** steht er als
+  Pfeil wie in der Navigation (weiße Scheibe, blauer Pfeil in
+  Blickrichtung; `.wmap-arrow`, `body.route-view`).
+- **Folgen endet, wenn die Karte von selbst woanders hingeht** (Route
+  einpassen, Ort zeigen – `releaseLock` in `js/app/core.js`): MapLibre
+  lässt den Standort-Knopf nur beim Verschieben los, nicht bei einem Flug
+  mit Zoom; die Routenübersicht sprang sonst mit der nächsten
+  Standortmeldung zurück zum eigenen Standort.
 - **Quellenangabe:** nur ein kleines (i) unten links, das erst beim Antippen
   aufgeht. Ausführlich stehen die Quellen, Version und Impressum unten auf
   der Übersicht (Danke-Banner).

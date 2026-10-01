@@ -15,7 +15,7 @@ import { connections } from '../data/saved.js';
 import { share, routeUrl, clock } from '../ui/share.js';
 import { toast } from '../ui/dialogs.js';
 import { nearestOnLine, pointAt, simplifyTo, bbox, fmtDistance, fmtDuration, esc } from '../core/geo.js';
-import { CAR, $, afterLayout, chipHtml, current, debounce, fitTo, map, myPosition, sheet, state, viewPadding } from './core.js';
+import { CAR, $, afterLayout, chipHtml, current, debounce, fitTo, map, myPosition, releaseLock, sheet, state, viewPadding } from './core.js';
 import { nav } from './nav.js';
 import { compactRoute, isSet, transitWhen } from './route-plan.js';
 import { loadTraffic, runAlong } from './traffic-along.js';
@@ -269,6 +269,7 @@ $('.step-list').addEventListener('click', (e) => {
   const r = current();
   if (!b || !r) return;
   const m = r.maneuvers[Number(b.dataset.i)];
+  releaseLock();
   map.flyTo({ center: r.coords[m.begin], zoom: 17, padding: viewPadding(), duration: 900 });
 });
 

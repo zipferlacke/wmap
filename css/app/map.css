@@ -111,6 +111,24 @@
     &.precise { display: none; }
 }
 
+/* Routenansicht: der eigene Standort als Pfeil wie in der Navigation (.nav-me) – weiße Scheibe,
+   blauer Pfeil in Blickrichtung – statt Punkt und Kegel (map/location-dot.js) */
+.wmap-arrow { display: none; }
+body.route-view:not(.navigating) .maplibregl-user-location-dot {
+    background: none;
+    &::after { display: none; }
+    .wmap-heading { display: none; }
+    .wmap-arrow {
+        position: absolute; left: 50%; top: 50%;
+        width: 2.5rem; height: 2.5rem; margin: -1.25rem 0 0 -1.25rem;
+        display: grid; place-items: center;
+        border-radius: 50%;
+        background: #fff; color: var(--route);
+        box-shadow: 0 0 0 2px rgb(0 0 0 / .08), 0 2px 6px rgb(0 0 0 / .35);
+        .msr { font-size: 1.9rem; font-variation-settings: 'FILL' 1; }
+    }
+}
+
 /* Blickrichtung: Kegel ab dem Rand des Punkts (Kompass bzw. GPS-Richtung) */
 .wmap-heading {
     position: absolute;

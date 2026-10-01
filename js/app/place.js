@@ -14,7 +14,7 @@ import { toast } from '../ui/dialogs.js';
 import { editPlace, addPlace } from '../osm/edit.js';
 import { bboxAround, esc } from '../core/geo.js';
 import { clearCategory, runCategory } from './category.js';
-import { $, afterLayout, chipHtml, current, extentToBounds, fitTo, lastHl, map, markerEl, parseTags, q, sheet, showHl, state, viewPadding } from './core.js';
+import { $, afterLayout, chipHtml, current, extentToBounds, fitTo, lastHl, map, markerEl, parseTags, q, releaseLock, sheet, showHl, state, viewPadding } from './core.js';
 import { showLayerInfo } from './map-clicks.js';
 import { nav } from './nav.js';
 import { clearReach, openReach, reach } from './reach.js';
@@ -111,7 +111,7 @@ export async function showPlace(f, { push = true, fly = true, over = false } = {
   const bounds = extentToBounds(f.properties.extent);
   if (fly) {
     if (bounds) afterLayout(() => fitTo(bounds));
-    else afterLayout(() => map.flyTo({ center: p, zoom: Math.max(map.getZoom(), 16), padding: viewPadding(), duration: 1200 }));
+    else afterLayout(() => { releaseLock(); map.flyTo({ center: p, zoom: Math.max(map.getZoom(), 16), padding: viewPadding(), duration: 1200 }); });
   }
 
   const show = (tags) => {
