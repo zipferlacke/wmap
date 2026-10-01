@@ -747,10 +747,21 @@ body.stage-mode #map canvas { cursor: crosshair; }
 }
 .weg-note { display: flex; align-items: flex-start; gap: .4rem; margin: 0; .msr { font-size: 1.1rem; flex-shrink: 0; } }
 
-/* Art, Farbe, auf der Karte, offline verfügbar */
+/* Art, Farbe, auf der Karte, offline verfügbar – zum Auf- und Zuklappen */
 .weg-look {
-    display: grid; gap: .6rem;
-    padding: .65rem .7rem; border-radius: .8rem; background: var(--surface-2);
+    padding: .1rem .7rem; border-radius: .8rem; background: var(--surface-2);
+    &[hidden] { display: none; }
+    > summary {
+        display: flex; align-items: center; gap: .45rem; padding: .55rem 0; cursor: pointer; list-style: none;
+        &::-webkit-details-marker { display: none; }
+        > .msr:first-child { color: var(--route); font-size: 1.2rem; }
+        .weg-look-title { font-weight: 600; font-size: var(--fs-200); white-space: nowrap; }
+        small { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: .35rem; color: var(--muted); font-size: var(--fs-200); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .weg-look-dot { flex: none; width: .7rem; height: .7rem; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1px var(--line); }
+        .weg-look-arrow { color: var(--muted); transition: transform .15s ease; }
+    }
+    &[open] > summary .weg-look-arrow { transform: rotate(180deg); }
+    > :not(summary) { margin-bottom: .6rem; }
     > label, > div > span:first-child { font-size: var(--fs-200); }
     .weg-sport {
         display: flex; align-items: center; gap: .6rem;

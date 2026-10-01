@@ -68,6 +68,9 @@ with Browser(width=1300, height=900) as b:
     b.js("localStorage.setItem('wmap.tracks.show', '\"all\"'); localStorage.removeItem('wmap.tracks.years')")
     b.open('wege.html?id=look3', wait=5)
     before = b.js("return [...document.querySelectorAll('.weg-stats small')].map((x) => x.textContent)")
+    # Art, Farbe und Ausblenden liegen in einem Block zum Aufklappen – zu, bis man ihn öffnet; offen bleibt er beim Ändern
+    look = b.js("const d = document.querySelector('details.weg-look'); const r = [d.open, d.querySelector('summary').innerText.replace(/\\s+/g, ' ').trim(), !!d.querySelector('.weg-sport select') && !!d.querySelector('[data-flag=map]') && !!d.querySelector('.swatch')]; d.querySelector('summary').click(); return r")
+    time.sleep(.3)
     b.js("const s = document.querySelector('.weg-sport select'); s.value = 'rowing'; s.dispatchEvent(new Event('change', { bubbles: true }))")
     time.sleep(1.5)
     after = b.js("return [...document.querySelectorAll('.weg-stats small')].map((x) => x.textContent)")
@@ -76,6 +79,10 @@ with Browser(width=1300, height=900) as b:
     b.js("document.querySelector('[data-flag=\"map\"]').click()")
     time.sleep(1.5)
     b.shot('tour-aussehen')
+    look_after = b.js("const d = document.querySelector('details.weg-look'); return [d.open, d.querySelector('summary').innerText.replace(/\\s+/g, ' ').trim()]")
+    print('Block „Art, Farbe und Anzeige“:', look, look_after)
+    checks['4. Art, Farbe und Ausblenden in einem Block zum Aufklappen (zu, offen bleibt offen, Kopf nennt den Stand)'] = (
+        look[0] is False and look[2] is True and 'Art, Farbe und Anzeige' in look[1] and look_after[0] is True and 'Rudern' in look_after[1] and 'ausgeblendet' in look_after[1])
     saved = call(b, "const { tracks, trackGpx, parseGpx } = await import('./js/data/tracks.js'); const t = await tracks.get('look3'); const back = parseGpx(trackGpx(t))[0]; return { sport: t.sport, color: t.color, hidden: t.hidden, updated: !!t.updated, back: [back.sport, back.color, back.hidden, back.times.length === t.times.length] };")
     print('gespeichert:', saved, before, after)
     icon = b.js("return document.querySelector('.weg-when .msr').textContent + ' ' + document.querySelector('.weg-when .msr').style.color")

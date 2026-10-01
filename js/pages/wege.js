@@ -78,6 +78,7 @@ const query = { wege: '', geplant: '', bahn: '', orte: '' };
 let sharedList = null;             // geöffneter Link „?liste=“: { name, items: [{ name, label, point }] }
 let selected = null;               // gewählter Weg oder Tour
 let folderOn = false;              // Ordner verbunden: „offline verfügbar“ anbieten
+let lookOpen = false;              // Tour: Block „Art, Farbe und Anzeige“ aufgeklappt (bleibt es beim Neuzeichnen)
 
 const panel = $('.wege-panel');
 const content = $('.wege-content');
@@ -609,7 +610,10 @@ function paintTrack(t, note = '') {
     <div class="chip-row weg-chart-tabs" role="group" aria-label="Diagramm" hidden></div>
     <div class="elevation"></div>
     <section class="weg-laps" hidden></section>
-    <section class="weg-look" ${t.shared ? 'hidden' : ''}>
+    <details class="weg-look" ${lookOpen ? 'open' : ''} ${t.shared ? 'hidden' : ''}>
+      <summary><span class="msr">palette</span><span class="weg-look-title">Art, Farbe und Anzeige</span>
+        <small><i class="weg-look-dot" style="--c:${esc(color)}"></i>${esc([sportName(sport), shown ? '' : 'ausgeblendet', t.pin ? 'offline verfügbar' : ''].filter(Boolean).join(' · '))}</small>
+        <span class="msr weg-look-arrow">expand_more</span></summary>
       <label class="weg-sport"><span>Art</span>
         <select name="sport" aria-label="Art der Tour">
           <option value="">${natural ? `${esc(sportName(natural))} (Standard)` : 'Keine – nur GPX'}</option>
@@ -627,7 +631,7 @@ function paintTrack(t, note = '') {
         <button type="button" class="chip" data-flag="map" aria-pressed="${shown}"><span class="msr">${shown ? 'visibility' : 'visibility_off'}</span> Auf der Karte</button>
         ${folderOn ? `<button type="button" class="chip" data-flag="pin" aria-pressed="${!!t.pin}" title="Bleibt ganz in der App – auch ohne den Ordner"><span class="msr">offline_pin</span> Offline verfügbar</button>` : ''}
       </div>
-    </section>
+    </details>
     <div class="weg-actions">${t.shared ? `
       <button type="button" class="button primary" data-do="keep"><span class="msr">bookmark_add</span> Bei mir speichern</button>
       <button type="button" class="button" data-do="gpx"><span class="msr">download</span> GPX</button>` : `
@@ -637,6 +641,7 @@ function paintTrack(t, note = '') {
       <button type="button" class="button" data-do="gpx"><span class="msr">download</span> GPX</button>
       <button type="button" class="button" data-do="delete"><span class="msr">delete</span> Löschen</button>`}
     </div>`;
+  $('.weg-look', content)?.addEventListener('toggle', (e) => { lookOpen = e.target.open; });
   page.open();
   paintMap();
   fitView();
