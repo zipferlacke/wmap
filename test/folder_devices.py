@@ -10,14 +10,20 @@
 7. Verzeichnis (Inhalt.json): ein Ordner ohne Änderungszeiten wird beim zweiten Abgleich nicht noch einmal gelesen.
 8. Ordner neu verbunden (Index weg), Einträge noch da: laut Verzeichnis gleich – keine Datei wird gelesen.
 9. Die Ordnung gilt: von Hand hineingelegt (unter „Aufgezeichnete Touren/“) kommt dazu, irgendwo abgelegt nicht.
-10. Von Hand im Ordner gelöscht: der Eintrag verschwindet hier, das Verzeichnis nennt die Datei nicht mehr."""
+10. Von Hand im Ordner gelöscht: der Eintrag verschwindet hier, das Verzeichnis nennt die Datei nicht mehr.
+11. Dieselbe Kennung in zwei Dateien (Kopie): die mit dem kleineren Pfad bleibt.
+12. Dieselbe Aufzeichnung unter zwei Kennungen (Health Connect zweimal geholt): die Datei mit der kleineren Kennung
+    bleibt, der Puls der anderen kommt dazu, die andere Kennung steht in Gelöscht.json – auch auf einem frischen Gerät.
+13. Datei nicht lesbar: bekannt → der Eintrag hier bleibt; unbekannt → es wird keine zweite Datei daneben geschrieben.
+14. Automatisch beim Öffnen einer Seite: nicht gleich noch einmal (5 Minuten), nach einem Abbruch sofort.
+15. Health Connect: dieselbe Kennung für dasselbe Training (healthTrackId)."""
 import json
 import sys
 from common import Browser
 
 TEST = r"""
-const { folder } = await import('./js/data/folder.js');
-const { tracks, buildTrack, trackGpx, healthGone } = await import('./js/data/tracks.js');
+const { folder, autoFolderSync } = await import('./js/data/folder.js');
+const { tracks, buildTrack, trackGpx, healthGone, healthTrackId } = await import('./js/data/tracks.js');
 const { tours, toGpx } = await import('./js/data/store.js');
 const { knownHealthIds } = await import('./js/services/health.js');
 const files = new Map();
@@ -143,6 +149,63 @@ out.ten = await folder.sync();
 out.tenNames = (await tracks.all()).map((t) => t.name).filter((n) => /Verzeichnis/.test(n)).sort();
 out.tenListed = Object.keys(manifest()).some((p) => p.includes('Verzeichnis 2'));
 out.tenFiles = [...files.keys()].some((p) => p.includes('Verzeichnis 2'));
+
+// ── 11. Kopie: dieselbe Kennung in zwei Dateien ──
+folder._useBackend(be, 'Nextcloud');
+await folder.sync();
+const m1 = [...files.keys()].find((p) => p.includes('Verzeichnis 1'));
+files.set(m1.replace('.gpx', ' (2).gpx'), { text: files.get(m1).text, modified: clock += 1000 });
+files.set(m1.replace('.gpx', ' (3).gpx'), { text: files.get(m1).text, modified: clock += 1000 });
+out.eleven = await folder.sync();
+out.elevenFiles = [...files.keys()].filter((p) => p.includes('Verzeichnis 1')).map((p) => p.split('/').pop());
+out.elevenTracks = (await tracks.all()).filter((t) => t.name === 'Verzeichnis 1').length;
+out.elevenAgain = await folder.sync();
+
+// ── 12. Dieselbe Aufzeichnung unter zwei Kennungen ──
+const hcPts = pts.map(([x, y, ms]) => [x + 0.2, y, ms + 5 * 864e5]);
+const base12 = buildTrack(hcPts, { kind: 'health', profile: 'foot', name: 'Rudern am Freitag' });
+const twinA = { ...base12, id: 'dupb', source: { health: 'S9', app: 'com.zepp', type: 'rowing' } };
+const twinB = { ...base12, id: 'dupa', source: { health: 'S9', app: 'com.zepp', type: 'rowing' }, hr: base12.times.map(() => 120) };
+const twinC = { ...base12, id: 'dupc', source: { health: 'S9', app: 'com.zepp', type: 'rowing' } };
+const dir12 = 'WMap/Aufgezeichnete Touren/2026/09 September/';
+files.set(`${dir12}2026-09-25 Rudern am Freitag.gpx`, { text: trackGpx(twinA), modified: clock += 1000 });
+files.set(`${dir12}2026-09-25 Rudern am Freitag (2).gpx`, { text: trackGpx(twinB), modified: clock += 1000 });
+files.set(`${dir12}2026-09-25 Rudern am Freitag (3).gpx`, { text: trackGpx(twinC), modified: clock += 1000 });
+await tracks.putQuiet(twinC);                       // eine der drei gibt es hier schon
+out.twelve = await folder.sync();
+const row = (await tracks.all()).filter((t) => t.source?.health === 'S9');
+out.twelveTracks = row.map((t) => [t.id, (t.hr ?? []).filter((v) => v > 0).length > 0]);
+out.twelveFiles = [...files.keys()].filter((p) => p.includes('Rudern am Freitag')).map((p) => [p.split('/').pop(), files.get(p).text.match(/wmap:(\w+)/)[1], /gpxtpx:hr/.test(files.get(p).text)]);
+out.twelveGone = Object.keys(JSON.parse(files.get('WMap/Gelöscht.json').text).deleted).filter((id) => /^dup/.test(id)).sort();
+out.twelveAgain = await folder.sync();
+// Zweites Gerät: hatte „dupb“ (die Datei gibt es nicht mehr) – dort verschwindet er, „dupa“ kommt
+await tracks.removeQuiet('dupa');
+await tracks.putQuiet(twinA);
+folder._useBackend(be, 'Nextcloud');
+out.twelveOther = await folder.sync();
+out.twelveOtherTracks = (await tracks.all()).filter((t) => t.source?.health === 'S9').map((t) => t.id);
+out.twelveOtherFiles = [...files.keys()].filter((p) => p.includes('Rudern am Freitag')).length;
+
+// ── 13. Nicht lesbar ──
+const rPath = [...files.keys()].find((p) => p.includes('Rudern am Freitag'));
+files.set(rPath, { ...files.get(rPath), modified: clock += 1000 });
+broken = rPath;
+out.thirteenKnown = await folder.sync();
+out.thirteenKnownTracks = (await tracks.all()).filter((t) => t.source?.health === 'S9').length;
+folder._useBackend(be, 'Nextcloud');               // Index weg: die Datei ist unbekannt und nicht lesbar
+out.thirteenUnknown = await folder.sync();
+out.thirteenFiles = [...files.keys()].filter((p) => p.includes('Rudern am Freitag')).length;
+out.thirteenTracks = (await tracks.all()).filter((t) => t.source?.health === 'S9').length;
+broken = null;
+out.thirteenAfter = await folder.sync();
+out.thirteenAfterFiles = [...files.keys()].filter((p) => p.includes('Rudern am Freitag')).length;
+
+// ── 14. Automatisch: nicht bei jeder Seite ──
+out.fourteenSoon = await autoFolderSync();
+out.fourteenPeriodic = await autoFolderSync({ periodic: true });
+
+// ── 15. Kennung aus Health Connect ──
+out.fifteen = [healthTrackId(1790000000000, 'abc-1'), healthTrackId(1790000000000, 'abc-1'), healthTrackId(1790000000000, 'abc-2')];
 return out;
 """
 
@@ -164,6 +227,13 @@ with Browser() as b:
         '8. neu verbunden, Einträge da: laut Verzeichnis gleich – nichts gelesen, nichts doppelt': r['eightReads'] == 0 and r['eightCount'] == 3 and r['eight']['imported'] == 0 and r['eight']['written'] == 0,
         '9. von Hand in die Ordnung gelegt kommt dazu (nur sie wird gelesen), irgendwo abgelegt nicht': r['nineReads'] == ['Von Hand.gpx'] and r['nineNames'] == ['Von Hand'] and r['nineListed'],
         '10. von Hand gelöscht → Eintrag weg, nicht mehr im Verzeichnis, nicht zurückgeschrieben': r['tenNames'] == ['Verzeichnis 1', 'Verzeichnis 3'] and not r['tenListed'] and not r['tenFiles'],
+        '11. Kopie mit derselben Kennung → eine Datei (kleinster Pfad), ein Weg, danach Ruhe': len(r['elevenFiles']) == 1 and '(' not in r['elevenFiles'][0] and r['elevenTracks'] == 1 and r['eleven']['merged'] == 2 and r['elevenAgain']['merged'] == 0,
+        '12. dieselbe Aufzeichnung dreimal → kleinste Kennung bleibt, Puls kommt dazu, die anderen in Gelöscht.json': r['twelveTracks'] == [['dupa', True]] and len(r['twelveFiles']) == 1 and r['twelveFiles'][0][1:] == ['dupa', True] and r['twelveGone'] == ['dupb', 'dupc'] and r['twelve']['merged'] == 2 and r['twelveAgain']['merged'] == 0 and r['twelveAgain']['written'] == 0,
+        '12. zweites Gerät mit der anderen Kennung → übernimmt die bleibende, schreibt nichts zurück': r['twelveOtherTracks'] == ['dupa'] and r['twelveOtherFiles'] == 1,
+        '13. bekannte Datei nicht lesbar → Eintrag bleibt': r['thirteenKnownTracks'] == 1 and r['thirteenKnown']['removed'] == 0,
+        '13. unbekannte Datei nicht lesbar → keine zweite Datei daneben, danach normal': r['thirteenFiles'] == 1 and r['thirteenTracks'] == 1 and r['thirteenAfterFiles'] == 1,
+        '14. automatisch beim Öffnen: nicht gleich wieder; der 30-Minuten-Takt nur, wenn gewählt': r['fourteenSoon'] is None and r['fourteenPeriodic'] is None,
+        '15. Health Connect: gleiche Kennung für dasselbe Training, andere für ein anderes': r['fifteen'][0] == r['fifteen'][1] and r['fifteen'][0] != r['fifteen'][2] and r['fifteen'][0].startswith('w'),
     }
     for k, v in checks.items():
         print(('ok    ' if v else 'FALSCH') + ' ' + k)

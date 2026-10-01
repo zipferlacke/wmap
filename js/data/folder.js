@@ -46,9 +46,17 @@
  *                         es jedes Gerät, auch eins, das noch nie oder lange
  *                         nicht abgeglichen hat (sonst schriebe es die Datei
  *                         mit seinem alten Stand zurück)
- * Derselbe Weg zweimal (in einer neuen App schon aus Health Connect geholt,
- * im Ordner noch mit der ID der alten App): bleibt einmal, mit der ID aus dem
- * Ordner.
+ * Derselbe Weg zweimal bleibt einmal – auf jedem Gerät derselbe, sonst
+ * löschte jedes einen anderen:
+ *   dieselbe Kennung in zwei Dateien (Kopie)   die mit dem kleineren Pfad bleibt
+ *   dieselbe Aufzeichnung unter zwei Kennungen (dasselbe Training aus Health
+ *   Connect, gleicher Start und gleiche Länge – etwa nach einer Neuinstallation
+ *   noch einmal geholt)                        die Datei mit der kleineren
+ *                                              Kennung bleibt, was nur die andere
+ *                                              hatte (Puls …), kommt dazu; die
+ *                                              andere steht in Gelöscht.json
+ * Eine fremde Datei ohne Kennung (Garmin-Export …) bleibt liegen und steht
+ * für den Weg, den es schon gibt.
  * Geändert heißt: andere Änderungszeit und anderer Inhalt als beim letzten
  * Abgleich (manche Cloud-Ordner unter Android melden keine Zeit).
  *
@@ -60,7 +68,8 @@
  * Ohne beides bleiben Einlesen, Teilen und die ZIP-Sicherung (pages/sync.js).
  */
 import { store } from './db.js';
-import { tracks, trackGpx, parseGpx, sameTrack, backup, restore } from './tracks.js';
+import { tracks, trackGpx, parseGpx, sameTrack, backup, restore, bulk } from './tracks.js';
+import { merge } from './duplicates.js';
 import { makeZip, readZip } from './zip.js';
 import { tours, toGpx, coordsOf, shapeOf, local } from './store.js';
 import { simplifyTo, distance } from '../core/geo.js';
@@ -71,6 +80,7 @@ const KEY = 'folder';
 const DELETED = 'wmap.folder.deleted';   // in WMap gelöscht, Datei noch löschen
 const GONE_KEEP_MS = 365 * 24 * 3600 * 1000;   // so lange steht Gelöschtes in Gelöscht.json
 const REVIVED = 'wmap.folder.revived';   // gelöscht, dann hier wieder angelegt (ZIP, Import) – gilt wieder
+const AUTO_EVERY_MS = 5 * 60000;          // beim Öffnen einer Seite höchstens so oft
 const AUTO = 'wmap.sync.auto';            // 'off' | 'start' (beim Öffnen und nach Änderungen) | 'every30' (dazu alle 30 min)
 
 const core = typeof window !== 'undefined' ? window.__TAURI__?.core : null;
@@ -293,7 +303,7 @@ async function run(interactive) {
     c.error = null;
     c.pending = false;
     await persist();
-    if (out.imported || out.removed || out.settings === 'imported') dispatchEvent(new CustomEvent('wmap:folder', { detail: out }));
+    if (out.imported || out.removed || out.merged || out.settings === 'imported') dispatchEvent(new CustomEvent('wmap:folder', { detail: out }));
     dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { done: true } }));
     return out;
   } catch (err) {
@@ -328,7 +338,9 @@ async function syncAll(c, be) {
 
   // Nur die Ordnung: Geplante Touren/, Aufgezeichnete Touren/, Bus & Bahn/ (und die Ordner bis 1.0)
   const inPlace = (path) => path.startsWith(base) && (STRUCTURE.test(path.slice(base.length)));
-  const files = listed.filter((f) => inPlace(f.path));
+  // Fest sortiert: bei Kopien bleibt so auf jedem Gerät dieselbe Datei – die ohne „ (2)“ zuerst
+  const order = (f) => [plain(f.path), String(f.path.length).padStart(5, '0'), f.path].join('\n');
+  const files = listed.filter((f) => inPlace(f.path)).map((f) => [order(f), f]).sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)).map(([, f]) => f);
   const there = new Set(listed.map((f) => f.path));
   // Verzeichnis: Pfad (ab dem WMap-Ordner) → { id, kind, hash, rev }
   const manPath = `${base}${MANIFEST}`;
@@ -355,7 +367,9 @@ async function syncAll(c, be) {
   const next = {};
   const seen = new Set();
   const used = new Set(files.map((f) => f.path.toLowerCase()));
-  const out = { imported: 0, written: 0, removed: 0, moved: 0 };
+  const out = { imported: 0, written: 0, removed: 0, moved: 0, merged: 0 };
+  const first = new Map();    // ID → erste Datei dazu { path, ours }
+  const blocked = new Set();  // nicht lesbare, unbekannte Dateien (Pfad ohne „ (2)“)
   syncTracks = [...locals.values()].filter((e) => e.kind === 'track').map((e) => e.item);
 
   /*
@@ -440,6 +454,11 @@ async function syncAll(c, be) {
     return text;
   };
 
+  const unreadable = (f, known) => {
+    if (known) { next[f.path] = known; seen.add(known.id); if (!first.has(known.id)) first.set(known.id, { path: f.path, ours: !!known.ours }); }
+    else blocked.add(plain(f.path));
+  };
+
   for (const f of files) {
     await step();
     const known = index[f.path] ?? null;
@@ -449,12 +468,13 @@ async function syncAll(c, be) {
     if (!skip) text = await textOf(f.path);
     // Nicht lesbar (Cloud-Ordner hakt): bekannt bleibt bekannt – sonst hielte
     // das Gerät die Datei später für neu und schriebe sie nach dem Löschen zurück
-    if (!skip && text === null) { if (known) next[f.path] = known; continue; }
+    // und was nicht zu lesen war, wird in diesem Lauf nicht noch einmal daneben geschrieben
+    if (!skip && text === null) { unreadable(f, known); continue; }
     let id = (text !== null ? idIn(f.path, text) : null) ?? known?.id ?? twin?.id ?? null;
     // Bekannt, aber der Eintrag fehlt hier (und ist nicht gelöscht): doch lesen und übernehmen
     if (text === null && id && !locals.has(id) && !deleted.has(id) && !seen.has(id)) {
       text = await textOf(f.path);
-      if (text === null) { if (known) next[f.path] = known; continue; }
+      if (text === null) { unreadable(f, known); continue; }
       id = idIn(f.path, text) ?? id;
     }
     // Von WMap geschrieben (mit ID) – nur solche Dateien ziehen um
@@ -464,26 +484,37 @@ async function syncAll(c, be) {
       out.removed += 1;
       continue;
     }
-    if (id && seen.has(id)) continue;                 // Kopie derselben Datei
+    if (id && seen.has(id)) {
+      // Kopie: dieselbe Kennung noch einmal. Eigene Dateien bleiben einmal (die
+      // erste nach Pfad); eine fremde Datei bleibt liegen und steht für den Eintrag
+      if (ours && first.get(id)?.ours) { await be.remove(f.path); out.merged += 1; }
+      else {
+        const e = locals.get(id) ?? await entryOf(id);
+        if (e) next[f.path] = { id, kind: e.kind, at: f.lastModified, hash: text !== null ? hash(text) : known?.hash, rev: rev(e.item), ours };
+        if (ours) first.set(id, { path: f.path, ours });
+      }
+      continue;
+    }
     const mine = id ? locals.get(id) : null;
 
     if (!mine) {
-      const got = await importFile({ ...f, text }, id, null, index);
+      const got = await importFile({ ...f, text }, id, null);
       if (got) {
-        // Derselbe Weg war hier schon unter anderer ID (Health Connect): die aus dem Ordner gilt
-        if (got.replaced) locals.delete(got.replaced);
+        // Fremde Datei zu einem Weg, den es schon gibt: steht für ihn (got.id ist dann seiner)
+        const again = seen.has(got.id);
         seen.add(got.id);
-        if (!locals.has(got.id)) out.imported += 1;
+        if (!first.has(got.id) || (ours && !first.get(got.id).ours)) first.set(got.id, { path: f.path, ours });
+        if (!again && !locals.has(got.id)) out.imported += 1;
         const entry = await entryOf(got.id);
-        // Eigene Dateien (mit WMap-ID) ziehen in die neue Ordnung um; zusammengelegt
-        // (Health Connect): neu schreiben, damit die Kennung auch im Ordner steht
-        if (entry && ours && (got.replaced || dirname(f.path) !== dirname(pathOf(entry.kind, entry.item, base)))) {
+        // Eigene Dateien (mit WMap-ID) ziehen in die neue Ordnung um
+        if (entry && ours && dirname(f.path) !== dirname(pathOf(entry.kind, entry.item, base))) {
           await put(f.path, entry, serialize(entry));
         } else next[f.path] = { id: got.id, kind: got.kind, at: f.lastModified, hash: hash(text), rev: got.rev, ours };
       }
       continue;
     }
     seen.add(id);
+    first.set(id, { path: f.path, ours });
     const r = rev(mine.item);
     const h = text === null ? (known?.hash ?? twin.hash) : hash(text);
     const mineText = serialize(mine);
@@ -512,6 +543,45 @@ async function syncAll(c, be) {
     } else next[f.path] = { id, kind: mine.kind, at: f.lastModified, hash: h, rev: r, ours };
   }
 
+  /*
+   * Dieselbe Aufzeichnung unter zwei Kennungen: dasselbe Training aus Health
+   * Connect oder gleicher Start und gleiche Länge (sameTrack) – etwa weil die
+   * App neu installiert und Health Connect noch einmal gelesen wurde, während
+   * der Ordner die Wege schon hatte. Es bleibt die Datei mit der kleinsten
+   * Kennung (auf jedem Gerät dieselbe Wahl), sonst der Eintrag, für den eine
+   * fremde Datei steht, sonst die kleinste Kennung. Was nur die anderen
+   * hatten, kommt dazu; ihre Dateien gehen, ihre Kennungen stehen in
+   * Gelöscht.json – andere Geräte löschen sie dann auch.
+   */
+  const pathsOf = (id) => Object.keys(next).filter((p) => next[p].id === id);
+  for (const group of sameRecordings(await tracks.all())) {
+    const filed = (t, own) => pathsOf(t.id).some((p) => !!next[p].ours === own);
+    const byId = (a, b) => (a.id < b.id ? -1 : 1);
+    const keep = [...group].sort(byId).find((t) => filed(t, true)) ?? [...group].sort(byId).find((t) => filed(t, false)) ?? [...group].sort(byId)[0];
+    const rest = group.filter((t) => t !== keep);
+    let item = rest.reduce(merge, keep);
+    if (item !== keep) {
+      item = { ...item, updated: Date.now() };
+      await tracks.putQuiet(item);
+      const own = pathsOf(keep.id).find((p) => next[p].ours);
+      if (own) await put(own, { kind: 'track', item }, serialize({ kind: 'track', item }));
+    }
+    if (locals.has(keep.id)) locals.set(keep.id, { kind: 'track', item });
+    for (const other of rest) {
+      const paths = pathsOf(other.id);
+      for (const p of paths) {
+        if (next[p].ours) { await be.remove(p); delete next[p]; } else next[p] = { ...next[p], id: keep.id, rev: rev(item) };
+      }
+      // Andere Geräte kennen ihn unter dieser Kennung: dort auch löschen
+      if (paths.length || Object.values(index).some((v) => v.id === other.id)) gone[other.id] = Date.now();
+      await trackStore.remove(other.id);
+      locals.delete(other.id);
+      out.merged += 1;
+    }
+    // Der bleibende steht im Ordner (und sei es als fremde Datei): nicht noch einmal schreiben
+    if (pathsOf(keep.id).length) seen.add(keep.id);
+  }
+
   progress.n += [...locals.keys()].filter((id) => !seen.has(id)).length;
   for (const [id, entry] of locals) {
     if (seen.has(id)) continue;
@@ -524,6 +594,8 @@ async function syncAll(c, be) {
       out.removed += 1;
       continue;
     }
+    // Dazu lag vielleicht schon eine Datei da, die gerade nicht zu lesen war: nächstes Mal
+    if (blocked.has(plain(pathOf(entry.kind, entry.item, base)))) continue;
     await put(null, entry, serialize(entry));
     out.written += 1;
   }
@@ -558,6 +630,27 @@ async function syncAll(c, be) {
   local.set(DELETED, []);
   local.set(REVIVED, []);
   return out;
+}
+
+/** Pfad ohne „ (2)“ und ohne Groß/klein – dieselbe Datei, ein zweites Mal geschrieben */
+const plain = (path) => path.toLowerCase().replace(/ \(\d+\)(\.\w+)$/, '$1');
+
+/**
+ * Wege, die dieselbe Aufzeichnung sind: dasselbe Training aus Health Connect
+ * oder gleicher Start und gleiche Länge (sameTrack). → Gruppen ab zwei
+ */
+export function sameRecordings(list) {
+  const sorted = [...list].sort((a, b) => a.start - b.start);
+  const groups = [], byHealth = new Map();
+  for (const t of sorted) {
+    let g = t.source?.health ? byHealth.get(t.source.health) : null;
+    for (let i = groups.length - 1; !g && i >= 0 && groups[i].at(-1).start > t.start - 5000; i -= 1) {
+      if (groups[i].some((x) => sameTrack(x, t))) g = groups[i];
+    }
+    if (g) g.push(t); else { g = [t]; groups.push(g); }
+    if (t.source?.health) byHealth.set(t.source.health, g);
+  }
+  return groups.filter((g) => g.length > 1);
 }
 
 /** Dateiinhalt → WMap-ID (GPX: Stichwort wmap:ID, Verbindung: id im JSON) */
@@ -683,7 +776,7 @@ function serialize({ kind, item }) {
  * Weg, unter „Geplante Touren/“ eine Tour, unter „Bus & Bahn/“ eine
  * Verbindung, sonst: mit Zeitstempeln ein Weg. → { id, kind, rev } oder null
  */
-async function importFile(f, id, before = null, index = {}) {
+async function importFile(f, id, before = null) {
   try {
     if (CONN_DIR.test(f.path)) {
       const c = JSON.parse(f.text);
@@ -707,19 +800,12 @@ async function importFile(f, id, before = null, index = {}) {
     }
     const [t] = parseGpx(f.text);
     if (!t) return null;
+    // Fremde Datei (ohne Kennung) zu einem Weg, den es schon gibt: bleibt der Weg.
+    // Eine Datei mit Kennung wird immer ihr eigener Eintrag – dieselbe Aufzeichnung
+    // unter zwei Kennungen legt der Abgleich danach zusammen (sameRecordings)
     const all = syncTracks ?? await tracks.all();
-    const twin = !before && all.find((x) => x.id !== id && sameTrack(x, t));
-    // Ohne ID (fremde Datei) bzw. der Zwilling liegt selbst schon im Ordner: bleibt der Zwilling
-    if (twin && (!id || Object.values(index).some((v) => v.id === twin.id))) return { id: twin.id, kind: 'track', rev: rev(twin) };
-    if (twin) {
-      // Hier neu (z. B. aus Health Connect), im Ordner mit ID von woanders: dieselbe
-      // Aufzeichnung – sie übernimmt die ID aus dem Ordner, Name und Messwerte von hier bleiben
-      const track = { ...t, ...twin, id, source: { ...t.source, ...twin.source }, updated: f.lastModified || Date.now() };
-      await trackStore.remove(twin.id);
-      await tracks.putQuiet(track);
-      if (syncTracks) syncTracks.splice(syncTracks.indexOf(twin), 1, track);
-      return { id, kind: 'track', rev: track.updated, replaced: twin.id };
-    }
+    const twin = !before && !id && all.find((x) => sameTrack(x, t));
+    if (twin) return { id: twin.id, kind: 'track', rev: rev(twin) };
     const source = before?.source || t.source ? { ...before?.source, ...t.source } : undefined;
     const track = { ...before, ...t, id: id ?? before?.id ?? t.id, ...(source ? { source } : {}), updated: f.lastModified || Date.now() };
     await tracks.putQuiet(track);
@@ -771,13 +857,18 @@ addEventListener('wmap:data', (e) => {
     local.set(DELETED, (local.get(DELETED, []) ?? []).filter((x) => x !== id));
     local.set(REVIVED, [...new Set([...(local.get(REVIVED, []) ?? []), id])].slice(-500));
   }
+  later();
+});
+function later() {
   clearTimeout(timer);
   timer = setTimeout(async () => {
+    // Health Connect holt gerade viele Wege: erst danach, einmal für alle
+    if (bulk.active) { later(); return; }
     await syncing?.catch(() => {});
     if (!await load()) { local.set(DELETED, []); return; }
     if (folder.auto !== 'off') folder.sync().catch(() => { /* steht als Fehler auf der Seite „Sicherung & Synchronisation“ */ });
   }, 2500);
-});
+}
 
 /* ── Ohne Ordner-Zugriff (Firefox, Safari): Dateien laden und teilen ──────── */
 
@@ -885,17 +976,25 @@ export async function restoreZip(file) {
 export function syncSummary(r) {
   if (!r) return '';
   const parts = [r.imported && `${r.imported} übernommen`, r.written && `${r.written} gespeichert`, r.removed && `${r.removed} gelöscht`,
-    r.moved && `${r.moved} umgezogen`, r.settings === 'imported' && 'Einstellungen übernommen'].filter(Boolean);
+    r.moved && `${r.moved} umgezogen`, r.merged && `${r.merged} doppelte zusammengelegt`, r.settings === 'imported' && 'Einstellungen übernommen'].filter(Boolean);
   return parts.length ? parts.join(', ') : 'alles aktuell';
 }
 
-/** Still abgleichen – wenn verbunden, erlaubt und je nach Einstellung (`periodic`: der 30-Minuten-Takt) */
+/**
+ * Still abgleichen – wenn verbunden, erlaubt und je nach Einstellung
+ * (`periodic`: der 30-Minuten-Takt). Beim Öffnen einer Seite höchstens alle
+ * 5 Minuten: WMap besteht aus mehreren Seiten, sonst liefe der Abgleich bei
+ * jedem Wechsel neu an. Eigene Änderungen gehen ohnehin gleich in den Ordner
+ * (wmap:data), ein abgebrochener Abgleich wird sofort fertig gemacht.
+ */
 export async function autoFolderSync({ periodic = false } = {}) {
   const mode = folder.auto;
   if (!folder.supported || (periodic && mode !== 'every30')) return null;
   const i = await folder.info().catch(() => null);
   if (!i?.connected || i.permission !== 'granted') return null;
+  const aborted = i.pending && !i.error;
   // Abgebrochen (Seite gewechselt): immer fertig machen, auch wenn „Aus“ gewählt ist
-  if (mode === 'off' && !i.pending) return null;
+  if (mode === 'off' && !aborted) return null;
+  if (!periodic && !aborted && Date.now() - Math.max(i.last ?? 0, i.error?.at ?? 0) < AUTO_EVERY_MS) return null;
   return folder.sync().catch(() => null);
 }

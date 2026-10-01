@@ -815,7 +815,10 @@ WMap/
   die nächste Seite mit `autoSync()` macht dort weiter (auch bei Automatik
   „Aus“) und liest nur, was noch nicht im Stand war.
 - **Abgleich** beim Öffnen und 2,5 s nach jeder Änderung (je nach
-  Automatik), sonst mit „Jetzt abgleichen“:
+  Automatik), sonst mit „Jetzt abgleichen“. Beim Öffnen einer Seite höchstens
+  alle 5 Minuten (`autoFolderSync` – WMap hat mehrere Seiten, sonst liefe er
+  bei jedem Wechsel neu an); holt Health Connect gerade Trainings, wartet er
+  bis danach (`bulk` in `js/data/tracks.js`):
   - nur im Ordner → übernehmen; nur in WMap → Datei schreiben
   - im Ordner gelöscht → auch in WMap weg; in WMap gelöscht → Datei weg
     und Eintrag in `Gelöscht.json` (ein Jahr) – jedes Gerät löscht es dann
@@ -823,12 +826,24 @@ WMap/
     hat oder lange nicht abgeglichen hat (sein Gedächtnis, welche Dateien
     schon da waren, reicht dafür nicht). Wieder angelegt (ZIP einspielen,
     Import, Bearbeiten) → gilt wieder
-  - eine Datei ist einmal nicht lesbar (Cloud-Ordner hakt) → bleibt bekannt
-  - derselbe Weg zweimal – in einer neuen App schon aus Health Connect
-    geholt, im Ordner mit der ID der alten App: bleibt einmal, mit der ID aus
-    dem Ordner; GPX tragen dazu die Kennung aus Health Connect
-    (`wmap-hc:…` neben `wmap:ID`). Health Connect holt Gelöschtes nicht
-    wieder und erkennt Wege aus dem Ordner am Start (± 5 s) und der Länge
+  - eine Datei ist einmal nicht lesbar (Cloud-Ordner hakt) → bleibt bekannt,
+    der Eintrag hier bleibt; eine unbekannte, nicht lesbare Datei → in
+    diesem Lauf wird nichts Gleichnamiges daneben geschrieben
+  - **derselbe Weg zweimal im Ordner** – der Abgleich legt zusammen, auf
+    jedem Gerät mit derselben Wahl (sonst löschte jedes eine andere Datei):
+    - dieselbe Kennung in zwei Dateien (Kopie, „… (2).gpx“): die Datei ohne
+      Zusatz bzw. mit dem kleineren Pfad bleibt
+    - dieselbe Aufzeichnung unter zwei Kennungen (`sameRecordings`: dasselbe
+      Training aus Health Connect – `wmap-hc:…` neben `wmap:ID` – oder
+      gleicher Start und gleiche Länge): die Datei mit der kleinsten Kennung
+      bleibt, was nur die anderen hatten (Puls …), kommt dazu, die anderen
+      Kennungen stehen in `Gelöscht.json`. So etwas entstand, wenn nach einer
+      Neuinstallation Health Connect noch einmal gelesen wurde, während der
+      Ordner die Wege schon hatte
+    - Wege aus Health Connect bekommen ihre Kennung darum aus Start und
+      Kennung des Trainings (`healthTrackId`), nicht gewürfelt – dasselbe
+      Training hat überall dieselbe. Health Connect holt Gelöschtes nicht
+      wieder und erkennt Wege aus dem Ordner am Start (± 5 s) und der Länge
   - Doppelte ohne ID (fremde GPX): Weg an Start und Länge (`sameTrack` in
     `js/data/tracks.js`: Start ± 5 s und Länge ± 2 % – oder gleicher Start
     und gleiches Ende bei bis zu 15 % anderer Länge, so kommt eine GPX-Datei

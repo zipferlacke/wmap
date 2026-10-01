@@ -68,6 +68,25 @@ export const tracks = {
 
 export const trackCoords = (t) => (t?.shape ? decodePolyline(t.shape, 5) : []);
 
+/**
+ * Läuft gerade ein Import, der viele Wege nacheinander speichert (Health
+ * Connect)? Der Ordner-Abgleich wartet so lange (data/folder.js) – sonst
+ * liefe er mittendrin an und danach gleich noch einmal.
+ */
+export const bulk = { active: 0 };
+
+/**
+ * Kennung für einen Weg aus Health Connect: aus Start und Kennung des
+ * Trainings, nicht gewürfelt – nach einer Neuinstallation oder auf einem
+ * zweiten Gerät bekommt dasselbe Training dieselbe Kennung wie die Datei im
+ * verbundenen Ordner und liegt dort nicht doppelt.
+ */
+export function healthTrackId(start, healthId) {
+  let h = 0x811c9dc5;
+  for (const c of String(healthId)) { h ^= c.charCodeAt(0); h = Math.imul(h, 0x01000193); }
+  return `w${start.toString(36)}h${(h >>> 0).toString(36).padStart(4, '0').slice(-4)}`;
+}
+
 /* ── Aus Rohpunkten einen Weg machen ──────────────────────────────────────── */
 
 const TOLERANCE = { car: 8, bike: 4 };           // Meter; sonst 3

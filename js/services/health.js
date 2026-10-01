@@ -21,7 +21,7 @@
  * Rückfrage heraus; sonst fragt es je Training nach. Lehnt man einmal ab,
  * fragt der Import für den Rest nicht mehr und zählt sie nur.
  */
-import { tracks, buildTrack, guessProfile, sameTrack, defaultName, healthGone } from '../data/tracks.js';
+import { tracks, buildTrack, guessProfile, sameTrack, defaultName, healthGone, healthTrackId, bulk } from '../data/tracks.js';
 import { local } from '../data/store.js';
 
 const core = window.__TAURI__?.core;
@@ -180,12 +180,14 @@ export async function importHealth(sessions, { onProgress, ask: askFirst = true 
     let t = buildTrack(points.map(([lon, lat, , ms]) => [lon, lat, ms]), { kind: 'health', profile: profile ?? 'foot', name: '' });
     if (!t) { out.empty += 1; continue; }
     if (!profile) t = guessProfile(t);
-    t = { ...t, name: s.title || nameFor(s.type, t), source: { health: s.id, app: s.app, type: s.type } };
+    // Kennung aus dem Training, nicht gewürfelt: überall dieselbe (tracks.js healthTrackId)
+    t = { ...t, id: healthTrackId(t.start, s.id), name: s.title || nameFor(s.type, t), source: { health: s.id, app: s.app, type: s.type } };
     t = await withValues(t, s.end);
     // Derselbe Weg ist schon da (z. B. aus dem Ordner, von der alten App): nicht
     // doppelt – aber merken, dass er aus Health Connect kommt, damit er beim
-    // nächsten Abruf als bekannt gilt und nicht wieder geholt wird
-    const twin = have.find((x) => sameTrack(x, t));
+    // nächsten Abruf als bekannt gilt und nicht wieder geholt wird. Auch einer,
+    // der inzwischen (während des Holens) aus dem Ordner dazukam
+    const twin = have.find((x) => sameTrack(x, t)) ?? await tracks.get(t.id).catch(() => null);
     if (twin) {
       if (!twin.source?.health) await tracks.put({ ...twin, source: { ...twin.source, ...t.source }, updated: Date.now() });
       out.dup += 1;
@@ -304,6 +306,7 @@ export function syncHealth(opts = {}) {
 export const healthSyncing = () => !!running;
 
 async function runSync({ quiet = false, onProgress } = {}) {
+  bulk.active += 1;
   try {
     const st = await healthStatus();
     if (!st.available) throw new Error(st.reason);
@@ -321,6 +324,8 @@ async function runSync({ quiet = false, onProgress } = {}) {
     local.set(LAST, { ...(healthSync.last() ?? {}), at: Date.now(), error: String(err?.message ?? err) });
     dispatchEvent(new CustomEvent('wmap:health', { detail: { error: true } }));
     throw err;
+  } finally {
+    bulk.active -= 1;
   }
 }
 
