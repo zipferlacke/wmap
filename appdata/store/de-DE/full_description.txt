@@ -3,7 +3,7 @@ WMap ist eine Karte für unterwegs: Orte suchen, Routen planen, navigieren, Tour
 Karte
 • Klare Karte mit deutschen Namen, hell oder dunkel passend zum Gerät
 • 3D-Gelände und Gebäude, Höhen bis auf den Meter, ganz herausgezoomt die Erde als Globus
-• Satellit: amtliche Luftbilder in 20–40 cm aus zwölf Bundesländern, weltweit Sentinel-2. Die Gebäude stehen in 3D, mit dem Luftbild auf dem Dach
+• Satellit: Luftbilder in 20–40 cm für große Teile Deutschlands, weltweit Sentinel-2. Die Gebäude stehen in 3D, mit dem Luftbild auf dem Dach
 • Wander-, Rad- und Mountainbike-Wege von Waymarked Trails, Relief, Ampeln
 
 Suchen und Route
@@ -15,6 +15,7 @@ Navigation
 • Sprachansagen zum richtigen Zeitpunkt, Fahrspuren und Ankunftszeit
 • Kacheln entlang der Route werden vorab geladen, damit Funklöcher nicht auffallen
 • Bild in Bild: Karte und nächste Anweisung bleiben im Mini-Fenster sichtbar
+• Android Auto: Karte, Suche und Navigation auf dem Bildschirm im Auto
 
 Touren
 • Tour planen für Wandern, Spazieren, Rennrad, Tourenrad, Gravel, Mountainbike oder Ausfahrt mit dem Auto
@@ -26,9 +27,11 @@ Entdecken
 Markierte Wanderwege, Radfernwege und MTB-Strecken in der Nähe oder nach Namen: Verlauf, Etappen, Länge, Wegzeichen und Beschreibung. Ein Tipp öffnet den Weg im Planer.
 
 Ihre Daten
-Touren und Aufzeichnungen liegen auf Ihrem Gerät. Wenn Sie möchten, verbinden Sie einen Ordner, etwa Nextcloud, Dropbox oder Proton Drive. Dort liegt jede Tour als GPX-Datei, die jede andere App lesen kann. Ein Konto brauchen Sie nur zum Veröffentlichen und für Plugins, die Anmeldung läuft mit Passkey statt Passwort.
+Touren und Aufzeichnungen liegen auf Ihrem Gerät. Wenn Sie möchten, verbinden Sie einen Ordner, etwa Nextcloud, Dropbox oder Proton Drive. Dort liegt jede Tour als GPX-Datei, die jede andere App lesen kann. Ein Konto brauchen Sie nur zum Veröffentlichen und für Plugins. Angemeldet wird mit Ihrem OpenStreetMap-Konto, ein eigenes Passwort gibt es nicht.
 
 Mitmachen
 Fehlende Öffnungszeiten oder neue Orte tragen Sie direkt in OpenStreetMap ein. So wird die Karte für alle besser.
 
 WMap gibt es auch im Browser unter app.wuefl.de/wmap sowie für Linux, Windows und macOS.
+
+Hinweis: WMap ist ein privates Projekt. Es vertritt keine Behörde und steht in keiner Verbindung zu einer staatlichen Stelle. Die Daten stammen aus offenen Quellen: Kartendaten von OpenStreetMap (openstreetmap.org), Verkehrsmeldungen von der Autobahn GmbH des Bundes (verkehr.autobahn.de), Fahrpläne über die Fahrplanauskunft der NVBW (efa-bw.de).
