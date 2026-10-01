@@ -10,6 +10,7 @@ import { tracks } from '../data/tracks.js';
 import { tours, recent } from '../data/store.js';
 import { layers } from '../map/layers.js';
 import { areas } from '../data/offline-areas.js';
+import { navCaches, clearNavCaches, NAV_DAYS } from '../data/offline.js';
 import { creditList } from '../core/credits.js';
 import { folder } from '../data/folder.js';
 import { healthAvailable, healthSync } from '../services/health.js';
@@ -56,7 +57,7 @@ async function paintTiles() {
     { href: './wege.html', icon: 'timeline', title: 'Aufgezeichnete Touren', text: 'Was du gefahren und gelaufen bist', count: ws.length ? `${n(ws.length, 'Weg', 'Wege')}${thisYear.length ? ` · ${year}: ${km(thisYear.reduce((a, t) => a + t.length, 0))}` : ''}` : 'noch keine' },
     { href: './entdecken.html', icon: 'explore', title: 'Entdecken', text: 'Wander- und Radwege, Touren von anderen' },
     { href: './plugins.html', icon: 'extension', title: 'Plugins', text: 'Luftbilder, Geologie, eigene Daten, Erweiterungen', count: active ? `${active} aktiv` : '' },
-    { href: './offline.html', icon: 'download_for_offline', title: 'Offline-Karten', text: 'Gebiete aufs Gerät laden – für unterwegs ohne Netz', count: as.length ? `${n(as.length, 'Gebiet', 'Gebiete')} · ${mb(areas.bytes())}` : '' },
+    { href: './offline-daten.html', icon: 'download_for_offline', title: 'Offline', text: 'Karten-Gebiete, Touren und Navigationskarten auf dem Gerät – für unterwegs ohne Netz', count: as.length ? `${n(as.length, 'Gebiet', 'Gebiete')} · ${mb(areas.bytes())}` : '' },
     { href: './index.html?action=survey', icon: 'edit_location_alt', title: 'Mitmachen', text: 'Kurze Fragen, die OpenStreetMap verbessern', count: qs ? n(qs, 'neue Frage', 'neue Fragen') : '', hot: qs > 0 },
     { href: './sync.html', icon: 'sync', title: 'Sicherung & Synchronisation', text: 'Ordner (Nextcloud, Drive …), Health Connect, Sicherung', count: sc, warn: /Fehler/.test(sc) },
     { href: './settings.html', icon: 'settings', title: 'Einstellungen', text: 'Hell/dunkel, Navigation, Offline, Konto' },
@@ -74,33 +75,13 @@ async function paintTiles() {
 
 /* ── Gespeichert: Offline-Karten, letzte Routen, Verlauf, Ordner ──────────── */
 
-const TILES = 'wmap-tiles-v1';          // Namen wie in sw.js
-const NAV = 'wmap-nav-';
-const NAV_DAYS = 10;
-
-/** Kacheln angesehener Gegenden und die vorgeladenen Navigationen */
-async function offlineInfo() {
-  try {
-    if (!self.caches) return { tiles: 0, navs: [] };
-    const keys = await caches.keys();
-    const count = async (name) => (await (await caches.open(name)).keys()).length;
-    const tiles = keys.includes(TILES) ? await count(TILES) : 0;
-    const navs = await Promise.all(keys.filter((k) => k.startsWith(NAV))
-      .map(async (name) => ({ name, at: +name.slice(NAV.length) || 0, tiles: await count(name) })));
-    return { tiles, navs: navs.sort((a, b) => b.at - a.at) };
-  } catch { return { tiles: 0, navs: [] }; }
-}
-
 const DAY = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short' });
-/** Noch so viele Tage, dann löscht der Service Worker die Navigation */
-const daysLeft = (at) => Math.max(0, Math.ceil(NAV_DAYS - (Date.now() - at) / 864e5));
-
 function mb(bytes) { return `${(bytes / 1048576).toLocaleString('de-DE', { maximumFractionDigits: bytes > 1e8 ? 0 : 1 })} MB`; }
 
 async function paintStore() {
   const routes = recent.list('route');
   const others = recent.list().filter((e) => e.kind !== 'route');
-  const { tiles, navs } = await offlineInfo();
+  const { tiles, navs } = await navCaches();
   const any = tiles || navs.length;
   const est = await navigator.storage?.estimate?.().catch(() => null);
   $('.dash-rows').innerHTML = `
@@ -108,9 +89,9 @@ async function paintStore() {
       <span class="msr">offline_pin</span>
       <div><strong>Karten für die Navigation</strong>
         <small>${navs.length ? `${n(navs.length, 'Navigation', 'Navigationen')} vorgeladen – damit Funklöcher nicht auffallen. Jede bleibt ${NAV_DAYS} Tage; wird der Platz knapp, weicht die älteste.` : 'Keine Navigation vorgeladen'}</small>
-        ${navs.length ? `<ul>${navs.map((x) => `<li>${DAY.format(x.at)} · ${n(x.tiles, 'Kachel', 'Kacheln')} · noch ${n(daysLeft(x.at), 'Tag', 'Tage')}</li>`).join('')}</ul>` : ''}
+        ${navs.length ? `<ul>${navs.map((x) => `<li>${DAY.format(x.at)} · ${n(x.tiles, 'Kachel', 'Kacheln')} · noch ${n(x.daysLeft, 'Tag', 'Tage')}</li>`).join('')}</ul>` : ''}
         ${tiles ? `<small>Dazu ${n(tiles, 'Kachel', 'Kacheln')} angesehener Gegenden.</small>` : ''}
-        <small>Gebiete, die du selbst geladen hast, bleiben – die stehen unter <a href="./offline.html">Offline-Karten</a>.</small></div>
+        <small>Gebiete, die du selbst geladen hast, bleiben – die stehen mit allem anderen, was ohne Netz da ist, unter <a href="./offline-daten.html">Offline</a>.</small></div>
       ${any ? '<button type="button" class="button" data-do="tiles"><span class="msr">delete</span> Löschen</button>' : ''}
     </div>
     <div class="dash-row dash-routes">
@@ -153,8 +134,7 @@ document.addEventListener('click', async (e) => {
     const v = await ask({ icon: 'offline_pin', title: 'Karten der Navigationen löschen?', text: 'Beim nächsten Navigieren werden die Karten entlang der Route wieder geladen. Deine Offline-Gebiete bleiben.',
       buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Löschen', primary: true }] });
     if (v !== 'yes') return;
-    await caches.delete(TILES);
-    for (const k of await caches.keys()) if (k.startsWith(NAV)) await caches.delete(k);
+    await clearNavCaches();
     toast('Karten der Navigationen gelöscht');
   }
   if (act === 'routes') { for (const r of recent.list('route')) recent.remove(r); toast('Letzte Routen gelöscht'); }

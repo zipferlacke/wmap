@@ -7,7 +7,7 @@ LOG=out/all.log
 mkdir -p out
 echo "== Start $(date '+%Y-%m-%d %H:%M:%S')" > "$LOG"
 fehler=""
-for t in smoke share geo_links news offline_areas freeform track_charts hours edit_tags folder_sync folder_devices folder_shelf storage_full duplicates sync_progress track_look tour_actions nav_still smooth_dot ask_along car car_share update import_gpx plugin_folders planner konto_osm; do
+for t in smoke share geo_links news offline_areas freeform track_charts hours edit_tags folder_sync folder_devices folder_shelf storage_full duplicates sync_progress offline_data track_look tour_actions nav_still smooth_dot ask_along car car_share update import_gpx plugin_folders planner konto_osm; do
   echo "== $t" | tee -a "$LOG"
   # -u: ungepuffert, damit das Log sofort mitläuft; der Rückgabewert geht sonst in der Pipe verloren
   { "$PY" -u "$t.py" 2>&1; echo $? > out/.rc; } | tee -a "$LOG"

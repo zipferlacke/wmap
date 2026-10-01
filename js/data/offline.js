@@ -158,6 +158,35 @@ async function prefetchHere(urls, tiles, onProgress) {
   return { tiles, loaded: done - failed, failed };
 }
 
+/* ── Was für Navigationen vorgeladen ist (Übersicht, Seite „Offline“) ─────── */
+
+const TILE_CACHE = 'wmap-tiles-v1';     // Namen wie in sw.js
+const NAV_CACHE = 'wmap-nav-';
+/** So viele Tage bleibt eine vorgeladene Navigation, dann löscht sie der Service Worker */
+export const NAV_DAYS = 10;
+
+/** → { tiles (Kacheln angesehener Gegenden), navs: [{ name, at, tiles, daysLeft }] }, neueste zuerst */
+export async function navCaches() {
+  try {
+    if (!self.caches) return { tiles: 0, navs: [] };
+    const keys = await caches.keys();
+    const count = async (name) => (await (await caches.open(name)).keys()).length;
+    const tiles = keys.includes(TILE_CACHE) ? await count(TILE_CACHE) : 0;
+    const navs = await Promise.all(keys.filter((k) => k.startsWith(NAV_CACHE)).map(async (name) => {
+      const at = +name.slice(NAV_CACHE.length) || 0;
+      return { name, at, tiles: await count(name), daysLeft: Math.max(0, Math.ceil(NAV_DAYS - (Date.now() - at) / 864e5)) };
+    }));
+    return { tiles, navs: navs.sort((a, b) => b.at - a.at) };
+  } catch { return { tiles: 0, navs: [] }; }
+}
+
+/** Vorgeladene Navigationen löschen – eine (`name`) oder alle samt den Kacheln angesehener Gegenden */
+export async function clearNavCaches(name = null) {
+  if (name) { await caches.delete(name); return; }
+  await caches.delete(TILE_CACHE);
+  for (const k of await caches.keys()) if (k.startsWith(NAV_CACHE)) await caches.delete(k);
+}
+
 /* ── Laufende Navigation merken ───────────────────────────────────────────── */
 
 const NAV_KEY = 'wmap.nav';

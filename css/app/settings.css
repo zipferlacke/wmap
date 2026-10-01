@@ -135,3 +135,28 @@
 
 /* GPX öffnen (pages/import.js): der Name der Tour als Überschrift, nicht in Großbuchstaben */
 .import h3 { text-transform: none; letter-spacing: 0; font-size: var(--fs-400); color: inherit; }
+
+/* Offline (pages/offline-daten.js): je Art eine Liste – Eintrag öffnen, rechts „nicht mehr offline“ */
+.offline-data {
+    .off-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
+    .off-item {
+        display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+        padding: .5rem .7rem; border-radius: .75rem; background: var(--surface);
+    }
+    .off-main {
+        flex: 1 1 14rem; min-width: 0; display: flex; align-items: center; gap: .6rem; color: inherit; text-decoration: none;
+        > .msr { flex: none; color: var(--route); }
+        > span:last-child { display: grid; gap: .05rem; min-width: 0; }
+        strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        small { color: var(--muted); font-size: var(--fs-200); }
+    }
+    a.off-main:hover strong, a.off-main:focus-visible strong { text-decoration: underline; }
+    .off-remove {
+        flex: none; display: inline-flex; align-items: center; gap: .25rem; margin-left: auto;
+        font-size: var(--fs-200); cursor: pointer; .msr { font-size: 1.1rem; }
+    }
+    .sync-actions > a.button { display: inline-flex; align-items: center; width: auto; flex: 0 0 auto; text-decoration: none; }
+    .sync-actions > a.button:not(.primary) { border: 1px solid var(--line); background-color: var(--surface); }
+    .settings-hint a { color: var(--route); }
+}
+.dash-head > a.button { flex: none; }
