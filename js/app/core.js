@@ -117,6 +117,10 @@ export function viewPadding() {
 export function fitTo([w, s, e, n], maxZoom = 16, { flat = false } = {}) {
   if (flat) map.quietFit = true;
   const padding = viewPadding();
+  // Ein Rand, den die Karte noch trägt (freie Fahrt im Auto, Folgen der Navigation), zählt MapLibre zum neuen
+  // dazu – die Route läge dann winzig in einem Bruchteil der freien Fläche
+  const old = map.getPadding();
+  if (old.top || old.bottom || old.left || old.right) map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
   // Geneigt und mit viel Rand findet MapLibre oft keine Lösung und tut dann
   // gar nichts („cannot fit“). Darum flach einpassen – nah genug dran neigt
   // die 3D-Automatik danach wieder.

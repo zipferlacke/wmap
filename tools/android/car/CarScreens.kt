@@ -14,6 +14,7 @@ import android.util.LruCache
 import androidx.car.app.CarContext
 import androidx.car.app.CarToast
 import androidx.car.app.Screen
+import androidx.car.app.constraints.ConstraintManager
 import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
 import androidx.car.app.model.CarColor
@@ -32,6 +33,7 @@ import androidx.car.app.model.PaneTemplate
 import androidx.car.app.model.Row
 import androidx.car.app.model.SearchTemplate
 import androidx.car.app.model.Template
+import androidx.car.app.model.Toggle
 import androidx.car.app.navigation.model.MapController
 import androidx.car.app.navigation.model.MapWithContentTemplate
 import androidx.car.app.navigation.model.Maneuver
@@ -419,6 +421,48 @@ class NearbyScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx) {
 }
 
 /**
+ * Lesezeichen als Raster: Zuhause, Arbeit, Gemerktes (js/car/car.js bookmarks).
+ * Ein Tipp führt gleich zur Routenwahl – es sind die Orte, zu denen man will.
+ */
+class BookmarksScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx) {
+  private var items: List<JSONObject>? = null
+
+  init {
+    lifecycle.addObserver(object : DefaultLifecycleObserver {
+      override fun onCreate(owner: LifecycleOwner) {
+        s.web.call("bookmarks") { v, _ -> items = (v as? JSONObject)?.optJSONArray("items").objects(); invalidate() }
+      }
+    })
+  }
+
+  override fun onGetTemplate(): Template {
+    val b = GridTemplate.Builder()
+    if (carContext.api(CarAppApiLevels.LEVEL_7)) b.setHeader(header(this, "Lesezeichen"))
+    else {
+      @Suppress("DEPRECATION") b.setTitle("Lesezeichen")
+      @Suppress("DEPRECATION") b.setHeaderAction(Action.BACK)
+    }
+    val list = items
+    if (list == null) return b.setLoading(true).build()
+    // So viele Kacheln, wie das Auto erlaubt
+    val limit = if (carContext.api(CarAppApiLevels.LEVEL_2)) {
+      carContext.getCarService(ConstraintManager::class.java).getContentLimit(ConstraintManager.CONTENT_LIMIT_TYPE_GRID)
+    } else 6
+    val il = ItemList.Builder()
+    list.take(limit).forEach { o ->
+      val item = GridItem.Builder().setTitle(o.optString("title").ifEmpty { "Ort" })
+        .setImage(CarIcons.png(o.optString("png")))
+        .setOnClickListener { screenManager.push(RoutePreviewScreen(carContext, s) { d -> s.web.call("routeTo", o.optString("key"), done = d) }) }
+      // Darunter die Entfernung; ohne Standort der Ort
+      o.optString("sub").substringBefore(" · ").takeIf { it.isNotEmpty() }?.let { item.setText(it) }
+      il.addItem(item.build())
+    }
+    il.setNoItemsMessage("Noch nichts gemerkt – am Handy einen Ort öffnen und „Merken“ antippen")
+    return b.setSingleList(il.build()).build()
+  }
+}
+
+/**
  * Treffer einer Kategorie – erst aus den Kartenkacheln, dann vollständig. Ein
  * Treffer führt gleich zur Routenwahl mit „Los“ (Entfernung und geöffnet/zu
  * stehen schon in der Zeile): Android Auto erlaubt nur fünf Bildschirme
@@ -472,6 +516,7 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
   private var tours = false
   private var items: List<JSONObject>? = null
   private var nearby: List<JSONObject> = emptyList()
+  private var saved: List<JSONObject> = emptyList()
   private var seq = 0
   private val main = Handler(Looper.getMainLooper())
   private val later = Runnable { query() }
@@ -481,6 +526,7 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
       override fun onCreate(owner: LifecycleOwner) {
         query()
         s.web.call("categories") { v, _ -> nearby = (v as? JSONArray).objects(); invalidate() }
+        s.web.call("bookmarks") { v, _ -> saved = (v as? JSONObject)?.optJSONArray("items").objects(); invalidate() }
       }
       override fun onDestroy(owner: LifecycleOwner) { main.removeCallbacks(later) }
     })
@@ -523,6 +569,24 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
     }
   }
 
+  /** „Lesezeichen“ wie „In der Nähe“: die Zeile öffnet die Kacheln, Zuhause und Arbeit gehen als Knöpfe gleich zur Route */
+  private fun bookmarksRow(): Row {
+    val names = saved.take(3).joinToString(", ") { it.optString("title") } + if (saved.size > 3) " …" else ""
+    val plain = {
+      Row.Builder().setTitle("Lesezeichen").addText(names)
+        .setImage(CarIcons.res(carContext, R.drawable.wmap_car_star, CarIcons.BLUE))
+        .setOnClickListener { replace { BookmarksScreen(carContext, s) } }
+    }
+    val b = plain()
+    if (carContext.api(CarAppApiLevels.LEVEL_8)) {
+      saved.filter { it.optString("place") in listOf("home", "work") }.take(2).forEach { o ->
+        b.addAction(Action.Builder().setIcon(CarIcons.png(o.optString("png")))
+          .setOnClickListener { screenManager.push(RoutePreviewScreen(carContext, s) { d -> s.web.call("routeTo", o.optString("key"), done = d) }) }.build())
+      }
+    }
+    return try { b.build() } catch (_: Exception) { plain().setBrowsable(true).build() }
+  }
+
   override fun onGetTemplate(): Template {
     val b = SearchTemplate.Builder(object : SearchTemplate.SearchCallback {
       override fun onSearchTextChanged(searchText: String) {
@@ -550,7 +614,10 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
     if (list == null) b.setLoading(true)
     else {
       val il = ItemList.Builder()
-      if (!tours && text.length < 2) il.addItem(nearbyRow())
+      if (!tours && text.length < 2) {
+        il.addItem(nearbyRow())
+        if (saved.isNotEmpty()) il.addItem(bookmarksRow())
+      }
       list.forEach { o ->
         il.addItem(row(o) {
           if (tours) screenManager.push(RoutePreviewScreen(carContext, s) { d -> s.web.call("tour", o.optString("id"), done = d) })
@@ -653,15 +720,30 @@ class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private va
   private var selected = 0
   private var starting = false
 
+  private fun loaded(v: Any?, err: String?) {
+    if (v is JSONObject && (v.optJSONArray("routes")?.length() ?: 0) > 0) { result = v; selected = 0; invalidate() }
+    else { CarToast.makeText(carContext, err ?: "Keine Route gefunden", CarToast.LENGTH_LONG).show(); screenManager.pop() }
+  }
+
   init {
     lifecycle.addObserver(object : DefaultLifecycleObserver {
-      override fun onCreate(owner: LifecycleOwner) {
-        load { v, err ->
-          if (v is JSONObject && (v.optJSONArray("routes")?.length() ?: 0) > 0) { result = v; invalidate() }
-          else { CarToast.makeText(carContext, err ?: "Keine Route gefunden", CarToast.LENGTH_LONG).show(); screenManager.pop() }
-        }
+      override fun onCreate(owner: LifecycleOwner) { load(::loaded) }
+
+      // Zurück vom Filter (Autobahn, Maut, Fähren): dieselbe Strecke neu rechnen
+      override fun onResume(owner: LifecycleOwner) {
+        if (!s.prefsChanged) return
+        s.prefsChanged = false
+        result = null
+        invalidate()
+        s.web.call("routesAgain", done = ::loaded)
       }
     })
+  }
+
+  /** Auf der Karte wurde eine andere Route angetippt (js/car/car.js click) */
+  fun selectedOnMap(id: Int) {
+    val i = result?.optJSONArray("routes").objects().indexOfFirst { it.optInt("id") == id }
+    if (i >= 0 && i != selected) { selected = i; invalidate() }
   }
 
   private fun start() {
@@ -691,20 +773,23 @@ class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private va
     if (r == null) pane.setLoading(true)
     else {
       val at = selected.coerceIn(0, maxOf(0, routes.size - 1))
-      // Die gewählte zuerst mit Pfeil – das Feld zeigt nur wenige Zeilen
-      val order = listOf(at) + routes.indices.filter { it != at }
-      order.take(3).forEach { i ->
+      // Jede Route eine Zeile, immer in derselben Reihenfolge: die gewählte mit Pfeil, jede andere mit
+      // einem Knopf zum Wählen (Zeilen selbst lassen sich in diesem Feld nicht antippen). Auch ein Tipp
+      // auf die Route in der Karte wählt sie.
+      routes.indices.take(4).forEach { i ->
         val o = routes[i]
         val sub = listOf(if (routes.size > 1) (if (i == at) "Gewählt" else "Alternative") else "", o.optString("sub")).filter { it.isNotEmpty() }.joinToString(" · ")
         pane.addRow(Row.Builder().setTitle(o.optString("title")).apply {
           if (sub.isNotEmpty()) addText(sub)
           if (i == at) setImage(CarIcons.res(carContext, R.drawable.wmap_car_navigation, CarIcons.BLUE))
+          else addAction(iconAction(carContext, R.drawable.wmap_car_check) { select(routes, i); invalidate() })
         }.build())
       }
       pane.addAction(go.setBackgroundColor(CarColor.BLUE).setFlags(Action.FLAG_PRIMARY).setOnClickListener { start() }.build())
+      // Filter: Autobahnen, Maut, Fähren vermeiden – dieselben Einstellungen wie in der App
       pane.addAction(
-        if (routes.size > 1) Action.Builder().setTitle("Andere Route").setOnClickListener { select(routes, (at + 1) % routes.size); invalidate() }.build()
-        else Action.Builder().setTitle("Abbrechen").setOnClickListener { screenManager.pop() }.build(),
+        Action.Builder().setTitle("Filter").setIcon(CarIcons.res(carContext, R.drawable.wmap_car_tune))
+          .setOnClickListener { screenManager.push(RoutePrefsScreen(carContext, s)) }.build(),
       )
     }
     val content = PaneTemplate.Builder(pane.build()).setHeader(header(this, title)).build()
@@ -736,5 +821,51 @@ class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private va
       b.setPanModeListener { }
     }
     return b.build()
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Filter der Routenplanung
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Was die Route meiden soll – dieselben Einstellungen wie hinter dem
+ * Filter-Knopf der App (wmap.routePrefs, js/ui/route-prefs.js). Zurück in der
+ * Routenwahl wird neu gerechnet (WMapSession.prefsChanged).
+ */
+class RoutePrefsScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx) {
+  private var avoid: JSONObject? = null
+
+  init {
+    lifecycle.addObserver(object : DefaultLifecycleObserver {
+      override fun onCreate(owner: LifecycleOwner) {
+        s.web.call("routePrefs") { v, _ -> avoid = v as? JSONObject ?: JSONObject(); invalidate() }
+      }
+    })
+  }
+
+  override fun onGetTemplate(): Template {
+    val list = ListTemplate.Builder().setHeader(header(this, "Filter", close = false))
+    val a = avoid
+    if (a == null) list.setLoading(true)
+    else {
+      val items = ItemList.Builder()
+      listOf("highways" to "Autobahnen vermeiden", "tolls" to "Mautstraßen vermeiden", "ferries" to "Fähren vermeiden").forEach { (key, label) ->
+        items.addItem(
+          Row.Builder().setTitle(label).setToggle(
+            Toggle.Builder { on ->
+              a.put(key, on)
+              s.prefsChanged = true
+              s.web.call("setRoutePref", key, on)
+            }.setChecked(a.optBoolean(key)).build(),
+          ).build(),
+        )
+      }
+      list.setSingleList(items.build())
+    }
+    return MapWithContentTemplate.Builder()
+      .setContentTemplate(list.build())
+      .setMapController(MapController.Builder().setMapActionStrip(mapStrip(carContext, s)).setPanModeListener { }.build())
+      .build()
   }
 }

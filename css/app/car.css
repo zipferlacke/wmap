@@ -55,3 +55,13 @@ html.car-mode {
     }
     .car-street[hidden] { display: none; }
 }
+
+/* Treffer einer Kategorie („In der Nähe“): Punkt mit der Nummer aus der Liste des Autos */
+html.car-mode .car-hit {
+    display: grid; place-items: center;
+    min-width: 1.7rem; height: 1.7rem; padding: 0 .3rem; box-sizing: border-box;
+    border-radius: 999px; border: 2px solid #fff;
+    background: var(--c, #1a73e8); color: #fff;
+    font: 700 .9rem/1 system-ui, sans-serif;
+    box-shadow: 0 1px 4px rgb(0 0 0 / .45);
+}

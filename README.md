@@ -191,6 +191,13 @@ Man startet immer mit der Karte.
 
 - **Suchfeld oben:** Orte, Adressen und Kategorien. Tippfehler werden
   verziehen („Parkplaz“, „Backerei“: ein Buchstabe Abweichung).
+- **Nahes zuerst** (`js/services/geocode.js`): Photon reiht bekannte Orte
+  weit weg – auch im Ausland – gern vor gleichnamige um die Ecke. Darum
+  fragt die Suche zusätzlich nur die Umgebung (40 km um die Kartenmitte)
+  und stellt diese Treffer nach vorn; nur ein großer Ort (Stadt, Land) als
+  erster Treffer bleibt vorn – wer „Berlin“ tippt, meint Berlin. Unter dem
+  Namen steht der **Ort vor der Gemeinde**: „Rittmarshausen, Gleichen“
+  statt nur „Gleichen“.
 - **Kategorien** („Parkplatz“, „Bäckerei“, „Fluss“ …): zuerst sofort aus den
   Kartenkacheln (Zoom 14, ohne Netzabfrage), dann ergänzt aus Overpass
   (Flächen, Linien, seltene Kategorien). Restaurants zeigen auch Imbisse.
@@ -1330,7 +1337,8 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 | Was | Wo | Verlässt das Gerät? |
 |---|---|---|
 | Aufgezeichnete Wege | IndexedDB `wmap` / tracks – mit verbundenem Ordner von älteren nur die Karteikarte, der Rest in der GPX-Datei | nur per Ordner, GPX, Sicherung |
-| Für Android Auto: geplante Touren, Lesezeichen, letzte Ziele, ein paar Einstellungen | Android SharedPreferences `wmap_shared` (nur in der Android-App) | nein |
+| Für Android Auto: geplante Touren, Lesezeichen, letzte Ziele, ein paar Einstellungen, „Karte im Auto läuft“ | Android SharedPreferences `wmap_shared` (nur in der Android-App) | nein |
+| Android Auto: letzter Standort für den nächsten Start | localStorage `wmap.carPos` | nein |
 | Geplante Touren | localStorage `wmap.tours` | nur per Ordner, GPX, Link, Veröffentlichen |
 | Eigene Ebenen, Plugins, Zugangsdaten | IndexedDB / layers | nur „Als Plugin“ |
 | Verbundener Ordner | IndexedDB / kv | nein |
@@ -1353,7 +1361,7 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 | `?ort=…`, `?route=…`, `?anfrage=…` | Geteiltes |
 | `?geo=geo:51.53,9.93?q=…` | Karten-Link einer anderen App (`geo:`) – Punkt, Punkt mit Namen oder Suche |
 | `?sim`, `?tempo=4` | Navigation simulieren |
-| `?car` | Karte für den Autobildschirm (Android Auto, siehe [23](#23-android-auto)) |
+| `?car`, `&at=lon,lat` | Karte für den Autobildschirm (Android Auto, siehe [23](#23-android-auto)); `at`: dort beginnen |
 | `?tour=ID&start`, `?track=ID&start` | geplante bzw. aufgezeichnete Tour navigieren |
 | `wege.html?tab=geplant`, `?tour=ID`, `?id=ID`, `#weg=…` | Meine Touren; `#weg=` ist eine geteilte Aufzeichnung |
 | `entdecken.html#wege\|andere`, `?view=lon,lat,zoom` | Entdecken |
@@ -1372,21 +1380,34 @@ Mit dem Handy am Auto erscheint WMap in Android Auto als Navigations-App.
 Das Auto zeigt dabei nur Googles Vorlagen – eigene Oberflächen lässt
 Android Auto nicht zu (Ablenkung). WMap malt einzig die Karte selbst:
 
-- **Start:** links eine feste Such-„Leiste“ – **Suchen** und daneben das
+- **Start am Standort:** Die Karte beginnt gleich dort, wo das Auto steht,
+  geneigt – nicht beim Globus oder beim letzten Ausschnitt der App. Android
+  gibt den letzten bekannten Standort schon mit der Adresse mit
+  (`?car&at=lon,lat`, `CarWeb.startAt`), sonst gilt der zuletzt im Auto
+  gemerkte (`wmap.carPos`, alle 15 s aus `js/car/drive.js`).
+- **Startseite:** links eine feste Such-„Leiste“ – **Suchen** und daneben das
   Routen-Symbol (Ziel wählen, ein Tipp plant gleich die Route). Sie bleibt
   stehen; die Leisten des Autos blendet Android Auto nach ein paar Sekunden
   aus. Rechts von oben: Übersicht (nur mit Route), +, −, Standort.
 - **Suchen:** oben das Suchfeld, rechts der Umschalter **Meine Touren** /
   **Orte** (Reiter erlaubt Android Auto nur auf der Startseite). Orte leer:
   **In der Nähe** (Parkplatz und Tanken als Knöpfe, antippen: alle
-  Kategorien als Raster mit großen Symbolen), dann Zuhause, Arbeit,
-  Lesezeichen und die letzten Ziele – die führen gleich zur Routenwahl.
+  Kategorien als Raster mit großen Symbolen), darunter **Lesezeichen**
+  (Zuhause und Arbeit als Knöpfe, antippen: alle gemerkten Orte als Raster
+  aus Kacheln mit Entfernung – `bookmarks` in `js/car/car.js`,
+  `BookmarksScreen`), dann die letzten Ziele. Kachel, Knopf und letztes
+  Ziel führen gleich zur Routenwahl. Mit Text findet die Suche gemerkte
+  Orte weiter in der Liste.
   **Meine Touren:** nur die **fürs Auto geplanten** Touren (Planer →
   Unterwegs als „Auto“; Wander- und Radtouren fehlen, ohne
   solche steht „Keine Touren fürs Auto geplant“), das Suchfeld filtert.
 - **In der Nähe:** Eine Kategorie zeigt ihre Treffer als Liste neben der
   Karte, die Karte zoomt dafür auf die nächsten acht heraus (`fitHits`).
-  Ein Treffer führt direkt zur Routenwahl, ohne die Ortskarte dazwischen.
+  Jeder Treffer trägt eine **Nummer in Klammern am Namen** („Parkplatz
+  (3)“ – sie gehört nicht zum Namen) und steht mit derselben Nummer als Punkt auf der Karte (`showNumbers` – statt der
+  Symbole, die nicht sagen, welcher es ist). Ein Treffer der Liste führt
+  direkt zur Routenwahl, ohne die Ortskarte dazwischen; ein Tipp auf den
+  nummerierten Punkt öffnet den Ort.
 - **Immer mit dem Auto:** Im Auto wird jede Route mit dem Profil Auto
   gerechnet – auch wenn am Handy zuletzt Rad oder zu Fuß gewählt war; die
   Wahl am Handy bleibt davon unberührt (`setProfile` in
@@ -1407,16 +1428,40 @@ Android Auto nicht zu (Ablenkung). WMap malt einzig die Karte selbst:
 - **✕ oben** (ab dem dritten Bildschirm) führt in einem Schritt zurück zur
   Karte – statt mehrmals „Zurück“.
 - **Routenwahl** gebaut wie der Ort: Karte mit Feld daneben, je Route eine
-  Zeile mit Dauer und Länge („Gewählt“ bzw. „Alternative“, höchstens drei),
-  darunter groß **Los** und **Andere Route** (wechselt die Route durch;
-  gibt es nur eine: „Abbrechen“). „Los“ startet die
+  Zeile mit Dauer und Länge (höchstens vier, immer in derselben
+  Reihenfolge): die gewählte mit Pfeil und „Gewählt“, jede andere mit einem
+  **Haken-Knopf zum Wählen** – die Zeilen selbst lässt Android Auto in
+  diesem Feld nicht antippen. Auch ein **Tipp auf die Route in der Karte**
+  wählt sie. Am eigenen Standort steht kein Startpunkt (er verdeckte den
+  Pfeil). Darunter groß **Los** und **Filter**. Die Routen füllen die
+  freie Fläche neben dem Feld: `fitTo` nimmt der Karte vorher den Rand, den
+  sie aus der freien Fahrt noch trägt – MapLibre zählt ihn sonst zum neuen
+  dazu, die Route lag dann winzig in der Mitte.
+- **Filter:** Autobahnen, Mautstraßen, Fähren vermeiden – dieselben
+  Einstellungen wie hinter dem Filter-Knopf der App (`wmap.routePrefs`;
+  das Auto liest sie vor jeder Route neu, eine Änderung im Auto gilt auch
+  in der App). Zurück in der Routenwahl wird neu gerechnet
+  (`RoutePrefsScreen`, `routesAgain`).
+- „Los“ startet die
   Navigation: Pfeil, Entfernung, Straße und Ankunftszeit in der Vorlage des
   Autos, Ansagen über die Lautsprecher des Autos, Ton aus, „In der Nähe“
   unterwegs, Übersicht der ganzen Route; beendet wird mit dem ✕ neben der
   Ankunftszeit (von Android Auto, auch wo Anweisung und Zeit stehen, legt
   das Auto fest).
+- **Ziel erreicht:** Die Ankunftskarte bleibt stehen (0 min · 0 m) – an
+  ihr hängt das ✕ zum Beenden; nach **30 s** endet die Navigation von
+  selbst (`ARRIVED_MS` in `js/car/car.js`).
 - **Kurze Fragen zum Mitmachen** (Pillen, „Immer noch Stau?“) kommen als
-  Hinweis des Autos mit „Ja“ / „Nein“.
+  Hinweis des Autos – die Pille wie am Handy mit **✕** und „Bestätigen“,
+  sonst mit ihren ersten zwei Knöpfen. Hinweise zeigt Android Auto nur
+  während der Navigation.
+- **Fragen nach der Fahrt** („3 kurze Fragen zu deinem Weg“) kommen im Auto
+  nicht – dort lassen sie sich nicht beantworten. Die App bietet sie beim
+  nächsten Start an (`wmap.survey.fromCar`, `js/app/mitmachen.js`).
+- **Offline-Gebiete** der App nutzt die Karte im Auto mit: In der fertigen
+  App laden beide von app.wuefl.de und teilen sich Speicher und Service
+  Worker (am Gerät nachgeprüft: eine Kachel aus einem Gebiet der App kommt
+  in der Auto-Seite an).
 - Ohne Standort-Freigabe fragt das Auto am Handy danach.
 - „Navigiere zu …“ aus anderen Apps oder per Sprache (`geo:`) öffnet die
   Routenwahl bzw. die Suche.
@@ -1446,6 +1491,24 @@ gemeinsamem Speicher fasst das Auto nichts an. Die App legt beim Start und
 nach jeder Änderung ab, das Auto liest beim Start und bevor es Touren oder
 Ziele auflistet. Die App muss dafür einmal geöffnet gewesen sein.
 
+**Rechenzeit und Wärme** (`js/core/fps.js`): Die Karte im Auto und die App
+sind zwei WebViews derselben App – sie teilen sich einen Rechen-Thread. Am
+Pixel 9 gemessen zeichnete die Auto-Seite bei freier Fahrt gut 40
+Kartenbilder je Sekunde zu je 15–19 ms (64–80 % der Rechenzeit); navigierte
+die App dazu, fiel jede auf rund 20 Bilder, das Handy wurde heiß und
+drosselte – die Karte hing dann hunderte Meter hinter dem Standort her und
+reagierte erst nach Sekunden. Darum:
+
+- Im Auto höchstens **20 Bilder je Sekunde** (30, solange ein Finger die
+  Karte verschiebt) – gemessen danach 18 Bilder, 30 % der Rechenzeit.
+- Die **App zeichnet nur noch 10 Bilder je Sekunde**, solange die Karte im
+  Auto läuft: Das Auto meldet sich alle 5 s im gemeinsamen Speicher
+  (`carAlive`, `js/data/car-share.js`); bleibt die Meldung 15 s aus, gilt
+  die App wieder allein.
+- **Nur die neueste Standortmeldung zählt** (`__carFix` in `index.html`):
+  Kommt die Seite einmal nicht nach, staut sich nichts auf. Wischen und
+  Zoomen werden je Bild zu einem Schritt zusammengefasst.
+
 **Höchstens fünf Bildschirme hintereinander:** Android Auto zählt mit, wie
 viele Vorlagen eine App nacheinander zeigt („Task step … of 5“ im Protokoll
 des Autos); der sechste bleibt leer. Die Navigation setzt den Zähler zurück,
@@ -1455,7 +1518,7 @@ statt über ihr zu liegen (erst zurück zur Karte, die öffnet es dann –
 `WMapSession.afterHome`, `SearchScreen.replace` in
 `tools/android/car/CarScreens.kt`), und ein Treffer geht ohne Ortskarte zur
 Routenwahl. So ist „Los“ auch auf dem längsten Weg (Suchen → In der Nähe →
-Treffer → Routenwahl) der vierte Schritt.
+Treffer → Routenwahl) der vierte Schritt, der Filter der fünfte.
 
 **Routenwahl ohne Googles Vorlage:** `RoutePreviewNavigationTemplate` blieb
 in der aktuellen Fassung von Android Auto leer, sobald der Bildschirm davor

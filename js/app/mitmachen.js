@@ -32,10 +32,18 @@ export function openSurvey({ push = true } = {}) {
   survey.refresh();
 }
 
-/** Nach einer Fahrt: Fragen suchen und anbieten. */
+const FROM_CAR = 'wmap.survey.fromCar';
+const offer = (n) => toast(`${n} ${n === 1 ? 'kurze Frage' : 'kurze Fragen'} zu deinem Weg`, { action: { label: 'Ansehen', run: () => openSurvey() } });
+
+/**
+ * Nach einer Fahrt: Fragen suchen und anbieten. Im Auto nicht – dort lassen sie sich nicht beantworten
+ * (das Auto zeigt nur seine Vorlagen); gemerkt wird, dass es welche gibt, und die App bietet sie beim
+ * nächsten Start an (App und Auto teilen sich in der fertigen App den Speicher).
+ */
 export async function askAfterTrip() {
   const n = await survey.refresh();
-  if (n) toast(`${n} ${n === 1 ? 'kurze Frage' : 'kurze Fragen'} zu deinem Weg`, { action: { label: 'Ansehen', run: () => openSurvey() } });
+  if (!n) return;
+  if (CAR) local.set(FROM_CAR, Date.now()); else offer(n);
 }
 
 /** Beim ersten Navigieren einmal erklären, dass der Weg aufgezeichnet wird. */
@@ -67,5 +75,11 @@ finishLogin().then((user) => {
   survey.sync({ loud: true });
 }).catch(() => { /* gemeldet von login-return.js */ });
 
-// Beim Start: Liegengebliebenes hochladen und nach neuen Fragen sehen
-setTimeout(() => { survey.sync(); survey.refresh(); }, 4000);
+// Beim Start: Liegengebliebenes hochladen und nach neuen Fragen sehen – nach einer Fahrt mit Android Auto anbieten
+setTimeout(async () => {
+  survey.sync();
+  const n = await survey.refresh();
+  if (CAR || !local.get(FROM_CAR)) return;
+  local.set(FROM_CAR, null);
+  if (n && !SIMULATING && !/[?&](view|q|from|to|reach|geo|ort|tour|track|action)=/.test(location.search)) offer(n);
+}, 4000);

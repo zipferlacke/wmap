@@ -36,7 +36,8 @@ import { current, fitTo, map, parseTags, showHl, state } from '../app/core.js';
 import { tilePoints } from '../app/category.js';
 import { clearPlace, featureFromPoint, showPlace } from '../app/place.js';
 import { enterRoute, leaveRouteMode, setProfile } from '../app/route-plan.js';
-import { clearRoutes, fitRoute, selectRoute } from '../app/route-results.js';
+import { clearRoutes, computeRoutes, fitRoute, selectRoute } from '../app/route-results.js';
+import { prefs as routePrefs, reloadPrefs, setPref } from '../ui/route-prefs.js';
 import { nav, navTour, startNav } from '../app/nav.js';
 import { closeSheet } from '../app/views.js';
 import { startDrive, pauseDrive, resumeDrive, hudInsets, recenterIcon } from './drive.js';
@@ -164,14 +165,34 @@ function catRows(cat, points) {
     .map((p) => ({ p, m: distance(ref, p.geometry.coordinates) }))
     .sort((a, b) => a.m - b.m)
     .slice(0, 30)
-    .map(({ p, m }) => {
+    .map(({ p, m }, i) => {
       const info = describePoi(parseTags(p.properties.tags), { name: p.properties.name });
       const f = featureFromPoint(p);
+      // Nummer am Namen und am Punkt auf der Karte – „Parkplatz (3)“ in der Liste ist die 3 auf der Karte;
+      // in Klammern, damit sie nicht wie ein Teil des Namens aussieht
       return {
-        key: keep(f), title: info.name, icon: cat.icon, color: cat.color, point: p.geometry.coordinates, dist: m,
+        key: keep(f), nr: i + 1, title: `${info.name} (${i + 1})`, icon: cat.icon, color: cat.color, point: p.geometry.coordinates, dist: m,
         sub: [fmtDistance(m), info.status].filter(Boolean).join(' · '),
       };
     });
+}
+
+/** Die Treffer der Liste als nummerierte Punkte auf der Karte (statt der Symbole – die sagen nicht, welcher es ist) */
+let numbered = [];
+function showNumbers(rows = []) {
+  numbered.forEach((n) => n.marker.remove());
+  numbered = rows.map((r) => {
+    const el = document.createElement('div');
+    el.className = 'car-hit';
+    el.textContent = r.nr;
+    el.style.setProperty('--c', r.color ?? '#1a73e8');
+    return { key: r.key, marker: new maplibregl.Marker({ element: el }).setLngLat(r.point).addTo(map) };
+  });
+}
+/** Treffer und ihre Nummern weg */
+function clearHits() {
+  showHl({});
+  showNumbers();
 }
 
 /**
@@ -203,43 +224,53 @@ async function category(id) {
   const bounds = bboxAround(here(), RADIUS_M);
   const token = ++seq;
   const tiles = await tilePoints(cat, bounds, signal).catch(() => []);
-  showHl({ points: tiles });
+  const first = catRows(cat, tiles);
+  showHl({});
+  showNumbers(first);
   fitHits(tiles);
   overpass.inBbox(cat, bounds, { signal }).then(({ shapes, points }) => {
     if (signal.aborted) return;
     const ids = new Set(points.map((p) => p.properties.id));
     const all = [...points, ...tiles.filter((p) => p.properties.id && !ids.has(p.properties.id))];
-    showHl({ shapes, points: all });
+    const rows = catRows(cat, all);
+    showHl({ shapes });
+    showNumbers(rows);
     fitHits(all);
-    withPng(catRows(cat, all)).then((items) => send('list', { token, title: cat.label, items, final: true }));
+    withPng(rows).then((items) => send('list', { token, title: cat.label, items, final: true }));
   }).catch(async (err) => {
-    if (err.name !== 'AbortError') send('list', { token, title: cat.label, items: await withPng(catRows(cat, tiles)), final: true, error: tiles.length ? null : err.message });
+    if (err.name !== 'AbortError') send('list', { token, title: cat.label, items: await withPng(first), final: true, error: tiles.length ? null : err.message });
   });
-  return { token, title: cat.label, items: await withPng(catRows(cat, tiles)), final: false };
+  return { token, title: cat.label, items: await withPng(first), final: false };
 }
 
 /* ── Suche ───────────────────────────────────────────────────────────────── */
 
 const fold = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
-function savedRows(text = '') {
+const KIND_ORDER = ['home', 'work', 'fav', 'stop'];
+const KIND_COLOR = { home: '#8ab4f8', work: '#8ab4f8', fav: '#fdd663', stop: '#81c995' };
+
+function savedRows(text = '', limit = 6) {
   const w = fold(text).split(/\s+/).filter(Boolean);
   return places.all()
     .filter((p) => !w.length || w.every((x) => fold(`${p.name} ${p.label} ${PLACE_KINDS[p.kind]?.label ?? ''}`).includes(x)))
-    .sort((a, b) => ['home', 'work', 'fav', 'stop'].indexOf(a.kind) - ['home', 'work', 'fav', 'stop'].indexOf(b.kind))
-    .slice(0, 6)
+    .sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind))
+    .slice(0, limit)
     .map((p) => {
       const f = { type: 'Feature', geometry: { type: 'Point', coordinates: p.point }, properties: { name: p.name, _point: true } };
       const m = dist(p.point);
-      return { ...row(f), kind: 'target', icon: PLACE_KINDS[p.kind]?.icon ?? 'star', sub: [m !== null ? fmtDistance(m) : null, p.label].filter(Boolean).join(' · ') };
+      return {
+        ...row(f), kind: 'target', place: p.kind, icon: PLACE_KINDS[p.kind]?.icon ?? 'star', color: KIND_COLOR[p.kind] ?? null,
+        sub: [m !== null ? fmtDistance(m) : null, p.label].filter(Boolean).join(' · '),
+      };
     });
 }
 
 let searchCtl = null;
 async function search(text) {
   const q = String(text ?? '').trim();
-  // Leer: wohin meistens – Zuhause, Arbeit, Lesezeichen, zuletzt gefahren
-  if (q.length < 2) return { items: await withPng([...savedRows(), ...methods.recentTargets()]) };
+  // Leer: zuletzt gefahren – Zuhause, Arbeit und Gemerktes stehen als Zeile „Lesezeichen“ darüber (bookmarks)
+  if (q.length < 2) return { items: await withPng(methods.recentTargets()) };
   searchCtl?.abort();
   searchCtl = new AbortController();
   const found = await geocode.search(q, { center: here(), zoom: Math.max(map.getZoom(), 12), limit: 8, signal: searchCtl.signal });
@@ -290,7 +321,9 @@ async function routeToPoint(point, label) {
   if (nav.active) nav.stop();
   pauseDrive();
   clearPlace();
-  showHl({});
+  clearHits();
+  // Autobahn, Maut, Fähren: wie zuletzt eingestellt – am Handy oder hier
+  reloadPrefs();
   clearRoutes({ keepSheet: true });
   navTour.set(null);
   setProfile('car');
@@ -321,6 +354,8 @@ async function tour(id) {
   if (nav.active) nav.stop();
   pauseDrive();
   clearPlace();
+  clearHits();
+  reloadPrefs();
   clearRoutes({ keepSheet: true });
   setProfile('car');
   navTour.set(t);
@@ -447,13 +482,32 @@ const methods = {
   },
   recenter,
   async click(x, y) {
+    // Routenwahl: eine andere Route antippen wählt sie
+    if (!nav.active && state.routes.length > 1) {
+      const line = map.getLayer('route-alt') ? map.queryRenderedFeatures([[x - 16, y - 16], [x + 16, y + 16]], { layers: ['route-alt'] })[0] : null;
+      if (line) {
+        const id = Number(line.properties.id);
+        selectRoute(id, { fit: false });
+        send('routeSelected', { id });
+        return null;
+      }
+    }
+    // Nummerierter Treffer: der nächste unter dem Finger
+    const near = numbered.map((n) => { const p = map.project(n.marker.getLngLat()); return { n, d: Math.hypot(p.x - x, p.y - y) }; })
+      .filter((h) => h.d <= 26).sort((a, b) => a.d - b.d)[0];
+    if (near && hits.get(near.n.key)) return openPlace(hits.get(near.n.key));
     const f = hitAt(x, y);
     return f ? openPlace(f) : null;
   },
   categories: () => withPng(NEARBY.map(byId).filter(Boolean).map((c) => ({ id: c.id, title: c.label, icon: c.icon, color: c.color }))),
   category,
   search,
-  saved: async () => ({ items: await withPng(savedRows()) }),
+  /** Lesezeichen als Kacheln: Zuhause, Arbeit, Gemerktes, Haltestellen – ein Tipp führt zur Routenwahl */
+  async bookmarks() {
+    shareSync();
+    const rows = savedRows('', 60);
+    return { items: await Promise.all(rows.map(async (r) => ({ ...r, png: await icon(r.icon, r.color ?? '#8ab4f8', 96) }))) };
+  },
   recentTargets() {
     const seen = new Set();
     return recent.list('route')
@@ -482,6 +536,22 @@ const methods = {
   routeTo,
   routeToPoint,
   selectRoute(id) { selectRoute(id, { fit: true }); return true; },
+  /** Filter der Routenplanung fürs Auto: was vermieden wird (true = vermeiden) */
+  routePrefs() {
+    reloadPrefs();
+    return { highways: !routePrefs.highways, tolls: !routePrefs.tolls, ferries: !routePrefs.ferries };
+  },
+  setRoutePref(key, avoid) {
+    if (!['highways', 'tolls', 'ferries'].includes(key)) throw new Error('Unbekannte Einstellung');
+    setPref(key, !avoid);
+    return true;
+  },
+  /** Nach einer geänderten Einstellung: dieselbe Strecke neu rechnen */
+  async routesAgain() {
+    clearRoutes({ keepSheet: true });
+    computeRoutes();
+    return routesReady();
+  },
   async start() {
     if (!current()) throw new Error('Keine Route gewählt');
     await startNav();
@@ -501,7 +571,7 @@ const methods = {
     if (!nav.active) { leaveRouteMode(); clearRoutes({ keepSheet: true }); }
     clearPlace();
     catCtl?.abort();
-    showHl({});
+    clearHits();
     closeSheet();
     if (!nav.active) resumeDrive();
     return true;

@@ -70,6 +70,8 @@ class WMapSession : Session() {
   private var pendingIntent: Intent? = null
   /** Was die Startkarte öffnet, sobald sie wieder oben liegt (ein Bildschirm ersetzt einen anderen, CarScreens.kt) */
   var afterHome: (() -> Unit)? = null
+  /** Filter der Route geändert (RoutePrefsScreen) – die Routenwahl rechnet beim Zurückkommen neu */
+  var prefsChanged = false
   /** Listen, die auf Nachschub warten (Kategorie: erst Kacheln, dann Overpass) */
   val listListeners = ArrayList<(JSONObject) -> Unit>()
 
@@ -148,6 +150,7 @@ class WMapSession : Session() {
       }
       "list" -> if (o != null) listListeners.toList().forEach { it(o) }
       "place" -> if (o != null) screens.push(PlaceScreen(carContext, this, o))
+      "routeSelected" -> if (o != null) (screens.top as? RoutePreviewScreen)?.selectedOnMap(o.optInt("id"))
       "toast" -> o?.optString("text")?.takeIf { it.isNotEmpty() }?.let { CarToast.makeText(carContext, it, CarToast.LENGTH_SHORT).show() }
       "ask" -> if (o != null) ask(o)
       "askEnd" -> alerts.remove(o?.optInt("id"))?.let { dismissAlert(it) }

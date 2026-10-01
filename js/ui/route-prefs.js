@@ -36,6 +36,19 @@ export const prefs = { ...DEFAULTS, ...saved, modes: { ...DEFAULTS.modes, ...(sa
 
 const save = () => local.set(KEY, prefs);
 
+/** Aus dem Speicher neu lesen: Die App bzw. Android Auto (eigenes Fenster, derselbe Speicher) hat sie geändert */
+export function reloadPrefs() {
+  const s = local.get(KEY, {}) ?? {};
+  Object.assign(prefs, DEFAULTS, s, { modes: { ...DEFAULTS.modes, ...(s.modes ?? {}) } });
+}
+addEventListener('storage', (e) => { if (e.key === KEY) reloadPrefs(); });
+
+/** Einzelne Einstellung setzen (Android Auto: car/car.js) */
+export function setPref(key, value) {
+  prefs[key] = value;
+  save();
+}
+
 /** Zusätzliche Valhalla-Optionen der Routenplanung (nicht des Tourenplaners) */
 export function valhallaPrefs(costing) {
   const o = {};

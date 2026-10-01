@@ -184,6 +184,8 @@ function renderWaypoints() {
   wpMarkers.forEach((m) => m.remove());
   wpMarkers = state.waypoints.map((w, i) => {
     if (!w.point) return null;
+    // Im Auto steht am eigenen Standort schon der Pfeil – der Startpunkt läge darüber
+    if (CAR && i === 0 && w.label === 'Mein Standort') return null;
     const k = wpKind(i);
     const m = new maplibregl.Marker({
       element: markerEl(k.kind, k.icon, k.kind === 'via' ? String(i) : ''),

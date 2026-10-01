@@ -85,6 +85,11 @@ with Browser(width=800, height=480) as b:
     time.sleep(1.5)
     fit = b.js("const m = window.__wmap.map; return [+m.getZoom().toFixed(1), arguments[0].every((p) => m.getBounds().contains(p))]", [x['point'] for x in park['items'][:5]])
     print('Karte auf die Treffer (Zoom, die nächsten fünf im Bild):', fit)
+    # Nummer am Namen und derselbe Punkt auf der Karte
+    last_list = (later[-1] if later else park)['items']
+    dots = b.js("return [...document.querySelectorAll('.car-hit')].map((e) => e.textContent)")
+    numbers = [x['title'].rsplit(' ', 1)[-1] for x in last_list]  # „(3)“ – in Klammern, gehört nicht zum Namen
+    print('Nummern in der Liste:', numbers[:5], '· Punkte auf der Karte:', dots[:5], len(dots))
 
     found = call(b, 'search', 'Bäckerei')
     print('Suche „Bäckerei“:', [(x.get('kind', 'ort'), x['title']) for x in (found or {}).get('items', [])[:4]])
@@ -97,6 +102,36 @@ with Browser(width=800, height=480) as b:
 
     route = call(b, 'routeTo', first['key']) if first else None
     print('Route:', route and (route['title'], [r['title'] for r in route['routes']]))
+    # Die Routen füllen die freie Fläche neben der Liste (der Rand der freien Fahrt darf nicht mitzählen)
+    time.sleep(1.5)
+    fill = b.js("""const { map, state } = window.__wmap; const c = map.getContainer(); const i = map.carInsets;
+      const all = state.routes.map((r) => r.bounds);
+      const a = map.project([Math.min(...all.map((x) => x[0])), Math.max(...all.map((x) => x[3]))]);
+      const z = map.project([Math.max(...all.map((x) => x[2])), Math.min(...all.map((x) => x[1]))]);
+      const fw = c.clientWidth - i.left - i.right, fh = c.clientHeight - i.top - i.bottom;
+      return { w: +((z.x - a.x) / fw).toFixed(2), h: +((z.y - a.y) / fh).toFixed(2),
+        inside: a.x >= i.left && z.x <= c.clientWidth - i.right && a.y >= i.top && z.y <= c.clientHeight - i.bottom }""")
+    print('Routenvorschau füllt die freie Fläche (Anteil Breite/Höhe):', fill)
+    # Lesezeichen als Kacheln
+    b.js("""localStorage.setItem('wmap.saved', JSON.stringify({ connections: [], deleted: {}, places: [
+      { id: 'p1', kind: 'fav', name: 'Kiessee', label: 'Göttingen', point: [9.923, 51.517], list: 'Allgemein', updated: 1 },
+      { id: 'p2', kind: 'home', name: 'Zuhause', label: 'Rittmarshausen', point: [10.1036, 51.4814], updated: 1 }] }))""")
+    marks = call(b, 'bookmarks')
+    empty = call(b, 'search', '')
+    b.js("localStorage.removeItem('wmap.saved')")
+    print('Lesezeichen:', [(x['title'], x['place'], x['kind'], len(x['png']) > 100) for x in (marks or {}).get('items', [])], '· leere Suche:', [x['title'] for x in (empty or {}).get('items', [])])
+    # Filter wie in der App: Autobahnen vermeiden → gespeichert, die Strecke wird neu gerechnet
+    before = call(b, 'routePrefs')
+    call(b, 'setRoutePref', 'highways', True)
+    stored = b.js("return JSON.parse(localStorage.getItem('wmap.routePrefs'))")
+    again = call(b, 'routesAgain')
+    call(b, 'setRoutePref', 'highways', False)
+    # In der App geändert (derselbe Speicher): das Auto liest neu
+    b.js("localStorage.setItem('wmap.routePrefs', JSON.stringify({ ...JSON.parse(localStorage.getItem('wmap.routePrefs')), tolls: false }))")
+    from_app = call(b, 'routePrefs')
+    b.js("localStorage.removeItem('wmap.routePrefs')")
+    call(b, 'routePrefs')
+    print('Filter:', before, stored and stored.get('highways'), again and len(again['routes']), from_app)
     ok_start = call(b, 'start')
     time.sleep(3)
     call(b, 'overview')
@@ -164,9 +199,16 @@ with Browser(width=800, height=480) as b:
         'Freie Fahrt: Pfeil, Tempo, Straße, geneigt': isinstance(drive, dict) and drive['arrow'] and drive['kmh'] != '0' and drive['streetShown'] and drive['pitch'] > 30,
         'Parkplätze in der Nähe': bool(park) and (len(park['items']) > 0 or any(e['items'] for e in later)),
         'Karte zoomt auf die Treffer heraus': fit[0] <= 16 and fit[1] is True,
+        'Treffer mit Nummer in Klammern am Namen und nummeriertem Punkt auf der Karte': numbers[:3] == ['(1)', '(2)', '(3)'] and dots[:3] == ['1', '2', '3'] and len(dots) == len(last_list),
+        'Filter: Autobahnen vermeiden gespeichert, neu gerechnet; Änderung der App kommt an': before == {'highways': False, 'tolls': False, 'ferries': False}
+            and stored and stored.get('highways') is False and bool(again) and len(again['routes']) >= 1 and from_app == {'highways': False, 'tolls': True, 'ferries': False},
         'Suche findet Kategorie': found is not None,
         'Ort mit Details und Marker': bool(place) and bool(place['title']) and marker,
         'Route berechnet': bool(route) and len(route['routes']) >= 1,
+        'Routenvorschau füllt die freie Fläche neben der Liste': bool(fill) and fill['inside'] and max(fill['w'], fill['h']) >= 0.6,
+        'Lesezeichen als Kacheln: Zuhause zuerst, Tipp führt zur Route; nicht doppelt in der leeren Suche':
+            [(x['title'], x['place'], x['kind']) for x in (marks or {}).get('items', [])] == [('Zuhause', 'home', 'target'), ('Kiessee', 'fav', 'target')]
+            and all(len(x['png']) > 100 and x.get('key') for x in marks['items']) and 'Zuhause' not in [x['title'] for x in (empty or {}).get('items', [])],
         'Navigation mit Anweisungen als Daten': ok_start and bool(guide) and 'dist' in guide[-1] and ended,
         'Frage als Hinweis mit ✕ und „Bestätigen“, Antwort kommt an': bool(ask) and answered == 'yes'
             and [(o['label'], o.get('close', False)) for o in ask['options']] == [('Schließen', True), ('Bestätigen', False)],
