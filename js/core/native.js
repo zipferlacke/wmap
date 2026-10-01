@@ -44,12 +44,21 @@ const INTERVAL_MS = 1000;
 const listeners = new Set();
 let shared = null;        // { channel, interval } der laufenden Abfrage
 let stopTimer = null;
+/*
+ * Beantwortet die App „watch_position“? Bis App 2.1.0 tat das Plugin das nie –
+ * und jeder offene Aufruf hielt einen Arbeits-Thread der App fest; nach acht
+ * antwortete sie auf nichts mehr („Webseite nicht verfügbar“). Die App bringt
+ * das Plugin jetzt korrigiert mit (src-tauri/plugins/geolocation/WMAP.md).
+ * Solange keine Antwort kam, wird nur neu gestartet, wenn es öfter sein muss.
+ */
+let answers = false;
 const wanted = () => Math.min(...[...listeners].map((l) => l.interval));
 
 function startShared(options) {
   clearTimeout(stopTimer);
   const interval = wanted();
   if (shared?.interval === interval) return;
+  if (shared && !answers && interval > shared.interval) return;
   // Anderer Abstand gebraucht: die alte Abfrage beenden, eine neue starten
   if (shared) core.invoke('plugin:geolocation|clear_watch', { channelId: shared.channel.id }).catch(() => {});
   const channel = new core.Channel();
@@ -58,6 +67,7 @@ function startShared(options) {
     for (const l of listeners) (p?.coords ? l.ok(p) : l.fail?.({ code: 2, message: String(p) }));
   };
   core.invoke('plugin:geolocation|watch_position', { options: { ...toNative(options), timeout: interval }, channel })
+    .then(() => { answers = true; })
     .catch((err) => {
       if (shared?.channel === channel) shared = null;
       if (notAllowed(err)) {

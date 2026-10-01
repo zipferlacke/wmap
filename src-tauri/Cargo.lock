@@ -3726,8 +3726,6 @@ dependencies = [
 [[package]]
 name = "tauri-plugin-geolocation"
 version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65736ed4f73b98e60cee2e07a60c1fa9e994199b2569752a8d16bc9267dda0e9"
 dependencies = [
  "log",
  "serde",

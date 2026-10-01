@@ -48,3 +48,9 @@ webkit2gtk = { version = "2.0", features = ["v2_40"] }
 # die Web-App fragt es über js/native.js an, im Browser bleibt es beim Web-GPS
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-geolocation = "2"
+
+# Das Geolocation-Plugin als Kopie mit Korrektur: im Original beantwortet der
+# Android-Teil „watchPosition“ nie und hält dabei je Aufruf einen Arbeits-Thread
+# der App fest – nach acht hängt die ganze App (plugins/geolocation/WMAP.md)
+[patch.crates-io]
+tauri-plugin-geolocation = { path = "plugins/geolocation" }
