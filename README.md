@@ -1111,11 +1111,18 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 ## 20. Offline und Datenverbrauch
 
 - Der Service Worker (`sw.js`) hält **genau eine Version** der App bereit –
-  **erst Cache, sonst Netz**, auch mit Netz. Jede Version hat ihren Cache
-  `wmap-app-<Version>`; beim Installieren lädt er alle Dateien aus
+  **erst Cache, sonst Netz**, auch mit Netz. Jede Fassung hat ihren Cache
+  `wmap-app-<Version>-<Stand>`; beim Installieren lädt er alle Dateien aus
   `appdata/sw-files.json` vorab (von `appdata/version.py` erzeugt: alles,
   was die Seiten über `import`, `@import`, `url()`, `src`/`href` erreichen –
-  aus wuefl-libs nur das Genutzte, zurzeit gut 8 MB). Nur
+  aus wuefl-libs nur das Genutzte, zurzeit gut 8 MB) – im Hintergrund, sechs
+  zugleich, jede Datei nur nachgefragt (unverändert bzw. gerade von der Seite
+  geladen: 304, nichts wird doppelt übertragen). Angemeldet wird er beim
+  ersten Besuch erst, wenn die Seite steht. Der **Stand** (`BUILD` in
+  `sw.js`) ist eine Prüfsumme über alle diese Dateien: Dieselbe Nummer mit
+  geänderten Dateien noch einmal hochgeladen ist ein neuer Service Worker
+  mit eigenem Speicher – die laufende Seite bleibt ganz bei ihrer Fassung,
+  die neue gilt ab dem nächsten Start (Alt und Neu mischen sich nie). Nur
   `appdata/messages.json` kommt immer erst aus dem Netz (sie sagt, ob es
   Neues gibt), `bEnd/` nur aus dem Netz.
 - **Updates** (`js/ui/news.js`, nur mit Netz): Ist im `changelog` eine
@@ -1376,10 +1383,16 @@ takeshots wmap --eigener-server # ohne Docker
   **Neue Version:** oben im `changelog` eintragen, dann
   `python3 appdata/version.py` – trägt die Nummer in `js/core/config.js`,
   `sw.js`, `src-tauri/tauri.conf.json`, `Cargo.toml` und `Cargo.lock` ein und
-  schreibt `appdata/sw-files.json` neu
-  (`--pruefen` nur prüfen; `git-release` prüft das vor dem Tag).
+  schreibt `appdata/sw-files.json` und den Stand (`BUILD` in `sw.js`) neu
+  (`--pruefen` nur prüfen; `git-release` prüft das vor dem Tag). **Vor jedem
+  Hochladen** laufen lassen, auch ohne neue Nummer – sonst bekommen
+  Installierte die geänderten Dateien nicht.
 
   Die Dialoge kommen nur beim normalen Start der Karte, nicht wenn ein Link
   etwas öffnet – dann beim nächsten Mal (so auch nicht auf den Screenshots).
+  Sie kommen sofort beim Start (nicht erst, wenn die Karte geladen ist) und
+  nacheinander: Was von selbst kommt (Willkommen, Neuigkeiten, „Navigation
+  fortsetzen?“, 3D im Mobilfunk), wartet, bis kein anderer Dialog offen ist
+  (`ask({ auto: true })` bzw. `whenFree()` in `js/ui/dialogs.js`).
   Gemerkt wird in localStorage `wmap.seen`. Zum Ausprobieren:
   `localStorage.setItem('wmap.seen', '{"version":"0.9.0","messages":[]}')`.

@@ -21,6 +21,13 @@ export const offlineSetting = {
 
 export async function registerOffline() {
   if (!('serviceWorker' in navigator)) return;
+  // Erst die Seite: Beim allerersten Besuch lädt der Service Worker alle
+  // Dateien in seinen Speicher – das soll nicht mit dem Aufbau der Seite um
+  // die Leitung streiten. Ist er schon da, kostet das Anmelden nichts
+  if (!navigator.serviceWorker.controller) {
+    if (document.readyState !== 'complete') await new Promise((r) => addEventListener('load', r, { once: true }));
+    await new Promise((r) => setTimeout(r, 1500));
+  }
   try {
     await navigator.serviceWorker.register('./sw.js');
     const reg = await navigator.serviceWorker.ready;

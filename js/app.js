@@ -17,6 +17,7 @@ import { parseGeoUri } from './core/geo-uri.js';
 import { appNews } from './ui/news.js';
 import { autoSync } from './data/auto-sync.js';
 import { folder } from './data/folder.js';
+import { savedNav } from './data/offline.js';
 import { $, CAR, debounce, map, myPosition, q, state } from './app/core.js';
 import { fly } from './app/map-clicks.js';
 import { openSurvey } from './app/mitmachen.js';
@@ -284,11 +285,15 @@ if (CAR) import('./car/car.js');
 if (map.loaded()) fromUrl(); else map.once('load', fromUrl);
 if (!CAR) { if (map.loaded()) resumeNav(); else map.once('load', resumeNav); }
 // Willkommen, Neues nach einem Update, Nachrichten – nur beim normalen Start,
-// nicht wenn ein Link etwas öffnet und nicht in einer fortgesetzten Navigation
-map.once('idle', () => {
+// nicht wenn ein Link etwas öffnet und nicht vor einer unterbrochenen
+// Navigation („Navigation fortsetzen?“). Gleich jetzt, nicht erst wenn die
+// Karte fertig geladen ist: bei schwachem Netz käme das Willkommen sonst
+// irgendwann, mitten in die Bedienung
+if (!CAR) {
   const linked = /[?&](view|q|from|to|reach|action|ort|route|anfrage|geo|sim|tour)\b/.test(location.search);
-  if (CAR) return;
-  appNews({ dialogs: !linked && !nav.active });
+  appNews({ dialogs: !linked && !nav.active && !savedNav() });
+}
+map.once('idle', () => {
   // Ordner und Health Connect still abgleichen (wenn eingeschaltet) – nicht während einer Navigation
-  if (!nav.active) autoSync();
+  if (!CAR && !nav.active) autoSync();
 });

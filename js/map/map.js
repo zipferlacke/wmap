@@ -8,6 +8,7 @@
  */
 import { STYLE_URL, TERRAIN_TILES } from '../core/config.js';
 import { local } from '../data/store.js';
+import { whenFree } from '../ui/dialogs.js';
 import { byId } from '../core/categories.js';
 import { theme } from '../core/theme.js';
 import { geo, geolocationApi } from '../core/native.js';
@@ -233,7 +234,9 @@ function allow3d() {
 }
 
 /** Rückfrage als Dialog aus wuefl-libs. */
-function askCellular() {
+async function askCellular() {
+  // Nicht mitten in das Willkommen oder einen anderen Dialog hinein
+  await whenFree();
   return new Promise((resolve) => {
     const dlg = document.createElement('dialog');
     dlg.className = 'dialog confirm';

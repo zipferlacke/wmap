@@ -10,10 +10,35 @@
  *   Hauptknopf (primary) stattdessen dessen Ergebnis – z. B. ein Eingabefeld;
  *   Enter im Feld drückt den Hauptknopf. `setup(dlg, done)` läuft nach dem
  *   Öffnen – für eigene Knöpfe im Text; `done(v)` schließt mit Wert v.
+ * `auto: true`: der Dialog kommt von selbst – er wartet, bis kein anderer
+ *   offen ist (whenFree).
  */
 import { esc } from '../core/geo.js';
 
-export function ask({ icon = 'help', title, text = '', html = '', buttons, read = null, className = '', setup = null }) {
+/*
+ * Dialoge, die von selbst kommen (Willkommen, Neuigkeiten, „Navigation
+ * fortsetzen?“, 3D im Mobilfunk), warten aufeinander: nie zwei übereinander,
+ * keiner mitten in einen offenen hinein. Was man selbst antippt, kommt sofort.
+ */
+let line = Promise.resolve();
+// Nur echte Dialoge (showModal) – Blätter und Leisten, die als <dialog open>
+// dauerhaft dastehen, zählen nicht
+const open = () => { try { return !!document.querySelector('dialog:modal'); } catch { return false; } };
+/** Platz in der Reihe → Promise, erfüllt, sobald kein Dialog mehr offen ist */
+export function whenFree() {
+  const turn = line.then(() => (open() ? new Promise((done) => {
+    const t = setInterval(() => { if (!open()) { clearInterval(t); done(); } }, 250);
+  }) : null));
+  line = turn;
+  return turn;
+}
+
+/** `auto`: kommt von selbst (nicht auf einen Tipp hin) – wartet, bis kein anderer Dialog offen ist */
+export function ask({ auto = false, ...opts }) {
+  return auto ? whenFree().then(() => show(opts)) : show(opts);
+}
+
+function show({ icon = 'help', title, text = '', html = '', buttons, read = null, className = '', setup = null }) {
   return new Promise((resolve) => {
     const dlg = document.createElement('dialog');
     dlg.className = `dialog confirm ${className}`.trim();

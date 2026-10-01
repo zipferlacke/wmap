@@ -31,12 +31,14 @@
  * Gemerkt wird in localStorage „wmap.seen“: { version, messages: [ids] }.
  * Die Dialoge kommen nur auf der Karte beim normalen Start – öffnet ein Link
  * etwas (geteilter Ort, Route …), erst beim nächsten Mal. So bleiben auch
- * die Screenshots (takeshots, alle mit Link) frei davon.
+ * die Screenshots (takeshots, alle mit Link) frei davon. Sie kommen gleich
+ * beim Start, nicht erst wenn die Karte fertig geladen ist, und nacheinander
+ * (ui/dialogs.js `auto`).
  */
 import { APP_VERSION } from '../core/config.js';
 import { appVersion } from '../core/native.js';
 import { local } from '../data/store.js';
-import { ask } from './dialogs.js';
+import { ask, whenFree } from './dialogs.js';
 import { esc } from '../core/geo.js';
 
 const SEEN = 'wmap.seen';
@@ -99,7 +101,7 @@ export async function appNews({ dialogs = false } = {}) {
     if (!msg?.id || shown.has(msg.id)) continue;
     if ((msg.from && today < msg.from) || (msg.until && today > msg.until)) continue;
     await ask({
-      icon: msg.icon ?? 'campaign', title: msg.title ?? 'Neuigkeit', className: 'news',
+      auto: true, icon: msg.icon ?? 'campaign', title: msg.title ?? 'Neuigkeit', className: 'news',
       html: paragraphs(msg.text),
       buttons: [{ value: 'ok', label: 'OK', primary: true }],
     });
@@ -114,7 +116,7 @@ const paragraphs = (text) => [].concat(text ?? []).map((p) => `<p>${p}</p>`).joi
 
 function welcome(m) {
   return ask({
-    icon: 'waving_hand', title: 'Willkommen bei WMap', className: 'news',
+    auto: true, icon: 'waving_hand', title: 'Willkommen bei WMap', className: 'news',
     html: `${paragraphs(m.welcome)}<p class="news-version">Version ${esc(APP_VERSION)}</p>`,
     buttons: [{ value: 'ok', label: 'Los geht’s', icon: 'map', primary: true }],
   });
@@ -132,7 +134,7 @@ export async function showChangelog(m = null, { since = null } = {}) {
   const title = since === null ? 'Was es in WMap gibt'
     : list.length === 1 ? `Neu in WMap ${list[0].version}` : `Neu seit Version ${since}`;
   await ask({
-    icon: 'new_releases', title, className: 'news',
+    auto: since !== null, icon: 'new_releases', title, className: 'news',
     html: list.map((v) => `<section class="news-release">
         <h3>Version ${esc(v.version)}${v.date ? ` <small>${DATE.format(new Date(v.date))}</small>` : ''}</h3>
         <ul>${v.changes.map((c) => `<li>${c}</li>`).join('')}</ul>
@@ -162,7 +164,8 @@ export async function checkUpdates(m) {
  * `buttons`: [{ value, label, icon?, primary? }], `onPick(value, dlg)` – gibt
  * sie true zurück, schließt das Popup.
  */
-function updateDialog({ icon, title, html, buttons, closable, onPick }) {
+async function updateDialog({ icon, title, html, buttons, closable, onPick }) {
+  await whenFree();
   return new Promise((resolve) => {
     document.getElementById('update-dialog')?.remove();
     const dlg = document.createElement('dialog');

@@ -1,8 +1,8 @@
 /**
  * Service Worker: WMap läuft auch ohne Netz weiter – und genau eine Version.
  *
- *   App (eigene Dateien, libs/)      erst Cache, sonst Netz – je Version ein
- *                                    Cache „wmap-app-<VERSION>“, beim
+ *   App (eigene Dateien, libs/)      erst Cache, sonst Netz – je Fassung ein
+ *                                    Cache „wmap-app-<VERSION>-<BUILD>“, beim
  *                                    Installieren ganz geladen (sw-files.json)
  *   appdata/messages.json            erst Netz (sagt, ob es Neues gibt), ohne
  *                                    Netz der Cache mit „X-WMap-Offline: 1“
@@ -10,10 +10,13 @@
  *                                    enthalten die Version, ändern sich also nie
  *   Suche, Routing, Overpass, bEnd/  nur Netz
  *
- * Update: Eine neue VERSION (appdata/version.py) macht eine neue sw.js – der
- * Browser installiert sie im Hintergrund, sie wartet. Die Seite fragt
- * (js/ui/news.js): „Neue Version verfügbar“ bzw. zwingend bei minVersion;
- * „Aktualisieren“ schickt „skip-waiting“, dann lädt die Seite neu.
+ * Update: Eine neue VERSION oder geänderte Dateien (BUILD, beides von
+ * appdata/version.py) machen eine neue sw.js – der Browser installiert sie im
+ * Hintergrund in einen eigenen Speicher, sie wartet; die laufende Seite
+ * bleibt ganz bei ihrer Fassung. Neue Nummer: Die Seite fragt
+ * (js/ui/news.js) „Neue Version verfügbar“ bzw. zwingend bei minVersion;
+ * „Aktualisieren“ schickt „skip-waiting“, dann lädt die Seite neu. Nur
+ * geänderte Dateien bei gleicher Nummer: gilt still ab dem nächsten Start.
  *
  * Teilen-Menü am Handy (manifest share_target): die GPX-Dateien kommen per
  * POST an import.html – hier in den Cache „wmap-share“, dann weiter zu
@@ -34,7 +37,11 @@
  *   - reicht der Platz nicht, weicht zuerst die älteste Navigation
  */
 const VERSION = '2.1.0';            // von appdata/version.py – neue Nummer = Update
-const APP = `wmap-app-${VERSION}`;
+// Stand der Dateien (Prüfsumme über alles in sw-files.json, von version.py):
+// dieselbe Nummer noch einmal hochgeladen ist trotzdem ein neuer Service Worker
+// mit eigenem Speicher – Alt und Neu mischen sich nie
+const BUILD = '6bd27faa71';
+const APP = `wmap-app-${VERSION}-${BUILD}`;
 const APP_PREFIX = 'wmap-app-';
 const SHARE = 'wmap-share';
 const DEV = self.location.hostname === 'localhost';
@@ -52,17 +59,32 @@ const TILE_HOSTS = ['tiles.openfreemap.org', 'tiles.mapterhorn.com'];
 // (die allererste Version wird sofort aktiv – es gibt ja keine alte)
 self.addEventListener('install', (e) => e.waitUntil(precache()));
 
+/*
+ * Alles in den Speicher dieser Fassung – im Hintergrund, die laufende Seite
+ * bleibt bei ihrer. Jede Datei wird beim Server nur nachgefragt („no-cache“):
+ * Was der Browser gerade erst geladen hat oder was sich nicht geändert hat,
+ * kommt mit 304 aus seinem Cache und wird nicht noch einmal übertragen. Sechs
+ * zugleich, damit das Vorladen der Seite nicht die Leitung nimmt.
+ */
 async function precache() {
   const cache = await caches.open(APP);
   let files = [];
   try { files = await (await fetch('appdata/sw-files.json', { cache: 'no-store' })).json(); } catch { /* dann nach und nach */ }
+  const queue = files.slice();
   // Einzeln: Fehlt eine Datei auf dem Server, scheitert nicht gleich die ganze Version
-  await Promise.all(files.map(async (f) => {
-    try {
-      const res = await fetch(new Request(f, { cache: 'reload' }));
-      if (res.ok) await cache.put(f, res);
-    } catch { /* kommt beim ersten Aufruf */ }
-  }));
+  const worker = async () => {
+    while (queue.length) {
+      const f = queue.shift();
+      for (let tries = 0; tries < 2; tries += 1) {
+        try {
+          const res = await fetch(new Request(f, { cache: 'no-cache' }));
+          if (res.ok) await cache.put(f, res);
+          if (res.ok || res.status === 404) break;
+        } catch { /* Aussetzer: noch einmal, sonst kommt sie beim ersten Aufruf */ }
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: 6 }, worker));
 }
 
 self.addEventListener('activate', (e) => e.waitUntil((async () => {

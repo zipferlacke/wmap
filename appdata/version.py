@@ -11,6 +11,9 @@ von appdata/messages.json:
 Ziele:
     js/core/config.js           APP_VERSION (Anzeige, Neuigkeiten, minVersion)
     sw.js                       VERSION – neue Nummer = neuer Service Worker = Update
+                                BUILD – Prüfsumme über alle Dateien aus sw-files.json:
+                                ändert sich eine Datei bei gleicher Nummer, ist es
+                                trotzdem ein neuer Service Worker mit eigenem Speicher
     appdata/sw-files.json       was der Service Worker vorab lädt (alle Dateien,
                                 die die Seiten über import/@import/url()/src/href
                                 erreichen – aus wuefl-libs nur die genutzten)
@@ -20,6 +23,7 @@ Ziele:
 
 git-release ruft das Skript vor dem Tag auf, wenn es da ist.
 """
+import hashlib
 import json
 import os
 import re
@@ -107,6 +111,32 @@ def write_files(check):
     return 'appdata/sw-files.json: Dateiliste neu'
 
 
+BUILD = r"(const BUILD = ')([^']*)(')"
+
+
+def write_build(check):
+    """Prüfsumme über den Inhalt aller vorab geladenen Dateien → BUILD in sw.js"""
+    # Im Export von git-release fehlt libs/wuefl-libs – dort lässt sich nichts prüfen
+    if check and not (ROOT / LIBS).is_dir():
+        return None
+    h = hashlib.sha256()
+    for rel in app_files():
+        f = ROOT / ('index.html' if rel == './' else rel)
+        if f.is_file():
+            h.update(rel.encode() + b'\0' + f.read_bytes() + b'\0')
+    build = h.hexdigest()[:10]
+    path = ROOT / 'sw.js'
+    text = path.read_text(encoding='utf-8')
+    m = re.search(BUILD, text)
+    if not m:
+        sys.exit('sw.js: BUILD nicht gefunden')
+    if m.group(2) == build:
+        return None
+    if not check:
+        path.write_text(text[:m.start(2)] + build + text[m.end(2):], encoding='utf-8')
+    return f'sw.js: Stand {m.group(2)} → {build}'
+
+
 def main():
     check = '--pruefen' in sys.argv[1:]
     version = target_version()
@@ -127,6 +157,9 @@ def main():
     files = write_files(check)
     if files:
         off.append(files)
+    build = write_build(check)
+    if build:
+        off.append(build)
     if not off:
         print(f'Version {version} steht überall.')
         return 0

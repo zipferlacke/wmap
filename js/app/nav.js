@@ -218,7 +218,7 @@ export async function resumeNav() {
   // Ein Link mit eigenem Ziel (auch die Screenshots) geht vor
   if (!saved || nav.active || /[?&](view|q|from|to|reach)=/.test(location.search)) return;
   const answer = await ask({
-    icon: 'navigation', title: 'Navigation fortsetzen?',
+    auto: true, icon: 'navigation', title: 'Navigation fortsetzen?',
     text: saved.destination ? `Weiter nach ${saved.destination}.` : 'Die letzte Fahrt wurde nicht beendet.',
     buttons: [{ value: 'no', label: 'Beenden' }, { value: 'yes', label: 'Fortsetzen', icon: 'navigation', primary: true }],
   });
