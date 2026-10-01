@@ -113,12 +113,13 @@ private fun mapStrip(ctx: CarContext, s: WMapSession): ActionStrip = ActionStrip
 /**
  * Kopf eines Unterbildschirms: Zurück, Titel und – ab dem zweiten Schritt – ein
  * ✕ ganz zurück zur Karte (sonst tippt man sich Bildschirm für Bildschirm
- * zurück). `extra`: weiteres Symbol davor (Merken).
+ * zurück). `extra`: weiteres Symbol davor (Merken). `close = false`: ohne ✕ –
+ * in der Routenwahl verdrängt ein Symbol im Kopf den Knopf „Los“.
  */
-private fun header(screen: Screen, title: String, extra: Action? = null): Header {
+private fun header(screen: Screen, title: String, extra: Action? = null, close: Boolean = true): Header {
   val b = Header.Builder().setTitle(title).setStartHeaderAction(Action.BACK)
   extra?.let { b.addEndHeaderAction(it) }
-  if (screen.screenManager.stackSize > 2) {
+  if (close && screen.screenManager.stackSize > 2) {
     b.addEndHeaderAction(iconAction(screen.carContext, R.drawable.wmap_car_close) { screen.screenManager.popToRoot() })
   }
   return b.build()
@@ -628,9 +629,18 @@ class PlaceScreen(ctx: CarContext, private val s: WMapSession, place: JSONObject
    Routenwahl: Varianten mit Dauer und Länge, „Los“ startet die Navigation
    ══════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * Routenwahl. Gebaut wie der Ort (Karte mit Feld daneben): je Route eine Zeile,
+ * darunter die Knöpfe „Los“ und „Andere Route“ (wechselt die gewählte, die
+ * Karte zeigt sie). Googles eigene Vorlage für die Routenwahl
+ * (RoutePreviewNavigationTemplate) bleibt in aktuellen Android-Auto-Fassungen
+ * leer, wenn der Bildschirm davor schon eine Karte zeigte (Ort, Trefferliste) –
+ * sie kommt nur noch in älteren Autos ohne die Karten-Vorlage zum Einsatz.
+ */
 class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private val load: (done: (Any?, String?) -> Unit) -> Unit) : Screen(ctx) {
   private var result: JSONObject? = null
   private var selected = 0
+  private var starting = false
 
   init {
     lifecycle.addObserver(object : DefaultLifecycleObserver {
@@ -643,13 +653,61 @@ class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private va
     })
   }
 
+  private fun start() {
+    if (starting) return
+    starting = true
+    s.web.call("start") { _, err ->
+      starting = false
+      if (err != null) CarToast.makeText(carContext, err, CarToast.LENGTH_LONG).show()
+      else screenManager.popToRoot()
+    }
+  }
+
+  private fun select(routes: List<JSONObject>, i: Int) {
+    selected = i
+    s.web.call("selectRoute", routes[i].optInt("id"))
+  }
+
+  private val go get() = Action.Builder().setTitle("Los").setIcon(CarIcons.res(carContext, R.drawable.wmap_car_navigation))
+
   override fun onGetTemplate(): Template {
     val r = result
-    val b = RoutePreviewNavigationTemplate.Builder()
-      .setHeader(header(this, r?.optString("title")?.ifEmpty { "Route" } ?: "Route"))
+    val title = r?.optString("title")?.ifEmpty { "Route" } ?: "Route"
+    val routes = r?.optJSONArray("routes").objects()
+    if (!carContext.api(CarAppApiLevels.LEVEL_7)) return classic(title, r, routes)
+
+    val pane = Pane.Builder()
+    if (r == null) pane.setLoading(true)
+    else {
+      val at = selected.coerceIn(0, maxOf(0, routes.size - 1))
+      // Die gewählte zuerst mit Pfeil – das Feld zeigt nur wenige Zeilen
+      val order = listOf(at) + routes.indices.filter { it != at }
+      order.take(3).forEach { i ->
+        val o = routes[i]
+        val sub = listOf(if (routes.size > 1) (if (i == at) "Gewählt" else "Alternative") else "", o.optString("sub")).filter { it.isNotEmpty() }.joinToString(" · ")
+        pane.addRow(Row.Builder().setTitle(o.optString("title")).apply {
+          if (sub.isNotEmpty()) addText(sub)
+          if (i == at) setImage(CarIcons.res(carContext, R.drawable.wmap_car_navigation, CarIcons.BLUE))
+        }.build())
+      }
+      pane.addAction(go.setBackgroundColor(CarColor.BLUE).setFlags(Action.FLAG_PRIMARY).setOnClickListener { start() }.build())
+      pane.addAction(
+        if (routes.size > 1) Action.Builder().setTitle("Andere Route").setOnClickListener { select(routes, (at + 1) % routes.size); invalidate() }.build()
+        else Action.Builder().setTitle("Abbrechen").setOnClickListener { screenManager.pop() }.build(),
+      )
+    }
+    val content = PaneTemplate.Builder(pane.build()).setHeader(header(this, title)).build()
+    return MapWithContentTemplate.Builder()
+      .setContentTemplate(content)
+      .setMapController(MapController.Builder().setMapActionStrip(mapStrip(carContext, s)).setPanModeListener { }.build())
+      .build()
+  }
+
+  /** Ältere Autos (vor Car API 7): Googles Vorlage für die Routenwahl */
+  private fun classic(title: String, r: JSONObject?, routes: List<JSONObject>): Template {
+    val b = RoutePreviewNavigationTemplate.Builder().setHeader(header(this, title, close = false))
     if (r == null) b.setLoading(true)
     else {
-      val routes = r.optJSONArray("routes").objects()
       val il = ItemList.Builder()
       routes.forEach { o ->
         // Dauer als Zeitangabe des Autos (Pflicht in dieser Vorlage), Länge dahinter
@@ -658,20 +716,9 @@ class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private va
         il.addItem(Row.Builder().setTitle(t).apply { o.optString("sub").takeIf { it.isNotEmpty() }?.let { addText(it) } }.build())
       }
       il.setSelectedIndex(selected.coerceIn(0, maxOf(0, routes.size - 1)))
-      il.setOnSelectedListener { i ->
-        selected = i
-        s.web.call("selectRoute", routes[i].optInt("id"))
-      }
+      il.setOnSelectedListener { i -> select(routes, i) }
       b.setItemList(il.build())
-      b.setNavigateAction(
-        Action.Builder().setTitle("Los").setIcon(CarIcons.res(carContext, R.drawable.wmap_car_navigation))
-          .setOnClickListener {
-            s.web.call("start") { _, err ->
-              if (err != null) CarToast.makeText(carContext, err, CarToast.LENGTH_LONG).show()
-              else screenManager.popToRoot()
-            }
-          }.build(),
-      )
+      b.setNavigateAction(go.setOnClickListener { start() }.build())
     }
     if (carContext.api(CarAppApiLevels.LEVEL_2)) {
       b.setMapActionStrip(mapStrip(carContext, s))

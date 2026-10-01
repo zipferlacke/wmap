@@ -31,7 +31,7 @@ import { osmRef, BASE_POI_LAYERS } from '../map/map.js';
 import { bboxAround, distance, fmtDistance, fmtDuration } from '../core/geo.js';
 import { PROFILES } from '../core/config.js';
 import { maneuverIcon } from '../services/routing.js';
-import { current, map, parseTags, showHl, state } from '../app/core.js';
+import { current, fitTo, map, parseTags, showHl, state } from '../app/core.js';
 import { tilePoints } from '../app/category.js';
 import { clearPlace, featureFromPoint, showPlace } from '../app/place.js';
 import { enterRoute, leaveRouteMode, setProfile } from '../app/route-plan.js';
@@ -166,8 +166,24 @@ function catRows(cat, points) {
 }
 
 /**
+ * Karte auf die Treffer: von oben, herausgezoomt, mit dem eigenen Standort –
+ * sonst bliebe sie in der Nahansicht der freien Fahrt und zeigte keinen
+ * davon. Die nächsten reichen; die Liste des Autos verdeckt einen Teil
+ * (carInsets). „Zentrieren“ bzw. zurück zur Karte folgt wieder dem Standort.
+ */
+function fitHits(points) {
+  if (!points.length || nav.active) return;
+  const ref = here();
+  const near = points.map((p) => p.geometry.coordinates).sort((a, b) => distance(ref, a) - distance(ref, b)).slice(0, 8);
+  const xs = [ref[0], ...near.map((p) => p[0])], ys = [ref[1], ...near.map((p) => p[1])];
+  pauseDrive();
+  fitTo([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)], 16, { flat: true });
+}
+
+/**
  * Sofort, was die Kartenkacheln kennen; Overpass ergänzt danach (Ereignis
- * „list“ mit derselben Nummer – Kotlin tauscht die Liste aus).
+ * „list“ mit derselben Nummer – Kotlin tauscht die Liste aus). Die Karte
+ * zoomt auf die Treffer heraus.
  */
 async function category(id) {
   const cat = byId(id);
@@ -179,11 +195,13 @@ async function category(id) {
   const token = ++seq;
   const tiles = await tilePoints(cat, bounds, signal).catch(() => []);
   showHl({ points: tiles });
+  fitHits(tiles);
   overpass.inBbox(cat, bounds, { signal }).then(({ shapes, points }) => {
     if (signal.aborted) return;
     const ids = new Set(points.map((p) => p.properties.id));
     const all = [...points, ...tiles.filter((p) => p.properties.id && !ids.has(p.properties.id))];
     showHl({ shapes, points: all });
+    fitHits(all);
     withPng(catRows(cat, all)).then((items) => send('list', { token, title: cat.label, items, final: true }));
   }).catch(async (err) => {
     if (err.name !== 'AbortError') send('list', { token, title: cat.label, items: await withPng(catRows(cat, tiles)), final: true, error: tiles.length ? null : err.message });

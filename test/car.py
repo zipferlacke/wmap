@@ -82,6 +82,9 @@ with Browser(width=800, height=480) as b:
     time.sleep(8)
     later = [e for e in events(b, 'list') if park and e['token'] == park['token']]
     print('Parkplätze mit Overpass:', [len(e['items']) for e in later])
+    time.sleep(1.5)
+    fit = b.js("const m = window.__wmap.map; return [+m.getZoom().toFixed(1), arguments[0].every((p) => m.getBounds().contains(p))]", [x['point'] for x in park['items'][:5]])
+    print('Karte auf die Treffer (Zoom, die nächsten fünf im Bild):', fit)
 
     found = call(b, 'search', 'Bäckerei')
     print('Suche „Bäckerei“:', [(x.get('kind', 'ort'), x['title']) for x in (found or {}).get('items', [])[:4]])
@@ -141,6 +144,7 @@ with Browser(width=800, height=480) as b:
         'Kategorien fürs Auto': bool(cats) and cats[0]['id'] == 'parking',
         'Freie Fahrt: Pfeil, Tempo, Straße, geneigt': isinstance(drive, dict) and drive['arrow'] and drive['kmh'] != '0' and drive['streetShown'] and drive['pitch'] > 30,
         'Parkplätze in der Nähe': bool(park) and (len(park['items']) > 0 or any(e['items'] for e in later)),
+        'Karte zoomt auf die Treffer heraus': fit[0] <= 16 and fit[1] is True,
         'Suche findet Kategorie': found is not None,
         'Ort mit Details und Marker': bool(place) and bool(place['title']) and marker,
         'Route berechnet': bool(route) and len(route['routes']) >= 1,
