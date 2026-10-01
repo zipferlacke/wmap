@@ -91,7 +91,15 @@ body.readonly .save-state { background: var(--route); color: #fff; }
 }
 
 .tour-block { display: grid; gap: .45rem; }
-.tour-profiles .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; --chip: var(--route); }
+/* „Unterwegs als“: Auswahlliste mit dem Symbol der gewählten Art davor */
+.tour-profile-pick {
+    position: relative; display: flex; align-items: center;
+    .msr { position: absolute; left: .7rem; color: var(--route); pointer-events: none; }
+    select {
+        flex: 1; min-width: 0; padding: .55rem .7rem .55rem 2.6rem; font: inherit; cursor: pointer;
+        border: 1px solid var(--line); border-radius: .7rem; background: var(--surface-2); color: inherit;
+    }
+}
 
 .tour-search-row { display: flex; align-items: center; gap: .4rem; .tour-search { flex: 1; min-width: 0; } }
 .tour-top { padding-top: .1rem; }
