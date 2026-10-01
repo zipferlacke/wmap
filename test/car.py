@@ -90,6 +90,9 @@ with Browser(width=800, height=480) as b:
     dots = b.js("return [...document.querySelectorAll('.car-hit')].map((e) => e.textContent)")
     numbers = [x['title'].rsplit(', ', 1)[-1] if ', (' in x['title'] else '?' for x in last_list]  # „Parkplatz, (3)“ – mit Komma und in Klammern
     print('Nummern in der Liste:', numbers[:5], '· Punkte auf der Karte:', dots[:5], len(dots))
+    # Die ersten drei mit der Strecke auf der Straße, die übrigen mit „≈“ und Luftlinie
+    subs = [(x.get('dist') is not None, x['sub'][:10]) for x in last_list[:5]]
+    print('Entfernungen der ersten fünf (genau?, Text):', subs)
 
     found = call(b, 'search', 'Bäckerei')
     print('Suche „Bäckerei“:', [(x.get('kind', 'ort'), x['title']) for x in (found or {}).get('items', [])[:4]])
@@ -102,6 +105,9 @@ with Browser(width=800, height=480) as b:
 
     route = call(b, 'routeTo', first['key']) if first else None
     print('Route:', route and (route['title'], [r['title'] for r in route['routes']]))
+    # Entfernung in der Liste = Strecke auf der Straße, wie die Route sie danach nennt (nicht die Luftlinie)
+    road = (first or {}).get('dist'), route and route['routes'][0]['length']
+    print('Entfernung in der Suche / Länge der Route:', road)
     # Die Routen füllen die freie Fläche neben der Liste (der Rand der freien Fahrt darf nicht mitzählen)
     time.sleep(1.5)
     fill = b.js("""const { map, state } = window.__wmap; const c = map.getContainer(); const i = map.carInsets;
@@ -202,9 +208,11 @@ with Browser(width=800, height=480) as b:
         'Treffer mit Komma und Nummer in Klammern am Namen und nummeriertem Punkt auf der Karte': numbers[:3] == ['(1)', '(2)', '(3)'] and dots[:3] == ['1', '2', '3'] and len(dots) == len(last_list),
         'Filter: Autobahnen vermeiden gespeichert, neu gerechnet; Änderung der App kommt an': before == {'highways': False, 'tolls': False, 'ferries': False}
             and stored and stored.get('highways') is False and bool(again) and len(again['routes']) >= 1 and from_app == {'highways': False, 'tolls': True, 'ferries': False},
+        'In der Nähe: die ersten drei mit Straßenentfernung, danach „≈“ und Luftlinie': len(subs) >= 4 and all(s[0] and not s[1].startswith('≈') for s in subs[:3]) and all(not s[0] and s[1].startswith('≈') for s in subs[3:]),
         'Suche findet Kategorie': found is not None,
         'Ort mit Details und Marker': bool(place) and bool(place['title']) and marker,
         'Route berechnet': bool(route) and len(route['routes']) >= 1,
+        'Entfernung in der Suche ist die Strecke auf der Straße (wie die Route)': bool(road[0]) and bool(road[1]) and abs(road[0] - road[1]) / road[1] < 0.05,
         'Routenvorschau füllt die freie Fläche neben der Liste': bool(fill) and fill['inside'] and max(fill['w'], fill['h']) >= 0.6,
         'Lesezeichen als Kacheln: Zuhause zuerst, Tipp führt zur Route; nicht doppelt in der leeren Suche':
             [(x['title'], x['place'], x['kind']) for x in (marks or {}).get('items', [])] == [('Zuhause', 'home', 'target'), ('Kiessee', 'fav', 'target')]

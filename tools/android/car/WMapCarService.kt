@@ -150,7 +150,7 @@ class WMapSession : Session() {
       }
       "list" -> if (o != null) listListeners.toList().forEach { it(o) }
       "place" -> if (o != null) screens.push(PlaceScreen(carContext, this, o))
-      "routeSelected" -> if (o != null) (screens.top as? RoutePreviewScreen)?.selectedOnMap(o.optInt("id"))
+      "routeSelected" -> if (o != null) (screens.top as? RouteChoice)?.selectedOnMap(o.optInt("id"))
       "toast" -> o?.optString("text")?.takeIf { it.isNotEmpty() }?.let { CarToast.makeText(carContext, it, CarToast.LENGTH_SHORT).show() }
       "ask" -> if (o != null) ask(o)
       "askEnd" -> alerts.remove(o?.optInt("id"))?.let { dismissAlert(it) }

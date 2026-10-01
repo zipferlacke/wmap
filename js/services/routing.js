@@ -6,7 +6,7 @@
  * Alternativen kommt schon ohne aus.
  */
 import { API, PROFILES, MAX_ROUTES } from '../core/config.js';
-import { decodePolyline, encodePolyline, cumulative, simplifyTo } from '../core/geo.js';
+import { decodePolyline, distance, encodePolyline, cumulative, fmtDistance, simplifyTo } from '../core/geo.js';
 import { valhallaPrefs } from '../ui/route-prefs.js';
 
 const ELEVATION_STEP = 30;   // Meter zwischen zwei Höhenwerten
@@ -57,6 +57,52 @@ export async function request(payload, signal, endpoint = 'route') {
   }
   if (endpoint !== 'route') return data;
   return [data.trip, ...(data.alternates ?? []).map((a) => a.trip)];
+}
+
+/*
+ * Entfernung und Fahrzeit auf der Straße vom Start zu ein paar Zielen – für Listen (Suche, „In der Nähe“,
+ * Lesezeichen): Bei den ersten Treffern (ROAD_FIRST) steht dieselbe Zahl wie danach in der Routenwahl, die
+ * übrigen zeigen „≈“ und die Luftlinie – so bleibt es bei wenigen Anfragen, der Server gehört allen.
+ * Nahe Ziele gehen in eine Sammelabfrage (sources_to_targets); die rechnet der Server nur in der Umgebung
+ * (gemessen: 16 km ja, 100 km leer, über 150 km Fehler). Ferne Ziele und was leer blieb darum einzeln als
+ * Route ohne Wegbeschreibung. Gemerkt je Start (auf ~100 m) und Ziel, damit dieselbe Liste nicht zweimal fragt.
+ */
+export const ROAD_FIRST = 3;
+const ROAD_NEAR_M = 60000;
+const ROAD_FAR_MAX = ROAD_FIRST;
+const roadCache = new Map();
+
+/** Luftlinie als ungefähre Angabe: „≈ 12 km“ */
+export const fmtAbout = (m) => `≈ ${fmtDistance(m)}`;
+
+/** → je Ziel { length (m), time (s) } oder null (nicht erreichbar, zu viele ferne Ziele, kein Netz) */
+export async function roadDistances(from, points, profile = 'car', { signal } = {}) {
+  const costing = PROFILES[profile]?.costing;
+  if (!from || !costing) return points.map(() => null);
+  const opts = { costing, costing_options: { [costing]: { ...costingOptions(profile)[costing], ...valhallaPrefs(costing) } }, units: 'kilometers' };
+  const loc = ([lon, lat]) => ({ lon, lat });
+  const key = (p) => `${profile}|${JSON.stringify(opts.costing_options)}|${from[0].toFixed(3)},${from[1].toFixed(3)}|${p[0].toFixed(5)},${p[1].toFixed(5)}`;
+  const out = points.map((p) => roadCache.get(key(p)) ?? null);
+  const put = (i, length, time) => {
+    out[i] = { length, time };
+    if (roadCache.size > 600) roadCache.clear();
+    roadCache.set(key(points[i]), out[i]);
+  };
+  const open = () => points.map((_, i) => i).filter((i) => !out[i]);
+  const near = open().filter((i) => distance(from, points[i]) <= ROAD_NEAR_M);
+  if (near.length) {
+    try {
+      const data = await request({ sources: [loc(from)], targets: near.map((i) => loc(points[i])), ...opts }, signal, 'sources_to_targets');
+      (data.sources_to_targets?.[0] ?? []).forEach((c, k) => { if (Number.isFinite(c?.distance)) put(near[k], c.distance * 1000, c.time); });
+    } catch (err) { if (err.name === 'AbortError') throw err; }
+  }
+  await Promise.all(open().slice(0, ROAD_FAR_MAX).map(async (i) => {
+    try {
+      const [trip] = await request({ locations: [loc(from), loc(points[i])], ...opts, directions_type: 'none' }, signal);
+      put(i, trip.summary.length * 1000, trip.summary.time);
+    } catch (err) { if (err.name === 'AbortError') throw err; }
+  }));
+  return out;
 }
 
 /**

@@ -151,7 +151,8 @@ private fun row(o: JSONObject, click: () -> Unit): Row {
     b.addText(t)
   } else {
     if (sub.isNotEmpty()) b.addText(sub)
-    b.setBrowsable(true)
+    // „≈ 12 km“: ungefähre Entfernung (Luftlinie) – ein Ziel wie die anderen, kein Pfeil zum Weiterblättern
+    if (!sub.startsWith("≈")) b.setBrowsable(true)
   }
   o.optString("png").takeIf { it.isNotEmpty() }?.let { b.setImage(CarIcons.png(it)) }
   return b.setOnClickListener(click).build()
@@ -453,7 +454,7 @@ class BookmarksScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx)
       val item = GridItem.Builder().setTitle(o.optString("title").ifEmpty { "Ort" })
         .setImage(CarIcons.png(o.optString("png")))
         .setOnClickListener { screenManager.push(RoutePreviewScreen(carContext, s) { d -> s.web.call("routeTo", o.optString("key"), done = d) }) }
-      // Darunter die Entfernung; ohne Standort der Ort
+      // Darunter die Entfernung auf der Straße; ohne sie der Ort
       o.optString("sub").substringBefore(" · ").takeIf { it.isNotEmpty() }?.let { item.setText(it) }
       il.addItem(item.build())
     }
@@ -637,19 +638,71 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
    Ort: wie der Dialog in der App – Art, Entfernung, Adresse, Öffnungszeiten
    ══════════════════════════════════════════════════════════════════════════ */
 
-class PlaceScreen(ctx: CarContext, private val s: WMapSession, place: JSONObject?, private val key: String? = null) : Screen(ctx) {
+/**
+ * Ort und Route in einem: Sobald der Ort da ist, rechnet die Seite die Route dorthin und zeigt sie auf der
+ * Karte – unten steht gleich **Los** (statt erst „Route“ und dann noch ein Bildschirm), daneben der Filter
+ * (Autobahnen, Maut, Fähren). Eine andere Route wählt man durch Antippen in der Karte; oben in der Zeile
+ * stehen Dauer und Strecke der gewählten. Während einer laufenden Navigation (und in älteren Autos ohne
+ * Karten-Vorlage) bleibt es beim Knopf „Route“ – sonst bräche schon das Ansehen eines Orts die Fahrt ab.
+ */
+class PlaceScreen(ctx: CarContext, private val s: WMapSession, place: JSONObject?, private val key: String? = null) : Screen(ctx), RouteChoice {
   private var place: JSONObject? = place
+  private var routes: List<JSONObject>? = null
+  private var selected = 0
+  private var asked = false
+  private var starting = false
+  /** Ort mit Route und „Los“ – nicht während der Navigation, nicht ohne Karten-Vorlage */
+  private val direct = !s.nav.active && ctx.carAppApiLevel >= CarAppApiLevels.LEVEL_7
+
+  private fun routed(v: Any?, err: String?) {
+    val list = (v as? JSONObject)?.optJSONArray("routes").objects()
+    if (list.isNotEmpty()) { routes = list; selected = 0 }
+    else { routes = emptyList(); CarToast.makeText(carContext, err ?: "Keine Route gefunden", CarToast.LENGTH_LONG).show() }
+    invalidate()
+  }
+
+  private fun route() {
+    val k = place?.optString("key")?.takeIf { it.isNotEmpty() } ?: return
+    if (!direct || asked) return
+    asked = true
+    s.web.call("routeTo", k, done = ::routed)
+  }
 
   init {
-    if (place == null && key != null) {
-      lifecycle.addObserver(object : DefaultLifecycleObserver {
-        override fun onCreate(owner: LifecycleOwner) {
-          s.web.call("place", key) { v, err ->
-            if (v is JSONObject) { this@PlaceScreen.place = v; invalidate() }
-            else { CarToast.makeText(carContext, err ?: "Ort nicht gefunden", CarToast.LENGTH_SHORT).show(); screenManager.pop() }
-          }
+    lifecycle.addObserver(object : DefaultLifecycleObserver {
+      override fun onCreate(owner: LifecycleOwner) {
+        if (this@PlaceScreen.place != null) { route(); return }
+        if (key == null) return
+        s.web.call("place", key) { v, err ->
+          if (v is JSONObject) { this@PlaceScreen.place = v; invalidate(); route() }
+          else { CarToast.makeText(carContext, err ?: "Ort nicht gefunden", CarToast.LENGTH_SHORT).show(); screenManager.pop() }
         }
-      })
+      }
+
+      // Zurück vom Filter: dieselbe Strecke neu rechnen
+      override fun onResume(owner: LifecycleOwner) {
+        if (!direct || !s.prefsChanged) return
+        s.prefsChanged = false
+        routes = null
+        invalidate()
+        s.web.call("routesAgain", done = ::routed)
+      }
+    })
+  }
+
+  /** Auf der Karte wurde eine andere Route angetippt (js/car/car.js click) */
+  override fun selectedOnMap(id: Int) {
+    val i = routes?.indexOfFirst { it.optInt("id") == id } ?: -1
+    if (i >= 0 && i != selected) { selected = i; invalidate() }
+  }
+
+  private fun start() {
+    if (starting) return
+    starting = true
+    s.web.call("start") { _, err ->
+      starting = false
+      if (err != null) CarToast.makeText(carContext, err, CarToast.LENGTH_LONG).show()
+      else screenManager.popToRoot()
     }
   }
 
@@ -658,9 +711,13 @@ class PlaceScreen(ctx: CarContext, private val s: WMapSession, place: JSONObject
     val pane = Pane.Builder()
     if (p == null) pane.setLoading(true)
     else {
-      val first = listOf(p.optString("type"), p.optString("distText")).filter { it.isNotEmpty() }.joinToString(" · ")
+      val list = routes
+      val chosen = list?.getOrNull(selected.coerceIn(0, maxOf(0, list.size - 1)))
+      // Mit Route: Dauer und Strecke der gewählten – dieselben Zahlen, mit denen „Los“ dann fährt
+      val first = listOf(p.optString("type"), chosen?.optString("title") ?: p.optString("distText")).filter { it.isNotEmpty() }.joinToString(" · ")
       pane.addRow(Row.Builder().setTitle(first.ifEmpty { "Ort" }).apply {
         p.optString("address").takeIf { it.isNotEmpty() }?.let { addText(it) }
+        if (list != null && list.size > 1) addText("${list.size - 1} weitere ${if (list.size == 2) "Route" else "Routen"} – auf der Karte antippen")
         p.optString("png").takeIf { it.isNotEmpty() }?.let { setImage(CarIcons.png(it)) }
       }.build())
       p.optString("status").takeIf { it.isNotEmpty() }?.let { st ->
@@ -670,14 +727,33 @@ class PlaceScreen(ctx: CarContext, private val s: WMapSession, place: JSONObject
         pane.addRow(Row.Builder().setTitle(f.optString("label")).addText(f.optString("value")).build())
       }
       val placeKey = p.optString("key")
-      pane.addAction(
-        Action.Builder().setTitle("Route").setIcon(CarIcons.res(carContext, R.drawable.wmap_car_directions))
-          .setBackgroundColor(CarColor.BLUE).setFlags(Action.FLAG_PRIMARY)
-          .setOnClickListener {
-            screenManager.push(RoutePreviewScreen(carContext, s) { d -> s.web.call("routeTo", placeKey, done = d) })
-          }.build(),
-      )
-      pane.addAction(Action.Builder().setTitle("Abbrechen").setOnClickListener { screenManager.pop() }.build())
+      if (direct) {
+        pane.addAction(
+          Action.Builder().setTitle("Los").setIcon(CarIcons.res(carContext, R.drawable.wmap_car_navigation))
+            .setBackgroundColor(CarColor.BLUE).setFlags(Action.FLAG_PRIMARY)
+            .setOnClickListener {
+              when {
+                chosen != null -> start()
+                list == null -> CarToast.makeText(carContext, "Die Route wird noch berechnet …", CarToast.LENGTH_SHORT).show()
+                else -> CarToast.makeText(carContext, "Keine Route gefunden", CarToast.LENGTH_SHORT).show()
+              }
+            }.build(),
+        )
+        // Filter: Autobahnen, Maut, Fähren vermeiden – dieselben Einstellungen wie in der App
+        pane.addAction(
+          Action.Builder().setTitle("Filter").setIcon(CarIcons.res(carContext, R.drawable.wmap_car_tune))
+            .setOnClickListener { screenManager.push(RoutePrefsScreen(carContext, s)) }.build(),
+        )
+      } else {
+        pane.addAction(
+          Action.Builder().setTitle("Route").setIcon(CarIcons.res(carContext, R.drawable.wmap_car_directions))
+            .setBackgroundColor(CarColor.BLUE).setFlags(Action.FLAG_PRIMARY)
+            .setOnClickListener {
+              screenManager.push(RoutePreviewScreen(carContext, s) { d -> s.web.call("routeTo", placeKey, done = d) })
+            }.build(),
+        )
+        pane.addAction(Action.Builder().setTitle("Abbrechen").setOnClickListener { screenManager.pop() }.build())
+      }
     }
     val title = p?.optString("title")?.ifEmpty { "Ort" } ?: "Ort"
     // Merken als Stern oben rechts
@@ -705,6 +781,9 @@ class PlaceScreen(ctx: CarContext, private val s: WMapSession, place: JSONObject
   }
 }
 
+/** Bildschirme, auf deren Karte man eine andere Route antippen kann */
+interface RouteChoice { fun selectedOnMap(id: Int) }
+
 /* ══════════════════════════════════════════════════════════════════════════
    Routenwahl: Varianten mit Dauer und Länge, „Los“ startet die Navigation
    ══════════════════════════════════════════════════════════════════════════ */
@@ -717,7 +796,7 @@ class PlaceScreen(ctx: CarContext, private val s: WMapSession, place: JSONObject
  * leer, wenn der Bildschirm davor schon eine Karte zeigte (Ort, Trefferliste) –
  * sie kommt nur noch in älteren Autos ohne die Karten-Vorlage zum Einsatz.
  */
-class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private val load: (done: (Any?, String?) -> Unit) -> Unit) : Screen(ctx) {
+class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private val load: (done: (Any?, String?) -> Unit) -> Unit) : Screen(ctx), RouteChoice {
   private var result: JSONObject? = null
   private var selected = 0
   private var starting = false
@@ -743,7 +822,7 @@ class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private va
   }
 
   /** Auf der Karte wurde eine andere Route angetippt (js/car/car.js click) */
-  fun selectedOnMap(id: Int) {
+  override fun selectedOnMap(id: Int) {
     val i = result?.optJSONArray("routes").objects().indexOfFirst { it.optInt("id") == id }
     if (i >= 0 && i != selected) { selected = i; invalidate() }
   }

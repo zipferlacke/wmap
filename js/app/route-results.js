@@ -15,7 +15,7 @@ import { connections } from '../data/saved.js';
 import { share, routeUrl, clock } from '../ui/share.js';
 import { toast } from '../ui/dialogs.js';
 import { nearestOnLine, pointAt, simplifyTo, bbox, fmtDistance, fmtDuration, esc } from '../core/geo.js';
-import { $, afterLayout, chipHtml, current, debounce, fitTo, map, myPosition, sheet, state, viewPadding } from './core.js';
+import { CAR, $, afterLayout, chipHtml, current, debounce, fitTo, map, myPosition, sheet, state, viewPadding } from './core.js';
 import { nav } from './nav.js';
 import { compactRoute, isSet, transitWhen } from './route-plan.js';
 import { loadTraffic, runAlong } from './traffic-along.js';
@@ -58,11 +58,9 @@ export async function computeRoutes() {
     routeStatus(null);
     compactRoute(true);
     selectRoute(routes[0].id, { fit: true });
-    const wps = state.waypoints.map(({ label, point, me: isMe }) => ({ label, point: isMe ? null : point, me: isMe }));
-    recent.add({
-      kind: 'route', profile: state.profile, waypoints: wps, from: wps[0], to: wps.at(-1),
-      title: `${wps[0].label} → ${wps.at(-1).label}`,
-    });
+    // Im Auto erst mit „Los“ (car/car.js): dort rechnet schon das Ansehen eines Orts die Route –
+    // „zuletzt gefahren“ füllte sich sonst mit Zielen, zu denen man nie gefahren ist
+    if (!CAR) rememberRoute();
   } catch (err) {
     if (err.name === 'AbortError') return;
     clearRoutes({ keepSheet: true });
@@ -100,6 +98,16 @@ export function fitRoute() {
   if (!all.length) return;
   fitTo([Math.min(...all.map((b) => b[0])), Math.min(...all.map((b) => b[1])),
     Math.max(...all.map((b) => b[2])), Math.max(...all.map((b) => b[3]))], 16, { flat: true });
+}
+
+/** Die geplante Strecke in den Verlauf („Zuletzt genutzt“, letzte Ziele im Auto) */
+export function rememberRoute() {
+  if (state.waypoints.length < 2) return;
+  const wps = state.waypoints.map(({ label, point, me: isMe }) => ({ label, point: isMe ? null : point, me: isMe }));
+  recent.add({
+    kind: 'route', profile: state.profile, waypoints: wps, from: wps[0], to: wps.at(-1),
+    title: `${wps[0].label} → ${wps.at(-1).label}`,
+  });
 }
 
 /*

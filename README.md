@@ -125,6 +125,12 @@ Man startet immer mit der Karte.
   darüber): Zoom +/−, Kompass (Norden oben; zeigt die Neigung),
   eigener Standort, **Ebenen** (siehe [6](#6-ebenen-satellit-wandern--rad-plugins)),
   Gelände an/aus.
+- **Eigener Standort von Anfang an:** Ist der Standort schon freigegeben,
+  steht der Punkt gleich auf der Karte – auch in der Routenansicht, wo
+  „Mein Standort“ keinen eigenen Startpunkt hat –, ohne dass die Karte
+  dafür verschoben wird (`showDot` in `js/app/core.js`: der Standort-Knopf
+  startet „im Hintergrund“). Ein Tipp auf den Knopf springt wie gewohnt
+  hin. Gefragt wird beim Start nicht.
 - **Quellenangabe:** nur ein kleines (i) unten links, das erst beim Antippen
   aufgeht. Ausführlich stehen die Quellen, Version und Impressum unten auf
   der Übersicht (Danke-Banner).
@@ -193,11 +199,18 @@ Man startet immer mit der Karte.
   verziehen („Parkplaz“, „Backerei“: ein Buchstabe Abweichung).
 - **Nahes zuerst** (`js/services/geocode.js`): Photon reiht bekannte Orte
   weit weg – auch im Ausland – gern vor gleichnamige um die Ecke. Darum
-  fragt die Suche zusätzlich nur die Umgebung (40 km um die Kartenmitte)
+  fragt die Suche zusätzlich nur die Umgebung (40 km um den eigenen
+  Standort, solange er im Kartenausschnitt liegt, sonst um die Kartenmitte)
   und stellt diese Treffer nach vorn; nur ein großer Ort (Stadt, Land) als
   erster Treffer bleibt vorn – wer „Berlin“ tippt, meint Berlin. Unter dem
   Namen steht der **Ort vor der Gemeinde**: „Rittmarshausen, Gleichen“
   statt nur „Gleichen“.
+- **Entfernung an jedem Treffer** (rechts über der Art), sobald der eigene
+  Standort bekannt ist: bei den ersten drei die Strecke auf der Straße –
+  dieselbe Zahl wie danach in der Route, gerechnet mit dem zuletzt
+  genutzten Profil –, bei den übrigen „≈“ und die Luftlinie. Die genauen
+  Zahlen kommen kurz nach der Liste (`fillRoad` in `js/app/search.js`,
+  `roadDistances` in `js/services/routing.js`).
 - **Kategorien** („Parkplatz“, „Bäckerei“, „Fluss“ …): zuerst sofort aus den
   Kartenkacheln (Zoom 14, ohne Netzabfrage), dann ergänzt aus Overpass
   (Flächen, Linien, seltene Kategorien). Restaurants zeigen auch Imbisse.
@@ -1412,6 +1425,14 @@ Android Auto nicht zu (Ablenkung). WMap malt einzig die Karte selbst:
   Symbole, die nicht sagen, welcher es ist). Ein Treffer der Liste führt
   direkt zur Routenwahl, ohne die Ortskarte dazwischen; ein Tipp auf den
   nummerierten Punkt öffnet den Ort.
+- **Entfernungen in den Listen** (Suche, letzte Ziele, Lesezeichen, „In der
+  Nähe“): bei den **ersten drei** die Strecke auf der Straße – dieselbe
+  Zahl wie danach in der Route –, bei den übrigen **„≈“ und die
+  Luftlinie**. So fragt nicht jede Zeile den Routenserver
+  (`roadDistances` in `js/services/routing.js`: nahe Ziele in einer
+  Sammelabfrage `sources_to_targets`, ferne einzeln als Route ohne
+  Wegbeschreibung; gemerkt je Start und Ziel). Dasselbe gilt für die
+  Vorschläge der Suche in der App.
 - **Immer mit dem Auto:** Im Auto wird jede Route mit dem Profil Auto
   gerechnet – auch wenn am Handy zuletzt Rad oder zu Fuß gewählt war; die
   Wahl am Handy bleibt davon unberührt (`setProfile` in
@@ -1426,9 +1447,14 @@ Android Auto nicht zu (Ablenkung). WMap malt einzig die Karte selbst:
   Tempolimit (Valhalla `/locate`, höchstens alle 10 s) und der
   Straßenname (`js/car/drive.js`). Beim Navigieren kommen Tempo und Limit
   von der Navigation.
-- **Orte antippen** auf der Karte (Parkplatz, Laden, Treffer): wie der
-  Dialog in der App – Art, Entfernung, Adresse, Öffnungszeiten, dazu
-  „Route“ und „Abbrechen“, Merken als Stern oben.
+- **Orte antippen** auf der Karte (Parkplatz, Laden, Treffer) oder aus der
+  Suche öffnen: wie der Dialog in der App – Art, Adresse, Öffnungszeiten,
+  Merken als Stern oben. Die Route dorthin wird gleich mitgerechnet und
+  auf der Karte gezeigt; in der ersten Zeile stehen Dauer und Strecke der
+  gewählten, unten **Los** und **Filter**. Eine andere Route wählt man
+  durch Antippen in der Karte. Während einer laufenden Navigation bleibt
+  es bei „Route“ und „Abbrechen“ (das Ansehen eines Orts soll die Fahrt
+  nicht abbrechen). Ein Ziel kommt erst mit „Los“ in die letzten Ziele.
 - **✕ oben** (ab dem dritten Bildschirm) führt in einem Schritt zurück zur
   Karte – statt mehrmals „Zurück“.
 - **Routenwahl** gebaut wie der Ort: Karte mit Feld daneben, je Route eine

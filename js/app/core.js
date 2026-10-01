@@ -64,6 +64,28 @@ export const afterLayout = (fn) => requestAnimationFrame(() => requestAnimationF
 
 geolocate.on('geolocate', (pos) => { state.position = [pos.coords.longitude, pos.coords.latitude]; });
 
+/*
+ * Der eigene Standort steht von Anfang an auf der Karte – auch in der Routenansicht, wo „Mein Standort“
+ * keinen eigenen Startpunkt hat. Bisher erschien der Punkt erst nach einem Tipp auf den Standort-Knopf.
+ * Nur mit schon erteilter Freigabe (gefragt wird hier nicht), und die Karte bleibt, wo sie ist: MapLibres
+ * Knopf startet im Zustand „im Hintergrund“ (Punkt folgt, Kamera nicht) – ein Tipp darauf springt wie
+ * gewohnt hin. Greift dafür wie map/location-dot.js auf Interna von MapLibre 5.x zu.
+ */
+async function showDot() {
+  if (CAR || geolocate._watchState !== 'OFF') return;
+  let granted = false;
+  try {
+    if (geo.native) granted = await (await import('../ui/permissions.js')).locationAccess({ ask: false });
+    else granted = (await navigator.permissions?.query({ name: 'geolocation' }))?.state === 'granted';
+  } catch { granted = false; }
+  if (!granted || geolocate._watchState !== 'OFF' || !geolocate.trigger()) return;
+  geolocate._watchState = 'BACKGROUND';
+  const btn = geolocate._geolocateButton;
+  btn?.classList.remove('maplibregl-ctrl-geolocate-waiting', 'maplibregl-ctrl-geolocate-active');
+  btn?.classList.add('maplibregl-ctrl-geolocate-background');
+}
+map.once('load', () => setTimeout(showDot, 300));
+
 /** `ask: false`: ohne Freigabe nicht nachfragen (Start der Karte) */
 export function myPosition({ ask = true } = {}) {
   return new Promise((resolve, reject) => {

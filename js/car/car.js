@@ -31,12 +31,12 @@ import { capFps } from '../core/fps.js';
 import { osmRef, BASE_POI_LAYERS } from '../map/map.js';
 import { bboxAround, distance, fmtDistance, fmtDuration } from '../core/geo.js';
 import { PROFILES } from '../core/config.js';
-import { maneuverIcon } from '../services/routing.js';
+import { fmtAbout, maneuverIcon, roadDistances, ROAD_FIRST } from '../services/routing.js';
 import { current, fitTo, map, parseTags, showHl, state } from '../app/core.js';
 import { tilePoints } from '../app/category.js';
 import { clearPlace, featureFromPoint, showPlace } from '../app/place.js';
 import { enterRoute, leaveRouteMode, setProfile } from '../app/route-plan.js';
-import { clearRoutes, computeRoutes, fitRoute, selectRoute } from '../app/route-results.js';
+import { clearRoutes, computeRoutes, fitRoute, rememberRoute, selectRoute } from '../app/route-results.js';
 import { prefs as routePrefs, reloadPrefs, setPref } from '../ui/route-prefs.js';
 import { nav, navTour, startNav } from '../app/nav.js';
 import { closeSheet } from '../app/views.js';
@@ -102,8 +102,36 @@ function row(f, { icon: ic, color, sub } = {}) {
   return {
     key: keep(f), title: d.title, icon: ic ?? d.icon ?? 'location_on', color: color ?? null,
     sub: sub ?? [m !== null ? fmtDistance(m) : null, d.type, d.subtitle].filter(Boolean).join(' · '),
+    rest: sub ?? [d.type, d.subtitle].filter(Boolean).join(' · '),
     point: f.geometry.coordinates, dist: m,
   };
+}
+
+/*
+ * Entfernung auf der Straße statt Luftlinie: Bei den ersten drei Zeilen steht dieselbe Zahl wie danach in
+ * der Routenwahl (Luftlinie 100 km, gefahren 139 – das wirkte wie ein Fehler, und entschieden wird nach der
+ * Strecke). Die übrigen zeigen „≈“ und die Luftlinie – nicht jede Zeile soll den Server fragen
+ * (services/routing.js roadDistances). Kommt keine Antwort, bleibt auch dort das „≈“.
+ */
+const ROAD_WAIT_MS = 3000;
+function roadTo(points) {
+  if (!state.position || !points.length) return Promise.resolve(null);
+  return Promise.race([
+    roadDistances(state.position, points, 'car').catch(() => null),
+    new Promise((r) => { setTimeout(() => r(null), ROAD_WAIT_MS); }),
+  ]);
+}
+async function withRoad(rows) {
+  const at = rows.map((r, i) => (r.point && r.kind !== 'category' ? i : -1)).filter((i) => i >= 0);
+  const road = await roadTo(at.slice(0, ROAD_FIRST).map((i) => rows[i].point));
+  return rows.map((r, i) => {
+    const k = at.indexOf(i);
+    if (k < 0) return r;
+    const m = road?.[k]?.length ?? null;
+    // Genau: `dist` (das Auto zeigt sie als Entfernung); ungefähr: nur im Text, mit „≈“
+    const about = m === null && r.dist !== null && r.dist !== undefined ? fmtAbout(r.dist) : null;
+    return { ...r, dist: m, sub: [m !== null ? fmtDistance(m) : about, r.rest].filter(Boolean).join(' · ') };
+  });
 }
 
 /** Ort mit allem, was das Auto zeigen kann – Details aus OSM, wenn es sie gibt */
@@ -119,12 +147,13 @@ async function details(f) {
   if (!address) {
     try { const r = await geocode.reverse(f.geometry.coordinates); if (r) address = [geocode.describe(r).title, geocode.describe(r).subtitle].filter(Boolean).join(', '); } catch { /* ohne Adresse */ }
   }
-  const m = dist(f.geometry.coordinates);
+  const m = (await roadTo([f.geometry.coordinates]))?.[0]?.length ?? null;
+  const air = dist(f.geometry.coordinates);
   const cat = info.category ?? categoryFor(tags);
   const saved = places.all().some((p) => distance(p.point, f.geometry.coordinates) < 15);
   return {
     key: keep(f), title: info.name, type: info.type ?? d.type ?? '', address, status: info.status ?? '',
-    open: info.open, dist: m, distText: m !== null ? fmtDistance(m) : '', point: f.geometry.coordinates,
+    open: info.open, dist: m, distText: m !== null ? fmtDistance(m) : air !== null ? fmtAbout(air) : '', point: f.geometry.coordinates,
     icon: cat?.icon ?? 'location_on', color: cat?.color ?? '#e8590c', saved,
     png: await icon(cat?.icon ?? 'location_on', cat?.color ?? '#e8590c', 96),
     facts: info.facts.filter((x) => !x.unknown && !x.value.includes('\n')).slice(0, 3).map((x) => ({ label: x.label, value: x.value })),
@@ -159,9 +188,9 @@ function hitAt(x, y) {
 /* ── Kategorien ──────────────────────────────────────────────────────────── */
 
 let catCtl = null;
-function catRows(cat, points) {
+async function catRows(cat, points) {
   const ref = here();
-  return points
+  const rows = points
     .map((p) => ({ p, m: distance(ref, p.geometry.coordinates) }))
     .sort((a, b) => a.m - b.m)
     .slice(0, 30)
@@ -172,9 +201,11 @@ function catRows(cat, points) {
       // mit Komma und in Klammern, damit sie nicht wie ein Teil des Namens aussieht
       return {
         key: keep(f), nr: i + 1, title: `${info.name}, (${i + 1})`, icon: cat.icon, color: cat.color, point: p.geometry.coordinates, dist: m,
-        sub: [fmtDistance(m), info.status].filter(Boolean).join(' · '),
+        sub: [fmtDistance(m), info.status].filter(Boolean).join(' · '), rest: info.status ?? '',
       };
     });
+  // Die nächsten drei mit der Strecke auf der Straße, die übrigen mit „≈“ und Luftlinie
+  return withRoad(rows);
 }
 
 /** Die Treffer der Liste als nummerierte Punkte auf der Karte (statt der Symbole – die sagen nicht, welcher es ist) */
@@ -224,15 +255,16 @@ async function category(id) {
   const bounds = bboxAround(here(), RADIUS_M);
   const token = ++seq;
   const tiles = await tilePoints(cat, bounds, signal).catch(() => []);
-  const first = catRows(cat, tiles);
+  const first = await catRows(cat, tiles);
   showHl({});
   showNumbers(first);
   fitHits(tiles);
-  overpass.inBbox(cat, bounds, { signal }).then(({ shapes, points }) => {
+  overpass.inBbox(cat, bounds, { signal }).then(async ({ shapes, points }) => {
     if (signal.aborted) return;
     const ids = new Set(points.map((p) => p.properties.id));
     const all = [...points, ...tiles.filter((p) => p.properties.id && !ids.has(p.properties.id))];
-    const rows = catRows(cat, all);
+    const rows = await catRows(cat, all);
+    if (signal.aborted) return;
     showHl({ shapes });
     showNumbers(rows);
     fitHits(all);
@@ -261,7 +293,7 @@ function savedRows(text = '', limit = 6) {
       const m = dist(p.point);
       return {
         ...row(f), kind: 'target', place: p.kind, icon: PLACE_KINDS[p.kind]?.icon ?? 'star', color: KIND_COLOR[p.kind] ?? null,
-        sub: [m !== null ? fmtDistance(m) : null, p.label].filter(Boolean).join(' · '),
+        sub: [m !== null ? fmtDistance(m) : null, p.label].filter(Boolean).join(' · '), rest: p.label ?? '',
       };
     });
 }
@@ -270,7 +302,7 @@ let searchCtl = null;
 async function search(text) {
   const q = String(text ?? '').trim();
   // Leer: zuletzt gefahren – Zuhause, Arbeit und Gemerktes stehen als Zeile „Lesezeichen“ darüber (bookmarks)
-  if (q.length < 2) return { items: await withPng(methods.recentTargets()) };
+  if (q.length < 2) return { items: await withPng(await withRoad(methods.recentTargets())) };
   searchCtl?.abort();
   searchCtl = new AbortController();
   const found = await geocode.search(q, { center: here(), zoom: Math.max(map.getZoom(), 12), limit: 8, signal: searchCtl.signal });
@@ -281,7 +313,7 @@ async function search(text) {
     const item = { kind: 'category', id: c.id, title: c.label, icon: c.icon, color: c.color, sub: 'In der Nähe' };
     if (cat.strong) items.unshift(item); else items.splice(2, 0, item);
   }
-  return { items: await withPng([...savedRows(q), ...items]) };
+  return { items: await withPng(await withRoad([...savedRows(q), ...items])) };
 }
 
 /* ── Routen ──────────────────────────────────────────────────────────────── */
@@ -505,7 +537,7 @@ const methods = {
   /** Lesezeichen als Kacheln: Zuhause, Arbeit, Gemerktes, Haltestellen – ein Tipp führt zur Routenwahl */
   async bookmarks() {
     shareSync();
-    const rows = savedRows('', 60);
+    const rows = await withRoad(savedRows('', 60));
     return { items: await Promise.all(rows.map(async (r) => ({ ...r, png: await icon(r.icon, r.color ?? '#8ab4f8', 96) }))) };
   },
   recentTargets() {
@@ -519,7 +551,7 @@ const methods = {
   /** „Ziel wählen“: Zuhause, Arbeit, Lesezeichen, zuletzt gefahren */
   async targets() {
     shareSync();
-    return { items: await withPng([...savedRows(), ...methods.recentTargets()]) };
+    return { items: await withPng(await withRoad([...savedRows(), ...methods.recentTargets()])) };
   },
   async place(key) {
     const f = hits.get(key);
@@ -554,6 +586,7 @@ const methods = {
   },
   async start() {
     if (!current()) throw new Error('Keine Route gewählt');
+    rememberRoute();
     await startNav();
     return true;
   },
