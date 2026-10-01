@@ -120,7 +120,29 @@ with Browser(width=900, height=600) as b:
     preview = b.js("return JSON.parse(localStorage.getItem('wmap.tours')).some((t) => t.preview)")
     print('gleiche Adresse:', same, preview)
     checks['4. gleiche Adresse: Touren bleiben, wie sie sind (mit Vorschaubild)'] = same == ['Leinerunde', 'Harzrunde'] and preview
+
+    # ── 6. Läuft die Karte im Auto, zeichnet die App nur noch 10 Bilder je Sekunde ──
+    time.sleep(5.5)
+    alive = b.js("return Date.now() - Number(window.__shared.carAlive ?? 0) < 8000")
     b.js(KEYS)
+    b.open('index.html?view=10.03,51.47,13', wait=4)
+    b.js(BRIDGE, {'carAlive': str(int(time.time() * 1000))})
+    cap = b.d.execute_async_script("""const done = arguments[arguments.length - 1];
+      (async () => {
+        const { carActive } = await import('./js/data/car-share.js');
+        const { fpsCap } = await import('./js/core/fps.js');
+        const frames = () => new Promise((res) => { let n = 0; const t0 = performance.now(); const f = () => { n += 1; if (performance.now() - t0 < 1000) requestAnimationFrame(f); else res(n); }; requestAnimationFrame(f); });
+        const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+        await wait(5600);
+        const during = [carActive(), fpsCap(), await frames()];
+        window.__shared.carAlive = String(Date.now() - 60000);
+        await wait(5300);
+        return { during, after: [carActive(), fpsCap(), await frames()] };
+      })().then(done, (e) => done('FEHLER ' + e));""")
+    print('Auto meldet sich:', alive, '· App gedrosselt:', cap)
+    checks['6. das Auto meldet sich alle 5 s (carAlive)'] = alive is True
+    checks['6. App mit Auto: 10 Bilder je Sekunde, ohne wieder frei'] = isinstance(cap, dict) and cap['during'][:2] == [True, 10] and cap['during'][2] <= 12 \
+        and cap['after'][:2] == [False, None] and cap['after'][2] > 20
     for k, v in checks.items():
         print(('ok    ' if v else 'FALSCH') + ' ' + k)
     rc = b.report()

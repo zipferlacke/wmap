@@ -26,6 +26,7 @@ import androidx.car.app.versioning.CarAppApiLevels
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import de.wuefl.wmap.R
 import org.json.JSONObject
 
 /**
@@ -174,11 +175,14 @@ class WMapSession : Session() {
     o.optString("icon").takeIf { it.isNotEmpty() }?.let { b.setIcon(CarIcons.png(it)) }
     for (i in 0 until minOf(2, options?.length() ?: 0)) {
       val opt = options!!.getJSONObject(i)
-      b.addAction(Action.Builder().setTitle(opt.optString("label")).setOnClickListener {
+      val a = Action.Builder().setOnClickListener {
         alerts.remove(id)
         dismissAlert(alert)
-        web.call("answer", id, opt.optString("value"))
-      }.build())
+        web.call("answer", id, if (opt.isNull("value")) null else opt.optString("value"))
+      }
+      // Schließen als ✕ – wie an der Pille am Handy
+      if (opt.optBoolean("close")) a.setIcon(CarIcons.res(carContext, R.drawable.wmap_car_close)) else a.setTitle(opt.optString("label"))
+      b.addAction(a.build())
     }
     b.setCallback(object : AlertCallback {
       override fun onCancel(reason: Int) { if (alerts.remove(id) != null) web.call("answer", id, null) }

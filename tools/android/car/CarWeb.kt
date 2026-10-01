@@ -63,6 +63,8 @@ import java.util.Locale
  * Standort: vom Standortdienst des Handys (Fused Location, wie die App über
  * das Standort-Plugin) jede Sekunde an window.__carFix (index.html) – der
  * Standort des WebViews selbst mischt GPS und WLAN und springt im Stand.
+ * Der letzte bekannte Standort geht schon mit der Adresse mit (&at=lon,lat):
+ * die Karte beginnt dort, nicht beim Globus.
  *
  * Ansagen: Das WebView kennt keine Web-Sprachausgabe – wie in der
  * MainActivity spricht Android selbst (window.WMapAndroid.speak), als
@@ -257,7 +259,26 @@ class CarWeb(private val ctx: CarContext, private val onEvent: (String, Any?) ->
     web = w
     startSpeech()
     startLocation()
-    w.loadUrl(if (BuildConfig.DEBUG) LOCAL else REMOTE)
+    val url = if (BuildConfig.DEBUG) LOCAL else REMOTE
+    startAt { at -> if (web === w) w.loadUrl(if (at != null) "$url&at=$at" else url) }
+  }
+
+  /**
+   * Letzter bekannter Standort als „lon,lat“ – die Karte beginnt dann gleich
+   * dort statt beim Globus (js/app/core.js). Ohne Freigabe oder Antwort: ohne.
+   */
+  private fun startAt(done: (String?) -> Unit) {
+    var called = false
+    val once = { at: String? -> if (!called) { called = true; done(at) } }
+    if (!located()) { once(null); return }
+    try {
+      LocationServices.getFusedLocationProviderClient(ctx).lastLocation
+        .addOnSuccessListener { l -> once(l?.let { "${it.longitude},${it.latitude}" }) }
+        .addOnFailureListener { once(null) }
+    } catch (e: SecurityException) {
+      once(null)
+    }
+    main.postDelayed({ once(null) }, 800)
   }
 
   fun destroy() {

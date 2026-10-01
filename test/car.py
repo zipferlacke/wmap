@@ -103,9 +103,17 @@ with Browser(width=800, height=480) as b:
     time.sleep(1.5)
     guide = events(b, 'guidance')
     print('Navigation:', ok_start, 'Anweisungen:', len(guide), guide[-1] if guide else None, 'Start gemeldet:', bool(events(b, 'navStart')))
+    # Am Ziel endet die Navigation im Auto von selbst (30 s – hier verkürzt)
+    b.js("window.__carArrivedMs = 800; dispatchEvent(new CustomEvent('wmap:guidance', { detail: { arrived: true, street: 'Am Ziel' } }))")
+    time.sleep(2.5)
+    arrived_end = bool(events(b, 'navEnd')) and (events(b, 'guidance') or [{}])[-1].get('arrived') is True
+    print('Ziel erreicht → endet von selbst:', arrived_end)
     call(b, 'stop')
     time.sleep(1)
     ended = bool(events(b, 'navEnd'))
+    # Bildrate im Auto begrenzt (core/fps.js)
+    fps = b.d.execute_async_script("const done = arguments[arguments.length - 1]; let n = 0; const t0 = performance.now(); const f = () => { n += 1; if (performance.now() - t0 < 2000) requestAnimationFrame(f); else done(n / 2); }; requestAnimationFrame(f);")
+    print('Bilder je Sekunde im Auto:', fps)
 
     # Kurze Frage → Hinweis im Auto, Antwort zurück
     b.js("import('./js/osm/quick-ask.js').then(({ quickAsk }) => quickAsk({ pill: true, icon: 'store', title: 'Gibt es die Bäckerei noch?' }).then((v) => { window.__asked = v; }))")
@@ -139,6 +147,17 @@ with Browser(width=800, height=480) as b:
     call(b, 'clear')
     b.shot('car')
 
+    # Start am Standort statt beim Globus: Android gibt ihn mit (?at=), sonst gilt der zuletzt im Auto gemerkte
+    start = "const m = window.__wmap.map, c = m.getCenter(); return [+c.lng.toFixed(3), +c.lat.toFixed(3), +m.getZoom().toFixed(1), Math.round(m.getPitch())]"
+    b.js("localStorage.removeItem('wmap.view'); localStorage.removeItem('wmap.carPos')")
+    b.open('index.html?car&at=10.1036,51.4814', wait=2)
+    at_url = b.js(start)
+    b.js("localStorage.setItem('wmap.carPos', '[9.936,51.534,90]')")
+    b.open('index.html?car', wait=2)
+    at_saved = b.js(start) + [round(b.js("return window.__wmap.map.getBearing()"))]
+    b.js("localStorage.removeItem('wmap.carPos')")
+    print('Start mit ?at:', at_url, '· mit gemerktem Standort:', at_saved)
+
     checks = {
         'nur die Karte, ganze Fläche': hidden and full,
         'Kategorien fürs Auto': bool(cats) and cats[0]['id'] == 'parking',
@@ -149,7 +168,11 @@ with Browser(width=800, height=480) as b:
         'Ort mit Details und Marker': bool(place) and bool(place['title']) and marker,
         'Route berechnet': bool(route) and len(route['routes']) >= 1,
         'Navigation mit Anweisungen als Daten': ok_start and bool(guide) and 'dist' in guide[-1] and ended,
-        'Frage als Hinweis, Antwort kommt an': bool(ask) and answered == 'yes',
+        'Frage als Hinweis mit ✕ und „Bestätigen“, Antwort kommt an': bool(ask) and answered == 'yes'
+            and [(o['label'], o.get('close', False)) for o in ask['options']] == [('Schließen', True), ('Bestätigen', False)],
+        'Ziel erreicht: Navigation endet von selbst': arrived_end,
+        'höchstens gut 20 Bilder je Sekunde': 8 <= fps <= 24,
+        'Start gleich am Standort (mitgegeben bzw. gemerkt), geneigt': at_url == [10.104, 51.481, 16.5, 50] and at_saved == [9.936, 51.534, 16.5, 50, 90],
         'Tour als Route': bool(ts) and ts['items'][0]['id'] == 'tcar' and bool(tr),
         'nur fürs Auto geplante Touren, gerechnet mit dem Auto': bool(ts) and [t['id'] for t in ts['items']] == ['tcar'] and foot is None and profile == ['car', '"bike"'],
     }

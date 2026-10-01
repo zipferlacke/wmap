@@ -27,6 +27,7 @@ import { places, PLACE_KINDS } from '../data/saved.js';
 import { recent, tours } from '../data/store.js';
 import { shareSync } from '../data/car-share.js';
 import { theme } from '../core/theme.js';
+import { capFps } from '../core/fps.js';
 import { osmRef, BASE_POI_LAYERS } from '../map/map.js';
 import { bboxAround, distance, fmtDistance, fmtDuration } from '../core/geo.js';
 import { PROFILES } from '../core/config.js';
@@ -39,6 +40,14 @@ import { clearRoutes, fitRoute, selectRoute } from '../app/route-results.js';
 import { nav, navTour, startNav } from '../app/nav.js';
 import { closeSheet } from '../app/views.js';
 import { startDrive, pauseDrive, resumeDrive, hudInsets, recenterIcon } from './drive.js';
+
+// Das Auto zeigt ein Video der Karte, meist mit 30 Bildern je Sekunde – mehr zu zeichnen kostet nur
+// Rechenzeit und Wärme (core/fps.js). 20 reichen für eine ruhige Fahrt.
+const CAR_FPS = 20;
+const GESTURE_FPS = 30;
+capFps(CAR_FPS);
+// „Ziel erreicht“ bleibt so lange stehen, dann endet die Navigation von selbst
+const ARRIVED_MS = 30000;
 
 const bridge = window.WMapCar ?? null;
 const send = (type, data) => {
@@ -329,9 +338,25 @@ function recenter() {
   else resumeDrive({ toggle: true });
 }
 /** Selbst verschoben oder gezoomt: nicht zurückreißen */
+const gesture = { dx: 0, dy: 0, zoom: 0, at: null, frame: null };
+function applyGesture() {
+  if (gesture.frame !== null) return;
+  gesture.frame = requestAnimationFrame(() => {
+    const { dx, dy, zoom, at } = gesture;
+    Object.assign(gesture, { dx: 0, dy: 0, zoom: 0, at: null, frame: null });
+    if (dx || dy) map.panBy([dx, dy], { duration: 0 }, ORIGINAL);
+    if (zoom) map.zoomTo(map.getZoom() + zoom, { duration: 0, around: at ? map.unproject(at) : undefined }, ORIGINAL);
+  });
+}
+
+let gestureTimer = null;
 function hold() {
   nav.pauseFollow();
   pauseDrive();
+  // Mit dem Finger auf der Karte zählt jedes Bild – solange öfter zeichnen, sonst ruckelt das Verschieben
+  capFps(GESTURE_FPS);
+  clearTimeout(gestureTimer);
+  gestureTimer = setTimeout(() => capFps(CAR_FPS), 1200);
 }
 
 /** Freie Fläche der Karte (Rest verdecken die Vorlagen des Autos), CSS-Pixel */
@@ -345,9 +370,13 @@ function setInsets(ins) {
 /* ── Anweisungen der Navigation an das Auto ───────────────────────────────── */
 
 // Mit dem Pfeil als Bild – das Auto zeigt ihn groß neben der Entfernung
+let arrivedTimer = null;
 addEventListener('wmap:guidance', async (e) => {
   const g = e.detail;
   const name = g.arrived ? 'sports_score' : g.type === 'via' ? 'flag' : maneuverIcon({ type: g.type });
+  if (g.arrived && arrivedTimer === null) {
+    arrivedTimer = setTimeout(() => { arrivedTimer = null; if (nav.active) nav.stop(); }, window.__carArrivedMs ?? ARRIVED_MS);
+  }
   send('guidance', { ...g, icon: await icon(name, '#ffffff', 128) });
 });
 let wasNav = false;
@@ -355,6 +384,8 @@ new MutationObserver(() => {
   const now = document.body.classList.contains('navigating');
   if (now === wasNav) return;
   wasNav = now;
+  clearTimeout(arrivedTimer);
+  arrivedTimer = null;
   send(now ? 'navStart' : 'navEnd', { destination: state.waypoints.at(-1)?.label ?? '' });
 }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
@@ -365,9 +396,12 @@ let askSeq = 0;
 /** osm/quick-ask.js: Pille bzw. Karte → Hinweis im Auto; → 'yes' | 'no' | null */
 window.wmapCarAsk = (opts, setClose) => new Promise((resolve) => {
   const id = ++askSeq;
+  // Pille wie am Handy: ✕ (schließen, nicht mehr fragen) und „Bestätigen“
   const options = opts.pill
-    ? [{ value: 'yes', label: 'Ja' }, { value: 'no', label: 'Nein' }]
+    ? [{ value: 'no', label: 'Schließen', close: true }, { value: 'yes', label: 'Bestätigen' }]
     : (opts.options ?? []).slice(0, 2).map((o) => ({ value: o.value, label: o.label }));
+  // Nur ein Knopf: daneben das ✕ – das Auto erlaubt je Hinweis zwei
+  if (!opts.pill && options.length === 1) options.unshift({ value: null, label: 'Schließen', close: true });
   if (opts.input || !options.length) { resolve(null); return; }
   const done = (v) => { if (!asks.has(id)) return; asks.delete(id); send('askEnd', { id }); resolve(v); };
   asks.set(id, done);
@@ -392,11 +426,18 @@ const methods = {
   insets: setInsets,
   /** Standort (wieder) abfragen – nach der Freigabe am Handy */
   locate() { startDrive(); return true; },
-  pan(dx, dy) { hold(); map.panBy([dx, dy], { duration: 0 }, ORIGINAL); },
+  // Verschieben und Zoomen mit dem Finger: Das Auto meldet viele kleine Schritte – je Bild einer,
+  // zusammengefasst (sonst arbeitet eine träge Seite jeden einzeln nach und die Karte läuft dem Finger hinterher)
+  pan(dx, dy) {
+    hold();
+    gesture.dx += dx; gesture.dy += dy;
+    applyGesture();
+  },
   zoom(factor, x, y) {
     hold();
-    const around = x !== undefined ? map.unproject([x, y]) : undefined;
-    map.zoomTo(map.getZoom() + Math.log2(factor), { duration: 0, around }, ORIGINAL);
+    gesture.zoom += Math.log2(factor);
+    if (x !== undefined) gesture.at = [x, y];
+    applyGesture();
   },
   zoomBy(d) { hold(); map.zoomTo(map.getZoom() + d, { duration: 300 }); },
   /** Wischen mit Schwung: weiterrollen, langsamer werdend */

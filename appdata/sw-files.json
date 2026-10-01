@@ -54,6 +54,7 @@
 "js/core/categories.js",
 "js/core/config.js",
 "js/core/credits.js",
+"js/core/fps.js",
 "js/core/geo-uri.js",
 "js/core/geo.js",
 "js/core/links.js",

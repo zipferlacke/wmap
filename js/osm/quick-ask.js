@@ -16,8 +16,9 @@
  * urgent: true (Meldungen: „Immer noch Stau?“) – schiebt eine gerade
  * gezeigte Pille weg (sie endet mit null) und kommt sofort.
  *
- * Auf dem Autobildschirm (car/car.js) kommt die Frage als Hinweis des Autos
- * mit „Ja“/„Nein“ bzw. den ersten zwei Knöpfen; mit Textfeld gar nicht.
+ * Auf dem Autobildschirm (car/car.js) kommt die Frage als Hinweis des Autos:
+ * die Pille mit ✕ und „Bestätigen“ wie hier, die Karte mit ihren ersten zwei
+ * Knöpfen; mit Textfeld gar nicht.
  */
 import { esc } from '../core/geo.js';
 

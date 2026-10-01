@@ -40,7 +40,15 @@
         document.documentElement.classList.add('car-mode');
         if (window.WMapCar) {
           const subs = new Map(); let last = null; let n = 0;
-          window.__carFix = (pos) => { last = pos; subs.forEach((ok) => ok(pos)); };
+          // Nur die neueste Meldung zählt: Kommt die Seite einmal nicht nach (Handy heiß und gedrosselt),
+          // stauten sich die Meldungen sonst – jede wurde noch verarbeitet, die Karte hing immer weiter zurück
+          let waiting = null; let queued = false;
+          window.__carFix = (pos) => {
+            waiting = pos;
+            if (queued) return;
+            queued = true;
+            setTimeout(() => { queued = false; last = waiting; subs.forEach((ok) => ok(last)); });
+          };
           const geo = {
             watchPosition(ok) { const id = ++n; subs.set(id, ok); if (last) setTimeout(() => ok(last)); return id; },
             clearWatch(id) { subs.delete(id); },

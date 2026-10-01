@@ -195,12 +195,20 @@ class MapScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx) {
       val g = n.guide
       when {
         g == null -> b.setNavigationInfo(RoutingInfo.Builder().setLoading(true).build())
-        g.optBoolean("arrived") -> b.setNavigationInfo(
-          MessageInfo.Builder("Ziel erreicht").apply {
-            g.optString("street").takeIf { it.isNotEmpty() }?.let { setText(it) }
-            g.optString("icon").takeIf { it.isNotEmpty() }?.let { setImage(CarIcons.png(it)) }
-          }.build(),
-        )
+        g.optBoolean("arrived") -> {
+          b.setNavigationInfo(
+            MessageInfo.Builder("Ziel erreicht").apply {
+              g.optString("street").takeIf { it.isNotEmpty() }?.let { setText(it) }
+              g.optString("icon").takeIf { it.isNotEmpty() }?.let { setImage(CarIcons.png(it)) }
+            }.build(),
+          )
+          // Die Ankunftskarte bleibt stehen (0 min · 0 m): an ihr hängt das ✕ zum Beenden, das
+          // immer sichtbar ist – die Knopfleiste blendet das Auto nach ein paar Sekunden aus
+          b.setDestinationTravelEstimate(
+            TravelEstimate.Builder(distance(0.0), DateTimeWithZone.create(System.currentTimeMillis(), TimeZone.getDefault()))
+              .setRemainingTimeSeconds(0).build(),
+          )
+        }
         else -> {
           b.setNavigationInfo(routing(g))
           val secs = g.optDouble("secs", 0.0)
@@ -214,7 +222,10 @@ class MapScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx) {
       }
       b.setActionStrip(
         ActionStrip.Builder()
-          // Beenden: das ✕ neben der Ankunftszeit (von Android Auto) – hier nicht doppelt
+          // Beenden: das ✕ neben der Ankunftszeit (von Android Auto) – hier nicht doppelt.
+          // Am Ziel gibt es keine Ankunftszeit mehr und damit kein ✕: dann hier
+          // (die Navigation endet sonst nach 30 s von selbst – js/car/car.js)
+          .apply { if (g?.optBoolean("arrived") == true) addAction(iconAction(carContext, R.drawable.wmap_car_close) { s.web.call("stop") }) }
           .addAction(iconAction(carContext, R.drawable.wmap_car_nearby) { screenManager.push(NearbyScreen(carContext, s)) })
           .addAction(iconAction(carContext, if (n.muted) R.drawable.wmap_car_volume_off else R.drawable.wmap_car_volume_up) {
             s.web.call("mute") { v, _ -> n.muted = v == true; invalidate() }

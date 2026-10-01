@@ -20,6 +20,7 @@ import { map, state, SIMULATING } from '../app/core.js';
 import { nav } from '../app/nav.js';
 import { alongMap } from '../app/ask-along.js';
 import { trace } from '../data/trace.js';
+import { local } from '../data/store.js';
 
 const ROADS = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service'];
 const SNAP_M = 30;
@@ -115,6 +116,7 @@ let marker = null;
 let following = true;
 let heading = null;
 let last = null;
+let savedAt = 0;           // wann der Standort zuletzt für den nächsten Start gemerkt wurde
 let limit = { value: null, at: 0, point: null, street: '' };
 let current = { kmh: 0, street: '' };
 
@@ -175,6 +177,8 @@ function onFix(pos) {
   const street = road?.name ?? (v < 2 ? snap(raw, heading)?.name ?? '' : '');
   last = { raw, t: now, street };
   current = { kmh, street };
+  // Für den nächsten Start: dort beginnen, wo das Auto zuletzt war (app/core.js)
+  if (!SIMULATING && now - savedAt > 15000) { savedAt = now; local.set('wmap.carPos', [+raw[0].toFixed(5), +raw[1].toFixed(5), Math.round(heading ?? 0)]); }
 
   if (!SIMULATING) {
     trace.add({ point: raw, accuracy: c.accuracy });

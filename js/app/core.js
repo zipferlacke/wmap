@@ -20,7 +20,13 @@ export const CAR = new URLSearchParams(location.search).has('car');
 if (CAR) document.documentElement.classList.add('car-mode');
 
 const lastView = local.get('wmap.view');
-export const { map, geolocate } = createMap('map', lastView ? {
+// Im Auto gleich am Standort beginnen – nicht beim Globus oder beim letzten Ausschnitt der App: Android gibt den
+// letzten bekannten Standort mit (?at=lon,lat – car/CarWeb.kt), sonst gilt der zuletzt im Auto gemerkte (car/drive.js)
+const carAt = CAR ? new URLSearchParams(location.search).get('at')?.split(',').map(Number) ?? local.get('wmap.carPos') : null;
+const carStart = Array.isArray(carAt) && carAt.length >= 2 && carAt.slice(0, 2).every(Number.isFinite);
+export const { map, geolocate } = createMap('map', carStart ? {
+  center: [carAt[0], carAt[1]], zoom: 16.5, pitch: 50, bearing: Number.isFinite(carAt[2]) ? carAt[2] : 0,
+} : lastView ? {
   center: lastView.center, zoom: lastView.zoom, pitch: lastView.pitch ?? 0, bearing: lastView.bearing ?? 0,
 } : {});
 

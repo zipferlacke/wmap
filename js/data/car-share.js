@@ -16,6 +16,7 @@
  *   car      { origin }                                         Auto → App
  *   places   Zuhause, Arbeit, Lesezeichen    beide Richtungen, je Eintrag das Neuere
  *   recent   zuletzt gesucht und gefahren    beide Richtungen
+ *   carAlive Zeitpunkt, alle 5 s             Auto → App: die Karte im Auto läuft
  *
  * Übernommen wird nur, wenn die andere Seite unter einer anderen Adresse
  * läuft (origin) – bei gemeinsamem Speicher überschriebe das Auto sonst die
@@ -26,8 +27,15 @@
  * (nur in der Android-App). Abgeglichen wird beim Start, nach jeder Änderung
  * und wenn die Seite wieder sichtbar wird; im Auto zusätzlich, bevor es
  * Touren oder Ziele auflistet (js/car/car.js → shareSync).
+ *
+ * Läuft die Karte im Auto, zeichnet die App nur noch 10 Bilder je Sekunde
+ * (core/fps.js): Beide Seiten teilen sich im WebView einen Rechen-Thread, und
+ * zwei Navigationen in voller Bildrate ließen das Handy heiß werden und die
+ * Karte im Auto hinterherhängen. Das Auto meldet sich dafür alle 5 s
+ * (carAlive); bleibt die Meldung 15 s aus, gilt die App wieder allein.
  */
 import { local, tours, recent } from './store.js';
+import { capFps } from '../core/fps.js';
 import { mergePlaces } from './saved.js';
 
 // Bei jedem Aufruf nachsehen – Tests setzen die Schnittstelle erst nach dem Laden
@@ -87,3 +95,17 @@ if (here()) {
   addEventListener('visibilitychange', () => { clearTimeout(timer); shareSync(); });
   addEventListener('pagehide', () => shareSync());
 }
+
+/* ── Läuft die Karte im Auto? ─────────────────────────────────────────────── */
+
+const ALIVE_EVERY_MS = 5000;
+const ALIVE_FOR_MS = 15000;
+const APP_FPS_WITH_CAR = 10;
+/** App: zeigt Android Auto gerade die Karte von WMap? */
+export const carActive = () => Date.now() - Number(get('carAlive') ?? 0) < ALIVE_FOR_MS;
+
+setInterval(() => {
+  if (!here()) return;
+  if (CAR) { if (document.visibilityState === 'visible') put('carAlive', String(Date.now())); return; }
+  capFps(carActive() ? APP_FPS_WITH_CAR : null);
+}, ALIVE_EVERY_MS);
