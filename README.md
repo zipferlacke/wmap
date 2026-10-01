@@ -1395,7 +1395,8 @@ Android Auto nicht zu (Ablenkung). WMap malt einzig die Karte selbst:
   Kategorien als Raster mit großen Symbolen), darunter **Lesezeichen**
   (Zuhause und Arbeit als Knöpfe, antippen: alle gemerkten Orte als Raster
   aus Kacheln mit Entfernung – `bookmarks` in `js/car/car.js`,
-  `BookmarksScreen`), dann die letzten Ziele. Kachel, Knopf und letztes
+  `BookmarksScreen`; die Zeile steht auch ohne Gemerktes da), dann die
+  letzten Ziele. Kachel, Knopf und letztes
   Ziel führen gleich zur Routenwahl. Mit Text findet die Suche gemerkte
   Orte weiter in der Liste.
   **Meine Touren:** nur die **fürs Auto geplanten** Touren (Planer →

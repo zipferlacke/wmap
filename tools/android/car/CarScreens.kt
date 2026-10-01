@@ -457,7 +457,7 @@ class BookmarksScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx)
       o.optString("sub").substringBefore(" · ").takeIf { it.isNotEmpty() }?.let { item.setText(it) }
       il.addItem(item.build())
     }
-    il.setNoItemsMessage("Noch nichts gemerkt – am Handy einen Ort öffnen und „Merken“ antippen")
+    il.setNoItemsMessage("Noch nichts gemerkt – einen Ort öffnen und den Stern antippen")
     return b.setSingleList(il.build()).build()
   }
 }
@@ -571,7 +571,9 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
 
   /** „Lesezeichen“ wie „In der Nähe“: die Zeile öffnet die Kacheln, Zuhause und Arbeit gehen als Knöpfe gleich zur Route */
   private fun bookmarksRow(): Row {
-    val names = saved.take(3).joinToString(", ") { it.optString("title") } + if (saved.size > 3) " …" else ""
+    // Die Zeile steht immer da – auch ohne Gemerktes weiß man so, wo es später zu finden ist
+    val names = if (saved.isEmpty()) "Zuhause, Arbeit, gemerkte Orte"
+      else saved.take(3).joinToString(", ") { it.optString("title") } + if (saved.size > 3) " …" else ""
     val plain = {
       Row.Builder().setTitle("Lesezeichen").addText(names)
         .setImage(CarIcons.res(carContext, R.drawable.wmap_car_star, CarIcons.BLUE))
@@ -616,7 +618,7 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
       val il = ItemList.Builder()
       if (!tours && text.length < 2) {
         il.addItem(nearbyRow())
-        if (saved.isNotEmpty()) il.addItem(bookmarksRow())
+        il.addItem(bookmarksRow())
       }
       list.forEach { o ->
         il.addItem(row(o) {
