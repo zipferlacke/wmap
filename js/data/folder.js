@@ -731,6 +731,28 @@ async function shelve(next, be, out) {
   }
 }
 
+/**
+ * Speicher voll (tracks.js makeRoom): die ältesten ganzen Wege, deren Datei im
+ * Ordner genau diesen Stand hat, zur Karteikarte machen – ohne den Ordner
+ * anzufassen. „Offline verfügbar“ Markiertes bleibt. → Anzahl, oder null,
+ * wenn kein Ordner verbunden ist
+ */
+export async function shelveOldest(count = 10, exceptId = null) {
+  const c = await load().catch(() => null);
+  if (!c) return null;
+  const known = new Map();
+  for (const v of Object.values(c.index ?? {})) if (v.kind === 'track' && v.ours && !known.has(v.id)) known.set(v.id, v);
+  let n = 0;
+  for (const t of (await tracks.all()).reverse()) {
+    if (n >= count) break;
+    const v = known.get(t.id);
+    if (t.stub || t.pin || t.id === exceptId || !v || v.rev !== rev(t) || v.hash !== hash(trackGpx(t))) continue;
+    await tracks.putQuiet(stubOf(t, v.hash));
+    n += 1;
+  }
+  return n;
+}
+
 /** Fingerabdruck dessen, was hier liegt – bei einer Karteikarte der der Datei, aus der sie entstand */
 const localHash = (entry) => (entry.item.stub ? entry.item.fhash : hash(serialize(entry)));
 

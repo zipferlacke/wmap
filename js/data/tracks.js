@@ -23,6 +23,10 @@
  * App bleiben die Wege der letzten Zeit (Einstellung) und alles, was als
  * „offline verfügbar“ markiert ist.
  *
+ * Ohne Ordner bleibt alles, so lange man will – gelöscht wird nichts nach
+ * Zeit. Nur wenn das Gerät gar nichts mehr speichert, weicht das Älteste
+ * (makeRoom).
+ *
  * Aufgezeichnet wird während der Navigation (abschaltbar) und über
  * „Aufzeichnen“ – beides mit dem Recorder unten, der nach einem Absturz
  * oder Neuladen weitermacht.
@@ -56,6 +60,50 @@ export const healthGone = {
   add(id) { if (id) local.set(HEALTH_GONE, [...new Set([...(local.get(HEALTH_GONE, []) ?? []), id])].slice(-5000)); },
 };
 
+/* ── Speicher voll ────────────────────────────────────────────────────────── */
+
+const isFull = (err) => err?.name === 'QuotaExceededError' || /quota/i.test(String(err?.message ?? ''));
+let makingRoom = false;
+
+/**
+ * Platz schaffen, wenn das Gerät nichts mehr speichert (kommt praktisch nicht
+ * vor: ein Weg braucht rund 2 KB, erlaubt sind Gigabytes): Mit verbundenem
+ * Ordner werden die ältesten ganzen Wege zur Karteikarte – ihre Datei liegt
+ * ja im Ordner. Ohne Ordner weichen die ältesten Wege selbst, fünf auf
+ * einmal; „offline verfügbar“ Markiertes nie. Gelöscht wird ohne Meldung an
+ * den Abgleich, und aus Health Connect kommen sie nicht wieder. → Anzahl
+ */
+async function makeRoom(exceptId) {
+  makingRoom = true;
+  try {
+    const { shelveOldest } = await import('./folder.js');
+    // null: kein Ordner verbunden
+    const shelved = await shelveOldest(10, exceptId).catch(() => 0);
+    const removed = [];
+    if (shelved === null) {
+      const old = (await db.all()).filter((t) => !t.pin && t.id !== exceptId).sort((a, b) => a.start - b.start).slice(0, 5);
+      for (const t of old) { healthGone.add(t.source?.health); await db.remove(t.id); removed.push(t.name || 'Tour'); }
+    }
+    const n = shelved || removed.length;
+    if (n) {
+      dispatchEvent(new CustomEvent('wmap:storage-full', { detail: { shelved: shelved ?? 0, removed } }));
+      import('../ui/dialogs.js').then(({ toast }) => toast(removed.length
+        ? `Speicher voll – die ${removed.length === 1 ? 'älteste Tour' : `${removed.length} ältesten Touren`} wurden gelöscht`
+        : `Speicher voll – ${shelved} ältere Touren liegen jetzt nur noch im Ordner`)).catch(() => {});
+    }
+    return n;
+  } finally { makingRoom = false; }
+}
+
+/** Speichern; ist der Speicher voll, weicht das Älteste (makeRoom) und es geht noch einmal */
+async function save(track) {
+  for (let i = 0; ; i += 1) {
+    try { return await db.put(track); } catch (err) {
+      if (!isFull(err) || makingRoom || i >= 20 || !(await makeRoom(track.id))) throw err;
+    }
+  }
+}
+
 export const tracks = {
   /** Alle Wege, neueste zuerst. */
   async all() {
@@ -83,9 +131,9 @@ export const tracks = {
     }
     return { list, missing };
   },
-  async put(track) { await db.put(track); changed({ kind: 'track', id: track.id }); },
+  async put(track) { await save(track); changed({ kind: 'track', id: track.id }); },
   /** Speichern ohne Meldung – für den Abgleich */
-  putQuiet: (track) => db.put(track),
+  putQuiet: (track) => save(track),
   async remove(id) { await this.removeQuiet(id); changed({ kind: 'track', id, removed: true }); },
   /** Löschen ohne Meldung – für den Abgleich (sonst gälte es als „hier gelöscht“) */
   async removeQuiet(id) {
