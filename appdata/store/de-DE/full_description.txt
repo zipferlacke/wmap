@@ -3,7 +3,7 @@ WMap ist eine Karte für unterwegs: Orte suchen, Routen planen, navigieren, Tour
 Karte
 • Klare Karte mit deutschen Namen, hell oder dunkel passend zum Gerät
 • 3D-Gelände und Gebäude, Höhen bis auf den Meter, ganz herausgezoomt die Erde als Globus
-• Satellit: Luftbilder in 20–40 cm für große Teile Deutschlands, weltweit Sentinel-2. Die Gebäude stehen in 3D, mit dem Luftbild auf dem Dach
+• Satellit: Luftbilder für große Teile Deutschlands, weltweit Sentinel-2. Die Gebäude stehen in 3D, mit dem Luftbild auf dem Dach
 • Wander-, Rad- und Mountainbike-Wege von Waymarked Trails, Relief, Ampeln
 
 Suchen und Route
