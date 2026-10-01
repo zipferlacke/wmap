@@ -88,7 +88,7 @@ with Browser(width=800, height=480) as b:
     # Nummer am Namen und derselbe Punkt auf der Karte
     last_list = (later[-1] if later else park)['items']
     dots = b.js("return [...document.querySelectorAll('.car-hit')].map((e) => e.textContent)")
-    numbers = [x['title'].rsplit(' ', 1)[-1] for x in last_list]  # „(3)“ – in Klammern, gehört nicht zum Namen
+    numbers = [x['title'].rsplit(', ', 1)[-1] if ', (' in x['title'] else '?' for x in last_list]  # „Parkplatz, (3)“ – mit Komma und in Klammern
     print('Nummern in der Liste:', numbers[:5], '· Punkte auf der Karte:', dots[:5], len(dots))
 
     found = call(b, 'search', 'Bäckerei')
@@ -199,7 +199,7 @@ with Browser(width=800, height=480) as b:
         'Freie Fahrt: Pfeil, Tempo, Straße, geneigt': isinstance(drive, dict) and drive['arrow'] and drive['kmh'] != '0' and drive['streetShown'] and drive['pitch'] > 30,
         'Parkplätze in der Nähe': bool(park) and (len(park['items']) > 0 or any(e['items'] for e in later)),
         'Karte zoomt auf die Treffer heraus': fit[0] <= 16 and fit[1] is True,
-        'Treffer mit Nummer in Klammern am Namen und nummeriertem Punkt auf der Karte': numbers[:3] == ['(1)', '(2)', '(3)'] and dots[:3] == ['1', '2', '3'] and len(dots) == len(last_list),
+        'Treffer mit Komma und Nummer in Klammern am Namen und nummeriertem Punkt auf der Karte': numbers[:3] == ['(1)', '(2)', '(3)'] and dots[:3] == ['1', '2', '3'] and len(dots) == len(last_list),
         'Filter: Autobahnen vermeiden gespeichert, neu gerechnet; Änderung der App kommt an': before == {'highways': False, 'tolls': False, 'ferries': False}
             and stored and stored.get('highways') is False and bool(again) and len(again['routes']) >= 1 and from_app == {'highways': False, 'tolls': True, 'ferries': False},
         'Suche findet Kategorie': found is not None,

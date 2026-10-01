@@ -735,8 +735,9 @@ function addLayers(map) {
     filter: ['!', ['get', 'selected']],
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
-      'line-color': ROUTE_COLOR, 'line-opacity': 0.4,
-      'line-width': ['interpolate', ['linear'], ['zoom'], 6, 4, 14, 8],
+      // Alternativen deutlich sichtbar – blass und schmal waren sie auf dem Autobildschirm kaum zu treffen
+      'line-color': ROUTE_COLOR, 'line-opacity': 0.62,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 6, 5.5, 14, 10],
     },
   }, under);
   map.addLayer({
@@ -744,7 +745,7 @@ function addLayers(map) {
     filter: ['get', 'selected'],
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
-      'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 7, 14, 12],
+      'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 9.5, 14, 15],
       'line-opacity': hideCovered,
     },
   }, under);
@@ -754,7 +755,7 @@ function addLayers(map) {
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
       // Bus & Bahn: jede Fahrt in der Farbe ihrer Linie
-      'line-color': ['coalesce', ['get', 'color'], ROUTE_COLOR], 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 4.5, 14, 8],
+      'line-color': ['coalesce', ['get', 'color'], ROUTE_COLOR], 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 6.5, 14, 11],
       'line-opacity': hideCovered,
     },
   }, under);

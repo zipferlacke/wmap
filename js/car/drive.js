@@ -196,6 +196,19 @@ function onFix(pos) {
   paint({ kmh, limit: limit.value, street: current.street });
 }
 
+/*
+ * Navigation beginnt: Der Pfeil der freien Fahrt weicht sofort dem der Navigation – nicht erst mit der
+ * nächsten Standortmeldung (im Stand kommt die selten, so lange lagen zwei Pfeile übereinander).
+ * Navigation endet: gleich wieder da, am letzten Standort.
+ */
+new MutationObserver(() => {
+  if (document.body.classList.contains('navigating')) { marker?.remove(); marker = null; return; }
+  if (!marker && last) {
+    marker = arrow().setLngLat(last.raw).addTo(map);
+    marker.setRotation(heading ?? 0);
+  }
+}).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
 /** Mit Route: Tempo und Limit wie in der Navigation (nav/navigation.js malt sie in #nav) */
 setInterval(() => {
   if (!nav.active) return;

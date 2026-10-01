@@ -236,6 +236,8 @@ Man startet immer mit der Karte.
 - Start ist standardmäßig der eigene Standort; ein Klick in die Karte füllt
   das erste leere Feld. Zwischenziele lassen sich hinzufügen.
 - Wo es welche gibt, stehen Alternativen zur Auswahl – mit Zeit, Strecke und Höhenprofil.
+  Auf der Karte ist die gewählte Route breit mit weißem Rand, die Alternativen sind etwas
+  schmaler und leicht durchscheinend (`route-main`, `route-alt` in `js/map/map.js`).
 - **Entlang der Route** suchen (Tankstelle, Bäckerei …) – ab der aktuellen
   Stelle der Navigation.
 - **Erreichbarkeit** (Suchfeld antippen → „Was ist von hier erreichbar?“, oder
@@ -324,11 +326,12 @@ eigene Standort liegt im unteren Drittel, damit man voraus sieht.
 - **Folgen-Knopf** (einer für alles): **blau**, solange die Karte folgt.
   Antippen, während sie folgt, wechselt zwischen geneigt (3D) und flach.
   Verschiebt, dreht, neigt oder zoomt man die Karte selbst, hört sie auf zu
-  folgen und der Knopf wird **farblos**; Antippen holt sie zurück.
+  folgen und der Knopf wird **farblos** und zeigt die Nadel im Kreis
+  (`share_location`); Antippen holt sie zurück.
 - **Kompass:** Fahrtrichtung oben ↔ Norden oben.
 - **Übersicht:** ganze Restroute im Bild.
 - **Stumm**, **Suchen** (entlang der Route), **Teilen** (Ankunftszeit als
-  Link), **Beenden**. Nach dem Beenden ist die Route weg. **Melden** (Glocke)
+  Link, mit dem üblichen Teilen-Symbol), **Beenden**. Nach dem Beenden ist die Route weg. **Melden** (Glocke)
   ist vorerst ausgeblendet (`.nav-report` in `css/app/navigation.css`), bis
   es fertig ist.
 - Knöpfe rechts und Tempo links stehen immer über der Leiste unten – deren
@@ -1404,8 +1407,8 @@ Android Auto nicht zu (Ablenkung). WMap malt einzig die Karte selbst:
   solche steht „Keine Touren fürs Auto geplant“), das Suchfeld filtert.
 - **In der Nähe:** Eine Kategorie zeigt ihre Treffer als Liste neben der
   Karte, die Karte zoomt dafür auf die nächsten acht heraus (`fitHits`).
-  Jeder Treffer trägt eine **Nummer in Klammern am Namen** („Parkplatz
-  (3)“ – sie gehört nicht zum Namen) und steht mit derselben Nummer als Punkt auf der Karte (`showNumbers` – statt der
+  Jeder Treffer trägt eine **Nummer in Klammern hinter dem Namen**
+  („Parkplatz, (3)“ – mit Komma, sie gehört nicht zum Namen) und steht mit derselben Nummer als Punkt auf der Karte (`showNumbers` – statt der
   Symbole, die nicht sagen, welcher es ist). Ein Treffer der Liste führt
   direkt zur Routenwahl, ohne die Ortskarte dazwischen; ein Tipp auf den
   nummerierten Punkt öffnet den Ort.
@@ -1443,6 +1446,9 @@ Android Auto nicht zu (Ablenkung). WMap malt einzig die Karte selbst:
   das Auto liest sie vor jeder Route neu, eine Änderung im Auto gilt auch
   in der App). Zurück in der Routenwahl wird neu gerechnet
   (`RoutePrefsScreen`, `routesAgain`).
+- Beim Start der Navigation verschwindet der Pfeil der freien Fahrt sofort
+  (nicht erst mit der nächsten Standortmeldung), nach dem Ende steht er
+  gleich wieder am letzten Standort (`js/car/drive.js`).
 - „Los“ startet die
   Navigation: Pfeil, Entfernung, Straße und Ankunftszeit in der Vorlage des
   Autos, Ansagen über die Lautsprecher des Autos, Ton aus, „In der Nähe“

@@ -1002,7 +1002,7 @@ export class Navigation {
     mute.querySelector('.msr').textContent = speech.muted ? 'volume_off' : 'volume_up';
     mute.title = speech.muted ? 'Ansagen einschalten' : 'Ansagen stummschalten';
     const follow = $('.nav-recenter');
-    follow.querySelector('.msr').textContent = !this.#following ? 'my_location' : navSettings.threeD ? 'navigation' : 'explore';
+    follow.querySelector('.msr').textContent = !this.#following ? 'share_location' : navSettings.threeD ? 'navigation' : 'explore';
     follow.title = !this.#following ? 'Zurück zu meinem Standort'
       : navSettings.threeD ? 'Folgt dir – antippen: flache Ansicht' : 'Folgt dir – antippen: geneigte Ansicht';
     $('.nav-compass').classList.toggle('north', navSettings.north);

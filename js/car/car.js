@@ -168,10 +168,10 @@ function catRows(cat, points) {
     .map(({ p, m }, i) => {
       const info = describePoi(parseTags(p.properties.tags), { name: p.properties.name });
       const f = featureFromPoint(p);
-      // Nummer am Namen und am Punkt auf der Karte – „Parkplatz (3)“ in der Liste ist die 3 auf der Karte;
-      // in Klammern, damit sie nicht wie ein Teil des Namens aussieht
+      // Nummer am Namen und am Punkt auf der Karte – „Parkplatz, (3)“ in der Liste ist die 3 auf der Karte;
+      // mit Komma und in Klammern, damit sie nicht wie ein Teil des Namens aussieht
       return {
-        key: keep(f), nr: i + 1, title: `${info.name} (${i + 1})`, icon: cat.icon, color: cat.color, point: p.geometry.coordinates, dist: m,
+        key: keep(f), nr: i + 1, title: `${info.name}, (${i + 1})`, icon: cat.icon, color: cat.color, point: p.geometry.coordinates, dist: m,
         sub: [fmtDistance(m), info.status].filter(Boolean).join(' · '),
       };
     });

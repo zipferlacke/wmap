@@ -26,20 +26,20 @@ html.car-mode {
         position: absolute;
         right: calc(var(--car-right, 0px) + 12px);
         bottom: calc(var(--car-bottom, 0px) + 12px);
-        display: flex; align-items: center; gap: .4rem;
-        padding: .3rem .55rem .3rem .3rem;
+        display: flex; align-items: center; gap: .55rem;
+        padding: .35rem .8rem .35rem .35rem;
         border-radius: 999px;
         background: #fff; color: #111;  /* hell wie ein Schild, auch nachts */
         box-shadow: 0 2px 8px rgb(0 0 0 / .3);
         .car-limit {
             display: grid; place-items: center;
-            width: 2.6rem; height: 2.6rem; border-radius: 50%;
-            border: .3rem solid #d32f2f; background: #fff; color: #111;
-            font-weight: 700; font-size: 1.05rem;
+            width: 3.5rem; height: 3.5rem; border-radius: 50%;
+            border: .4rem solid #d32f2f; background: #fff; color: #111;
+            font-weight: 700; font-size: 1.45rem;
         }
         .car-limit[hidden] { display: none; }
-        .car-kmh { display: grid; justify-items: center; line-height: 1; min-width: 2.4rem;
-            strong { font-size: 1.5rem; } small { font-size: .65rem; opacity: .75; } }
+        .car-kmh { display: grid; justify-items: center; line-height: 1; min-width: 3.2rem;
+            strong { font-size: 2.2rem; font-variant-numeric: tabular-nums; } small { font-size: .8rem; opacity: .75; } }
         &.over .car-kmh strong { color: #d32f2f; }
     }
     .car-street {
