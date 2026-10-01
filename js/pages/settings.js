@@ -1,6 +1,7 @@
 /**
  * Einstellungen (settings.html): Hell/dunkel, Berechtigungen (Android-App), Offline-Karten, Datensparmodus,
- * Konto (OpenStreetMap, zugleich WMap-Konto; löschen), Mitmachen bei OSM, Stimme, Spritpreise, Verlauf. Eine eigene
+ * Konto (OpenStreetMap, zugleich WMap-Konto; löschen), Mitmachen bei OSM, Stimme, Spritpreise, Verlauf, welche
+ * aufgezeichneten Touren auf der Karte liegen (data/track-look.js). Eine eigene
  * Seite ohne Karte – alles bleibt in diesem Browser, die Karte liest es beim
  * nächsten Öffnen.
  */
@@ -12,6 +13,7 @@ import { OSM_AUTH } from '../core/config.js';
 import { esc } from '../core/geo.js';
 import { navSettings } from '../nav/navigation.js';
 import { historySetting } from '../data/tracks.js';
+import { trackShow, SHOW_OPTIONS } from '../data/track-look.js';
 import { theme } from '../core/theme.js';
 import { mountAppBar } from '../ui/appbar.js';
 import { dataSaver } from '../map/map.js';
@@ -117,6 +119,12 @@ const render = () => {
       ${toggle('history', 'Jede Navigation merken',
         'Auch normale Navigationen landen unter Aufgezeichnete Touren. Geplante Touren, die du startest, und „Aufzeichnen“ werden immer gespeichert.',
         historySetting.get())}
+      <label class="settings-select">
+        <span><strong>Aufgezeichnete Touren auf der Karte</strong><small>Welche unter „Meine Touren“ von selbst auf der Karte liegen. Ältere stehen weiter in der Liste; dort lässt sich jedes Jahr und jede Tour einzeln ein- und ausblenden. Je älter eine Tour, desto blasser ist sie gezeichnet.</small></span>
+        <select name="trackshow">
+          ${SHOW_OPTIONS.map(([v, l]) => `<option value="${v}" ${trackShow.get() === v ? 'selected' : ''}>${l}</option>`).join('')}
+        </select>
+      </label>
       <a class="button settings-row" href="./sync.html"><span class="msr">sync</span> Sicherung &amp; Synchronisation – Ordner, Health Connect, ZIP</a>
       <a class="button settings-row" href="./wege.html"><span class="msr">timeline</span> Aufgezeichnete Wege ansehen</a>
       <button type="button" class="button settings-row" data-act="history"><span class="msr">history</span> Suchverlauf löschen</button>
@@ -149,6 +157,8 @@ root.addEventListener('change', (e) => {
   if (t.name === 'contribute') contribute.set(t.checked);
   if (t.name === 'anon') anonNotes.set(t.checked);
   if (t.name === 'history') historySetting.set(t.checked);
+  // Neuer Zeitraum: von Hand ein- und ausgeblendete Jahre gelten nicht weiter
+  if (t.name === 'trackshow') { trackShow.set(t.value); local.set('wmap.tracks.years', {}); }
   if (t.dataset.act === 'server') { account.setServer(t.value); render(); }
   if (t.dataset.act === 'client') { account.setClientId(t.value); loginError = ''; render(); }
 });

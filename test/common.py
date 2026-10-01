@@ -11,6 +11,7 @@ from selenium import webdriver
 BASE = os.environ.get('WMAP_URL', 'http://localhost:8080/web/wuefl_products/wmap/')
 OUT = Path(__file__).resolve().parent / 'out'
 OUT.mkdir(exist_ok=True)
+CANCELLED = 'A ServiceWorker intercepted the request and encountered an unexpected error'
 
 
 class Browser:
@@ -58,8 +59,15 @@ class Browser:
         self.js(f"localStorage.setItem('wmap.theme', '{mode}')")
 
     def report(self):
-        if self.errors:
-            for url, text in self.errors:
+        # Firefox meldet abgebrochene Abrufe, die über den Service Worker liefen (Seite gewechselt,
+        # Karte weiterbewegt), als „… encountered an unexpected error“ – das ist kein Fehler der
+        # Seite. Solche Zeilen stehen als Hinweis im Log, lassen den Test aber nicht scheitern.
+        cancelled = [e for e in self.errors if CANCELLED in e[1]]
+        errors = [e for e in self.errors if CANCELLED not in e[1]]
+        for url, text in cancelled:
+            print('HINWEIS (abgebrochener Abruf)', url, text)
+        if errors:
+            for url, text in errors:
                 print('FEHLER', url, text)
             return 1
         print('keine JS-Fehler')

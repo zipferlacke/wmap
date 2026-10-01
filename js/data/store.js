@@ -44,6 +44,24 @@ export const recent = {
     local.set(RECENT_KEY, local.get(RECENT_KEY, []).filter((e) => recentKey(e) !== key));
   },
   clear() { local.set(RECENT_KEY, []); },
+  /**
+   * Mit einer zweiten Liste zusammenführen (App und Android Auto,
+   * data/car-share.js): je Eintrag der neuere, neueste zuerst
+   * → { list, changed (hier kam etwas dazu) }
+   */
+  merge(other) {
+    const mine = local.get(RECENT_KEY, []);
+    const by = new Map();
+    for (const e of [...mine, ...other]) {
+      if (!e?.kind) continue;
+      const k = recentKey(e);
+      if (!by.has(k) || (e.at ?? 0) > (by.get(k).at ?? 0)) by.set(k, e);
+    }
+    const list = [...by.values()].sort((a, b) => (b.at ?? 0) - (a.at ?? 0)).slice(0, RECENT_MAX * 3);
+    const changed = JSON.stringify(list) !== JSON.stringify(mine);
+    if (changed) local.set(RECENT_KEY, list);
+    return { list, changed };
+  },
 };
 
 function recentKey(e) {

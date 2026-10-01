@@ -26,6 +26,10 @@ aufgerufen von `tauri-android wmap` (wuefl_products/tools) vor jedem Bauen:
                              Manifest Dienst, Berechtigungen und
                              automotive_app_desc (WMap als Navigations-App)
 
+  Name der Debug-Fassung   → app/src/debug/res/values/strings.xml: „wmap-Debug“
+                             (Startbildschirm, App-Liste, Android Auto) – so
+                             ist sie neben der App aus dem Play Store zu erkennen
+
 Mehrfach aufrufbar: alles wird nur einmal eingetragen.
 
 Signatur: Die Datei `.secrets/wmap.properties` im Projekt (oder der Pfad in
@@ -173,6 +177,20 @@ def auto() -> None:
     datei.write_text(text, encoding="utf-8")
 
 
+DEBUG_NAME = "wmap-Debug"
+
+
+def debug_name() -> None:
+    """Die Debug-Fassung heißt anders – Ressourcen unter src/debug gelten nur für sie."""
+    ziel = APP / "src/debug/res/values"
+    ziel.mkdir(parents=True, exist_ok=True)
+    (ziel / "strings.xml").write_text(
+        "<resources>\n"
+        f'    <string name="app_name">"{DEBUG_NAME}"</string>\n'
+        f'    <string name="main_activity_title">"{DEBUG_NAME}"</string>\n'
+        "</resources>\n", encoding="utf-8")
+
+
 def min_sdk() -> None:
     import json
     conf = json.loads((PROJEKT / "src-tauri/tauri.conf.json").read_text(encoding="utf-8"))
@@ -216,6 +234,7 @@ def main() -> int:
     if ziel:
         shutil.copyfile(PROJEKT / "tools/android/MainActivity.kt", ziel)
     auto()
+    debug_name()
     min_sdk()
     signatur()
     print("==> WMap-Teile eingesetzt (Symbol, Standort, Bild in Bild, Sprachausgabe, GPX öffnen, Android Auto"

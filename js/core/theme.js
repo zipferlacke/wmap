@@ -75,6 +75,9 @@ if (window.WMapAndroid?.insets) {
   window.wmapInsets = applyInsets;
 }
 
+// Android-App: Touren, Lesezeichen und Ziele mit der Karte im Auto teilen (data/car-share.js)
+if (typeof window.WMapAndroid?.shareGet === 'function') import('../data/car-share.js').catch(() => { /* geht auch ohne */ });
+
 system.addEventListener('change', () => apply());
 addEventListener('storage', (e) => { if (e.key === KEY && !forced) apply(); });
 apply();

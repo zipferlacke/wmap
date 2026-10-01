@@ -157,6 +157,10 @@
     .nav-compass.north { outline: 2px solid var(--route); }
     /* Folgen-Knopf: blau = Karte folgt dir, farblos = selbst verschoben */
     .nav-recenter .msr { color: var(--muted); }
+    /* Aufzeichnung: grau = aus, rot = läuft, orange = Pause */
+    .nav-rec .msr { color: var(--muted); }
+    .nav-rec.on .msr { color: #e03131; animation: nav-rec-pulse 1.6s ease-in-out infinite; }
+    .nav-rec.paused .msr { color: #e8590c; }
     .nav-recenter.following {
         background: var(--route);
         --clr-primary-100: var(--route-dark);
@@ -223,3 +227,6 @@ body.navigating {
     /* Sheet (Suche entlang der Route, Ort) legt sich über die untere Leiste */
     #sheet.dialog.sheet { z-index: 35; }
 }
+
+@keyframes nav-rec-pulse { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .nav-side .nav-rec.on .msr { animation: none; } }

@@ -698,3 +698,90 @@ body.stage-mode #map canvas { cursor: crosshair; }
     .orte-shared-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 }
 .wege-table .w-num .button[data-place-route] { color: var(--route); }
+
+/* ── Aufgezeichnet: Auge am Jahr, Symbole in der Zeile, Aussehen eines Wegs (pages/wege.js) ── */
+
+/* Auge am Jahr: alle Wege des Jahres auf der Karte ein- bzw. ausblenden */
+.wege-year summary .year-eye {
+    display: grid; place-items: center;
+    width: 1.9rem; height: 1.9rem; margin: -.3rem 0 -.3rem -.25rem; padding: 0;
+    border: 0; border-radius: 50%;
+    background: none; color: var(--route); cursor: pointer;
+    .msr { font-size: 1.25rem; }
+    &:hover { background: color-mix(in srgb, var(--route) 14%, transparent); }
+    &[aria-pressed="false"] { color: var(--muted); }
+}
+.wege-year.off-map > summary strong { color: var(--muted); }
+/* Ausgeblendete Wege treten in der Liste zurück, bleiben aber antippbar */
+.wege-table tr.off-map { .w-icon .msr, .w-name strong, .w-num { opacity: .55; } }
+/* Kleine Symbole hinter der Art: Messwerte (Herz), offline verfügbar, liegt im Ordner, ausgeblendet */
+.wege-table .w-mark {
+    font-size: .95rem; vertical-align: -.2rem; margin-left: .3rem; color: var(--muted);
+    &:first-of-type { margin-left: .4rem; }
+}
+.wege-table .w-name small { display: block; }
+.wege-table .w-mark[title^="Mit Gesundheitsdaten"] { color: light-dark(#e03131, #ff8787); }
+/* Auge an der Zeile: diesen einen Weg auf der Karte ein- bzw. ausblenden */
+.wege-table .w-eye { width: 2rem; padding-left: 0; }
+.wege-table .row-eye {
+    display: grid; place-items: center;
+    width: 2rem; height: 2rem; padding: 0;
+    border: 0; border-radius: 50%;
+    background: none; color: var(--route); cursor: pointer;
+    .msr { font-size: 1.15rem; }
+    &:hover { background: color-mix(in srgb, var(--route) 14%, transparent); }
+    &[aria-pressed="false"] { color: var(--muted); }
+}
+.wege-period {
+    display: flex; align-items: flex-start; gap: .4rem; margin: 0;
+    > .msr { font-size: 1.1rem; flex-shrink: 0; }
+    a { color: var(--route); }
+}
+.weg-note { display: flex; align-items: flex-start; gap: .4rem; margin: 0; .msr { font-size: 1.1rem; flex-shrink: 0; } }
+
+/* Art, Farbe, auf der Karte, offline verfügbar */
+.weg-look {
+    display: grid; gap: .6rem;
+    padding: .65rem .7rem; border-radius: .8rem; background: var(--surface-2);
+    > label, > div > span:first-child { font-size: var(--fs-200); }
+    .weg-sport {
+        display: flex; align-items: center; gap: .6rem;
+        span { color: var(--muted); min-width: 2.6rem; }
+        select { flex: 1; min-width: 0; padding: .4rem .5rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--surface); color: inherit; font: inherit; }
+    }
+    .weg-colors {
+        display: flex; flex-wrap: wrap; align-items: center; gap: .35rem;
+        > span:first-child { color: var(--muted); min-width: 2.6rem; margin-right: .25rem; }
+    }
+    .swatch {
+        position: relative;
+        display: grid; place-items: center;
+        width: 1.7rem; height: 1.7rem; padding: 0;
+        border: 2px solid var(--surface); border-radius: 50%;
+        background: var(--c); color: #fff; cursor: pointer;
+        box-shadow: 0 0 0 1px var(--line);
+        .msr { font-size: .95rem; }
+        &[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--text, currentColor); }
+        &.pick { background: var(--c); color: var(--muted); input { position: absolute; inset: 0; opacity: 0; cursor: pointer; } }
+        &.pick[aria-pressed="true"] { color: #fff; }
+    }
+    .weg-flags { flex-wrap: wrap; overflow: visible; padding: 0; }
+    .chip[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: #fff; .msr { color: #fff; } }
+}
+
+/* GPX auf die Seite ziehen */
+.wege-drop {
+    position: fixed; inset: 0; z-index: 50;
+    display: grid; place-items: center;
+    background: color-mix(in srgb, var(--route) 22%, transparent);
+    backdrop-filter: blur(2px);
+    pointer-events: none;
+    &[hidden] { display: none; }
+    > div {
+        display: grid; justify-items: center; gap: .25rem;
+        padding: 1.5rem 2rem; border: 2px dashed var(--route); border-radius: 1rem;
+        background: var(--surface); color: inherit;
+        .msr { font-size: 2.2rem; color: var(--route); }
+        small { color: var(--muted); }
+    }
+}

@@ -157,8 +157,10 @@ export function mergePlaces(text) {
   const deleted = { ...theirs.deleted, ...mine.deleted };
   for (const [id, at] of Object.entries(deleted)) if (Date.now() - at > 365 * 864e5) delete deleted[id];
   const places = mergeBy(deleted)(mine.places, theirs.places ?? []);
-  const ids = new Set([...mine.places, ...(theirs.places ?? [])].map((x) => x.id));
-  const next = JSON.stringify({ app: 'WMap', places, deleted: Object.fromEntries(Object.entries(deleted).filter(([id]) => ids.has(id))) }, null, 1);
+  // Gelöschtes bleibt ein Jahr stehen – auch wenn es gerade niemand mehr hat: Ein Gerät, das
+  // erst später abgleicht (oder die Karte im Auto, data/car-share.js), hat den Ort sonst noch
+  // und brächte ihn zurück
+  const next = JSON.stringify({ app: 'WMap', places, deleted }, null, 1);
   if (JSON.stringify(places) !== JSON.stringify(mine.places) || JSON.stringify(deleted) !== JSON.stringify(mine.deleted)) {
     write({ ...mine, places, deleted }, { sync: false });
   }

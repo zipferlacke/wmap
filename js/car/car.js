@@ -25,6 +25,7 @@ import * as osm from '../osm/objects.js';
 import { describePoi, categoryFor } from '../ui/poi-info.js';
 import { places, PLACE_KINDS } from '../data/saved.js';
 import { recent, tours } from '../data/store.js';
+import { shareSync } from '../data/car-share.js';
 import { theme } from '../core/theme.js';
 import { osmRef, BASE_POI_LAYERS } from '../map/map.js';
 import { bboxAround, distance, fmtDistance, fmtDuration } from '../core/geo.js';
@@ -401,6 +402,7 @@ const methods = {
   },
   /** „Ziel wählen“: Zuhause, Arbeit, Lesezeichen, zuletzt gefahren */
   async targets() {
+    shareSync();
     return { items: await withPng([...savedRows(), ...methods.recentTargets()]) };
   },
   async place(key) {
@@ -444,6 +446,7 @@ const methods = {
   },
   /** Meine Touren – mit Text nur die, deren Name passt */
   async tours(text = '') {
+    shareSync();
     const w = fold(text).split(/\s+/).filter(Boolean);
     const list = tourList().filter((t) => w.every((x) => fold(`${t.title} ${t.sub}`).includes(x)));
     return { items: await withPng(list) };

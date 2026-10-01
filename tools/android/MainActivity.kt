@@ -34,6 +34,12 @@ import androidx.core.view.WindowInsetsCompat
  * (edge-to-edge). Das WebView meldet dafür kein env(safe-area-inset-*) –
  * darum gehen die echten Maße an die Seite (WMapAndroid.insets() und
  * window.wmapInsets, ausgewertet in js/core/theme.js).
+ *
+ * Android Auto: Die Karte im Auto ist ein eigenes WebView – läuft sie unter
+ * einer anderen Adresse als die App (Debug-Fassung), hat sie einen anderen
+ * Browser-Speicher. Touren, Lesezeichen und Ziele liegen darum zusätzlich in
+ * SharedPreferences „wmap_shared“ (WMapAndroid.shareGet/shareSet, dieselben
+ * Namen in car/CarWeb.kt) – js/data/car-share.js gleicht beide Seiten ab.
  */
 class MainActivity : TauriActivity() {
   private var web: WebView? = null
@@ -92,7 +98,17 @@ class MainActivity : TauriActivity() {
     ViewCompat.requestApplyInsets(window.decorView)
   }
 
+  // Gemeinsamer Speicher mit der Karte im Auto (car/CarWeb.kt) – js/data/car-share.js
+  private val shared by lazy { getSharedPreferences("wmap_shared", MODE_PRIVATE) }
+
   inner class Bridge {
+    /** Geteilt mit Android Auto: Touren, Lesezeichen, Ziele (JSON-Text; leer, wenn es nichts gibt) */
+    @JavascriptInterface fun shareGet(key: String): String = shared.getString(key, "") ?: ""
+
+    @JavascriptInterface fun shareSet(key: String, value: String) {
+      shared.edit().putString(key, value).apply()
+    }
+
     /** Ränder in CSS-Pixeln: {top, bottom, left, right} – oder null, solange unbekannt */
     @JavascriptInterface fun insets(): String = insetsJson
 

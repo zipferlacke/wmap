@@ -261,7 +261,7 @@ async function withValues(t, end = t.end) {
 export async function refreshHealthValues(t) {
   const next = await withValues(t);
   if (next === t) return null;
-  const found = ['hr', 'cad', 'pow'].some((k) => next[k] && next[k] !== t[k]);
+  const found = ['hr', 'cad', 'pow'].some((k) => next[k] && JSON.stringify(next[k]) !== JSON.stringify(t[k] ?? null));
   // Nur mit neuen Werten als geändert melden – sonst nur merken, dass nachgesehen wurde
   if (!found) { await tracks.putQuiet(next); return null; }
   const saved = { ...next, updated: Date.now() };
@@ -271,7 +271,8 @@ export async function refreshHealthValues(t) {
 
 /** Alle früher übernommenen Wege ohne Messwerte → Anzahl mit neuen Werten */
 export async function fillHealthValues({ onProgress } = {}) {
-  const todo = (await tracks.all()).filter((t) => t.source?.health && !t.source.values);
+  // Karteikarten (Weg liegt nur im Ordner) bleiben, wie sie sind
+  const todo = (await tracks.all()).filter((t) => t.source?.health && !t.source.values && !t.stub);
   let n = 0;
   for (const [i, t] of todo.entries()) {
     onProgress?.(i, todo.length);

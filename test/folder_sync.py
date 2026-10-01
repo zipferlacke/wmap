@@ -5,6 +5,8 @@ from common import Browser
 
 TEST = r"""
 const { folder } = await import('./js/data/folder.js');
+// Diese Tests gelten dem Abgleich selbst: alle Wege bleiben ganz in der App (Karteikarten: folder_shelf.py)
+localStorage.setItem('wmap.tracks.keep', '"all"');
 const { tracks, buildTrack } = await import('./js/data/tracks.js');
 const { tours } = await import('./js/data/store.js');
 const { connections, places } = await import('./js/data/saved.js');

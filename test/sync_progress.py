@@ -13,6 +13,8 @@ FOLDER = r"""
 const done = (v) => { window.__result = JSON.stringify(v); };
 (async () => {
   const { folder } = await import('./js/data/folder.js');
+// Diese Tests gelten dem Abgleich selbst: alle Wege bleiben ganz in der App (Karteikarten: folder_shelf.py)
+localStorage.setItem('wmap.tracks.keep', '"all"');
   const { tracks, buildTrack, trackGpx } = await import('./js/data/tracks.js');
   // 60 Wege von einem anderen Gerät (mit WMap-ID, alle im Januar), Lesen dauert je 240 ms (vier zugleich)
   const files = new Map();

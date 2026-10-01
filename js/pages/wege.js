@@ -4,8 +4,14 @@
  *   Geplant        Touren aus dem Planer, übernommene bekannte Wege, GPX-
  *                  Importe. Gruppiert nach Zu Fuß / Rad / Auto.
  *   Aufgezeichnet  Wege, die du gefahren oder gelaufen bist (Aufzeichnung,
- *                  Navigation, GPX mit Zeiten). Nach Jahren gruppiert und
- *                  gefärbt; der gewählte Weg zeigt Tempo, Höhe und Puls.
+ *                  Navigation, GPX mit Zeiten). Nach Jahren gruppiert, in der
+ *                  Farbe ihrer Art (Gehen, Rad, Rudern … – oder einer eigenen,
+ *                  data/track-look.js), je älter, desto blasser. Auf der Karte
+ *                  liegt, was in den eingestellten Zeitraum fällt; Jahre und
+ *                  einzelne Wege lassen sich ein- und ausblenden (Auge). Der
+ *                  gewählte Weg zeigt Tempo, Höhe und Puls; dort wählt man
+ *                  Art und Farbe, „offline verfügbar“ und navigiert ihn
+ *                  erneut. GPX-Dateien lassen sich auf die Seite ziehen.
  *   Bus & Bahn     gemerkte Verbindungen (data/saved.js): kommende oben,
  *                  vergangene zugeklappt darunter; im Detail alle Abschnitte
  *
@@ -14,25 +20,28 @@
  * ui/map-page.js: ← Übersicht bzw. Liste, ✕ zur Karte, Griff zum Einklappen.
  *
  * Aufruf: wege.html · ?tab=geplant · ?tab=bahn · ?tour=… (geplante Tour) · ?id=… (Weg) · ?conn=… (Verbindung)
+ *         · #weg=… (geteilte Aufzeichnung, data/track-share.js)
  */
 import { createMap, showHover } from '../map/map.js';
 import { heightsAlong } from '../services/routing.js';
 import { ElevationProfile } from '../ui/elevation.js';
-import { tracks, trackCoords, trackGpx, parseGpx, sameTrack, PROFILE_GROUP } from '../data/tracks.js';
+import { tracks, trackCoords, trackGpx, parseGpx, sameTrack, trackAsTour, hasValues, PROFILE_GROUP } from '../data/tracks.js';
+import { sportOf, sportName, sportIcon, sportColor, colorOf, ageOpacity, shownOnMap, trackShow, paceOf, cadName, lapSizes, SPORTS, COLORS } from '../data/track-look.js';
 import { findDuplicates } from '../data/duplicates.js';
+import { encodeTrack, decodeTrack, without } from '../data/track-share.js';
 import { tours, shapeOf, coordsOf, encodeShare, toGpx, download, local } from '../data/store.js';
 import { metrics, laps, lapLine } from '../data/track-stats.js';
 import { PROFILES } from '../core/config.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { share, pageUrl } from '../ui/share.js';
-import { tourFromGpx } from '../data/folder.js';
+import { tourFromGpx, folder } from '../data/folder.js';
 import { autoSync } from '../data/auto-sync.js';
 import { mapPage } from '../ui/map-page.js';
 import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, esc, bbox } from '../core/geo.js';
 import { connections, places, DEFAULT_LIST, PLACE_KINDS } from '../data/saved.js';
 import { packJson, unpackJson } from '../data/store.js';
 import { legBadge, changesText, transitLegsHtml } from '../ui/transit-legs.js';
-import { healthAvailable, refreshHealthValues, appName, typeName, typeIcon } from '../services/health.js';
+import { healthAvailable, refreshHealthValues, appName } from '../services/health.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 
@@ -43,12 +52,10 @@ const GROUP = {
 };
 const groupKey = (t) => PROFILE_GROUP[t.profile] ?? 'foot';
 const groupOf = (t) => GROUP[groupKey(t)];
-/** Symbol eines Wegs: aus Health Connect die Art (Rudern …), sonst die Gruppe */
-const iconOf = (t) => (t.source?.type ? typeIcon(t.source.type) : groupOf(t).icon);
-/** Herkunft in der Liste: „Navigation“, „GPX“, „Rudern · Fitbit“ */
-const originOf = (t) => (t.kind === 'nav' ? 'Navigation' : t.kind === 'gpx' ? 'GPX'
-  : t.kind === 'health' ? [t.source?.type ? typeName(t.source.type) : '', appName(t.source?.app)].filter(Boolean).join(' · ') : '');
-const YEAR_COLORS = ['#1a73e8', '#e8590c', '#2f9e44', '#ae3ec9', '#f59f00', '#0c8599', '#e64980', '#5c940d', '#495057'];
+/** Symbol eines Wegs: seine Art (Rudern, Rad …) – ohne Art ein neutrales */
+const iconOf = (t) => sportIcon(sportOf(t));
+/** Art und Herkunft in der Liste: „Rudern · Zepp“, „Autofahrt · Navigation“, ohne Art nur „GPX“ */
+const originOf = (t) => [sportName(sportOf(t)), t.kind === 'health' ? appName(t.source?.app) : t.kind === 'nav' ? 'Navigation' : ''].filter(Boolean).join(' · ');
 const yearOf = (t) => new Date(t.start).getFullYear();
 
 const DATE = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -70,8 +77,7 @@ let conns = [];                    // gemerkte Verbindungen mit Bus & Bahn
 const query = { wege: '', geplant: '', bahn: '', orte: '' };
 let sharedList = null;             // geöffneter Link „?liste=“: { name, items: [{ name, label, point }] }
 let selected = null;               // gewählter Weg oder Tour
-let years = [];
-const yearColor = (y) => YEAR_COLORS[Math.min(Math.max(0, years.indexOf(y)), YEAR_COLORS.length - 1)];
+let folderOn = false;              // Ordner verbunden: „offline verfügbar“ anbieten
 
 const panel = $('.wege-panel');
 const content = $('.wege-content');
@@ -88,7 +94,7 @@ function fitView() {
     map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: page.padding(), maxZoom: 15, duration: 600 });
     return;
   }
-  const list = selected ? [selected] : tab === 'geplant' ? visiblePlanned() : tab === 'bahn' ? visibleConns() : visible();
+  const list = selected ? [selected] : tab === 'geplant' ? visiblePlanned() : tab === 'bahn' ? visibleConns() : onMap();
   const boxes = list.map((t) => (t.legs ? bbox(connCoords(t)) : t.bbox ?? bboxOfTour(t))).filter(Boolean);
   if (!boxes.length) return;
   const b = boxes.reduce((a, x) => [Math.min(a[0], x[0]), Math.min(a[1], x[1]), Math.max(a[2], x[2]), Math.max(a[3], x[3])], [180, 90, -180, -90]);
@@ -113,6 +119,8 @@ function visible() {
   if (!q) return all;
   return all.filter((t) => [t.name, t.from, t.to, yearOf(t), DATE.format(t.start), LONG.format(t.start), groupOf(t).label, originOf(t)].some((x) => norm(x).includes(q)));
 }
+/** Was davon auf der Karte liegt (Zeitraum, Auge am Jahr und am Weg); mit Suche: alle Treffer */
+const onMap = () => (norm(query.wege).trim() ? visible() : visible().filter((t) => shownOnMap(t)));
 function visiblePlanned() {
   const q = norm(query.geplant).trim();
   if (!q) return planned;
@@ -174,6 +182,9 @@ function showList({ push = false } = {}) {
     ${isBahn || isOrte ? '' : `<a class="wege-sync-hint wege-dup-hint" href="./sync.html#doppelt" hidden>
       <span class="msr">content_copy</span><span></span><span class="msr">chevron_right</span>
     </a>`}
+    ${tab === 'wege' && all.length ? `<p class="muted wege-period"><span class="msr">visibility</span>
+      <span>Auf der Karte: <strong>${esc(trackShow.label())}</strong>${trackShow.get() === 'all' ? '' : ' – Älteres ist ausgeblendet'}. Das Auge am Jahr blendet ein und aus.
+      <a href="./settings.html">Ändern</a></span></p>` : ''}
     <div class="wege-groups"></div>
     <a class="wege-sync-hint" href="./sync.html">
       <span class="msr">sync</span>
@@ -333,18 +344,27 @@ function paintGroups() {
     }).join('') + (planned.length && !list.length ? `<p class="muted">Nichts gefunden für „${esc(query.geplant)}“.</p>` : '');
   } else {
     const list = visible();
+    const searching = !!norm(query.wege).trim();
     const byYear = new Map();
     for (const t of list) { const y = yearOf(t); if (!byYear.has(y)) byYear.set(y, []); byYear.get(y).push(t); }
+    const mark = (icon, title) => `<span class="msr w-mark" title="${title}">${icon}</span>`;
     box.innerHTML = [...byYear].map(([y, ts]) => {
       const sum = ts.reduce((a, t) => a + t.length, 0), time = ts.reduce((a, t) => a + moving(t), 0);
-      return `<details class="wege-year" open>
-        <summary><i style="background:${yearColor(y)}"></i><strong>${y}</strong>
-          <small>${ts.length} ${ts.length === 1 ? 'Weg' : 'Wege'} · ${km(sum)} · ${fmtDuration(time)}</small></summary>
+      const shown = ts.filter((t) => shownOnMap(t)).length;
+      return `<details class="wege-year${shown ? '' : ' off-map'}" ${shown || searching ? 'open' : ''}>
+        <summary><button type="button" class="year-eye" data-year="${y}" aria-pressed="${shown > 0}"
+            title="${shown ? `${y} auf der Karte ausblenden` : `${y} auf der Karte zeigen`}"><span class="msr">${shown ? 'visibility' : 'visibility_off'}</span></button>
+          <strong>${y}</strong>
+          <small>${ts.length} ${ts.length === 1 ? 'Weg' : 'Wege'} · ${km(sum)} · ${fmtDuration(time)}${shown && shown < ts.length ? ` · ${shown} auf der Karte` : ''}</small></summary>
         <table class="wege-table"><tbody>${ts.map((t) => `
-          <tr data-id="${esc(t.id)}" tabindex="0">
-            <td class="w-icon"><span class="msr" style="color:${groupOf(t).color}">${iconOf(t)}</span></td>
-            <td class="w-name"><strong>${esc(t.name || 'Weg')}</strong><small>${esc([`${DATE.format(t.start)} · ${TIME.format(t.start)}`, originOf(t)].filter(Boolean).join(' · '))}</small></td>
+          <tr data-id="${esc(t.id)}" tabindex="0" class="${shownOnMap(t) ? '' : 'off-map'}">
+            <td class="w-icon"><span class="msr" style="color:${colorOf(t)}">${iconOf(t)}</span></td>
+            <td class="w-name"><strong>${esc(t.name || 'Weg')}</strong><small>${esc([DATE.format(t.start), originOf(t)].filter(Boolean).join(' · '))}${
+              hasValues(t) ? mark('monitor_heart', 'Mit Gesundheitsdaten (Puls, Frequenz, Leistung)') : ''}${t.pin ? mark('offline_pin', 'Offline verfügbar') : ''}${
+              t.stub ? mark('folder', 'Liegt im Ordner – wird beim Öffnen geholt') : ''}</small></td>
             <td class="w-num">${fmtDistance(t.length)}<small>${fmtDuration(moving(t))}</small></td>
+            <td class="w-eye"><button type="button" class="row-eye" data-eye="${esc(t.id)}" aria-pressed="${shownOnMap(t)}"
+              title="${shownOnMap(t) ? 'Auf der Karte ausblenden' : 'Auf der Karte zeigen'}"><span class="msr">${shownOnMap(t) ? 'visibility' : 'visibility_off'}</span></button></td>
           </tr>`).join('')}</tbody></table>
       </details>`;
     }).join('') + (all.length && !list.length ? `<p class="muted">Nichts gefunden für „${esc(query.wege)}“.</p>` : '');
@@ -358,6 +378,23 @@ content.addEventListener('input', (e) => {
   paintGroups();
 });
 content.addEventListener('click', (e) => {
+  // Auge am Jahr: alle Wege des Jahres auf der Karte ein- bzw. ausblenden (klappt das Jahr nicht zu)
+  const eye = e.target.closest('.year-eye');
+  if (eye) {
+    e.preventDefault();
+    trackShow.setYear(Number(eye.dataset.year), eye.getAttribute('aria-pressed') !== 'true');
+    paintGroups();
+    fitView();
+    return;
+  }
+  // Auge an der Zeile: diesen einen Weg ein- bzw. ausblenden (öffnet ihn nicht)
+  const rowEye = e.target.closest('.row-eye');
+  if (rowEye) {
+    e.stopPropagation();
+    const item = all.find((x) => x.id === rowEye.dataset.eye);
+    if (item) tracks.put({ ...withShown(item, !shownOnMap(item)), updated: Date.now() }).then(load).then(() => { paintGroups(); });
+    return;
+  }
   const t = e.target.closest('[role="tab"]');
   if (t) {
     e.preventDefault();
@@ -399,14 +436,13 @@ content.addEventListener('mouseover', (e) => {
   const tr = e.target.closest('tr[data-id], tr[data-tour], tr[data-conn]');
   hover(tr?.dataset.id ?? tr?.dataset.tour ?? tr?.dataset.conn ?? null);
 });
-content.addEventListener('change', async (e) => {
-  const inp = e.target.closest('[data-file]');
-  if (!inp?.files?.length) return;
+/** GPX-Dateien übernehmen – als aufgezeichnete Wege (`gpx`) oder geplante Touren (`gpx-tour`) */
+async function importFiles(files, kind) {
   try {
     let n = 0;
-    if (inp.dataset.file === 'gpx') {
+    if (kind === 'gpx') {
       let twice = 0;
-      for (const f of inp.files) {
+      for (const f of files) {
         for (const t of parseGpx(await f.text())) {
           if (all.some((x) => sameTrack(x, t))) { twice += 1; continue; }
           await tracks.put(t);
@@ -415,8 +451,8 @@ content.addEventListener('change', async (e) => {
         }
       }
       toast(n ? `${n} ${n === 1 ? 'Weg' : 'Wege'} importiert${twice ? ` (${twice} gab es schon)` : ''}` : twice ? 'Die Wege gibt es schon' : 'In der Datei war kein Weg');
-    } else if (inp.dataset.file === 'gpx-tour') {
-      for (const f of inp.files) {
+    } else {
+      for (const f of files) {
         const t = tourFromGpx(await f.text(), f.name);
         if (!t) continue;
         tours.save({ ...t, id: tours.newId(), description: t.description || `Aus ${f.name} importiert` });
@@ -425,10 +461,44 @@ content.addEventListener('change', async (e) => {
       toast(n ? `${n} ${n === 1 ? 'Tour' : 'Touren'} importiert – mit Originalverlauf` : 'In der Datei war keine Tour');
     }
   } catch (err) { toast(err.message); }
-  inp.value = '';
   await load();
   showList();
   fitView();
+}
+content.addEventListener('change', async (e) => {
+  const inp = e.target.closest('[data-file]');
+  if (!inp?.files?.length) return;
+  await importFiles([...inp.files], inp.dataset.file);
+  inp.value = '';
+});
+
+/*
+ * GPX-Dateien auf die Seite ziehen: unter „Geplant“ werden es Touren, sonst
+ * aufgezeichnete Wege (wie „GPX importieren“).
+ */
+const dropHint = Object.assign(document.createElement('div'), { className: 'wege-drop', hidden: true });
+document.body.append(dropHint);
+const hasFiles = (e) => [...(e.dataTransfer?.types ?? [])].includes('Files');
+let dragDepth = 0;
+addEventListener('dragenter', (e) => {
+  if (!hasFiles(e)) return;
+  dragDepth += 1;
+  dropHint.innerHTML = `<div><span class="msr">upload_file</span><strong>GPX hier ablegen</strong>
+    <small>${tab === 'geplant' ? 'wird als geplante Tour übernommen' : 'wird als aufgezeichnete Tour übernommen'}</small></div>`;
+  dropHint.hidden = false;
+});
+addEventListener('dragover', (e) => { if (hasFiles(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
+addEventListener('dragleave', (e) => { if (hasFiles(e) && (dragDepth -= 1) <= 0) { dragDepth = 0; dropHint.hidden = true; } });
+addEventListener('drop', async (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  dragDepth = 0;
+  dropHint.hidden = true;
+  const files = [...e.dataTransfer.files].filter((f) => /\.gpx$/i.test(f.name) || /gpx/.test(f.type));
+  if (!files.length) { toast('Das sind keine GPX-Dateien'); return; }
+  const plan = tab === 'geplant';
+  if (!plan && tab !== 'wege') tab = 'wege';
+  await importFiles(files, plan ? 'gpx-tour' : 'gpx');
 });
 
 /* ── Ein aufgezeichneter Weg ──────────────────────────────────────────────── */
@@ -446,66 +516,47 @@ const CHARTS = {
   cad: { name: 'Frequenz', unit: '/min', icon: 'autorenew', color: 'light-dark(#ae3ec9, #e599f7)' },
   pow: { name: 'Leistung', unit: 'W', icon: 'bolt', color: 'light-dark(#e8590c, #ffa94d)' },
 };
-/** Frequenz heißt je nach Art anders */
-const cadName = (t) => (groupKey(t) === 'bike' ? 'Trittfrequenz' : groupKey(t) === 'foot' ? 'Schrittfrequenz' : 'Frequenz');
 const avg = (a) => { const v = (a ?? []).filter((x) => x > 0); return v.length ? Math.round(v.reduce((x, y) => x + y) / v.length) : null; };
 const top = (a) => { const v = (a ?? []).filter((x) => x > 0); return v.length ? Math.max(...v) : null; };
 
-const LAP_SIZES = [1000, 2000, 5000];
-/** Rundenlänge: gewählt (gemerkt) – sonst 5 km fürs Rad, 1 km zu Fuß und fürs Wasser */
-const lapSize = (t) => local.get('wmap.lapsize') ?? (groupKey(t) === 'foot' ? 1000 : 5000);
+/** Rundenlänge: gewählt (gemerkt), wenn es sie für die Art gibt – sonst 5 km fürs Rad, 1 km zu Fuß, 500 m auf dem Wasser */
+const lapSize = (t) => {
+  const sizes = lapSizes(t), want = local.get('wmap.lapsize');
+  return sizes.includes(want) ? want : sizes[0] === 1000 && groupKey(t) !== 'foot' && !paceOf(t) ? 5000 : sizes[sizes.length > 2 && sizes[0] < 500 ? 1 : 0];
+};
 /** „5:12“ bzw. „1:02:03“ */
 const clock = (sec) => {
   const s = Math.round(sec), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
   return h ? `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}` : `${m}:${String(r).padStart(2, '0')}`;
 };
-/** Zu Fuß als Pace (min/km), sonst km/h */
-const tempo = (t, mps) => (!mps ? '–' : groupKey(t) === 'foot' ? `${clock(1000 / mps)} /km` : `${(mps * 3.6).toFixed(1).replace('.', ',')} km/h`);
+/** Zu Fuß als Zeit je km, Rudern je 500 m, Schwimmen je 100 m – sonst km/h (track-look.js paceOf) */
+const tempo = (t, mps) => {
+  if (!mps) return '–';
+  const pace = paceOf(t);
+  return pace ? `${clock(pace.per / mps)} ${pace.unit}` : `${(mps * 3.6).toFixed(1).replace('.', ',')} km/h`;
+};
 
 async function select(id, { push = false } = {}) {
-  const t = all.find((x) => x.id === id);
-  if (!t) { showList(); return; }
+  const card = all.find((x) => x.id === id);
+  if (!card) { showList(); return; }
   tab = 'wege';
-  selected = t;
+  selected = card;
   heights = null;
   chartScale = 1;
   showLap(null);
   if (push) history.pushState({ id }, '', `./wege.html?id=${encodeURIComponent(id)}`);
-  document.title = `${t.name || 'Weg'} – WMap`;
-  page.header(t.name || 'Weg', () => showList({ push: true }));
-  const g = groupOf(t);
-  const mv = moving(t);
-  const hr = (t.hr ?? []).filter((x) => x > 0);
-  content.innerHTML = `
-    <label class="weg-name"><span class="msr">edit</span><input type="text" value="${esc(t.name ?? '')}" placeholder="Name" aria-label="Name des Wegs"></label>
-    <p class="weg-when"><span class="msr" style="color:${g.color}">${iconOf(t)}</span>
-      ${LONG.format(t.start)}, ${TIME.format(t.start)}–${TIME.format(t.end)} Uhr
-      ${t.kind === 'health' ? `<br><span class="muted">${esc(originOf(t))} · aus Health Connect</span>` : ''}
-      ${t.from || t.to ? `<br><span class="muted">${esc([t.from, t.to].filter(Boolean).map((x) => x.split(',')[0]).join(' → '))}</span>` : ''}</p>
-    <div class="weg-stats">
-      <div><strong>${fmtDistance(t.length)}</strong><small>Strecke</small></div>
-      <div><strong>${fmtDuration(mv)}</strong><small>in Bewegung</small></div>
-      <div><strong>${mv ? (t.length / mv * 3.6).toFixed(1).replace('.', ',') : '–'}</strong><small>Ø km/h</small></div>
-      <div><strong>${t.top ? Math.round(t.top * 3.6) : '–'}</strong><small>max. km/h</small></div>
-      <div><strong class="st-up">…</strong><small>Anstieg</small></div>
-      ${hr.length ? `<div><strong>${avg(hr)}</strong><small>Ø Puls</small></div>
-        <div><strong>${top(hr)}</strong><small>max. Puls</small></div>` : ''}
-      ${avg(t.cad) ? `<div><strong>${avg(t.cad)}</strong><small>Ø ${esc(cadName(t))}</small></div>` : ''}
-      ${avg(t.pow) ? `<div><strong>${avg(t.pow)} W</strong><small>Ø Leistung</small></div>` : ''}
-    </div>
-    <div class="track-legend" hidden><span>langsam</span><i></i><span>schnell</span></div>
-    <div class="chip-row weg-chart-tabs" role="group" aria-label="Diagramm" hidden></div>
-    <div class="elevation"></div>
-    <section class="weg-laps" hidden></section>
-    <div class="weg-actions">
-      <button type="button" class="button primary" data-do="tour"><span class="msr">bookmark_add</span> Als Tour speichern</button>
-      <button type="button" class="button" data-do="share"><span class="msr">share</span> Als Tour teilen</button>
-      <button type="button" class="button" data-do="gpx"><span class="msr">download</span> GPX</button>
-      <button type="button" class="button" data-do="delete"><span class="msr">delete</span> Löschen</button>
-    </div>`;
-  page.open();
-  paintMap();
-  fitView();
+  document.title = `${card.name || 'Weg'} – WMap`;
+  page.header(card.name || 'Weg', () => showList({ push: true }));
+  // Liegt der Weg nur im Ordner (Karteikarte): erst zeigen, was die App weiß, dann alle Punkte holen
+  let t = card, missing = '';
+  if (card.stub) {
+    paintTrack(card, 'Hole die Tour aus dem Ordner …');
+    try { t = await tracks.full(card); } catch (err) { missing = `Punkte und Messwerte liegen im Ordner – ${err.message.replace(/^Der Ordner/, 'der')}.`; }
+    if (selected !== card) return;
+    selected = t;
+  }
+  paintTrack(t, missing);
+  if (t.stub) return;
   paintCharts(t);
   paintLaps(t);
   showElevation(trackCoords(t), t, (h) => {
@@ -522,6 +573,126 @@ async function select(id, { push = false } = {}) {
     }).catch(() => {});
   }
 }
+
+/** Kopf, Zahlen, Aussehen und Knöpfe eines Wegs; `note`: Hinweis, solange bzw. weil die Punkte fehlen */
+function paintTrack(t, note = '') {
+  const mv = moving(t);
+  const hr = (t.hr ?? []).filter((x) => x > 0);
+  const pace = paceOf(t);
+  const sport = sportOf(t);
+  // Art, die ohne eigene Wahl gälte (Health Connect bzw. Profil) – „Standard“ in der Auswahl
+  const { sport: _own, ...plain } = t;
+  const natural = sportOf(plain);
+  const color = colorOf(t);
+  const shown = shownOnMap(t);
+  content.innerHTML = `
+    <label class="weg-name"><span class="msr">edit</span><input type="text" value="${esc(t.name ?? '')}" placeholder="Name" aria-label="Name des Wegs" ${t.shared ? 'readonly' : ''}></label>
+    <p class="weg-when"><span class="msr" style="color:${color}">${iconOf(t)}</span>
+      ${LONG.format(t.start)}, ${TIME.format(t.start)}–${TIME.format(t.end)} Uhr
+      <br><span class="muted">${esc(originOf(t))}${t.kind === 'health' ? ' · aus Health Connect' : ''}</span>
+      ${t.from || t.to ? `<br><span class="muted">${esc([t.from, t.to].filter(Boolean).map((x) => x.split(',')[0]).join(' → '))}</span>` : ''}</p>
+    ${t.shared ? '<p class="muted weg-note"><span class="msr">share</span> Geteilte Aufzeichnung – noch nicht gespeichert.</p>' : ''}
+    ${note ? `<p class="muted weg-note"><span class="msr">folder</span> ${esc(note)}</p>` : ''}
+    <div class="weg-stats">
+      <div><strong>${fmtDistance(t.length)}</strong><small>Strecke</small></div>
+      <div><strong>${fmtDuration(mv)}</strong><small>in Bewegung</small></div>
+      ${pace ? `<div><strong>${mv ? clock(pace.per / (t.length / mv)) : '–'}</strong><small>Ø ${esc(pace.unit)}</small></div>` : ''}
+      <div><strong>${mv ? (t.length / mv * 3.6).toFixed(1).replace('.', ',') : '–'}</strong><small>Ø km/h</small></div>
+      <div><strong>${t.top ? Math.round(t.top * 3.6) : '–'}</strong><small>max. km/h</small></div>
+      ${t.stub ? '' : '<div><strong class="st-up">…</strong><small>Anstieg</small></div>'}
+      ${hr.length ? `<div><strong>${avg(hr)}</strong><small>Ø Puls</small></div>
+        <div><strong>${top(hr)}</strong><small>max. Puls</small></div>` : ''}
+      ${avg(t.cad) ? `<div><strong>${avg(t.cad)}</strong><small>Ø ${esc(cadName(t))}</small></div>` : ''}
+      ${avg(t.pow) ? `<div><strong>${avg(t.pow)} W</strong><small>Ø Leistung</small></div>` : ''}
+    </div>
+    <div class="track-legend" hidden><span>langsam</span><i></i><span>schnell</span></div>
+    <div class="chip-row weg-chart-tabs" role="group" aria-label="Diagramm" hidden></div>
+    <div class="elevation"></div>
+    <section class="weg-laps" hidden></section>
+    <section class="weg-look" ${t.shared ? 'hidden' : ''}>
+      <label class="weg-sport"><span>Art</span>
+        <select name="sport" aria-label="Art der Tour">
+          <option value="">${natural ? `${esc(sportName(natural))} (Standard)` : 'Keine – nur GPX'}</option>
+          ${SPORTS.filter((k) => k !== natural).map((k) => `<option value="${k}" ${t.sport === k ? 'selected' : ''}>${esc(sportName(k))}</option>`).join('')}
+        </select>
+      </label>
+      <div class="weg-colors" role="group" aria-label="Farbe auf der Karte">
+        <span>Farbe</span>
+        <button type="button" class="swatch auto" data-color="" aria-pressed="${!t.color}" title="Farbe der Art (${esc(sportName(sport))})" style="--c:${sportColor(sport)}"><span class="msr">auto_awesome</span></button>
+        ${COLORS.map((c) => `<button type="button" class="swatch" data-color="${c}" aria-pressed="${t.color === c}" title="${c}" style="--c:${c}"></button>`).join('')}
+        <label class="swatch pick" title="Eigene Farbe" style="--c:${t.color && !COLORS.includes(t.color) ? t.color : 'transparent'}" aria-pressed="${!!t.color && !COLORS.includes(t.color)}">
+          <span class="msr">colorize</span><input type="color" name="color" value="${color}" aria-label="Eigene Farbe"></label>
+      </div>
+      <div class="chip-row weg-flags">
+        <button type="button" class="chip" data-flag="map" aria-pressed="${shown}"><span class="msr">${shown ? 'visibility' : 'visibility_off'}</span> Auf der Karte</button>
+        ${folderOn ? `<button type="button" class="chip" data-flag="pin" aria-pressed="${!!t.pin}" title="Bleibt ganz in der App – auch ohne den Ordner"><span class="msr">offline_pin</span> Offline verfügbar</button>` : ''}
+      </div>
+    </section>
+    <div class="weg-actions">${t.shared ? `
+      <button type="button" class="button primary" data-do="keep"><span class="msr">bookmark_add</span> Bei mir speichern</button>
+      <button type="button" class="button" data-do="gpx"><span class="msr">download</span> GPX</button>` : `
+      <a class="button primary" href="./index.html?track=${encodeURIComponent(t.id)}&start"><span class="msr">navigation</span> Navigieren</a>
+      <button type="button" class="button" data-do="plan" title="Im Planer als neue Tour öffnen – gespeichert wird erst dort"><span class="msr">edit_road</span> Als Planung öffnen</button>
+      <button type="button" class="button" data-do="share" title="Die Aufzeichnung teilen – mit Zeiten, Tempo und auf Wunsch Puls &amp; Co."><span class="msr">share</span> Teilen</button>
+      <button type="button" class="button" data-do="gpx"><span class="msr">download</span> GPX</button>
+      <button type="button" class="button" data-do="delete"><span class="msr">delete</span> Löschen</button>`}
+    </div>`;
+  page.open();
+  paintMap();
+  fitView();
+}
+
+/**
+ * Weg auf der Karte zeigen bzw. ausblenden – von Hand gilt vor dem Jahr und
+ * dem Zeitraum. Entspricht es dem, was ohnehin gälte, braucht es keinen Eintrag.
+ */
+function withShown(t, want) {
+  const { hidden: _h, ...plain } = t;
+  return shownOnMap(plain) === want ? plain : { ...plain, hidden: !want };
+}
+
+/** Art, Farbe, Sichtbarkeit, „offline verfügbar“ speichern und neu zeichnen */
+async function saveLook(changes, { quiet = false } = {}) {
+  const t = { ...selected, ...changes };
+  for (const k of Object.keys(changes)) if (changes[k] === undefined) delete t[k];
+  // „offline verfügbar“ gilt nur hier – das ist keine Änderung für den Ordner
+  if (quiet) await tracks.putQuiet(t); else await tracks.put({ ...t, updated: Date.now() });
+  if (!quiet) t.updated = Date.now();
+  selected = t;
+  await load();
+  // Die Ansicht wird neu gezeichnet – an derselben Stelle bleiben
+  const keep = content.scrollTop;
+  paintTrack(t, $('.weg-note', content)?.textContent.trim() ?? '');
+  if (!t.stub) {
+    metricCache = { id: null, m: {} };
+    paintCharts(t);
+    paintLaps(t);
+    showElevation(trackCoords(t), t, (h) => { $('.st-up', content).textContent = h ? `${h.ascent} m` : '–'; paintCharts(t); paintLaps(t); });
+  }
+  if (keep) content.scrollTop = keep;
+}
+
+content.addEventListener('click', (e) => {
+  const t = selected;
+  if (!t || !('start' in t)) return;
+  const sw = e.target.closest('.swatch[data-color]');
+  if (sw) { saveLook({ color: sw.dataset.color || undefined }); return; }
+  const flag = e.target.closest('[data-flag]')?.dataset.flag;
+  if (flag === 'map') {
+    saveLook({ hidden: withShown(t, !shownOnMap(t)).hidden });
+  } else if (flag === 'pin') {
+    saveLook({ pin: !t.pin || undefined }, { quiet: true }).then(() => {
+      toast(selected.pin ? 'Bleibt ganz in der App' : 'Liegt nach dem nächsten Abgleich nur noch im Ordner');
+      // Gleich abgleichen: holt bzw. lagert aus
+      folder.sync().then(() => load()).catch(() => {});
+    });
+  }
+});
+content.addEventListener('change', (e) => {
+  if (!selected || !('start' in selected)) return;
+  if (e.target.matches('.weg-sport select')) saveLook({ sport: e.target.value || undefined });
+  if (e.target.matches('.weg-colors input[type="color"]')) saveLook({ color: e.target.value });
+});
 
 /** Umschalter über dem Diagramm: Höhe, Tempo, Puls … – nur, was es gibt */
 let metricCache = { id: null, m: {} };
@@ -566,8 +737,8 @@ function paintLaps(t) {
     : l.n === r.slowest ? '<span class="lap-badge slow"><span class="msr">hourglass_bottom</span> langsamste</span>' : '');
   box.innerHTML = `<div class="laps-head">
       <h3><span class="msr">flag</span> Runden</h3>
-      <div class="chip-row" role="group" aria-label="Länge einer Runde">${LAP_SIZES.map((x) => `
-        <button type="button" class="chip" data-lap-size="${x}" aria-pressed="${x === size}">${x / 1000} km</button>`).join('')}</div>
+      <div class="chip-row" role="group" aria-label="Länge einer Runde">${lapSizes(t).map((x) => `
+        <button type="button" class="chip" data-lap-size="${x}" aria-pressed="${x === size}">${x < 1000 ? `${x} m` : `${x / 1000} km`}</button>`).join('')}</div>
     </div>
     <table class="laps-table">
       <thead><tr><th>Runde</th><th>Zeit</th><th>Tempo</th>${hasHr ? '<th>Ø Puls</th>' : ''}${hasUp ? '<th>Anstieg</th>' : ''}</tr></thead>
@@ -643,6 +814,7 @@ content.addEventListener('change', async (e) => {
   selected.name = e.target.value.trim();
   selected.updated = Date.now();
   await tracks.put(selected);
+  await load();
   page.header(selected.name || 'Weg', () => showList({ push: true }));
   toast('Name gespeichert');
 });
@@ -651,10 +823,16 @@ content.addEventListener('click', async (e) => {
   const act = e.target.closest('[data-do]')?.dataset.do;
   const t = selected;
   if (!act || !t) return;
-  if (act === 'tour') {
-    try { const saved = tours.save(asTour(t)); location.href = `./tour.html?id=${encodeURIComponent(saved.id)}`; } catch (err) { toast(err.message); }
+  if (t.stub && act !== 'delete') { toast('Dafür braucht es die Tour aus dem Ordner – der ist gerade nicht erreichbar'); return; }
+  if (act === 'plan') {
+    // Der Verlauf als neue Planung im Planer – ungespeichert, wie eine geteilte Tour
+    try { location.href = `./tour.html#t=${await encodeShare(asTour(t))}`; } catch (err) { toast(err.message); }
+  } else if (act === 'keep') {
+    keepShared(t);
+  } else if (act === 'share' && 'start' in t) {
+    shareTrack(t);
   } else if (act === 'share') {
-    share({ title: t.name, text: t.name, url: async () => `${pageUrl('tour.html')}#t=${await encodeShare('start' in t ? asTour(t) : t)}` }, toast);
+    share({ title: t.name, text: t.name, url: async () => `${pageUrl('tour.html')}#t=${await encodeShare(t)}` }, toast);
   } else if (act === 'gpx') {
     download(`${(t.name || 'weg').replace(/[^\wäöüß]+/gi, '-')}.gpx`, 'start' in t ? trackGpx(t) : toGpx(t, coordsOf(t.shape)));
   } else if (act === 'delete') {
@@ -669,19 +847,73 @@ content.addEventListener('click', async (e) => {
   }
 });
 
-/** Aus einem Weg eine Tour: fester Verlauf, ein paar Punkte zum Weiterplanen */
-function asTour(t) {
-  const coords = trackCoords(t);
-  const g = PROFILE_GROUP[t.profile] ?? 'foot';
-  const profile = g === 'car' ? 'drive' : g === 'bike' ? (['road', 'gravel', 'mtb', 'tour'].includes(t.profile) ? t.profile : 'tour')
-    : (heights?.ascent ?? 0) > 150 || t.length > 8000 ? 'hike' : 'walk';
-  return {
-    id: tours.newId(), name: t.name || 'Tour', description: `Aufgezeichnet am ${LONG.format(t.start)}`, profile,
-    points: simplifyTo(coords, Math.min(30, Math.max(6, Math.round(t.length / 1000)))),
-    shape: shapeOf(coords), fixed: true,
-    stats: { length: t.length, time: moving(t), ascent: heights?.ascent ?? 0, descent: heights?.descent ?? 0 },
-  };
+/**
+ * Aufzeichnung teilen: als Link (öffnet sich in WMap mit Diagrammen, der
+ * Empfänger kann sie speichern) oder als GPX-Datei. Strecke, Zeiten und Tempo
+ * gehen immer mit; Puls, Frequenz und Leistung nur, wenn angehakt.
+ */
+async function shareTrack(t) {
+  const kinds = [['hr', 'Puls'], ['cad', cadName(t)], ['pow', 'Leistung']].filter(([k]) => t[k]?.some((v) => v > 0));
+  const keep = Object.fromEntries(kinds.map(([k]) => [k, true]));
+  const how = await ask({
+    icon: 'share', title: 'Aufzeichnung teilen', className: 'stacked',
+    text: 'Geteilt wird die Tour, wie du sie aufgezeichnet hast: Strecke, Zeiten und Tempo.'
+      + (kinds.length ? ' Wähle, was noch mit soll:' : ''),
+    html: kinds.length ? `<div class="share-opts">${kinds.map(([k, l]) => `
+      <label><input type="checkbox" name="${k}" checked> ${esc(l)}</label>`).join('')}</div>` : '',
+    buttons: [
+      { value: 'link', label: 'Als Link teilen', icon: 'link', primary: true },
+      { value: 'gpx', label: 'Als GPX-Datei', icon: 'draft' },
+      { value: 'no', label: 'Abbrechen' },
+    ],
+    setup: (dlg) => dlg.addEventListener('change', (e) => { if (e.target.name in keep) keep[e.target.name] = e.target.checked; }),
+  });
+  if (how === 'link') {
+    const facts = [fmtDistance(t.length), fmtDuration(moving(t))].join(' · ');
+    share({ title: t.name || 'Tour', text: `${t.name || 'Tour'} – ${facts}`, url: async () => `${pageUrl('wege.html')}#weg=${await encodeTrack(t, keep)}` }, toast);
+  } else if (how === 'gpx') {
+    const name = `${(t.name || 'weg').replace(/[^\wäöüß]+/gi, '-')}.gpx`;
+    const text = trackGpx(without(t, keep));
+    const file = new File([text], name, { type: 'application/gpx+xml' });
+    // Wo das Gerät Dateien teilen kann: Teilen-Menü – sonst speichern
+    if (navigator.canShare?.({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: t.name || 'Tour' }); return; } catch (err) { if (err.name === 'AbortError') return; }
+    }
+    download(name, text);
+  }
 }
+
+/** Geteilte Aufzeichnung (wege.html#weg=…) zeigen – gespeichert wird erst auf Wunsch */
+async function openSharedTrack(code) {
+  let t;
+  try { t = { ...await decodeTrack(code), id: 'geteilt', shared: true }; } catch (err) { toast(err.message || 'Der Link ließ sich nicht lesen'); showList(); return; }
+  tab = 'wege';
+  selected = t;
+  heights = null;
+  chartScale = 1;
+  document.title = `${t.name} – WMap`;
+  page.header(t.name, () => { history.replaceState(null, '', './wege.html'); showList(); fitView(); });
+  paintTrack(t);
+  paintCharts(t);
+  paintLaps(t);
+  showElevation(trackCoords(t), t, (h) => { $('.st-up', content).textContent = h ? `${h.ascent} m` : '–'; paintCharts(t); paintLaps(t); });
+}
+
+/** Geteilte Aufzeichnung speichern – gibt es sie schon, dorthin */
+async function keepShared(t) {
+  const twin = all.find((x) => sameTrack(x, t));
+  if (twin) { toast('Die Tour gibt es bei dir schon'); history.replaceState(null, '', `./wege.html?id=${encodeURIComponent(twin.id)}`); select(twin.id); return; }
+  const { shared: _s, ...rest } = t;
+  const saved = { ...rest, id: `w${t.start.toString(36)}${Math.random().toString(36).slice(2, 5)}`, updated: Date.now() };
+  await tracks.put(saved);
+  await load();
+  toast('Gespeichert unter Aufgezeichnete Touren');
+  history.replaceState(null, '', `./wege.html?id=${encodeURIComponent(saved.id)}`);
+  select(saved.id);
+}
+
+/** Aus einem Weg eine Tour: fester Verlauf, ein paar Punkte zum Weiterplanen (data/tracks.js) */
+const asTour = (t) => trackAsTour(t, heights, tours.newId());
 
 /* ── Eine geplante Tour ───────────────────────────────────────────────────── */
 
@@ -814,8 +1046,9 @@ async function paintMap() {
     ? { type: 'FeatureCollection', features: visiblePlanned().map((t) => ({
       type: 'Feature', properties: { id: t.id, color: groupOf(t).color }, geometry: { type: 'LineString', coordinates: coordsOf(t.shape) },
     })) }
-    : { type: 'FeatureCollection', features: [...visible()].sort((a, b) => a.start - b.start).map((t) => ({
-      type: 'Feature', properties: { id: t.id, color: yearColor(yearOf(t)) }, geometry: { type: 'LineString', coordinates: trackCoords(t) },
+    // Aufgezeichnet: in der Farbe der Art bzw. der eigenen, je älter, desto blasser – nur was eingeblendet ist
+    : { type: 'FeatureCollection', features: [...onMap()].sort((a, b) => a.start - b.start).map((t) => ({
+      type: 'Feature', properties: { id: t.id, color: colorOf(t), opacity: ageOpacity(t) }, geometry: { type: 'LineString', coordinates: trackCoords(t) },
     })) };
   if (!map.getSource('wege')) {
     map.addSource('wege', { type: 'geojson', data: fc });
@@ -892,8 +1125,11 @@ async function paintMap() {
   map.getSource('weg-km').setData(kmMarks(selected));
 
   // Gewähltes obenauf (Wege nach Tempo gefärbt); der Rest tritt zurück
-  map.setPaintProperty('wege-line', 'line-opacity', selected ? 0.25 : 0.9);
-  map.setPaintProperty('wege-casing', 'line-opacity', selected ? 0.3 : 0.8);
+  // (Wege tragen ihre Deckkraft nach Alter mit, alles andere gilt als 1)
+  const age = ['coalesce', ['get', 'opacity'], 1];
+  map.setPaintProperty('wege-line', 'line-opacity', ['*', age, selected ? 0.25 : 0.9]);
+  map.setPaintProperty('wege-casing', 'line-opacity', ['*', age, selected ? 0.3 : 0.8]);
+  map.setPaintProperty('wege-dot', 'circle-opacity', age);
   markers.forEach((m) => m.remove());
   markers = [];
   if (selected?.legs) {
@@ -915,7 +1151,7 @@ async function paintMap() {
     map.getSource('weg-sel').setData({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: c } });
     const grad = isTrack ? speedGradient(selected) : null;
     map.setPaintProperty('weg-sel', 'line-gradient', grad ?? undefined);
-    if (!grad) map.setPaintProperty('weg-sel', 'line-color', isTrack ? yearColor(yearOf(selected)) : groupOf(selected).color);
+    if (!grad) map.setPaintProperty('weg-sel', 'line-color', isTrack ? colorOf(selected) : groupOf(selected).color);
     $('.track-legend', content)?.toggleAttribute('hidden', !grad);
     for (const [p, cls, icon] of [[c[0], 'start', 'trip_origin'], [c.at(-1), 'dest', 'sports_score']]) {
       if (!p) continue;
@@ -941,7 +1177,7 @@ async function load() {
   try { all = await tracks.all(); } catch { all = []; }
   planned = tours.all();
   conns = connections.all();
-  years = [...new Set(all.map(yearOf))].sort((a, b) => b - a);
+  folderOn = !!(await folder.info().catch(() => null))?.connected;
 }
 
 async function openSharedList(code) {
@@ -955,12 +1191,16 @@ async function openSharedList(code) {
 function route() {
   const p = new URLSearchParams(location.search);
   tab = tabOf(p);
-  if (p.get('id')) select(p.get('id'));
+  const sharedTrack = location.hash.match(/^#weg=(.+)$/)?.[1];
+  if (sharedTrack) openSharedTrack(sharedTrack);
+  else if (p.get('id')) select(p.get('id'));
   else if (p.get('conn')) selectConn(p.get('conn'));
   else if (p.get('tour')) selectTour(p.get('tour'));
   else showList();
 }
 addEventListener('popstate', () => { route(); fitView(); });
+// Geteilte Aufzeichnung geöffnet, während die Seite schon offen ist
+addEventListener('hashchange', () => { if (/^#weg=/.test(location.hash)) { route(); fitView(); } });
 
 /* Aus dem Ordner kam etwas dazu oder ging weg */
 addEventListener('wmap:folder', async () => {

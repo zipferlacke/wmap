@@ -42,6 +42,12 @@ pub fn run() {
             .build(),
         )?;
       }
+      // Debug-Fassung am Rechner: am Fenstertitel zu erkennen (am Handy heißt
+      // die App selbst so, tools/android-einbinden.py)
+      #[cfg(all(desktop, debug_assertions))]
+      if let Some(win) = app.get_webview_window("main") {
+        let _ = win.set_title("wmap-Debug");
+      }
       #[cfg(target_os = "linux")]
       allow_geolocation(app)?;
       // Karten-Links „geo:…“ und (Handy) geteilte Links auf app.wuefl.de/wmap:

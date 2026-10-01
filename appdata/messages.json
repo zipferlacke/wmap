@@ -21,12 +21,16 @@
                 "Bild-in-Bild-Modus neu gestaltet: nur Karte mit Standort, Pfeil und Entfernung",
                 "GPS verbraucht weniger Energie und springt in der Navigation weniger herum.",
                 "Der letzte Kartenausschnitt kommt über den Ordner mit auf deine anderen Geräte",
-                "Doppelte Touren (etwa von Uhr und Handy) lassen sich unter „Sicherung & Synchronisation“ zusammenführen – du wählst, welche Aufzeichnung bleibt",
+                "Aufgezeichnete Touren: Farbe nach Sportart oder eigene Farbe, ältere blasser; Jahre und einzelne Touren auf der Karte ausblenden; GPX per Drag & Drop; Touren erneut navigieren, als Planung öffnen und samt Puls & Co. teilen",
+    "Beim Start einer Tour fragt WMap, ob sie aufgezeichnet werden soll; in der Navigation gibt es einen Knopf für Aufzeichnen, Pause und Beenden",
+    "Mit verbundenem Ordner liegen ältere Touren nur noch dort – in der App bleiben der letzte Monat und was du als „offline verfügbar“ markierst (einstellbar)",
+    "Doppelte Touren (etwa von Uhr und Handy) lassen sich unter „Sicherung & Synchronisation“ zusammenführen – du wählst, welche Aufzeichnung bleibt",
                 "Allgemeine Performance- und Akku-Optimierungen",
                 "Fix: Navigation in der Android-App – GPS nicht verfügbar trotz GPS, fehlende Ansagen",
                 "Fix: GPS wandert im Stand und das Tempo bei der Navigation war nicht 0",
                 "Fix: Kategoriesuche und Orte entlang der Route kamen in den Apps nicht oder nur langsam",
                 "Fix: Auf einem Gerät gelöschte Touren kamen über den Ordner-Abgleich von anderen Geräten zurück",
+    "Fix: Der Ordner-Abgleich legte Touren aus Health Connect mehrfach an und lief bei jedem Seitenwechsel neu an – Doppelte im Ordner werden jetzt aufgeräumt",
                 "Fix: Die Karte war ab und zu nach dem Start nur klein in der Ecke",
                 "Fix: Kleinere Darstellungsfehler (Knöpfe in der Navigation, lange Antworten, geteilte Touren)"
             ]

@@ -7,6 +7,7 @@ import { PROFILES } from './core/config.js';
 import * as geocode from './services/geocode.js';
 import { CATEGORIES } from './core/categories.js';
 import { local, tours } from './data/store.js';
+import { tracks, trackAsTour } from './data/tracks.js';
 import { mountAppNav } from './ui/appnav.js';
 import { mountAppBar } from './ui/appbar.js';
 import { setupRecording } from './ui/record.js';
@@ -47,7 +48,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * bewegt hat. Ist beides älter als ein Tag: zum eigenen Standort.
  * Mit Link-Parametern (siehe fromUrl) bestimmt der Link, wohin es geht.
  */
-if (!CAR && !/[?&](view|q|from|to|reach|geo|ort|tour)=/.test(location.search)) {
+if (!CAR && !/[?&](view|q|from|to|reach|geo|ort|tour|track)=/.test(location.search)) {
   let touched = false;
   map.on('movestart', (e) => { if (e.originalEvent) touched = true; });
   const flyHome = () => myPosition({ ask: false })
@@ -190,6 +191,8 @@ async function fromUrl() {
       enterRoute({ waypoints: r.waypoints });
     } else if (p.get('tour')) {
       await startTour(p.get('tour'), p.has('start'));
+    } else if (p.get('track')) {
+      await startTrack(p.get('track'), p.has('start'));
     } else if (p.get('anfrage')) {
       answerRequest(p.get('anfrage'));
     } else if (p.get('geo')) {
@@ -206,6 +209,23 @@ async function fromUrl() {
 async function startTour(id, go) {
   const t = tours.all().find((x) => x.id === id);
   if (!t?.points?.length) { toast('Die Tour gibt es auf diesem Gerät nicht'); return; }
+  return navigateTour(t, go);
+}
+
+/**
+ * Aufgezeichnete Tour noch einmal navigieren („?track=ID&start“ aus Meine
+ * Touren → Aufgezeichnet): ihr Verlauf als ein paar Punkte, dazwischen wird
+ * neu gerechnet – wie bei einer geplanten Tour mit festem Verlauf. Liegt sie
+ * nur im verbundenen Ordner, kommt sie von dort.
+ */
+async function startTrack(id, go) {
+  let t = null;
+  try { t = await tracks.full(id); } catch (err) { toast(err.message); return; }
+  if (!t?.shape) { toast('Die Tour gibt es auf diesem Gerät nicht'); return; }
+  return navigateTour(trackAsTour(t), go);
+}
+
+async function navigateTour(t, go) {
   const costing = PROFILES[t.profile]?.costing;
   setProfile(costing === 'bicycle' ? 'bike' : costing === 'auto' ? 'car' : 'foot');
   const n = t.points.length;
@@ -290,7 +310,7 @@ if (!CAR) { if (map.loaded()) resumeNav(); else map.once('load', resumeNav); }
 // Karte fertig geladen ist: bei schwachem Netz käme das Willkommen sonst
 // irgendwann, mitten in die Bedienung
 if (!CAR) {
-  const linked = /[?&](view|q|from|to|reach|action|ort|route|anfrage|geo|sim|tour)\b/.test(location.search);
+  const linked = /[?&](view|q|from|to|reach|action|ort|route|anfrage|geo|sim|tour|track)\b/.test(location.search);
   appNews({ dialogs: !linked && !nav.active && !savedNav() });
 }
 map.once('idle', () => {

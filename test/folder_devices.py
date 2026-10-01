@@ -23,6 +23,8 @@ from common import Browser
 
 TEST = r"""
 const { folder, autoFolderSync } = await import('./js/data/folder.js');
+// Diese Tests gelten dem Abgleich selbst: alle Wege bleiben ganz in der App (Karteikarten: folder_shelf.py)
+localStorage.setItem('wmap.tracks.keep', '"all"');
 const { tracks, buildTrack, trackGpx, healthGone, healthTrackId } = await import('./js/data/tracks.js');
 const { tours, toGpx } = await import('./js/data/store.js');
 const { knownHealthIds } = await import('./js/services/health.js');

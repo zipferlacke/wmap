@@ -9,7 +9,19 @@
  *        times [s ab Start je Punkt], und je Punkt, falls da (GPX, Health
  *        Connect): hr [Puls], cad [Schritt- bzw. Trittfrequenz je min],
  *        pow [Leistung in W] – null, wo nichts gemessen wurde,
- *        bbox, from, to, source? { health, app, type } }
+ *        bbox, from, to, description?, source? { health, app, type },
+ *        sport? (Art, von Hand gewählt oder aus der GPX-Datei – sonst gilt
+ *        source.type bzw. das Profil, siehe data/track-look.js),
+ *        color? (eigene Farbe), hidden? (true/false: auf der Karte
+ *        aus- bzw. eingeblendet, ohne Angabe gilt die Einstellung),
+ *        pin? (offline verfügbar: bleibt ganz in der App, nur dieses Gerät) }
+ *
+ * Mit verbundenem Ordner liegt von älteren Wegen nur eine Karteikarte in der
+ * App (`stub: true` – Name, Zeiten, Strecke, grober Verlauf für die Karte),
+ * alle Punkte und Messwerte stehen in der GPX-Datei im Ordner und werden
+ * geholt, wenn man den Weg öffnet (tracks.full, data/folder.js). Ganz in der
+ * App bleiben die Wege der letzten Zeit (Einstellung) und alles, was als
+ * „offline verfügbar“ markiert ist.
  *
  * Aufgezeichnet wird während der Navigation (abschaltbar) und über
  * „Aufzeichnen“ – beides mit dem Recorder unten, der nach einem Absturz
@@ -17,7 +29,7 @@
  */
 import { local, tours, changed } from './store.js';
 import { store } from './db.js';
-import { encodePolyline, decodePolyline, simplify, distance, bbox } from '../core/geo.js';
+import { encodePolyline, decodePolyline, simplify, simplifyTo, distance, bbox } from '../core/geo.js';
 
 const SETTING = 'wmap.history';
 
@@ -50,6 +62,27 @@ export const tracks = {
     return (await db.all()).sort((a, b) => b.start - a.start);
   },
   get: (id) => db.get(id),
+  /**
+   * Der ganze Weg mit allen Punkten und Messwerten – eine Karteikarte (stub)
+   * wird aus dem verbundenen Ordner gelesen. Wirft, wenn der Ordner gerade
+   * nicht erreichbar ist. `t`: Weg oder ID
+   */
+  async full(t) {
+    const item = typeof t === 'string' ? await db.get(t) : t;
+    if (!item?.stub) return item ?? null;
+    const { readTrack } = await import('./folder.js');
+    return readTrack(item);
+  },
+  /** Alle Wege ganz (für Sicherung und ZIP); was nicht zu holen ist, bleibt Karteikarte → { list, missing } */
+  async allFull() {
+    const list = [];
+    let missing = 0;
+    for (const t of await this.all()) {
+      if (!t.stub) { list.push(t); continue; }
+      try { list.push(await this.full(t)); } catch { list.push(t); missing += 1; }
+    }
+    return { list, missing };
+  },
   async put(track) { await db.put(track); changed({ kind: 'track', id: track.id }); },
   /** Speichern ohne Meldung – für den Abgleich */
   putQuiet: (track) => db.put(track),
@@ -67,6 +100,40 @@ export const tracks = {
 };
 
 export const trackCoords = (t) => (t?.shape ? decodePolyline(t.shape, 5) : []);
+
+/* ── Karteikarte: Weg, dessen Punkte nur im Ordner liegen ─────────────────── */
+
+const STUB_POINTS = 60;
+const VALUES = ['hr', 'cad', 'pow'];
+// Was die Karteikarte selbst weiß und beim Lesen der Datei gilt (dort geändert: Name, Art, Farbe …)
+const CARD = ['id', 'kind', 'profile', 'name', 'from', 'to', 'description', 'sport', 'color', 'hidden', 'pin', 'updated',
+  'start', 'end', 'length', 'moving', 'top'];
+
+/** Weg → Karteikarte. `fhash`: Fingerabdruck der Datei, die alles enthält */
+export function stubOf(t, fhash) {
+  const { times: _t, hr: _h, cad: _c, pow: _p, ...card } = t;
+  const coords = trackCoords(t);
+  return {
+    ...card, shape: encodePolyline(simplifyTo(coords, STUB_POINTS), 5), stub: true, fhash, n: coords.length,
+    has: VALUES.filter((k) => t[k]?.some((v) => v > 0)),
+  };
+}
+
+/** Karteikarte + gelesene Datei (parseGpx) → der ganze Weg */
+export function fromFile(stub, parsed) {
+  const card = Object.fromEntries(CARD.filter((k) => stub[k] !== undefined).map((k) => [k, stub[k]]));
+  const source = stub.source || parsed.source ? { ...parsed.source, ...stub.source } : undefined;
+  return { ...parsed, ...card, ...(source ? { source } : {}) };
+}
+
+/** Karteikarten-Felder von einem Weg nehmen (der Abgleich ersetzt eine Karteikarte durch den ganzen Weg) */
+export function unstub(t) {
+  const { stub: _s, fhash: _f, n: _n, has: _h, ...rest } = t ?? {};
+  return rest;
+}
+
+/** Hat der Weg Messwerte (Puls, Frequenz, Leistung)? – auch für Karteikarten */
+export const hasValues = (t) => (t.stub ? t.has?.length > 0 : VALUES.some((k) => t[k]?.some((v) => v > 0)));
 
 /**
  * Läuft gerade ein Import, der viele Wege nacheinander speichert (Health
@@ -111,8 +178,12 @@ function keepEvery(points, kept, ms) {
   });
 }
 
-/** Punkte [lon, lat, ms, puls?, frequenz?, leistung?] → Weg (null unter 200 m) */
-export function buildTrack(points, { kind, profile, name, from = '', to = '' }) {
+/**
+ * Punkte [lon, lat, ms, puls?, frequenz?, leistung?] → Weg (null unter 200 m).
+ * `keepAll`: nicht ausdünnen – die Punkte sind schon die eines Wegs (eine
+ * GPX-Datei von WMap), wieder eingelesen ist er dann Punkt für Punkt derselbe
+ */
+export function buildTrack(points, { kind, profile, name, from = '', to = '', keepAll = false }) {
   if (points.length < 2) return null;
   let length = 0, moving = 0, top = 0;
   for (let i = 1; i < points.length; i += 1) {
@@ -127,7 +198,7 @@ export function buildTrack(points, { kind, profile, name, from = '', to = '' }) 
     }
   }
   if (length < 200) return null;
-  const kept = keepEvery(points, simplify(points, TOLERANCE[profile] ?? 3),
+  const kept = keepAll ? points : keepEvery(points, simplify(points, TOLERANCE[profile] ?? 3),
     points.some((p) => p[3] > 0 || p[4] > 0 || p[5] > 0) ? 30000 : 60000);
   const t0 = points[0][2];
   return {
@@ -247,6 +318,7 @@ export function parseGpx(text, profile = null) {
   // Von WMap geschrieben: Messwerte aus allen Punkten und die Herkunft (trackGpx)
   const own = [...(doc.querySelector('metadata > extensions')?.children ?? [])].find((e) => e.localName === 'track');
   const num = (k) => (own?.hasAttribute(k) && Number.isFinite(Number(own.getAttribute(k))) ? Number(own.getAttribute(k)) : null);
+  const description = doc.querySelector('metadata > desc')?.textContent?.trim() ?? '';
   for (const trk of doc.querySelectorAll('trk, rte')) {
     const pts = [...trk.querySelectorAll('trkpt, rtept')];
     if (pts.length < 2) continue;
@@ -261,14 +333,24 @@ export function parseGpx(text, profile = null) {
     }).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
     const name = trk.querySelector(':scope > name')?.textContent?.trim() || fileName || 'Importierter Weg';
     const type = trk.querySelector(':scope > type')?.textContent?.trim();
-    const t = buildTrack(points, { kind: 'gpx', profile: profile ?? (PROFILE_GROUP[type] ? type : 'foot'), name });
+    // Von WMap geschrieben und noch mit denselben Punkten: so lassen, wie sie sind
+    const keepAll = !!own && num('points') === points.length;
+    const t = buildTrack(points, { kind: 'gpx', profile: profile ?? (PROFILE_GROUP[type] ? type : 'foot'), name, keepAll });
     let one = t && (profile || PROFILE_GROUP[type] ? t : guessProfile(t));
     if (!one) continue;
-    // Nur wenn die Datei noch die Punkte hat, zu denen die Werte gehören
-    if (own && num('points') === points.length) {
-      const kind = ['rec', 'nav', 'gpx', 'health'].includes(own.getAttribute('kind')) ? own.getAttribute('kind') : one.kind;
-      const src = { ...(own.getAttribute('app') ? { app: own.getAttribute('app') } : {}), ...(own.getAttribute('type') ? { type: own.getAttribute('type') } : {}) };
-      one = { ...one, kind, length: num('length') ?? one.length, moving: num('moving') ?? one.moving, top: num('top') ?? one.top, ...(Object.keys(src).length ? { source: src } : {}) };
+    // Fremde Datei, die ihre Art nennt (Garmin: running, cycling …): gilt als Art des Wegs
+    const sport = SPORT_WORDS[String(type ?? '').toLowerCase()];
+    if (sport && !own) one = { ...one, sport };
+    if (description) one = { ...one, description };
+    if (own) {
+      const attr = (k) => own.getAttribute(k) || undefined;
+      const src = { ...(attr('app') ? { app: attr('app') } : {}), ...(attr('type') ? { type: attr('type') } : {}) };
+      const kind = ['rec', 'nav', 'gpx', 'health'].includes(attr('kind')) ? attr('kind') : one.kind;
+      const meta = { sport: attr('sport'), color: /^#[0-9a-f]{6}$/i.test(attr('color') ?? '') ? attr('color') : undefined,
+        hidden: attr('hidden') === '1' ? true : attr('hidden') === '0' ? false : undefined, from: attr('from'), to: attr('to') };
+      one = { ...one, kind, ...Object.fromEntries(Object.entries(meta).filter(([, v]) => v !== undefined)), ...(Object.keys(src).length ? { source: src } : {}) };
+      // Gemessenes nur, wenn die Datei noch die Punkte hat, zu denen die Werte gehören
+      if (num('points') === points.length) one = { ...one, length: num('length') ?? one.length, moving: num('moving') ?? one.moving, top: num('top') ?? one.top };
     }
     out.push(health ? { ...one, source: { ...one.source, health } } : one);
   }
@@ -276,6 +358,8 @@ export function parseGpx(text, profile = null) {
 }
 
 export function trackGpx(t) {
+  // Eine Karteikarte hat nicht alle Punkte – sie darf nie die Datei ersetzen (data/folder.js liest erst die Datei)
+  if (t.stub) throw new Error('Der Weg liegt nur im Ordner');
   const coords = trackCoords(t);
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   // Puls und Frequenz wie Garmin (TrackPointExtension), Leistung als <power> daneben
@@ -288,11 +372,13 @@ export function trackGpx(t) {
   // Die Datei enthält nur die vereinfachten Punkte: was aus allen gemessen
   // wurde (Strecke, Zeit in Bewegung, Spitze) und woher der Weg kommt, steht
   // daneben – sonst wäre er auf dem nächsten Gerät kürzer und nur noch „GPX“
-  const attrs = { points: coords.length, kind: t.kind, length: t.length, moving: t.moving, top: t.top, app: t.source?.app, type: t.source?.type };
+  const attrs = { points: coords.length, kind: t.kind, length: t.length, moving: t.moving, top: t.top, app: t.source?.app, type: t.source?.type,
+    // Art, Farbe, aus-/eingeblendet, Start und Ziel – auf allen Geräten gleich
+    sport: t.sport, color: t.color, hidden: t.hidden === true ? 1 : t.hidden === false ? 0 : undefined, from: t.from, to: t.to };
   const own = `<extensions><wmap:track ${Object.entries(attrs).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => `${k}="${esc(v)}"`).join(' ')}/></extensions>`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="WMap" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" xmlns:wmap="https://app.wuefl.de/wmap/gpx">
-  <metadata><name>${esc(t.name)}</name><time>${new Date(t.start).toISOString()}</time><keywords>wmap:${esc(t.id)}${t.source?.health ? ` wmap-hc:${esc(t.source.health)}` : ''}</keywords>${own}</metadata>
+  <metadata><name>${esc(t.name)}</name>${t.description ? `<desc>${esc(t.description)}</desc>` : ''}<time>${new Date(t.start).toISOString()}</time><keywords>wmap:${esc(t.id)}${t.source?.health ? ` wmap-hc:${esc(t.source.health)}` : ''}</keywords>${own}</metadata>
   <trk>
     <name>${esc(t.name)}</name>
     <type>${esc(t.profile)}</type>
@@ -307,7 +393,9 @@ ${pts}
 /* ── Sicherung: alles in einer Datei ─────────────────────────────────────── */
 
 export async function backup() {
-  return JSON.stringify({ app: 'wmap', version: 1, saved: new Date().toISOString(), tours: tours.all(), tracks: await tracks.all() });
+  // Karteikarten (Weg liegt nur im Ordner) ganz holen – die Sicherung soll alles enthalten
+  const { list } = await tracks.allFull();
+  return JSON.stringify({ app: 'wmap', version: 1, saved: new Date().toISOString(), tours: tours.all(), tracks: list.map(unstub) });
 }
 
 /** Sicherung einspielen – vorhandene Einträge bleiben, gleiche IDs werden ersetzt. */
@@ -363,6 +451,38 @@ export function sameActivity(a, b) {
   if (Math.abs(a.length - b.length) > Math.max(200, Math.max(a.length, b.length) * 0.15)) return false;
   const [A, B] = [a.bbox, b.bbox];
   return !A || !B || (A[0] <= B[2] && B[0] <= A[2] && A[1] <= B[3] && B[1] <= A[3]);
+}
+
+/**
+ * Arten, die fremde GPX-Dateien in <type> nennen (Garmin, Strava, Komoot …)
+ * bzw. die Profile von WMap → Art wie in Health Connect (services/health.js)
+ */
+const SPORT_WORDS = {
+  running: 'running', run: 'running', trail_running: 'running', jogging: 'running', 9: 'running',
+  walking: 'walking', walk: 'walking', foot: 'walking', hiking: 'hiking', hike: 'hiking',
+  cycling: 'biking', biking: 'biking', bike: 'biking', ride: 'biking', road: 'biking', tour: 'biking', gravel: 'biking', mtb: 'biking',
+  mountain_biking: 'biking', road_biking: 'biking', gravel_cycling: 'biking', 1: 'biking',
+  rowing: 'rowing', kayaking: 'paddling', paddling: 'paddling', canoeing: 'paddling', sailing: 'sailing',
+  swimming: 'swimming_open_water', open_water_swimming: 'swimming_open_water',
+  skiing: 'skiing', cross_country_skiing: 'skiing', snowboarding: 'snowboarding', skating: 'skating', inline_skating: 'skating',
+  car: 'driving', drive: 'driving', driving: 'driving',
+};
+
+/**
+ * Aus einem Weg eine Tour zum Navigieren oder Speichern: fester Verlauf, ein
+ * paar Punkte zum Weiterplanen. `heights`: { ascent, descent } oder null
+ */
+export function trackAsTour(t, heights = null, id = null) {
+  const coords = trackCoords(t);
+  const g = PROFILE_GROUP[t.profile] ?? 'foot';
+  const profile = g === 'car' ? 'drive' : g === 'bike' ? (['road', 'gravel', 'mtb', 'tour'].includes(t.profile) ? t.profile : 'tour')
+    : (heights?.ascent ?? 0) > 150 || t.length > 8000 ? 'hike' : 'walk';
+  return {
+    id, name: t.name || 'Tour', description: `Aufgezeichnet am ${new Date(t.start).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`, profile,
+    points: simplifyTo(coords, Math.min(30, Math.max(6, Math.round(t.length / 1000)))),
+    shape: encodePolyline(coords, 5), fixed: true,
+    stats: { length: t.length, time: t.moving || (trackEnd(t) - t.start) / 1000, ascent: heights?.ascent ?? 0, descent: heights?.descent ?? 0 },
+  };
 }
 
 export const PROFILE_GROUP = { car: 'car', drive: 'car', bike: 'bike', road: 'bike', tour: 'bike', gravel: 'bike', mtb: 'bike', foot: 'foot', walk: 'foot', hike: 'foot' };

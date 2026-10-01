@@ -20,7 +20,8 @@ import { tracks, sameActivity, trackEnd } from './tracks.js';
 import { tours } from './store.js';
 
 const VALUES = ['hr', 'cad', 'pow'];
-const hasValues = (t, k) => Array.isArray(t[k]) && t[k].some((v) => v > 0);
+// Karteikarte (Weg liegt nur im Ordner): sie weiß, welche Messwerte die Datei hat
+const hasValues = (t, k) => (t.stub ? !!t.has?.includes(k) : Array.isArray(t[k]) && t[k].some((v) => v > 0));
 
 /** Wie viel steckt drin? – der Reichste wird vorgeschlagen */
 function weight(t) {
@@ -46,7 +47,7 @@ export function merge(keep, other) {
   if (other.source && Object.keys(other.source).some((k) => out.source?.[k] === undefined)) out = { ...out, source: { ...other.source, ...out.source } };
   if (!out.description && other.description) out = { ...out, description: other.description };
   for (const k of VALUES) {
-    if (hasValues(out, k) || !hasValues(other, k)) continue;
+    if (hasValues(out, k) || !hasValues(other, k) || out.stub || other.stub) continue;
     const v = valuesAt(other, k, out);
     if (v) out = { ...out, [k]: v };
   }
@@ -96,7 +97,9 @@ export async function removeDuplicates(keepIds = []) {
   const chosen = new Set(keepIds);
   const found = await findDuplicates();
   let n = 0;
-  for (const group of found.tracks) {
+  for (const cards of found.tracks) {
+    // Ganz holen, was nur im Ordner liegt – sonst käme sein Puls nicht mit
+    const group = await Promise.all(cards.map((t) => tracks.full(t).catch(() => t)));
     const keep = group.find((t) => chosen.has(t.id)) ?? group[0];
     const rest = group.filter((t) => t !== keep);
     const merged = rest.reduce(merge, keep);

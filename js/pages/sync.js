@@ -4,7 +4,9 @@
  *   Ordner          ohne Ordner: synchronisieren (verbinden), einmal
  *                   importieren, als ZIP exportieren; mit Ordner: welcher,
  *                   jetzt abgleichen, ändern, exportieren, trennen; automatisch:
- *                   aus, beim Öffnen, beim Öffnen und alle 30 Minuten; letzter
+ *                   aus, beim Öffnen, beim Öffnen und alle 30 Minuten; „In der
+ *                   App behalten“ (letzte 30/90/365 Tage oder alles – Älteres
+ *                   liegt nur im Ordner, in der App die Karteikarte); letzter
  *                   Abgleich, Fehler, Ordnerstruktur erklärt (data/folder.js) –
  *                   ohne Ordner-Zugriff (Firefox, Safari): nur importieren
  *                   und exportieren
@@ -16,7 +18,7 @@ import { mountAppBar } from '../ui/appbar.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { esc, fmtDistance, fmtDuration } from '../core/geo.js';
 import { download } from '../data/store.js';
-import { restore, trackEnd, sameTrack } from '../data/tracks.js';
+import { restore, trackEnd, sameTrack, tracks } from '../data/tracks.js';
 import { folder, zipBackup, restoreZip, importFolder, syncSummary } from '../data/folder.js';
 import { healthAvailable, healthStatus, healthSync, syncHealth, healthSyncing, appName } from '../services/health.js';
 import { showPermissions } from '../ui/permissions.js';
@@ -32,6 +34,7 @@ let progress = null;        // Health Connect: { i, n }
 const nativeHere = !!window.__TAURI__?.core;
 
 const AUTO = [['off', 'Aus – nur von Hand'], ['start', 'Beim Öffnen von WMap'], ['every30', 'Beim Öffnen und alle 30 Minuten']];
+const KEEP = [['30', 'Letzte 30 Tage'], ['90', 'Letzte 90 Tage'], ['365', 'Letztes Jahr'], ['all', 'Alles']];
 const autoSelect = (name, value, hint) => `<label class="settings-select">
     <span><strong>Automatisch</strong><small>${esc(hint)}</small></span>
     <select name="${name}">${AUTO.map(([v, l]) => `<option value="${v}" ${v === value ? 'selected' : ''}>${l}</option>`).join('')}</select>
@@ -111,6 +114,8 @@ async function folderHtml() {
   }
   const again = i.permission !== 'granted';
   const busy = folder.busy || connecting;
+  const list = await tracks.all().catch(() => []);
+  const shelf = { total: list.length, cards: list.filter((t) => t.stub).length };
   const p = folder.progress;
   return `<section>
     <h3><span class="msr">folder_open</span> Ordner</h3>
@@ -128,6 +133,11 @@ async function folderHtml() {
       <button type="button" class="button" data-act="disconnect"><span class="msr">link_off</span> Trennen</button>
     </div>
     ${autoSelect('folder-auto', folder.auto, 'Beim Öffnen gleicht WMap ab und kurz nach jeder Änderung; auf Wunsch zusätzlich alle 30 Minuten, solange WMap offen ist.')}
+    <label class="settings-select">
+      <span><strong>In der App behalten</strong><small>Aufgezeichnete Touren aus dieser Zeit liegen ganz in der App, ältere nur im Ordner – in der App bleibt eine Karteikarte (Name, Strecke, Zeit, grober Verlauf), der Rest kommt beim Öffnen aus dem Ordner.
+        Was du in „Meine Touren“ als „offline verfügbar“ markierst, bleibt immer ganz in der App. Geplante Touren bleiben es ohnehin.${shelf.cards ? ` Gerade: ${shelf.cards} von ${shelf.total} nur im Ordner.` : ''}</small></span>
+      <select name="folder-keep">${KEEP.map(([v, l]) => `<option value="${v}" ${v === folder.keep ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    </label>
     ${TREE}
   </section>`;
 }
@@ -169,7 +179,7 @@ const dupOrigin = (t) => (t.kind === 'health' ? `Health Connect${t.source?.app ?
   : t.kind === 'gpx' ? 'GPX-Datei' : t.kind === 'nav' ? 'Bei der Navigation aufgezeichnet' : 'Mit WMap aufgezeichnet');
 const dupFacts = (t) => [
   fmtDistance(t.length), fmtDuration((trackEnd(t) - t.start) / 1000),
-  ...[['hr', 'Puls'], ['cad', 'Frequenz'], ['pow', 'Leistung']].filter(([k]) => t[k]?.some((v) => v > 0)).map(([, l]) => l),
+  ...[['hr', 'Puls'], ['cad', 'Frequenz'], ['pow', 'Leistung']].filter(([k]) => (t.stub ? t.has?.includes(k) : t[k]?.some((v) => v > 0))).map(([, l]) => l),
 ].join(' · ');
 const dupDate = (t) => new Date(t.start).toLocaleString('de-DE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -246,7 +256,7 @@ root.addEventListener('click', async (e) => {
     render();
   }
   if (act === 'disconnect') {
-    const v = await ask({ icon: 'link_off', title: 'Ordner trennen?', text: 'WMap gleicht dann nicht mehr ab. Die Dateien im Ordner und alles in WMap bleiben, wie es ist.',
+    const v = await ask({ icon: 'link_off', title: 'Ordner trennen?', text: 'WMap gleicht dann nicht mehr ab. Die Dateien im Ordner bleiben, wie sie sind; Touren, die nur im Ordner lagen, holt WMap vorher in die App.',
       buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Trennen', primary: true }] });
     if (v !== 'yes') return;
     await folder.disconnect();
@@ -293,6 +303,12 @@ root.addEventListener('change', async (e) => {
     // Wahl merken – die Seite zeichnet sich bei jedem Abgleich neu
     for (const el of t.closest('.dup-group').querySelectorAll('input')) dupKeep.delete(el.value);
     dupKeep.add(t.value);
+    return;
+  }
+  if (t.name === 'folder-keep') {
+    folder.keep = t.value;
+    toast(t.value === 'all' ? 'Alle Touren bleiben ganz in der App' : `In der App: ${Object.fromEntries(KEEP)[t.value].toLowerCase()} – Älteres liegt im Ordner`);
+    folder.sync().catch(() => {}).finally(render);
     return;
   }
   const label = Object.fromEntries(AUTO)[t.value];

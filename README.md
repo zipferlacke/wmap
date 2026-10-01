@@ -511,13 +511,34 @@ Die ersten zwei:
 |---|---|---|
 | Was | Touren, die man noch machen will | was man wirklich gefahren/gelaufen ist |
 | Woher | Planer, übernommene bekannte Wege, GPX ohne Zeiten | Aufzeichnen, Navigation, GPX mit Zeiten |
-| Gruppen | Zu Fuß · Rad · Auto | Jahre (je Jahr eine Farbe) |
+| Gruppen | Zu Fuß · Rad · Auto | Jahre, jede Tour in der Farbe ihrer Art |
 | Zahlen | Strecke, Anstieg | Strecke, Zeit in Bewegung, Tempo, Puls |
 
 - **Oben:** Tour planen bzw. Aufzeichnen und GPX importieren (doppelte Wege
   werden erkannt), darunter die Suche (Name, Ort, Jahr, Monat, Profil …),
   dann je Gruppe eine Tabelle – Jahre bzw. Gruppen als Aufklapp-Zeile mit
   Pfeil. Überfahren einer Zeile hebt die Linie auf der Karte hervor.
+  **GPX-Dateien lassen sich auf die Seite ziehen** (Drag & Drop): unter
+  „Geplant“ werden es Touren, sonst aufgezeichnete Touren.
+- **Aufgezeichnet – Art, Farbe, Alter** (`js/data/track-look.js`):
+  - Jede Tour hat eine **Art** (Gehen, Wandern, Laufen, Rad, Auto, Rudern …):
+    aus Health Connect, bei eigenen Aufzeichnungen aus dem Profil, aus einer
+    fremden GPX-Datei, wenn sie sie in `<type>` nennt (running, cycling …) –
+    oder von Hand gewählt. Ohne Art heißt sie nur „GPX“, mit neutralem
+    Symbol in Grau.
+  - **Farbe:** die der Art (Gehen orange, Rad grün, Rudern petrol, Auto blau
+    …) oder eine eigene je Tour. **Je älter, desto blasser:** bis einen
+    Monat voll, dann in Monatsschritten bis 0,4 ab zwei Jahren.
+  - **Zeile:** Symbol der Art in ihrer Farbe, Name, darunter Datum · Art ·
+    Herkunft (ohne Uhrzeit) und kleine Symbole: Gesundheitsdaten (Puls,
+    Frequenz, Leistung), offline verfügbar, liegt im Ordner. Rechts das
+    **Auge der Zeile**: diese eine Tour auf der Karte aus- bzw. einblenden.
+  - **Auf der Karte** liegt, was in den eingestellten Zeitraum fällt
+    (Einstellungen → Daten: alle · dieses Jahr · letzte 365 · letzte 30
+    Tage). Das **Auge am Jahr** blendet ein Jahr ein oder aus, das Auge an
+    der Zeile (und „Auf der Karte“ in der Tour) eine einzelne – das geht
+    vor; Jahre ohne Sichtbares sind
+    zugeklappt, das Auge durchgestrichen. Die Suche zeigt alle Treffer.
 - **Karte:** nur der aktive Reiter. Weit herausgezoomt (unter Zoom 9) je
   Tour ein Punkt am Start, nahe beieinander zusammengefasst mit der Anzahl
   (antippen zoomt hinein); näher die Linien. Die gewählte Tour trägt
@@ -533,10 +554,33 @@ Die ersten zwei:
     **Diagramm** mit Umschalter: Höhe, Tempo, Puls, Schritt- bzw.
     Trittfrequenz, Leistung – nur, was gemessen wurde; Zeiger im Diagramm
     und auf der Linie zeigen dieselbe Stelle.
-    **Runden** zu 1, 2 oder 5 km (gemerkt): Zeit, Tempo (zu Fuß als min/km),
+    **Runden** zu 1, 2 oder 5 km (gemerkt; Rudern und Paddeln 500 m, 1, 2 km):
+    Zeit, Tempo (zu Fuß als min/km, Rudern je 500 m, Schwimmen je 100 m),
     Ø Puls, Anstieg; die schnellste grün, die langsamste rot, eine Runde
     antippen hebt sie auf der Karte hervor (`js/data/track-stats.js`).
-    Knöpfe: Als Tour speichern, Als Tour teilen, GPX, Löschen.
+    Die Frequenz heißt je Art Schritt-, Tritt-, Schlag- bzw. Zugfrequenz.
+    (Zepp liefert über Health Connect fürs Rudern nur Puls und Strecke –
+    eine Schlagfrequenz gibt es dort nicht.)
+    **Aussehen:** Art wählen, Farbe (die der Art, eine von zwölf oder frei),
+    „Auf der Karte“ ein/aus und – mit verbundenem Ordner – „Offline
+    verfügbar“ (bleibt ganz in der App, siehe [15](#15-sicherung--synchronisation-ordner-health-connect)).
+    Art, Farbe und Ausblenden stehen in der GPX-Datei (`<wmap:track sport
+    color hidden …/>`) und gelten damit auf allen Geräten.
+    Knöpfe:
+    - **Navigieren** (`index.html?track=ID&start`): der Verlauf als Punkte,
+      dazwischen wird neu gerechnet – wie „Tour starten“ bei einer geplanten.
+    - **Als Planung öffnen:** der Verlauf als neue Tour im Planer
+      (`tour.html#t=…`) – gespeichert wird erst dort.
+    - **Teilen:** die Aufzeichnung selbst, nicht nur ihr Verlauf – Strecke,
+      Zeiten und Tempo, dazu nach Wahl Puls, Frequenz, Leistung (Haken im
+      Dialog). Als **Link** (`wege.html#weg=…`, alles gepackt in der Adresse,
+      lange Wege auf 500 Punkte ausgedünnt, `js/data/track-share.js`): wer ihn
+      öffnet, sieht die Tour mit Diagrammen und kann sie „Bei mir speichern“.
+      Oder als **GPX-Datei** (Teilen-Menü des Geräts, sonst speichern).
+    - GPX, Löschen.
+    Liegt die Tour nur im Ordner, zeigt die Seite erst die Karteikarte und
+    holt dann alle Punkte; ist der Ordner nicht erreichbar, bleiben Zahlen
+    und grober Verlauf mit einem Hinweis.
     Puls, Frequenz und Leistung stehen je Punkt am Weg und gehen als
     GPX-Erweiterung (gpxtpx:hr/cad, power) mit in den verbundenen Ordner;
     beim Ausdünnen bleibt mindestens alle 30 s ein Punkt.
@@ -544,8 +588,8 @@ Die ersten zwei:
     Höhenprofil. Knöpfe: **Tour starten** (Karte mit den Punkten der Tour
     als Route, Profil passend – Wandern → zu Fuß, Rennrad → Rad –, die
     Navigation startet von selbst: `index.html?tour=ID&start`; sie wird
-    immer unter Aufgezeichnete Touren gespeichert), Im Planer öffnen,
-    Teilen, GPX, Löschen.
+    vorher fragt WMap, ob die Tour aufgezeichnet werden soll), Im Planer
+    öffnen, Teilen, GPX, Löschen.
 
 ## 11. Tour planen
 
@@ -609,9 +653,16 @@ Die ersten zwei:
   **4 m** bewegt hat. Stehzeiten zählen nicht zur Bewegungszeit.
 - Nach Absturz oder Neuladen geht es weiter (bis 12 Stunden).
 - Beim Stopp einen Namen geben oder verwerfen. Gespeichert wird nur auf dem
-  Gerät. Navigationen einer geplanten Tour (Meine Touren → Tour starten)
-  werden immer aufgezeichnet, andere Navigationen nur mit Einstellungen →
-  „Jede Navigation merken“ (Standard: aus).
+  Gerät.
+- **In der Navigation:** Startet man eine Tour (geplant: „Tour starten“,
+  aufgezeichnet: „Navigieren“), fragt WMap vorher **„Tour aufzeichnen?“**
+  (im Auto geht keine Rückfrage – dort wird sie aufgezeichnet). Andere
+  Navigationen werden nur mit Einstellungen → „Jede Navigation merken“
+  aufgezeichnet (Standard: aus). Unterwegs steht rechts oben in der
+  Knopfleiste der **Aufnahme-Knopf**: grau = aus (antippen startet die
+  Aufzeichnung auch nachträglich), rot = läuft, orange = Pause; bei
+  laufender Aufzeichnung öffnet er Pause/Weiter, „Beenden und speichern“
+  und „Verwerfen“ – die Navigation läuft dabei weiter (`js/app/nav.js`).
 - Browser zeichnen im Hintergrund nicht auf – der Bildschirm bleibt an.
 
 ## 13. Entdecken
@@ -801,6 +852,25 @@ WMap/
   Verzeichnis ist nur eine Abkürzung – was da ist, sagt die Liste des
   Ordners; fehlt oder irrt es, wird gelesen. Was gelesen werden muss (erster
   Abgleich eines neuen Geräts), kommt zu viert zugleich.
+- **In der App oder nur im Ordner** („In der App behalten“ auf der Seite:
+  letzte 30 Tage – Standard –, 90 Tage, letztes Jahr, alles; gilt je Gerät).
+  Mit verbundenem Ordner müssen aufgezeichnete Touren nicht doppelt liegen:
+  - Ganz in der App bleiben die Touren aus dem gewählten Zeitraum und alles,
+    was in Meine Touren als **offline verfügbar** markiert ist (`pin`).
+  - Von den älteren bleibt eine **Karteikarte** (`stub`: Name, Zeiten,
+    Strecke, Art, Farbe, grober Verlauf mit höchstens 60 Punkten, welche
+    Messwerte es gibt) – sobald die Datei im Ordner denselben Stand hat.
+    Eine Datei aus einer älteren WMap wird dafür erst neu geschrieben.
+  - Öffnet man so eine Tour, kommen Punkte und Messwerte aus der Datei
+    (`tracks.full` → `readTrack`). Liste, Karte und Suche brauchen den
+    Ordner nicht.
+  - Ändert man die Karteikarte (Name, Art, Farbe), schreibt der Abgleich
+    die Datei aus ihrem Inhalt und der Karteikarte neu – nie aus der
+    Karteikarte allein.
+  - Sicherung und ZIP holen alles ganz; „Trennen“ und „Ordner ändern“ holen
+    vorher alles zurück in die App.
+  - Geplante Touren, Verbindungen und Lesezeichen bleiben immer ganz in der
+    App – sie sind klein, und navigieren soll auch ohne den Ordner gehen.
 - **Von Hand im Ordner:** eine Datei in die Ordnung gelegt → wird
   übernommen und ins Verzeichnis eingetragen; eine Datei gelöscht, die das
   Gerät schon kannte → der Eintrag verschwindet auch in WMap.
@@ -850,9 +920,12 @@ WMap/
     einer älteren WMap zurück, die nur die vereinfachten Punkte enthielt);
     geplante Tour an Verlauf und Name
   - GPX-Dateien von WMap tragen neben den vereinfachten Punkten, was aus
-    allen gemessen wurde (Strecke, Zeit in Bewegung, Spitze) und die Herkunft
-    (`<wmap:track …/>` in `metadata/extensions`) – auf dem nächsten Gerät ist
-    der Weg derselbe, nicht kürzer und nicht nur „GPX“
+    allen gemessen wurde (Strecke, Zeit in Bewegung, Spitze), die Herkunft
+    und das Aussehen (Art, Farbe, ein-/ausgeblendet, Start und Ziel –
+    `<wmap:track …/>` in `metadata/extensions`) – auf dem nächsten Gerät ist
+    der Weg derselbe, nicht kürzer und nicht nur „GPX“. Wieder eingelesen
+    wird so eine Datei Punkt für Punkt übernommen, nicht noch einmal
+    ausgedünnt
   - dieselbe Aktivität aus zwei Quellen (mit der Uhr über Health Connect und
     mit dem Handy aufgezeichnet, oder als GPX in den Ordner gelegt –
     `sameActivity`: Zeiten überlappen zu 80 %, Längen bis 15 % verschieden,
@@ -1141,8 +1214,10 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
   Entwickler Server und Client-ID.
 - **Mitmachen:** Weg aufzeichnen und danach fragen, anonym als Hinweis.
 - **Daten:** Jede Navigation merken (Standard: aus – geplante Touren und
-  „Aufzeichnen“ werden immer gespeichert), Sicherung & Synchronisation,
-  aufgezeichnete Wege, Suchverlauf löschen.
+  „Aufzeichnen“ werden immer gespeichert), **Aufgezeichnete Touren auf der
+  Karte** (alle · dieses Jahr · letzte 365 Tage · letzte 30 Tage, siehe
+  [10](#10-meine-touren-geplant-aufgezeichnet-bus--bahn-orte)), Sicherung &
+  Synchronisation, aufgezeichnete Wege, Suchverlauf löschen.
 
 ## 20. Offline und Datenverbrauch
 
@@ -1200,7 +1275,8 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 
 | Was | Wo | Verlässt das Gerät? |
 |---|---|---|
-| Aufgezeichnete Wege | IndexedDB `wmap` / tracks | nur per Ordner, GPX, Sicherung |
+| Aufgezeichnete Wege | IndexedDB `wmap` / tracks – mit verbundenem Ordner von älteren nur die Karteikarte, der Rest in der GPX-Datei | nur per Ordner, GPX, Sicherung |
+| Für Android Auto: geplante Touren, Lesezeichen, letzte Ziele, ein paar Einstellungen | Android SharedPreferences `wmap_shared` (nur in der Android-App) | nein |
 | Geplante Touren | localStorage `wmap.tours` | nur per Ordner, GPX, Link, Veröffentlichen |
 | Eigene Ebenen, Plugins, Zugangsdaten | IndexedDB / layers | nur „Als Plugin“ |
 | Verbundener Ordner | IndexedDB / kv | nein |
@@ -1224,7 +1300,8 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 | `?geo=geo:51.53,9.93?q=…` | Karten-Link einer anderen App (`geo:`) – Punkt, Punkt mit Namen oder Suche |
 | `?sim`, `?tempo=4` | Navigation simulieren |
 | `?car` | Karte für den Autobildschirm (Android Auto, siehe [23](#23-android-auto)) |
-| `wege.html?tab=geplant`, `?tour=ID`, `?id=ID` | Meine Touren |
+| `?tour=ID&start`, `?track=ID&start` | geplante bzw. aufgezeichnete Tour navigieren |
+| `wege.html?tab=geplant`, `?tour=ID`, `?id=ID`, `#weg=…` | Meine Touren; `#weg=` ist eine geteilte Aufzeichnung |
 | `entdecken.html#wege\|andere`, `?view=lon,lat,zoom` | Entdecken |
 | `offline.html?neu` | Offline-Karten: gleich ein neues Gebiet wählen |
 | `plugins.html?f=layer\|extension\|own\|active`, `?id=…` | Plugins |
@@ -1275,10 +1352,25 @@ Library), `tools/android-einbinden.py` setzt sie ins erzeugte Android-Projekt.
 Die Karte ist die Webversion mit `?car` (`js/car/car.js`, `js/car/drive.js`, `css/app/car.css`)
 in einem eigenen WebView auf der Kartenfläche des Autos (virtuelles Display);
 sie beantwortet die Fragen der Vorlagen – Suche, Kategorien, Ort, Routen,
-Touren – mit derselben Logik wie die App. Weil sie wie die App von
-app.wuefl.de kommt, teilt sie deren Speicher: dieselben Touren und
-Lesezeichen. Die Debug-Fassung lädt sie vom Rechner
-(`adb reverse tcp:8080 tcp:8080`), sonst ebenfalls aus dem Netz.
+Touren – mit derselben Logik wie die App. Die Debug-Fassung lädt sie vom
+Rechner (`adb reverse tcp:8080 tcp:8080`), sonst von app.wuefl.de.
+
+**Dieselben Touren und Lesezeichen wie in der App:** Die fertige App läuft
+wie die Karte im Auto von app.wuefl.de – beide WebViews haben dann
+denselben Browser-Speicher, es gibt nichts abzugleichen. Anders, wenn die
+Adressen verschieden sind: Die Debug-Fassung läuft unter `tauri.localhost`
+(die Karte im Auto vom Rechner), ebenso eine App, die ohne Netz bei ihrer
+eingepackten Kopie bleibt – „Meine Touren“ war dort im Auto leer. Beide
+Seiten gleichen darum über einen gemeinsamen Speicher von Android ab
+(SharedPreferences `wmap_shared`, `WMapAndroid.shareGet/shareSet` in
+`MainActivity.kt` und `car/CarWeb.kt`, `js/data/car-share.js`): geplante
+Touren und ein paar Einstellungen (Routen-Vorlieben, Stimme, Spritpreise)
+von der App ins Auto, Lesezeichen und letzte Ziele in beide Richtungen (je
+Eintrag das Neuere, Gelöschtes bleibt gelöscht). Jede Seite legt ihre
+Adresse dazu; übernommen wird nur von einer anderen Adresse – bei
+gemeinsamem Speicher fasst das Auto nichts an. Die App legt beim Start und
+nach jeder Änderung ab, das Auto liest beim Start und bevor es Touren oder
+Ziele auflistet. Die App muss dafür einmal geöffnet gewesen sein.
 
 Ausprobieren ohne Auto: Android Auto auf dem Handy → Version zehnmal
 antippen → Entwicklereinstellungen → „Unbekannte Quellen“ an (sonst fehlt
@@ -1293,7 +1385,7 @@ Zentral für alle Projekte unter `wuefl_products` – die Skripte liegen neben
 `git-release` in `~/wuefl_profiles/shell_scripts` (im PATH):
 
 ```bash
-tauri-android wmap              # bauen, aufs Handy, Protokoll
+tauri-android wmap              # bauen, aufs Handy, Protokoll (Debug-Fassung: heißt „wmap-Debug“)
 tauri-android wmap build        # nur bauen (auch: clean, install, log, connect)
 tauri-android wmap release      # signiertes AAB (Play Store) + APKs → src-tauri/target/android-release/
 takeshots wmap                  # Screenshots nach appdata/images/

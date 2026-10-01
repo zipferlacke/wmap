@@ -15,7 +15,7 @@ import { trace, trips } from '../data/trace.js';
 import { registerOffline, saveRouteOffline, offlineSetting, rememberNav, forgetNav, savedNav } from '../data/offline.js';
 import { nearestOnLine, pointAt, simplifyTo, fmtDistance, esc, cumulative } from '../core/geo.js';
 import { renderResultList, tilePointsAlong } from './category.js';
-import { $, $$, SIMULATING, chipHtml, current, map, state } from './core.js';
+import { $, $$, CAR, SIMULATING, chipHtml, current, map, state } from './core.js';
 import { askAfterTrip, askContributeOnce } from './mitmachen.js';
 import { alongStart, alongStop, alongFix, alongReroute } from './ask-along.js';
 import { askParking, checkTrafficPassed, reportHere } from './report.js';
@@ -97,6 +97,55 @@ let tourNavigated = null;
 export const navTour = { set: (t) => { tourNavigated = t; } };
 $('.start-nav').addEventListener('click', () => startNav());
 
+/*
+ * Aufzeichnen während der Navigation – Knopf rechts oben in der Knopfleiste:
+ * grau = aus (antippen startet), rot = läuft, orange = Pause; läuft sie,
+ * öffnet der Knopf Pause/Weiter, Beenden (speichern) und Verwerfen.
+ */
+const recButton = $('#nav .nav-rec');
+function paintRec() {
+  const on = recorder.kind === 'nav';
+  recButton.classList.toggle('on', on && !recorder.paused);
+  recButton.classList.toggle('paused', on && recorder.paused);
+  recButton.querySelector('.msr').textContent = on && recorder.paused ? 'pause_circle' : 'radio_button_checked';
+  recButton.title = !on ? 'Aufzeichnen' : recorder.paused ? 'Aufzeichnung pausiert' : 'Aufzeichnung läuft';
+}
+function startRecording() {
+  if (recorder.active || SIMULATING) return false;
+  recorder.start({
+    kind: 'nav', profile: state.profile,
+    name: tourNavigated?.name ?? (navDestination ? `Nach ${navDestination.split(',')[0]}` : ''),
+    from: state.waypoints[0]?.label ?? '', to: navDestination, keep: true,
+  });
+  paintRec();
+  return true;
+}
+recButton.addEventListener('click', async () => {
+  if (recorder.kind !== 'nav') {
+    if (recorder.active) { toast('Es läuft schon eine Aufzeichnung'); return; }
+    if (startRecording()) toast('Aufzeichnung läuft'); else toast('In der Simulation wird nicht aufgezeichnet');
+    return;
+  }
+  const v = await ask({
+    icon: 'radio_button_checked', title: recorder.paused ? 'Aufzeichnung pausiert' : 'Aufzeichnung läuft', className: 'stacked',
+    text: 'Die Navigation läuft dabei weiter.',
+    buttons: [
+      { value: 'pause', label: recorder.paused ? 'Weiter aufzeichnen' : 'Pause', icon: recorder.paused ? 'play_arrow' : 'pause', primary: true },
+      { value: 'stop', label: 'Beenden und speichern', icon: 'stop' },
+      { value: 'discard', label: 'Verwerfen', icon: 'delete' },
+      { value: 'no', label: 'Abbrechen' },
+    ],
+  });
+  if (v === 'pause') { recorder.pause(!recorder.paused); toast(recorder.paused ? 'Aufzeichnung pausiert' : 'Aufzeichnung läuft weiter'); }
+  if (v === 'stop') {
+    const t = await recorder.stop().catch(() => null);
+    toast(t ? `Aufzeichnung gespeichert (${fmtDistance(t.length)})` : 'Zu kurz zum Speichern');
+  }
+  if (v === 'discard') { recorder.discard(); toast('Aufzeichnung verworfen'); }
+  paintRec();
+});
+paintRec();
+
 /** Navigation auf der gewählten Route starten (Knopf „Starten“, Autobildschirm) */
 export async function startNav() {
   const r = current();
@@ -106,14 +155,19 @@ export async function startNav() {
   suggest.hide();
   closeSheet();
   if (!SIMULATING) trips.start({ profile: state.profile, destination: navDestination });
-  // Fahrten merken (Einstellung, Standard aus) – eine geplante Tour immer
-  if (!SIMULATING && (historySetting.get() || tourNavigated) && !recorder.active) {
-    recorder.start({
-      kind: 'nav', profile: state.profile,
-      name: tourNavigated?.name ?? (navDestination ? `Nach ${navDestination.split(',')[0]}` : ''),
-      from: state.waypoints[0]?.label ?? '', to: navDestination, keep: !!tourNavigated,
-    });
+  // Aufzeichnen: jede Navigation, wenn so eingestellt („Jede Navigation merken“, Standard aus).
+  // Eine Tour (geplant oder eine aufgezeichnete noch einmal): vorher fragen – im Auto geht
+  // keine Rückfrage, dort wird sie wie bisher aufgezeichnet. Unterwegs: Knopf rechts (paintRec)
+  let record = historySetting.get();
+  if (tourNavigated && !SIMULATING && !recorder.active) {
+    record = CAR || await ask({
+      icon: 'radio_button_checked', title: 'Tour aufzeichnen?',
+      text: 'Die Strecke landet mit Zeit und Tempo unter „Aufgezeichnete Touren“. Anhalten, beenden oder später starten kannst du unterwegs mit dem Aufnahme-Knopf rechts.',
+      buttons: [{ value: 'no', label: 'Ohne Aufzeichnung' }, { value: 'yes', label: 'Aufzeichnen', icon: 'radio_button_checked', primary: true }],
+    }) === 'yes';
   }
+  if (record) startRecording();
+  paintRec();
   nav.start(r, { profile: state.profile, highways: prefs.highways, targets: state.points.slice(1) });
 }
 

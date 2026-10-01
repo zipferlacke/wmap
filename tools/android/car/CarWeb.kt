@@ -50,9 +50,15 @@ import java.util.Locale
  * an die Seite, Anfragen der Vorlagen als wmapCar.call(…), Antworten und
  * Ereignisse kommen über window.WMapCar.post(typ, json) zurück.
  *
- * Adresse: die Webversion wie in der App (app.wuefl.de, gleicher Speicher –
- * dieselben Touren und Lesezeichen). Die Debug-Fassung nimmt den Rechner
+ * Adresse: die Webversion (app.wuefl.de). Die Debug-Fassung nimmt den Rechner
  * (`adb reverse tcp:8080 tcp:8080`), sonst ebenfalls die Webversion.
+ *
+ * Speicher: Läuft die App unter derselben Adresse (fertige App: beide von
+ * app.wuefl.de), teilen die WebViews den Browser-Speicher – dieselben Touren
+ * und Lesezeichen. Sonst nicht (Debug-Fassung unter tauri.localhost, App ohne
+ * Netz in ihrer eingepackten Kopie): Dann kommen geplante Touren, Lesezeichen
+ * und Ziele über SharedPreferences „wmap_shared“ (WMapAndroid.shareGet/
+ * shareSet hier und in der MainActivity, js/data/car-share.js).
  *
  * Standort: vom Standortdienst des Handys (Fused Location, wie die App über
  * das Standort-Plugin) jede Sekunde an window.__carFix (index.html) – der
@@ -302,7 +308,17 @@ class CarWeb(private val ctx: CarContext, private val onEvent: (String, Any?) ->
     }
   }
 
+  // Gemeinsamer Speicher mit der App (MainActivity.kt) – js/data/car-share.js
+  private val shared by lazy { ctx.getSharedPreferences("wmap_shared", android.content.Context.MODE_PRIVATE) }
+
   inner class Speech {
+    /** Geteilt mit der App: Touren, Lesezeichen, Ziele (JSON-Text; leer, wenn es nichts gibt) */
+    @JavascriptInterface fun shareGet(key: String): String = shared.getString(key, "") ?: ""
+
+    @JavascriptInterface fun shareSet(key: String, value: String) {
+      shared.edit().putString(key, value).apply()
+    }
+
     @JavascriptInterface fun speak(text: String): Boolean {
       val t = tts ?: return false
       if (!ttsReady) return false
