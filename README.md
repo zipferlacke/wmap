@@ -1663,8 +1663,6 @@ tools/android-auto.sh id3       # Android Auto am Rechner (Simulator), siehe Abs
   (`src-tauri/tauri.ci.json` schaltet dafür den beforeBuildCommand ab). Die
   Android-Signatur kommt aus den Secrets (siehe `.secrets/README.md`).
 - Weitere Hinweise: [`tools/README.md`](tools/README.md).
-- **Vor dem Veröffentlichen:** die Liste in [`VEROEFFENTLICHEN.md`](VEROEFFENTLICHEN.md) abarbeiten – Bilder,
-  Texte, wuefl-libs, Version, Tests, App, Git, dann die Reihenfolge beim Veröffentlichen.
 
 ## Entwicklung
 
