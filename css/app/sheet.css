@@ -208,6 +208,17 @@
     font-size: var(--fs-100);
 }
 
+.route-park {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    margin: .1rem 0 .5rem;
+    color: var(--muted);
+    font-size: var(--fs-200);
+    .msr { font-size: 1.15rem; color: #1e6fd9; }
+    &[hidden] { display: none; }
+}
+
 .route-status {
     color: var(--muted);
     &.error { color: var(--clr-danger-600); }

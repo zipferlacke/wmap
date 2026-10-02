@@ -168,7 +168,7 @@ export async function startNav() {
   }
   if (record) startRecording();
   paintRec();
-  nav.start(r, { profile: state.profile, highways: prefs.highways, targets: state.points.slice(1) });
+  nav.start(r, { profile: state.profile, highways: prefs.highways, targets: (state.drive.length ? state.drive : state.points).slice(1) });
 }
 
 /*

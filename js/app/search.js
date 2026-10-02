@@ -13,6 +13,7 @@ import { distance, esc, fmtDistance } from '../core/geo.js';
 import { fmtAbout, roadDistances, ROAD_FIRST } from '../services/routing.js';
 import { runCategory } from './category.js';
 import { $, $$, debounce, map, q, state } from './core.js';
+import { isPoi } from './drive-target.js';
 import { paintPlaceActions, placeWaypoint, showPlace } from './place.js';
 import { openReach } from './reach.js';
 import { enterRoute, setProfile } from './route-plan.js';
@@ -168,7 +169,7 @@ export function savedItems(onPlace, text = '') {
     .sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind)).slice(0, 6).map((p) => ({
     section: SAVED_SECTION, icon: PLACE_KINDS[p.kind]?.icon ?? 'star', title: p.name, point: p.point,
     subtitle: [fixedKind(p) ? '' : p.list && p.list !== DEFAULT_LIST ? p.list : PLACE_KINDS[p.kind]?.label, p.label].filter(Boolean).join(' · '),
-    run: () => onPlace({ type: 'Feature', geometry: { type: 'Point', coordinates: p.point }, properties: { name: p.name } }),
+    run: () => onPlace({ type: 'Feature', geometry: { type: 'Point', coordinates: p.point }, properties: { name: p.name, _poi: !!p.poi } }),
   }));
 }
 
@@ -181,7 +182,7 @@ export function togglePlace(f, point, title, subtitle) {
   const had = places.find(point);
   if (had) { editBookmark(point, title); return; }
   const tags = f.properties._tags;
-  places.save({ kind: tags && isStop(tags) ? 'stop' : 'fav', name: title, label: subtitle, point, ifopt: tags?.['ref:IFOPT'] ?? '' });
+  places.save({ kind: tags && isStop(tags) ? 'stop' : 'fav', name: title, label: subtitle, point, ifopt: tags?.['ref:IFOPT'] ?? '', poi: isPoi(f) });
   paintPlaceActions();
   toast(`In „${DEFAULT_LIST}“ gemerkt`, { action: { label: 'Ändern', run: () => editBookmark(point, title) } });
 }

@@ -95,7 +95,12 @@ Hinweise:
   `screenshot-auto-route{,_light}.png` die Routenwahl mit „Los“ (noch in
   keinem Werbebild). Ablauf: Die Auto-Seite mit `&sim` neu laden (über die
   Entwicklerwerkzeuge der WebView, `chrome://inspect` – dann fährt die
-  Navigation die Route von selbst ab), Ziel wählen, „Los“; etwa 6 s danach
+  Navigation die Route von selbst ab). Der Standort ist dabei nicht der des
+  Handys, sondern fest der Kulturverein Rittmarshausen: in der Konsole
+  `const o = __carFix; __carFix = () => o({ coords: { latitude: 51.4814,
+  longitude: 10.10363, accuracy: 5, speed: 0, heading: null }, timestamp:
+  Date.now() })`. Dann „Göttingen“ suchen (Ortsansicht mit „Los“ = Bild der
+  Routenwahl), „Los“; etwa 6 s danach
   sind die Knöpfe am rechten Rand noch zu sehen. Tag und Nacht:
   `echo day >> ~/.cache/wmap-dhu/eingabe` bzw. `night`. Aufnehmen:
   `echo "screenshot $HOME/.cache/wmap-dhu/x.png" >> ~/.cache/wmap-dhu/eingabe`

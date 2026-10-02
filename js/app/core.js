@@ -36,6 +36,7 @@ export const state = {
   profile: !CAR && PROFILES[local.get('wmap.profile')]?.nav ? local.get('wmap.profile') : 'car',
   waypoints: [],        // { label, point: [lon, lat] | null, me: bool }
   points: [],           // aufgelöste Punkte der letzten Berechnung
+  drive: [],            // dieselben, wie sie gefahren werden: das Ziel ggf. der Parkplatz davor (app/drive-target.js)
   routes: [],
   selected: 0,
   place: null,          // gewählter Ort (Photon-Feature oder daraus gebaut)

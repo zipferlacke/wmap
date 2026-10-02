@@ -267,6 +267,16 @@ Man startet immer mit der Karte.
   schmaler und leicht durchscheinend (`route-main`, `route-alt` in `js/map/map.js`).
   Das Höhenprofil folgt dem in WMap gewählten Thema und zeichnet sich beim Wechsel neu
   (`js/ui/elevation.js`); Gitter und Achsen sind hell wie dunkel dasselbe leichte Grau.
+- **Mit dem Auto zu einem Geschäft, Lokal, einer Praxis …:** Hineinfahren kann man dort nicht – die Route
+  endete an der Straße, die dem Punkt des Orts am nächsten liegt (oft die Rückseite), und „Ziel erreicht“
+  kam dort. Liegt ein Parkplatz direkt am Ort (sein Rand höchstens 75 m vom Punkt, nicht privat), endet die
+  Fahrt jetzt dort: Die Nadel bleibt am Ort, ein „P“ markiert das Ende, im Sheet steht „Die Fahrt endet am
+  Parkplatz davor – 40 m bis …“; Navigation und Neuberechnen fahren denselben Punkt an (`state.drive`).
+  Sonst bleibt alles wie bisher. Gilt für Ziele, die als Ort gewählt wurden (Wegpunkt mit `poi` – Suche,
+  Kategorie, Tipp auf die Karte, damit gemerkte Lesezeichen und letzte Ziele, auch im Auto), nicht für
+  Adressen, Punkte auf der Karte, Zwischenziele oder Orte, in die man hineinfährt (Parkplatz, Tankstelle,
+  Ladesäule). Gefragt wird Overpass (höchstens 2,5 s, kennt „privat“), sonst zählen die Parkplätze aus den
+  Kartenkacheln (`js/app/drive-target.js`).
 - **Routenserver antwortet nicht:** Die Abfrage versucht es nach 1,5 s von selbst noch einmal.
   Klappt auch das nicht, steht statt „Load failed“ ein verständlicher Satz da (Server nicht
   erreichbar, überlastet oder kein Netz) und darunter der Knopf **Erneut versuchen**

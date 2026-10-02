@@ -15,6 +15,7 @@ import { editPlace, addPlace } from '../osm/edit.js';
 import { bboxAround, esc } from '../core/geo.js';
 import { clearCategory, runCategory } from './category.js';
 import { $, afterLayout, chipHtml, current, extentToBounds, fitTo, lastHl, map, markerEl, parseTags, q, releaseLock, sheet, showHl, state, viewPadding } from './core.js';
+import { isPoi } from './drive-target.js';
 import { showLayerInfo } from './map-clicks.js';
 import { nav } from './nav.js';
 import { clearReach, openReach, reach } from './reach.js';
@@ -181,7 +182,7 @@ export function paintPlaceActions() {
   if (!f) return;
   const point = f.geometry.coordinates;
   const label = f.properties._point ? 'Punkt auf der Karte' : geocode.describe(f).title;
-  const wp = { label, point, me: false };
+  const wp = { label, point, me: false, ...(isPoi(f) ? { poi: true } : {}) };
   const toRoute = (fn) => () => { if (stack.at(-1)?.view === 'place') back(); fn(); };
   let list;
   if (nav.active) {
@@ -272,7 +273,7 @@ export function clearPlace() {
   showHl({});
 }
 
-export const placeWaypoint = (f) => ({ label: geocode.describe(f).title, point: f.geometry.coordinates, me: false });
+export const placeWaypoint = (f) => ({ label: geocode.describe(f).title, point: f.geometry.coordinates, me: false, ...(isPoi(f) ? { poi: true } : {}) });
 
 /** Feature im Photon-Format aus einem Overpass-Punkt (Kategorie-Treffer). */
 export function featureFromPoint(p) {

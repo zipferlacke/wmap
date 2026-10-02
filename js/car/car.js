@@ -34,6 +34,7 @@ import { PROFILES } from '../core/config.js';
 import { fmtAbout, maneuverIcon, roadDistances, ROAD_FIRST } from '../services/routing.js';
 import { current, fitTo, map, parseTags, showHl, state } from '../app/core.js';
 import { tilePoints } from '../app/category.js';
+import { isPoi } from '../app/drive-target.js';
 import { clearPlace, featureFromPoint, showPlace } from '../app/place.js';
 import { enterRoute, leaveRouteMode, setProfile } from '../app/route-plan.js';
 import { clearRoutes, computeRoutes, fitRoute, rememberRoute, selectRoute } from '../app/route-results.js';
@@ -290,7 +291,7 @@ function savedRows(text = '', limit = 6) {
     .sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind))
     .slice(0, limit)
     .map((p) => {
-      const f = { type: 'Feature', geometry: { type: 'Point', coordinates: p.point }, properties: { name: p.name, _point: true } };
+      const f = { type: 'Feature', geometry: { type: 'Point', coordinates: p.point }, properties: { name: p.name, _point: true, _poi: !!p.poi } };
       const m = dist(p.point);
       return {
         ...row(f), kind: 'target', place: p.kind, icon: PLACE_KINDS[p.kind]?.icon ?? 'star', color: KIND_COLOR[p.kind] ?? null,
@@ -347,10 +348,11 @@ async function routeTo(key) {
   const f = hits.get(key);
   if (!f) throw new Error('Ort nicht mehr bekannt');
   const title = f.properties._point ? f.properties.name : geocode.describe(f).title;
-  return routeToPoint(f.geometry.coordinates, title);
+  return routeToPoint(f.geometry.coordinates, title, isPoi(f));
 }
 
-async function routeToPoint(point, label) {
+/** `poi`: ein Geschäft, Lokal … – die Fahrt endet am Parkplatz davor (app/drive-target.js) */
+async function routeToPoint(point, label, poi = false) {
   if (nav.active) nav.stop();
   pauseDrive();
   clearPlace();
@@ -362,7 +364,7 @@ async function routeToPoint(point, label) {
   setProfile('car');
   // Der Standort läuft im Auto ständig mit – nicht erst auf eine neue Meldung warten
   const from = state.position ? { label: 'Mein Standort', point: state.position, me: false } : { label: 'Mein Standort', point: null, me: true };
-  enterRoute({ waypoints: [from, { label, point, me: false }], push: false });
+  enterRoute({ waypoints: [from, { label, point, me: false, ...(poi === true ? { poi: true } : {}) }], push: false });
   return routesReady();
 }
 
@@ -547,7 +549,7 @@ const methods = {
       .map((r) => r.to).filter((t) => t?.point && !t.me)
       .filter((t) => { const k = t.point.map((v) => v.toFixed(4)).join(); if (seen.has(k)) return false; seen.add(k); return true; })
       .slice(0, 6)
-      .map((t) => ({ ...row({ type: 'Feature', geometry: { type: 'Point', coordinates: t.point }, properties: { name: t.label, _point: true } }), kind: 'target', icon: 'history' }));
+      .map((t) => ({ ...row({ type: 'Feature', geometry: { type: 'Point', coordinates: t.point }, properties: { name: t.label, _point: true, _poi: !!t.poi } }), kind: 'target', icon: 'history' }));
   },
   /** „Ziel wählen“: Zuhause, Arbeit, Lesezeichen, zuletzt gefahren */
   async targets() {
@@ -563,7 +565,7 @@ const methods = {
     const f = hits.get(key);
     if (!f) return false;
     const title = f.properties._point ? f.properties.name : geocode.describe(f).title;
-    places.save({ kind: 'fav', name: title, point: f.geometry.coordinates });
+    places.save({ kind: 'fav', name: title, point: f.geometry.coordinates, poi: isPoi(f) });
     return true;
   },
   routeTo,

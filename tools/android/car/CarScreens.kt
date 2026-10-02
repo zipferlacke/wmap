@@ -722,7 +722,8 @@ class PlaceScreen(ctx: CarContext, private val s: WMapSession, place: JSONObject
       val first = listOf(p.optString("type"), chosen?.optString("title") ?: p.optString("distText")).filter { it.isNotEmpty() }.joinToString(" · ")
       pane.addRow(Row.Builder().setTitle(first.ifEmpty { "Ort" }).apply {
         p.optString("address").takeIf { it.isNotEmpty() }?.let { addText(it) }
-        if (list != null && list.size > 1) addText("${list.size - 1} weitere ${if (list.size == 2) "Route" else "Routen"} – auf der Karte antippen")
+        // Kurz: Die Zeile wird im Auto nach rund 28 Zeichen abgeschnitten
+        if (list != null && list.size > 1) addText("+${list.size - 1} ${if (list.size == 2) "Route" else "Routen"} · Karte antippen")
         p.optString("png").takeIf { it.isNotEmpty() }?.let { setImage(CarIcons.png(it)) }
       }.build())
       p.optString("status").takeIf { it.isNotEmpty() }?.let { st ->

@@ -96,11 +96,12 @@ export const places = {
   /** Orte einer Liste (ohne Zuhause/Arbeit) */
   inList: (list) => read().places.filter((p) => !fixed(p.kind) && (p.list || DEFAULT_LIST) === list),
   /** Zuhause/Arbeit gibt es nur einmal – neu setzen ersetzt. `name` darf frei sein („Oma“, „Verein“ …) */
-  save({ kind = 'fav', name, label = '', point, ifopt = '', list = DEFAULT_LIST }) {
+  save({ kind = 'fav', name, label = '', point, ifopt = '', list = DEFAULT_LIST, poi = null }) {
     const d = read();
     const at = (p) => Math.abs(p.point[0] - point[0]) < 1e-5 && Math.abs(p.point[1] - point[1]) < 1e-5;
     const old = d.places.find((p) => (fixed(kind) ? p.kind === kind : at(p) && p.kind === kind));
-    const p = { id: old?.id ?? newId(), kind, name, label, point, ifopt, ...(fixed(kind) ? {} : { list: list || DEFAULT_LIST }), updated: Date.now() };
+    // `poi`: ein Geschäft, Lokal … – mit dem Auto endet die Fahrt am Parkplatz davor (app/drive-target.js)
+    const p = { id: old?.id ?? newId(), kind, name, label, point, ifopt, ...(fixed(kind) ? {} : { list: list || DEFAULT_LIST }), ...((poi ?? old?.poi) ? { poi: true } : {}), updated: Date.now() };
     d.places = [...d.places.filter((x) => x !== old), p];
     write(d);
     return p;
