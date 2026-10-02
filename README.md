@@ -1639,7 +1639,7 @@ tools/android-auto.sh id3       # Android Auto am Rechner (Simulator), siehe Abs
 - **Release fürs Hochladen:** braucht einmalig den Upload-Schlüssel in
   `.secrets/` (weder in Git noch per FTP auf dem Server). Wie er angelegt
   und für GitHub Actions hochgeladen wird, steht in
-  [`.secrets/README.md`](.secrets/README.md); fehlt er, zeigt auch
+  `.secrets/README.md` (liegt wie der ganze Ordner nur lokal, nicht in Git); fehlt er, zeigt auch
   `tauri-android wmap release` die Schritte. Gradle signiert damit AAB und
   APKs selbst. Die Version (versionCode) kommt aus
   `src-tauri/tauri.conf.json` – vor jedem Upload erhöhen.
@@ -1661,7 +1661,7 @@ tools/android-auto.sh id3       # Android Auto am Rechner (Simulator), siehe Abs
   `-x86_64`) und `wmap-android.aab`. `wuefl-libs` holt `.github/actions/wuefl-libs` (neuester Tag),
   die Web-Dateien kopiert je Job `src-tauri/web-kopieren.sh`
   (`src-tauri/tauri.ci.json` schaltet dafür den beforeBuildCommand ab). Die
-  Android-Signatur kommt aus den Secrets (siehe `.secrets/README.md`).
+  Android-Signatur kommt aus den Secrets (siehe `.secrets/README.md`, nur lokal).
 - Weitere Hinweise: [`tools/README.md`](tools/README.md).
 
 ## Entwicklung
