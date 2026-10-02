@@ -16,6 +16,7 @@ Suchen und Route
 Navigation
 • Sprachansagen zum richtigen Zeitpunkt, Fahrspuren, Tempolimit und Ankunftszeit
 • Kacheln entlang der Route werden vorab geladen, damit Funklöcher nicht auffallen
+• Mit dem Auto zu einem Geschäft oder Lokal: Die Fahrt endet am Parkplatz direkt davor
 • Bild in Bild: Karte, Abbiegepfeil und Entfernung bleiben im Mini-Fenster sichtbar
 
 Android Auto
