@@ -88,9 +88,16 @@ Hinweise:
   antworten müssen. Ist ein Bild leer oder halb fertig, dort `wait` erhöhen.
 - Overpass ist manchmal überlastet; dann fehlen in Bild 2 und 6 die Flächen
   bzw. Treffer – einfach das eine Bild noch einmal aufnehmen.
-- **Android Auto** (`screenshot-auto{,_light}.png`, 1920×720, für die
-  Werbebilder `*-6-auto`) nimmt takeShots nicht auf: im Simulator
-  (`tools/android-auto.sh id3`) eine Navigation fahren, dann
+- **Android Auto** (1920×720) nimmt takeShots nicht auf – die Bilder kommen
+  aus dem Simulator (`tools/android-auto.sh id3`, Handy am Kabel):
+  `screenshot-auto{,_light}.png` zeigen die Navigation (für die Werbebilder
+  `*-6-auto` und `auto-tag.webp` auf der Webseite),
+  `screenshot-auto-route{,_light}.png` die Routenwahl mit „Los“ (noch in
+  keinem Werbebild). Ablauf: Die Auto-Seite mit `&sim` neu laden (über die
+  Entwicklerwerkzeuge der WebView, `chrome://inspect` – dann fährt die
+  Navigation die Route von selbst ab), Ziel wählen, „Los“; etwa 6 s danach
+  sind die Knöpfe am rechten Rand noch zu sehen. Tag und Nacht:
+  `echo day >> ~/.cache/wmap-dhu/eingabe` bzw. `night`. Aufnehmen:
   `echo "screenshot $HOME/.cache/wmap-dhu/x.png" >> ~/.cache/wmap-dhu/eingabe`
   und das Auto-Bild herausschneiden (`magick x.png -crop 1920x720+0+180`).
   Die Rahmen setzt `takeshots wmap compose` (Element `display`).

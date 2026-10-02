@@ -1638,7 +1638,9 @@ tools/android-auto.sh id3       # Android Auto am Rechner (Simulator), siehe Abs
   mit „Server nicht erreichbar“ ab, wenn der nicht läuft. Welches Bild was
   zeigt und welche acht Werbebilder in den Play Store gehören, steht in
   [`tools/README.md`](tools/README.md); die Store-Texte liegen in
-  `appdata/store/de-DE/`.
+  `appdata/store/de-DE/`. Die Bilder aus Android Auto kommen aus dem
+  Simulator: Navigation (`screenshot-auto*.png`) und Routenwahl mit „Los“
+  (`screenshot-auto-route*.png`), je Tag und Nacht.
 - **GitHub Actions** (`.github/workflows/build.yml`, wie bei WKeePass): ein Tag
   `v*` (von `git-release`) baut Windows (.exe), macOS (.dmg), Linux (RPM,
   AppImage, je x86_64/aarch64) und Android (AAB + APKs) und hängt alles an
