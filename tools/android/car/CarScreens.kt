@@ -144,15 +144,20 @@ private fun row(o: JSONObject, click: () -> Unit): Row {
   val b = Row.Builder().setTitle(o.optString("title").ifEmpty { "Ort" })
   val sub = o.optString("sub")
   val dist = if (o.has("dist") && !o.isNull("dist")) o.optDouble("dist") else null
-  if (dist != null && o.optString("kind") != "category") {
-    val rest = if (sub.firstOrNull()?.isDigit() == true) sub.substringAfter(" · ", "") else sub
-    val t = SpannableString(if (rest.isEmpty()) " " else "  · $rest")
-    t.setSpan(DistanceSpan.create(distance(dist)), 0, 1, Spanned.SPAN_INCLUSIVE_INCLUSIVE)
+  // Ungefähr (Luftlinie): dieselbe Entfernungsangabe des Autos, mit „≈“ davor. Als bloßer Text ging es
+  // nicht – die Liste neben der Karte verlangt an jeder Zeile, die kein Untermenü ist, eine solche Angabe
+  // („All non-browsable rows must have a distance span“, die App stürzte in „In der Nähe“ ab)
+  val about = if (o.has("about") && !o.isNull("about")) o.optDouble("about") else null
+  val m = dist ?: about
+  if (m != null && o.optString("kind") != "category") {
+    val rest = if (sub.firstOrNull()?.isDigit() == true || sub.startsWith("≈")) sub.substringAfter(" · ", "") else sub
+    val pre = if (dist == null) "≈ " else ""
+    val t = SpannableString(pre + if (rest.isEmpty()) " " else "  · $rest")
+    t.setSpan(DistanceSpan.create(distance(m)), pre.length, pre.length + 1, Spanned.SPAN_INCLUSIVE_INCLUSIVE)
     b.addText(t)
   } else {
     if (sub.isNotEmpty()) b.addText(sub)
-    // „≈ 12 km“: ungefähre Entfernung (Luftlinie) – ein Ziel wie die anderen, kein Pfeil zum Weiterblättern
-    if (!sub.startsWith("≈")) b.setBrowsable(true)
+    b.setBrowsable(true)
   }
   o.optString("png").takeIf { it.isNotEmpty() }?.let { b.setImage(CarIcons.png(it)) }
   return b.setOnClickListener(click).build()

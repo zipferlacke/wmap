@@ -211,6 +211,8 @@
 .route-status {
     color: var(--muted);
     &.error { color: var(--clr-danger-600); }
+    /* „Erneut versuchen“ unter der Meldung, wenn der Server nicht erreichbar war */
+    .route-retry { display: flex; margin-top: .6rem; }
 }
 
 [data-view="route"] {
@@ -256,6 +258,9 @@
     height: 11rem;
 
     &.dg {
+        /* Das Diagramm folgt dem Thema von WMap (auch dem fest eingestellten), nicht nur dem des Systems –
+           die Bibliothek setzt sonst selbst „light dark“ und nähme bei fest dunkler App die hellen Farben */
+        color-scheme: inherit;
         --dg-min-height: 9rem;
         --dg-chip-size: .8rem;
         --dg-bg: var(--surface);

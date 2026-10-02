@@ -69,6 +69,7 @@ export async function runCategory(cat, placeText = null, { bounds = null, label 
   const show = (shapes, points, final) => {
     points.forEach((p) => { p.properties.dist = distance(ref, p.geometry.coordinates); });
     points.sort((a, b) => a.properties.dist - b.properties.dist);
+    numberHits(points);
     showHl({ shapes, points });
     $('.cat-sub', view).textContent = !final
       ? `${points.length} gefunden ${area.label} …`
@@ -177,6 +178,16 @@ map.on('moveend', (e) => {
   if (state.category && e.originalEvent && sheet.dataset.current === 'category') $('#search-here').hidden = false;
 });
 
+/**
+ * Nummer je Treffer in der Reihenfolge der Liste – sie steht am Namen („Parkplatz, (3)“) und am Symbol
+ * auf der Karte (map/map.js, Ebenen hl-nr und poi-nr), damit man den Eintrag der Liste auf der Karte
+ * wiederfindet. Nur für die Treffer, die die Liste zeigt.
+ */
+export function numberHits(points, limit = 80) {
+  points.forEach((p, i) => { if (i < limit) p.properties.nr = i + 1; else delete p.properties.nr; });
+  return points;
+}
+
 /** Trefferliste für Kategorie, Erreichbarkeit und „Entlang der Route“. */
 export function renderResultList(ul, points, cat, meta) {
   ul.innerHTML = points.map((p, i) => {
@@ -185,7 +196,7 @@ export function renderResultList(ul, points, cat, meta) {
     const known = info.facts.filter((f) => !f.unknown && !f.value.includes('\n')).slice(0, 2).map((f) => f.value);
     return `<li><button type="button" data-i="${i}">
       <span class="dot msr" style="--c:${c?.color ?? '#e8590c'}">${c?.icon ?? 'location_on'}</span>
-      <span class="sg-text"><strong>${esc(info.name)}</strong>
+      <span class="sg-text"><strong>${esc(info.name)}${p.properties.nr ? `, (${p.properties.nr})` : ''}</strong>
       <small>${esc([meta(p), info.status, ...known].filter(Boolean).join(' · '))}</small></span>
     </button></li>`;
   }).join('');

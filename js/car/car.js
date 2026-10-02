@@ -128,9 +128,9 @@ async function withRoad(rows) {
     const k = at.indexOf(i);
     if (k < 0) return r;
     const m = road?.[k]?.length ?? null;
-    // Genau: `dist` (das Auto zeigt sie als Entfernung); ungefähr: nur im Text, mit „≈“
-    const about = m === null && r.dist !== null && r.dist !== undefined ? fmtAbout(r.dist) : null;
-    return { ...r, dist: m, sub: [m !== null ? fmtDistance(m) : about, r.rest].filter(Boolean).join(' · ') };
+    // Genau: `dist`; ungefähr: `about` (Luftlinie) – das Auto zeigt beide als Entfernung, die ungefähre mit „≈“
+    const air = m === null && r.dist !== null && r.dist !== undefined ? r.dist : null;
+    return { ...r, dist: m, about: air, sub: [m !== null ? fmtDistance(m) : air !== null ? fmtAbout(air) : null, r.rest].filter(Boolean).join(' · ') };
   });
 }
 
@@ -169,11 +169,11 @@ async function openPlace(f) {
 
 /** Was liegt an dieser Stelle der Karte? (wie map-clicks.js, ohne Blatt) */
 function hitAt(x, y) {
-  const layers = ['hl-dot', 'poi-dot', ...BASE_POI_LAYERS].filter((id) => map.getLayer(id));
+  const layers = ['hl-nr', 'poi-nr', 'hl-dot', 'poi-dot', ...BASE_POI_LAYERS].filter((id) => map.getLayer(id));
   const box = [[x - 12, y - 12], [x + 12, y + 12]];
   const hit = layers.length ? map.queryRenderedFeatures(box, { layers })[0] : null;
   if (!hit) return null;
-  if (hit.layer.id === 'hl-dot' || hit.layer.id === 'poi-dot') return featureFromPoint(hit);
+  if (['hl-dot', 'poi-dot', 'hl-nr', 'poi-nr'].includes(hit.layer.id)) return featureFromPoint(hit);
   const ref = osmRef(hit);
   const pr = hit.properties;
   return {
@@ -215,7 +215,8 @@ function showNumbers(rows = []) {
   numbered = rows.map((r) => {
     const el = document.createElement('div');
     el.className = 'car-hit';
-    el.textContent = r.nr;
+    // Symbol der Kategorie und die Nummer aus der Liste
+    el.innerHTML = `<span class="msr">${r.icon ?? 'location_on'}</span><b>${r.nr}</b>`;
     el.style.setProperty('--c', r.color ?? '#1a73e8');
     return { key: r.key, marker: new maplibregl.Marker({ element: el }).setLngLat(r.point).addTo(map) };
   });

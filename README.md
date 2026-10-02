@@ -221,6 +221,13 @@ Man startet immer mit der Karte.
 - **Kategorien** („Parkplatz“, „Bäckerei“, „Fluss“ …): zuerst sofort aus den
   Kartenkacheln (Zoom 14, ohne Netzabfrage), dann ergänzt aus Overpass
   (Flächen, Linien, seltene Kategorien). Restaurants zeigen auch Imbisse.
+- **Treffer mit Nummer:** In jeder Trefferliste (Kategorie, Erreichbarkeit,
+  entlang der Route, in der Navigation) trägt der Eintrag seine Nummer am
+  Namen – „Parkplatz, (3)“ – und steht mit derselben Nummer auf der Karte:
+  eine Pille in der Farbe der Kategorie mit ihrem Symbol und der Nummer,
+  auch an Flächen (`numberHits` in `js/app/category.js`; Ebenen `hl-nr`,
+  `poi-nr`, Bild `hit-<Kategorie>-<Nummer>` in `js/map/map.js`). Treffer,
+  die die Liste nicht mehr zeigt, behalten den Tropfen ohne Nummer.
 - **Ortskarte:** Name, Art, Öffnungszeiten, Adresse, Bild und Kurztext aus
   Wikipedia/Commons, an Bahnhöfen die Abfahrten, an Tankstellen die Preise
   (mit eigenem Tankerkönig-Schlüssel). Knöpfe: **Route**, Teilen,
@@ -258,6 +265,12 @@ Man startet immer mit der Karte.
 - Wo es welche gibt, stehen Alternativen zur Auswahl – mit Zeit, Strecke und Höhenprofil.
   Auf der Karte ist die gewählte Route breit mit weißem Rand, die Alternativen sind etwas
   schmaler und leicht durchscheinend (`route-main`, `route-alt` in `js/map/map.js`).
+  Das Höhenprofil folgt dem in WMap gewählten Thema und zeichnet sich beim Wechsel neu
+  (`js/ui/elevation.js`); Gitter und Achsen sind hell wie dunkel dasselbe leichte Grau.
+- **Routenserver antwortet nicht:** Die Abfrage versucht es nach 1,5 s von selbst noch einmal.
+  Klappt auch das nicht, steht statt „Load failed“ ein verständlicher Satz da (Server nicht
+  erreichbar, überlastet oder kein Netz) und darunter der Knopf **Erneut versuchen**
+  (`request` in `js/services/routing.js`, `routeStatus` in `js/app/route-results.js`).
 - **Entlang der Route** suchen (Tankstelle, Bäckerei …) – ab der aktuellen
   Stelle der Navigation.
 - **Erreichbarkeit** (Suchfeld antippen → „Was ist von hier erreichbar?“, oder
@@ -1428,7 +1441,7 @@ Android Auto nicht zu (Ablenkung). WMap malt einzig die Karte selbst:
 - **In der Nähe:** Eine Kategorie zeigt ihre Treffer als Liste neben der
   Karte, die Karte zoomt dafür auf die nächsten acht heraus (`fitHits`).
   Jeder Treffer trägt eine **Nummer in Klammern hinter dem Namen**
-  („Parkplatz, (3)“ – mit Komma, sie gehört nicht zum Namen) und steht mit derselben Nummer als Punkt auf der Karte (`showNumbers` – statt der
+  („Parkplatz, (3)“ – mit Komma, sie gehört nicht zum Namen) und steht mit derselben Nummer und dem Symbol der Kategorie auf der Karte (`showNumbers` – statt der
   Symbole, die nicht sagen, welcher es ist). Ein Treffer der Liste führt
   direkt zur Routenwahl, ohne die Ortskarte dazwischen; ein Tipp auf den
   nummerierten Punkt öffnet den Ort.

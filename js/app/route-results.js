@@ -64,7 +64,9 @@ export async function computeRoutes() {
   } catch (err) {
     if (err.name === 'AbortError') return;
     clearRoutes({ keepSheet: true });
-    routeStatus(err.message, true);
+    // Netzfehler des Browsers („Load failed“, „Failed to fetch“) nie roh zeigen
+    const net = err instanceof TypeError || /load failed|failed to fetch|networkerror/i.test(err.message ?? '');
+    routeStatus(net ? 'Die Route ließ sich gerade nicht laden – bitte gleich noch einmal versuchen' : err.message, true, { retry: net || !!err.retry });
   }
 }
 
@@ -83,12 +85,18 @@ export function clearRoutes({ keepSheet = false } = {}) {
   if (!keepSheet && sheet.dataset.current === 'route') closeSheet();
 }
 
-function routeStatus(text, error = false) {
+/** `retry`: Server nicht erreichbar o. Ä. – mit Knopf „Erneut versuchen“ (im Auto ohne: dort gibt es keine eigene Oberfläche) */
+function routeStatus(text, error = false, { retry = false } = {}) {
   const view = $('[data-view="route"]');
   const el = $('.route-status', view);
   el.hidden = !text;
   el.textContent = text ?? '';
   el.classList.toggle('error', error);
+  if (retry && !CAR) {
+    const b = Object.assign(document.createElement('button'), { type: 'button', className: 'button route-retry', innerHTML: '<span class="msr">refresh</span> Erneut versuchen' });
+    b.addEventListener('click', () => computeRoutes());
+    el.append(b);
+  }
   view.classList.toggle('loading', !!text && !error);
 }
 

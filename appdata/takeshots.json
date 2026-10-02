@@ -31,6 +31,7 @@
     ]
   },
   "offline": false,
+  "liveThemes": true,
   "shots": [
     {
       "url": "http://localhost:8080/web/wuefl_products/wmap/tools/demo.html",
@@ -82,6 +83,26 @@
       "url": "http://localhost:8080/web/wuefl_products/wmap/index.html?view=9.9365,51.5343,15.4&q=Parkplatz",
       "out": "images/screenshot-{format}-2{theme}.png",
       "steps": [
+        [
+          "wait",
+          8000
+        ],
+        [
+          "until",
+          "!(document.querySelector('.cat-sub')?.textContent ?? '…').endsWith('…')"
+        ],
+        [
+          "until",
+          "!(document.querySelector('.cat-sub')?.textContent ?? '…').endsWith('…')"
+        ],
+        [
+          "until",
+          "!(document.querySelector('.cat-sub')?.textContent ?? '…').endsWith('…')"
+        ],
+        [
+          "until",
+          "!(document.querySelector('.cat-sub')?.textContent ?? '…').endsWith('…')"
+        ],
         [
           "wait",
           12000

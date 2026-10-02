@@ -14,7 +14,7 @@ import { ask, toast } from '../ui/dialogs.js';
 import { trace, trips } from '../data/trace.js';
 import { registerOffline, saveRouteOffline, offlineSetting, rememberNav, forgetNav, savedNav } from '../data/offline.js';
 import { nearestOnLine, pointAt, simplifyTo, fmtDistance, esc, cumulative } from '../core/geo.js';
-import { renderResultList, tilePointsAlong } from './category.js';
+import { numberHits, renderResultList, tilePointsAlong } from './category.js';
 import { $, $$, CAR, SIMULATING, chipHtml, current, map, state } from './core.js';
 import { askAfterTrip, askContributeOnce } from './mitmachen.js';
 import { alongStart, alongStop, alongFix, alongReroute } from './ask-along.js';
@@ -234,6 +234,7 @@ $('.navsearch-cats').addEventListener('click', async (e) => {
   const radius = PROFILES[nav.profile]?.radius ?? 400;
   const render = (points, final) => {
     const ahead = points.filter((p) => p.properties.along > 0).sort((a, b) => a.properties.along - b.properties.along);
+    numberHits(ahead, 60);
     showPois(map, ahead);
     if (!ahead.length) {
       list.innerHTML = `<li class="muted">${final ? `Keine ${esc(cat.label)} vor dir an der Strecke` : `Suche ${esc(cat.label)} vor dir …`}</li>`;

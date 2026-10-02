@@ -39,7 +39,20 @@ Seite legt Touren (Strecken von Valhalla, Zeiten und Puls ausgedacht),
 geplante Touren, Lesezeichen und zwei Offline-Gebiete in den Speicher –
 takeShots nimmt je Lauf ein leeres Profil, darum bei jedem Lauf neu. Nur auf
 localhost; im eigenen Browser geöffnet landen die Beispiele bei den eigenen
-Daten (`tools/demo.html?weg` entfernt sie wieder).
+Daten (`tools/demo.html?weg` entfernt sie wieder). Inhalt: acht aufgezeichnete
+Touren (Rad um Göttingen zum Kerstlingeröder Feld, um Rittmarshausen, in
+Darmstadt vom Woog zum Jagdschloss Kranichstein; dazu Wandern, Laufen,
+Rudern), vier geplante (Weser, Darmstadt, Eichsfeld mit dem Auto,
+Rittmarshausen), Lesezeichen (Kulturverein Rittmarshausen, Alte Feuerwache
+Göttingen, Kerstlingeröder Feld, Listen „Darmstadt“ und „Hannover Urlaub“).
+
+Die Strecken dazu liegen in `tools/demo-strecken.json` – einmal berechnet mit
+`cd test && .venv/bin/python demo_strecken.py` (zehn Routen nacheinander mit
+Pause; neu laufen lassen, wenn sich Wegpunkte in `demo.html` ändern). So
+braucht die Aufnahme den Routenserver für die Beispieldaten nicht: Der ist ein
+Gemeinschaftsdienst und hat diesen Anschluss schon einmal ausgesperrt, als
+zwei Läufe zugleich je zehn Routen auf einmal anfragten. Fehlt die Datei,
+rechnet `demo.html` selbst – nacheinander, nie mehrere zugleich.
 
 ### Werbebilder (`appdata/werbung/`)
 

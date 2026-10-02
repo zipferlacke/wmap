@@ -45,6 +45,8 @@ export class ElevationProfile {
       onHover?.(Number.isFinite(km) ? km : null);
     });
     this.#on('globalout', () => onHover?.(null));
+    // Thema in WMap umgestellt (Einstellung, nicht das System): das Diagramm kennt nur feste Farben – neu zeichnen
+    addEventListener('wmap:theme', () => { if (this.#points.length) this.#diagram.refresh(); });
   }
 
   /**

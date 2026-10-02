@@ -40,13 +40,40 @@ function body(points, profile, { highways = true, alternates = 0, avoid = [], he
   };
 }
 
+/*
+ * Der Routenserver ist ein Gemeinschaftsdienst – ab und zu ist er nicht erreichbar oder lehnt ab (zu viele
+ * Anfragen). Der Browser meldet dann nur „Load failed“ bzw. „Failed to fetch“; damit kann niemand etwas
+ * anfangen. Darum: einmal von selbst wiederholen, danach eine Meldung, die sagt, was los ist – mit
+ * `retry`, damit die Oberfläche „Erneut versuchen“ anbietet (app/route-results.js).
+ */
+const RETRY_MS = 1500;
+function unreachable(busy = false) {
+  const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  const err = new Error(offline ? 'Keine Verbindung zum Netz – für die Route braucht WMap das Internet'
+    : busy ? 'Der Routenserver ist gerade überlastet – bitte gleich noch einmal versuchen'
+      : 'Der Routenserver ist gerade nicht erreichbar – bitte gleich noch einmal versuchen');
+  err.retry = true;
+  return err;
+}
+
 export async function request(payload, signal, endpoint = 'route') {
-  const res = await fetch(`${API.valhalla}/${endpoint}`, {
+  const ask = () => fetch(`${API.valhalla}/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
     signal,
   });
+  let res;
+  try { res = await ask(); } catch (err) {
+    if (err.name === 'AbortError') throw err;
+    await new Promise((ok) => { setTimeout(ok, RETRY_MS); });
+    if (signal?.aborted) throw new DOMException('Abgebrochen', 'AbortError');
+    try { res = await ask(); } catch (again) {
+      if (again.name === 'AbortError') throw again;
+      throw unreachable();
+    }
+  }
+  if (res.status === 429 || res.status >= 502) throw unreachable(true);
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.error) {
     const msg = data.error_code === 442 ? 'Keine Route zwischen diesen Punkten gefunden'
