@@ -98,7 +98,7 @@ with Browser(width=1100, height=1000) as b:
     nav_gone = b.d.execute_async_script("const done = arguments[arguments.length - 1]; caches.keys().then((k) => done(!k.some((x) => x.startsWith('wmap-nav-'))))")
     b.js("document.querySelector('#gebiete .off-remove').click()")
     b.wait("return document.querySelector('dialog[open] button[value=yes]')", 5)
-    asked = b.js("return document.querySelector('dialog[open] h2').innerText.replace(/\\s+/g, ' ').trim()")
+    asked = b.js("return document.querySelector('dialog[open] .uD-title').innerText.replace(/\\s+/g, ' ').trim()")
     b.js("document.querySelector('dialog[open] button[value=no]').click()")
     time.sleep(.5)
     kept = b.js("return JSON.parse(localStorage.getItem('wmap.areas')).length")
