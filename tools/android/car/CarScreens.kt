@@ -808,7 +808,12 @@ class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private va
   private var starting = false
 
   private fun loaded(v: Any?, err: String?) {
-    if (v is JSONObject && (v.optJSONArray("routes")?.length() ?: 0) > 0) { result = v; selected = 0; invalidate() }
+    if (v is JSONObject && (v.optJSONArray("routes")?.length() ?: 0) > 0) {
+      result = v
+      // Die Seite sagt, welche Route gewählt ist (vom Handy gesendet: dieselbe wie dort)
+      selected = maxOf(0, v.optJSONArray("routes").objects().indexOfFirst { it.optInt("id") == v.optInt("selected", -1) })
+      invalidate()
+    }
     else { CarToast.makeText(carContext, err ?: "Keine Route gefunden", CarToast.LENGTH_LONG).show(); screenManager.pop() }
   }
 

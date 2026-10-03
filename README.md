@@ -1453,6 +1453,24 @@ Mit dem Handy am Auto erscheint WMap in Android Auto als Navigations-App.
 Das Auto zeigt dabei nur Googles Vorlagen – eigene Oberflächen lässt
 Android Auto nicht zu (Ablenkung). WMap malt einzig die Karte selbst:
 
+**Ans Auto senden** (Android-App ab 2.2.0, nur solange das Handy mit Android Auto verbunden ist –
+`js/data/car-link.js`, `tools/android/car/CarLink.kt`):
+- **Ort:** in der Ortsansicht der Knopf „Ans Auto“ – im Auto öffnet sich die Routenübersicht dorthin, mit dem
+  Parkplatz davor als Ziel (bei Geschäften …) und „Los“.
+- **Route:** in der Routenplanung das Auto-Symbol neben „Starten“ (nur bei Auto-Profilen) – dieselben Punkte,
+  gewählt ist im Auto die Alternative, die der am Handy gewählten am nächsten kommt (Länge und Fahrzeit;
+  gerechnet wird im Auto neu, ab dessen Standort, wenn die Route bei „Mein Standort“ begann).
+- **Geplante Tour:** in „Meine Touren“ bei fürs Auto geplanten Touren „Ans Auto“ – im Auto wie aus „Meine
+  Touren“ dort.
+- Läuft WMap im Auto schon, übernimmt es sofort; sonst wartet das Gesendete bis zu 15 Minuten, bis WMap im Auto
+  geöffnet wird. Im Auto: `shared` in `js/car/car.js`.
+
+**Geplante Tour verlassen:** Wer bei der Navigation einer geplanten Tour von der Strecke abkommt, wird so schnell
+wie möglich auf sie zurückgeführt – die Neuberechnung geht über einen Punkt der geplanten Strecke ein Stück
+voraus (300 m bis 2 km, je weiter weg, desto weiter vorn; `#rejoin` in `js/nav/navigation.js`, Durchfahrtspunkt
+ohne Halt und ohne Ansage), ab dort wieder wie geplant. Andere Navigationen rechnen wie bisher den schnellsten
+Weg zum Ziel. Gilt am Handy und im Auto; nach einem Neustart der App mitten in der Navigation nicht mehr.
+
 - **Start am Standort:** Die Karte beginnt gleich dort, wo das Auto steht,
   geneigt – nicht beim Globus oder beim letzten Ausschnitt der App. Android
   gibt den letzten bekannten Standort schon mit der Adresse mit

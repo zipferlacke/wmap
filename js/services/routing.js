@@ -18,9 +18,10 @@ export function costingOptions(profile, { highways = true } = {}) {
   return { [p.costing]: opts };
 }
 
-function body(points, profile, { highways = true, alternates = 0, avoid = [], heading = null } = {}) {
+function body(points, profile, { highways = true, alternates = 0, avoid = [], heading = null, through = [] } = {}) {
   const costing = PROFILES[profile].costing;
-  const locations = points.map(([lon, lat]) => ({ lon, lat, type: 'break' }));
+  // `through`: Punkte, über die es ohne Halt geht (kein Zwischenziel, keine Ansage, keine Wende dort)
+  const locations = points.map(([lon, lat], i) => ({ lon, lat, type: through.includes(i) ? 'through' : 'break' }));
   // Fahrtrichtung am Start: Valhalla nimmt dann die Straße, auf der man
   // gerade in diese Richtung fährt – statt einer Wende oder der Gegenfahrbahn
   if (Number.isFinite(heading)) Object.assign(locations[0], { heading: Math.round((heading + 360) % 360), heading_tolerance: 45 });
@@ -168,10 +169,10 @@ export async function getRoutes(points, profile, { highways = true, avoid = [], 
  * Fahrtrichtung am Start zählt. Findet Valhalla in dieser Richtung nichts
  * (Sackgasse, Einbahnstraße), geht es ohne Richtung noch einmal.
  */
-export async function reroute(points, profile, { highways = true, heading = null, signal } = {}) {
+export async function reroute(points, profile, { highways = true, heading = null, through = [], signal } = {}) {
   const car = PROFILES[profile].costing === 'auto';
   if (tooLong(points, profile)) return { ...(await longRoute(points, profile, signal)), noHighway: false };
-  const payload = (h) => body(points, profile, { highways: car ? highways : true, heading: h });
+  const payload = (h) => body(points, profile, { highways: car ? highways : true, heading: h, through });
   let trips;
   try {
     trips = await request(payload(heading), signal);

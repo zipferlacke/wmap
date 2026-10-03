@@ -80,6 +80,7 @@ class WMapSession : Session() {
 
   override fun onCreateScreen(intent: Intent): Screen {
     web = CarWeb(carContext, ::onEvent)
+    CarLink.session = this
     carContext.getCarService(AppManager::class.java).setSurfaceCallback(web)
     navigation.setNavigationManagerCallback(object : NavigationManagerCallback {
       // Das Auto beendet die Navigation (z. B. eine andere App navigiert jetzt)
@@ -88,6 +89,7 @@ class WMapSession : Session() {
     lifecycle.addObserver(object : DefaultLifecycleObserver {
       override fun onDestroy(owner: LifecycleOwner) {
         if (nav.active) navigation.navigationEnded()
+        if (CarLink.session === this@WMapSession) CarLink.session = null
         web.destroy()
       }
     })
@@ -129,6 +131,14 @@ class WMapSession : Session() {
     }
   }
 
+  /** Vom Handy gesendet (CarLink): Ort, Route oder geplante Tour – hier die Routenübersicht mit „Los“ */
+  fun takeShared() {
+    if (!web.isReady) return
+    val json = CarLink.take() ?: return
+    screens.popToRoot()
+    screens.push(RoutePreviewScreen(carContext, this) { done -> web.call("shared", json, done = done) })
+  }
+
   private fun onEvent(type: String, data: Any?) {
     val o = data as? JSONObject
     when (type) {
@@ -137,6 +147,7 @@ class WMapSession : Session() {
           if ((v as? JSONObject)?.optBoolean("navigating") == true) setNav(true, "")
         }
         handleIntent()
+        takeShared()
       }
       "guidance" -> {
         nav.guide = o

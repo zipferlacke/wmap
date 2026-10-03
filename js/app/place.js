@@ -1,6 +1,7 @@
 /**
  * Ort im Sheet: Details, Knöpfe, Bild und Preise; Punkt auf der Karte; Verkehrsmeldung.
  */
+import { carLink, sendToCar } from '../data/car-link.js';
 import { showHighlight } from '../map/map.js';
 import * as geocode from '../services/geocode.js';
 import { byId } from '../core/categories.js';
@@ -197,6 +198,8 @@ export function paintPlaceActions() {
     list = [
       // Route, Teilen, Erreichbar, Merken, Bearbeiten – „Als Start“ gibt es in der Routenplanung
       ['directions', 'Route', true, () => enterRoute({ to: wp })],
+      // Mit Android Auto verbunden: der Ort geht ans Auto – dort Route, Parkplatz davor und „Los“
+      carLink.connected && ['directions_car', 'Ans Auto', false, () => sendToCar({ type: 'place', point, label, poi: !!wp.poi }, toast)],
       ['share', 'Teilen', false, () => share({ title: label, text: label, url: () => placeUrl(point, label) }, toast)],
       ['radar', 'Erreichbar', false, () => openReach({ origin: point, label })],
       [places.find(point) ? 'bookmark_added' : 'bookmark_add', places.find(point) ? 'Gemerkt' : 'Merken', false,

@@ -368,6 +368,39 @@ async function routeToPoint(point, label, poi = false) {
   return routesReady();
 }
 
+/**
+ * Vom Handy gesendet („Ans Auto“, data/car-link.js): ein Ort, die dort geplante Route oder eine geplante Tour.
+ * → wie routeToPoint: die Routenübersicht. Bei einer Route dieselben Punkte wie am Handy; gewählt ist die
+ * Alternative, die der dort gewählten am nächsten kommt (Länge und Fahrzeit) – gerechnet wird hier neu, vom
+ * Standort des Autos aus, wenn die Route am Handy bei „Mein Standort“ begann.
+ */
+async function shared(text) {
+  const p = typeof text === 'string' ? JSON.parse(text) : text;
+  if (p?.type === 'tour') { shareSync(); return tour(p.id); }
+  if (p?.type === 'place') return routeToPoint(p.point, p.label || 'Ziel', !!p.poi);
+  if (p?.type !== 'route' || !(p.waypoints?.length >= 2)) throw new Error('Das Gesendete ließ sich nicht lesen');
+  if (nav.active) nav.stop();
+  pauseDrive();
+  clearPlace();
+  clearHits();
+  reloadPrefs();
+  clearRoutes({ keepSheet: true });
+  shareSync();
+  navTour.set(p.tour ? tours.get(p.tour) ?? null : null);
+  setProfile(PROFILES[p.profile]?.costing === 'auto' ? p.profile : 'car');
+  const waypoints = p.waypoints.map((w) => (w.me || !w.point
+    ? (state.position ? { label: 'Mein Standort', point: state.position, me: false } : { label: 'Mein Standort', point: null, me: true })
+    : { label: w.label, point: w.point, me: false, ...(w.poi ? { poi: true } : {}) }));
+  enterRoute({ waypoints, push: false });
+  const r = await routesReady();
+  if (Number.isFinite(p.length) && state.routes.length > 1) {
+    const off = (x) => Math.abs(x.length - p.length) / Math.max(1, p.length) + Math.abs(x.time - (p.time ?? x.time)) / Math.max(1, p.time ?? x.time);
+    const best = state.routes.reduce((a, b) => (off(b) < off(a) ? b : a));
+    if (best.id !== state.selected) selectRoute(best.id, { fit: true });
+  }
+  return { ...r, selected: state.selected };
+}
+
 /* ── Touren ──────────────────────────────────────────────────────────────── */
 
 /** Fürs Auto geplant? – Wander- und Radtouren gehören nicht auf den Autobildschirm */
@@ -384,7 +417,7 @@ function tourList() {
 /** Geplante Tour als Route (wie „?tour=“ in app.js) – gerechnet wird mit dem Auto */
 async function tour(id) {
   const t = tours.get(id);
-  if (!t?.points?.length) throw new Error('Die Tour gibt es auf diesem Gerät nicht');
+  if (!t?.points?.length) throw new Error('Die Tour ist im Auto noch nicht angekommen – am Handy WMap einmal öffnen');
   if (!forCar(t)) throw new Error('Die Tour ist nicht fürs Auto geplant');
   if (nav.active) nav.stop();
   pauseDrive();
@@ -570,6 +603,7 @@ const methods = {
   },
   routeTo,
   routeToPoint,
+  shared,
   selectRoute(id) { selectRoute(id, { fit: true }); return true; },
   /** Filter der Routenplanung fürs Auto: was vermieden wird (true = vermeiden) */
   routePrefs() {
