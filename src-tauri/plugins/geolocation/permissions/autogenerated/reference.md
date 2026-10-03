@@ -114,6 +114,58 @@ Denies the get_current_position command without any pre-configured scope.
 <tr>
 <td>
 
+`geolocation:allow-notification-state`
+
+</td>
+<td>
+
+Enables the notification_state command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`geolocation:deny-notification-state`
+
+</td>
+<td>
+
+Denies the notification_state command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`geolocation:allow-request-notification`
+
+</td>
+<td>
+
+Enables the request_notification command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`geolocation:deny-request-notification`
+
+</td>
+<td>
+
+Denies the request_notification command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `geolocation:allow-request-permissions`
 
 </td>

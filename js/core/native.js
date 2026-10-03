@@ -152,11 +152,16 @@ export const geo = {
    * Ältere Apps, iOS und Browser kennen das nicht – `start` meldet dann false, und der Bildschirm bleibt an.
    */
   background: {
-    /** → läuft der Dienst? */
-    async start() {
+    /**
+     * → läuft der Dienst? `hint`: danach der Hinweis zur Benachrichtigung, falls sie noch nicht erlaubt ist
+     * (neue Aufzeichnung – nicht beim Weiterlaufen nach einem Seitenwechsel)
+     */
+    async start({ hint = false } = {}) {
       if (!nativeGeo || !/Android/i.test(navigator.userAgent)) return false;
       if (!(await allowed({}))) return false;
-      try { await core.invoke('plugin:geolocation|start_recording'); return true; } catch { return false; }
+      try { await core.invoke('plugin:geolocation|start_recording'); } catch { return false; }
+      if (hint) import('../ui/permissions.js').then((m) => m.recordingNotice()).catch(() => {});
+      return true;
     },
     stop() {
       if (core) core.invoke('plugin:geolocation|stop_recording').catch(() => {});

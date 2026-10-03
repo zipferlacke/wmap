@@ -93,6 +93,10 @@ impl<R: Runtime> Geolocation<R> {
         Ok(())
     }
 
+    pub fn notification(&self, _command: &str) -> crate::Result<serde_json::Value> {
+        Ok(serde_json::json!({ "state": "granted" }))
+    }
+
     pub fn take_recorded(&self) -> crate::Result<serde_json::Value> {
         Ok(serde_json::json!({ "points": [], "running": false }))
     }

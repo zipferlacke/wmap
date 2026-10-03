@@ -54,7 +54,9 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::request_permissions,
             commands::start_recording,
             commands::stop_recording,
-            commands::take_recorded
+            commands::take_recorded,
+            commands::notification_state,
+            commands::request_notification
         ])
         .setup(|app, api| {
             #[cfg(mobile)]

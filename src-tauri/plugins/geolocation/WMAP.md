@@ -28,6 +28,9 @@ Nachgestellt am Gerät: acht `watch_position`, danach bleibt `check_permissions`
   running }`) – Kotlin, `src/commands.rs`, `src/mobile.rs`, `build.rs`; freigegeben in
   `capabilities/mobile.json`. Auf dem Rechner und unter iOS meldet `start_recording` einen Fehler – die Seite
   bleibt dann beim angeschalteten Bildschirm.
+- Befehle `notification_state`, `request_notification` (`{ state: "granted" | "prompt" }`) und die
+  Freigabe-Gruppe `notifications` am Plugin: Das Fenster von Android kommt erst nach dem Hinweis der App
+  (`recordingNotice` in `js/ui/permissions.js`), nicht beim Start des Dienstes.
 - `android/src/main/AndroidManifest.xml` – der Dienst und die Berechtigungen `FOREGROUND_SERVICE`,
   `FOREGROUND_SERVICE_LOCATION`, `POST_NOTIFICATIONS`, `WAKE_LOCK`.
 

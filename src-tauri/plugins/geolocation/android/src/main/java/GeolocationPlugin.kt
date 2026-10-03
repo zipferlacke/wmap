@@ -43,6 +43,8 @@ class ClearWatchArgs {
 
 private const val ALIAS_LOCATION: String = "location"
 private const val ALIAS_COARSE_LOCATION: String = "coarseLocation"
+// WMap: Benachrichtigung des Aufzeichnungs-Dienstes (ab Android 13 eine eigene Freigabe)
+private const val ALIAS_NOTIFICATIONS: String = "notifications"
 
 @TauriPlugin(
     permissions = [
@@ -56,6 +58,11 @@ private const val ALIAS_COARSE_LOCATION: String = "coarseLocation"
             Manifest.permission.ACCESS_COARSE_LOCATION
         ],
             alias = ALIAS_COARSE_LOCATION
+        ),
+        Permission(strings = [
+            "android.permission.POST_NOTIFICATIONS"
+        ],
+            alias = ALIAS_NOTIFICATIONS
         )
     ]
 )
@@ -168,12 +175,8 @@ class GeolocationPlugin(private val activity: Activity): Plugin(activity) {
     @Command
     fun startRecording(invoke: Invoke) {
         try {
-            // Ohne die Freigabe läuft der Dienst trotzdem – die Benachrichtigung steht dann nur in der Liste
-            // der laufenden Apps
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                activity.requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 4711)
-            }
+            // Ohne die Freigabe für Benachrichtigungen läuft der Dienst trotzdem – sie steht dann nur in der
+            // Liste der laufenden Apps. Gefragt wird eigens (requestNotification), nach einem Hinweis der App.
             RecordService.start(activity.applicationContext)
             invoke.resolve()
         } catch (e: Exception) {
@@ -193,6 +196,34 @@ class GeolocationPlugin(private val activity: Activity): Plugin(activity) {
         ret.put("points", RecordService.take())
         ret.put("running", RecordService.running)
         invoke.resolve(ret)
+    }
+
+    private fun notificationState(): JSObject {
+        val ret = JSObject()
+        val on = androidx.core.app.NotificationManagerCompat.from(activity).areNotificationsEnabled()
+        ret.put("state", if (on) "granted" else "prompt")
+        return ret
+    }
+
+    @Command
+    fun notificationState(invoke: Invoke) {
+        invoke.resolve(notificationState())
+    }
+
+    /** Das Fenster von Android zeigen (ab Android 13) – antwortet mit dem Stand danach */
+    @Command
+    fun requestNotification(invoke: Invoke) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            invoke.resolve(notificationState())
+            return
+        }
+        requestPermissionForAlias(ALIAS_NOTIFICATIONS, invoke, "notificationCallback")
+    }
+
+    @PermissionCallback
+    private fun notificationCallback(invoke: Invoke) {
+        invoke.resolve(notificationState())
     }
 
     private fun convertLocation(location: Location): JSObject {

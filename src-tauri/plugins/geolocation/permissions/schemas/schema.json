@@ -343,6 +343,30 @@
           "markdownDescription": "Denies the get_current_position command without any pre-configured scope."
         },
         {
+          "description": "Enables the notification_state command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-notification-state",
+          "markdownDescription": "Enables the notification_state command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the notification_state command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-notification-state",
+          "markdownDescription": "Denies the notification_state command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the request_notification command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-request-notification",
+          "markdownDescription": "Enables the request_notification command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the request_notification command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-request-notification",
+          "markdownDescription": "Denies the request_notification command without any pre-configured scope."
+        },
+        {
           "description": "Enables the request_permissions command without any pre-configured scope.",
           "type": "string",
           "const": "allow-request-permissions",

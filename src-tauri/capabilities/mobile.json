@@ -19,6 +19,8 @@
     "geolocation:allow-start-recording",
     "geolocation:allow-stop-recording",
     "geolocation:allow-take-recorded",
+    "geolocation:allow-notification-state",
+    "geolocation:allow-request-notification",
     "health:default",
     "folder:default",
     "browser:default"

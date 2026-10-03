@@ -57,3 +57,13 @@ pub(crate) async fn stop_recording<R: Runtime>(app: AppHandle<R>) -> Result<()> 
 pub(crate) async fn take_recorded<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value> {
     app.geolocation().take_recorded()
 }
+
+#[command]
+pub(crate) async fn notification_state<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value> {
+    app.geolocation().notification("notificationState")
+}
+
+#[command]
+pub(crate) async fn request_notification<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value> {
+    app.geolocation().notification("requestNotification")
+}

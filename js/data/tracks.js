@@ -295,13 +295,13 @@ class Recorder {
 
   get background() { return this.#bg; }
 
-  async #background(on) {
+  async #background(on, fresh = false) {
     if (!on) {
       if (this.#bg) geo.background.stop();
       this.#bg = false;
       return;
     }
-    this.#bg = await geo.background.start();
+    this.#bg = await geo.background.start({ hint: fresh });
     if (!this.#live) { this.#background(false); return; }
     if (this.#bg) { this.onBackground?.(); this.#catchUp(); }
   }
@@ -321,7 +321,7 @@ class Recorder {
   start({ kind, profile, name = '', from = '', to = '', keep = false }) {
     this.#live = { kind, profile, name, from, to, keep, started: Date.now(), paused: false, points: [] };
     this.#save();
-    this.#background(true);
+    this.#background(true, true);
   }
 
   /** `time`: wann der Punkt gemessen wurde – für nachgereichte Punkte (sonst: jetzt) */

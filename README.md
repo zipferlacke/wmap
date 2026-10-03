@@ -746,7 +746,11 @@ Die ersten zwei:
   startet ein Vordergrund-Dienst mit der Benachrichtigung „WMap zeichnet auf“
   (`src-tauri/plugins/geolocation/…/RecordService.kt`). Er holt den Standort selbst und sammelt die Punkte,
   solange die App nicht zu sehen ist; zurück im Bild trägt der Recorder sie nach (`geo.background` in
-  `js/core/native.js`, `recorder.addAll`). Der Bildschirm muss dann nicht an bleiben. Gilt für jede
+  `js/core/native.js`, `recorder.addAll`). Der Bildschirm muss dann nicht an bleiben. Vor dem Fenster von
+  Android zur Benachrichtigung kommt beim Start einer Aufzeichnung ein **Hinweis** der App, wofür sie da ist
+  (`recordingNotice` in `js/ui/permissions.js`): „Erlauben“ holt das Fenster von Android, „Später“ lässt den
+  Hinweis beim nächsten Aufzeichnen wiederkommen; wer bei Android ablehnt, wird nicht wieder gefragt und
+  findet die Freigabe unter Einstellungen → Berechtigungen. Gilt für jede
   Aufzeichnung, auch die während der Navigation (der Recorder in `js/data/tracks.js` startet den Dienst). Die
   Navigation selbst – Ansagen, Karte – macht weiter, sobald der Bildschirm wieder an ist. Ältere Apps und iOS bleiben
   beim angeschalteten Bildschirm.

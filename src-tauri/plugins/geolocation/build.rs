@@ -11,6 +11,8 @@ const COMMANDS: &[&str] = &[
     "start_recording",
     "stop_recording",
     "take_recorded",
+    "notification_state",
+    "request_notification",
 ];
 
 fn main() {

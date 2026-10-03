@@ -132,6 +132,15 @@ impl<R: Runtime> Geolocation<R> {
         #[cfg(not(target_os = "android"))]
         Ok(serde_json::json!({ "points": [], "running": false }))
     }
+
+    /// WMap: Freigabe für Benachrichtigungen – `{ state: "granted" | "prompt" }` (`notificationState` fragt
+    /// nur ab, `requestNotification` zeigt das Fenster von Android).
+    pub fn notification(&self, _command: &str) -> crate::Result<serde_json::Value> {
+        #[cfg(target_os = "android")]
+        return self.0.run_mobile_plugin(_command, ()).map_err(Into::into);
+        #[cfg(not(target_os = "android"))]
+        Ok(serde_json::json!({ "state": "granted" }))
+    }
 }
 
 #[derive(Serialize)]
