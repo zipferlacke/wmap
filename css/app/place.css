@@ -90,36 +90,27 @@
     i { width: .8rem; height: .8rem; border-radius: 50%; display: inline-block; }
 }
 
-/* ── Rückfrage (Dialog aus wuefl-libs) ────────────────────────────────────── */
+/* ── Rückfrage (ui/dialogs.js – userDialog aus wuefl-libs) ───────────────────── */
 
-.dialog.confirm {
-    /* Feste Breite statt „max-content“ aus wuefl-libs: WebKit (GNOME Web,
-       Safari) rechnete die Höhe sonst mit ganz schmalem Text aus – der
-       Dialog wurde riesig, die Knöpfe zu Ovalen gestreckt */
-    width: min(26rem, 92vw);
-    max-width: min(26rem, 92vw);
-    /* so hoch wie der Inhalt – „auto“ zöge den Dialog bis zum unteren Rand */
-    height: fit-content;
-    /* nur offen als Raster – sonst stünde der Dialog geschlossen im Bild */
-    &[open] { display: grid; align-content: start; }
-    gap: .75rem;
+/* Abstand zur Gestenleiste von Android: env() liefert im Webview 0 (--safe-bottom, core/theme.js) */
+.userDialog {
+    --uD-safe-bottom: var(--safe-bottom, 0px);
+    /* zweiter Knopf der Fußzeile wie jeder Knopf der App */
+    --bg-dialog-close: var(--surface-2);
+    --bg-dialog-close-hover: var(--line);
+}
 
-    position: fixed;
-    h2 { display: flex; align-items: center; gap: .4rem; font-size: var(--fs-500); padding-right: 2.2rem; }
+.userDialog.confirm {
+    /* am Rechner schmaler als die 34 rem der Bibliothek; am Handy kommt er von unten in voller Breite */
+    @media (min-width: 701px) { --uD-width: min(26rem, 92vw); }
+    .uD-header { font-size: var(--fs-500); }
+    .uD-title { display: flex; align-items: center; gap: .4rem; text-align: left !important; }
+    .uD-main { gap: .75rem; }
     p { color: var(--muted); }
-    /* ✕ oben rechts – schließt wie Esc */
-    .dialog-x {
-        position: absolute; top: .55rem; right: .55rem;
-        display: grid; place-items: center;
-        width: 2.2rem; height: 2.2rem;
-        border: 0; border-radius: 50%;
-        background: none; color: var(--muted);
-        cursor: pointer;
-        &:hover { background: var(--surface-2); color: inherit; }
-        &:focus:not(:focus-visible) { outline: none; }
-        .msr { font-size: 1.3rem; }
-    }
     .confirm-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: .5rem; }
+    /* Fußzeile der Bibliothek: Knöpfe rechts wie die eigene Knopfzeile; der Hauptknopf trägt .primary (dialogs.js) */
+    .uD-footer.confirm-actions .button { width: auto; }
+    .button.primary .msr { color: #fff; }
     input[type=text] {
         width: 100%;
         padding: .6rem .75rem;

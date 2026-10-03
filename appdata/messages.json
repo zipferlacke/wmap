@@ -9,6 +9,14 @@
     "messages": [],
     "changelog": [
         {
+            "version": "2.1.1",
+            "date": "2026-10-03",
+            "changes": [
+                "Rückfragen kommen am Handy jetzt von unten und lassen sich am Griff ziehen",
+                "Fix: „Meine Touren“, „Entdecken“ und „Tour planen“ an die neue Fassung der gemeinsamen Bausteine angepasst"
+            ]
+        },
+        {
             "version": "2.1.0",
             "date": "2026-10-02",
             "changes": [

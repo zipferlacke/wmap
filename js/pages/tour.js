@@ -20,7 +20,7 @@ import { createMap, showRoutes, showHover } from '../map/map.js';
 import { segment, joinSegments, wayInfo, heightsAlong, hikingTime } from '../services/routing.js';
 import { ElevationProfile } from '../ui/elevation.js';
 import { tours, shapeOf, coordsOf, encodeShare, decodeShare, toGpx, download, local } from '../data/store.js';
-import { sheet as sidePanel } from '../../libs/wuefl-libs/userDialog/userDialog.js';
+import { sidePanel } from '../ui/side-panel.js';
 import { mountLayerMenu } from '../ui/layer-menu.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { share, pageUrl } from '../ui/share.js';
@@ -80,12 +80,22 @@ const { map } = createMap('map', {
 window.__wmap = { map };                         // für Konsole und Tests
 mountLayerMenu(map, { toast });                  // Satellit, Wanderwege, Plugins
 
-const sheet = $('#sheet');
-sheet.show();
-document.activeElement?.blur();                // kein Fokusrahmen um den Griff
-// Panel wie bei Meine Touren: Rechner links (Breite ziehen, ganz einklappen), Handy unten
+// Panel wie bei Meine Touren: Rechner links (Breite ziehen, ganz einklappen), Handy unten.
+// Kopf: ←, Name der Tour (statt eines Titels), Speichern, ✕
 let fitTimer = null;
-const panel = sidePanel(sheet, { min: 300, key: 'wmap.tourPanel', onChange: () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitRoute, 280); } });
+const nameField = $('#tour-name');
+const saveButton = $('#save');
+const panel = sidePanel($('#sheet-src'), {
+  id: 'sheet', label: 'Tour planen', className: 'tour-panel', key: 'wmap.tourPanel',
+  barLeft: { icon: '<span class="msr">arrow_back</span>', title: 'Zu meinen Touren', onClick: () => { location.href = './wege.html?tab=geplant'; } },
+  barRight: { icon: '<span class="msr">close</span>', title: 'Schließen – zur Karte', onClick: () => { location.href = './index.html'; } },
+  onChange: () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitRoute, 280); },
+});
+const sheet = panel.dialog;
+sheet.querySelector('.uD-header').classList.add('tour-bar');
+panel.title.replaceChildren(nameField);
+panel.right.prepend(saveButton);
+document.activeElement?.blur();                // kein Fokusrahmen um den Griff
 const mobile = () => matchMedia('(max-width: 700px)').matches;
 
 /** Freier Kartenausschnitt neben bzw. über dem Panel */

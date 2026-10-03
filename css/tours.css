@@ -297,28 +297,6 @@ body.readonly {
     .known-status .spin { animation: spin 1s linear infinite; vertical-align: -.25rem; }
 }
 
-/* ── Seitenleiste am Handy (userDialog-sheet aus wuefl-libs) ──────────────── */
-
-/* Höherer Griff, und eingeklappt bleibt er über der Gestenleiste von Android
-   stehen (--safe-bottom, siehe core/theme.js) – sonst fängt das System das
-   Hochziehen ab. Der Inhalt fängt erst unter dem Griff an: der liegt obenauf
-   und schluckte sonst die Knöpfe ← und ✕ (.wege-panel setzt sein eigenes
-   padding, das die Regel aus wuefl-libs überstimmt) */
-@media screen and (max-width: 700px) {
-    .userDialog.uD-sheet:is(:not([data-pos-mobile]), [data-pos-mobile="bottom"]) {
-        padding-top: calc(var(--uD-grip) + .25rem);
-        padding-bottom: var(--safe-bottom);
-        &.uD-collapsed { translate: 0 calc(100% - var(--uD-grip) - var(--safe-bottom)); }
-    }
-}
-@media screen and (min-width: 701px) {
-    .wege-panel.uD-sheet[data-pos="left"] { padding-right: calc(var(--uD-grip) + .5rem); }
-    .wege-panel.uD-sheet[data-pos="right"] { padding-left: calc(var(--uD-grip) + .5rem); }
-}
-@media screen and (max-width: 700px) and (pointer: coarse) {
-    .userDialog.uD-sheet:is(:not([data-pos-mobile]), [data-pos-mobile="bottom"]) { --uD-grip: 2.2rem; }
-}
-
 /* ── Offline-Karten ───────────────────────────────────────────────────────── */
 
 .offline-page .tour-head h1.tour-name { font-size: var(--fs-500); margin: 0; }
@@ -430,10 +408,21 @@ body.wege-page { overflow: hidden; }
 .wege-page #map { position: fixed; inset: 0; }
 
 .wege-panel {
-    padding: .5rem .75rem 1rem;
+    /* Abstände – an der Kante mit dem Griff setzt sie die Bibliothek (Griff, am Handy die Gestenleiste) */
+    padding-left: .75rem;
+    @media (min-width: 701px) { padding-top: .5rem; padding-bottom: 1rem; padding-right: calc(var(--uD-grip) + .5rem); }
+    @media (max-width: 700px) { padding-right: .75rem; padding-bottom: var(--uD-safe-bottom); }
     /* Spalte: Kopf, ggf. Reiter, Inhalt – nur der Inhalt wächst und scrollt */
     &[open] { display: flex; flex-direction: column; }
-    @media (max-width: 700px) { --uD-height: 58dvh; --uD-max-height: 100dvh; }
+    /* Am Handy: ungezogen fast die ganze Höhe – so weit lässt sich die Leiste ziehen; geöffnet wird sie bei
+       58 % (ui/side-panel.js) */
+    @media (max-width: 700px) { --uD-height: 90dvh; --uD-max-height: 100dvh; }
+    /* Das Formular der Bibliothek trägt nur die Kopfzeile – der Inhalt der Seite steht dahinter (side-panel.js) */
+    > .uD-form {
+        display: block; flex: none; max-height: none;
+        .content { display: block; overflow: visible; padding-right: 0; }
+        .uD-main { display: none; }
+    }
     .wege-bar {
         display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .5rem;
         padding-bottom: .4rem; font-size: var(--fs-500); font-weight: 700;
@@ -665,11 +654,13 @@ body.stage-mode #map canvas { cursor: crosshair; }
     .bg-results .muted { padding: .3rem .75rem; }
 }
 
-/* ── Planer-Panel (userDialog sheet wie Meine Touren) ───────────────────── */
+/* ── Planer-Panel (userDialog wie Meine Touren) ─────────────────────────── */
 
 .tour-panel {
     .tour-bar {
-        grid-template-columns: auto minmax(0, 1fr) auto auto;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        .uD-title { overflow: visible; }
+        .tour-name { width: 100%; box-sizing: border-box; }
         /* Die Leiste von „Geplant“ (oben, .tour-bar) rückt alles 1 rem ein – hier nicht: Zurück und
            Schließen stehen am Rand des Panels, der Name der Tour bekommt den Platz dazwischen */
         max-width: none; margin: 0; padding: 0 0 .4rem; gap: .35rem;

@@ -112,11 +112,7 @@ body.recording #search-here, body.navigating .rec { display: none !important; }
 }
 
 .rec-save {
-    width: min(26rem, 92vw);
-    form { display: grid; gap: 1rem; min-width: min(24rem, 86vw); }
     label { display: grid; gap: .3rem; font-weight: 600; }
-    input { font: inherit; text-align: left; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--surface); color: inherit; }
-    .rec-save-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
 }
 
 /* ── Bild in Bild (Document Picture-in-Picture) ───────────────────────────── */
@@ -189,11 +185,9 @@ html.pip-mode {
 
 /* ── Willkommen, Neues, Nachrichten (ui/news.js) ──────────────────────────── */
 
-.dialog.confirm.news {
-    width: min(30rem, 92vw);
-    max-width: min(30rem, 92vw);
-    max-height: 85dvh;
-    overflow-y: auto;
+.userDialog.confirm.news {
+    @media (min-width: 701px) { --uD-width: min(30rem, 92vw); }
+    --uD-max-height: 85dvh;
     p { color: inherit; }
     .news-version { color: var(--muted); font-size: var(--fs-200); }
     .news-release {
@@ -218,10 +212,10 @@ html.pip-mode {
     td .msr { font-size: 1.05rem; vertical-align: -.2rem; color: var(--route); }
     td:not(:first-child), th:not(:first-child) { text-align: right; white-space: nowrap; }
 }
-.dialog.confirm.news h3 { margin: .4rem 0 0; font-size: var(--fs-300); }
+.userDialog.confirm.news h3 { margin: .4rem 0 0; font-size: var(--fs-300); }
 
 /* Berechtigungen (ui/permissions.js): je Recht Erklärung, Zustand, Knopf */
-.dialog.confirm.perms {
+.userDialog.confirm.perms {
     .perm-list { display: grid; gap: .7rem; }
     .perm-item {
         display: grid; gap: .4rem;
@@ -243,7 +237,7 @@ html.pip-mode {
     }
 }
 /* Hinweis mit Symbol – auch im Überblick von Health Connect (pages/wege.js) */
-.dialog.confirm .perm-hint {
+.userDialog.confirm .perm-hint {
     display: flex; gap: .4rem; align-items: flex-start;
     color: var(--muted); font-size: var(--fs-200);
     .msr { font-size: 1.1rem; color: var(--route); }

@@ -166,25 +166,12 @@ export async function checkUpdates(m) {
  */
 async function updateDialog({ icon, title, html, buttons, closable, onPick }) {
   await whenFree();
-  return new Promise((resolve) => {
-    document.getElementById('update-dialog')?.remove();
-    const dlg = document.createElement('dialog');
-    dlg.id = 'update-dialog';
-    dlg.className = 'dialog confirm news';
-    dlg.innerHTML = `<h2><span class="msr">${esc(icon)}</span> ${esc(title)}</h2>${html}
-      <p class="update-status" hidden></p>
-      <div class="confirm-actions">${buttons.map((b) => `
-        <button type="button" class="button${b.primary ? ' primary' : ''}" value="${esc(b.value)}">
-          ${b.icon ? `<span class="msr">${esc(b.icon)}</span> ` : ''}${esc(b.label)}</button>`).join('')}</div>`;
-    document.body.append(dlg);
-    // Escape schließt nur, wenn es nicht zwingend ist
-    dlg.addEventListener('cancel', (e) => { e.preventDefault(); if (closable) { dlg.close(); dlg.remove(); resolve(null); } });
-    dlg.addEventListener('click', async (e) => {
-      const b = e.target.closest('.confirm-actions button[value]');
-      if (!b) return;
-      if (await onPick(b.value, dlg)) { dlg.close(); dlg.remove(); resolve(b.value); }
-    });
-    dlg.showModal();
+  document.getElementById('update-dialog')?.uDFinish?.('close');
+  return ask({
+    id: 'update-dialog', className: 'news', icon, title, closable,
+    html: `${html}<p class="update-status" hidden></p>`,
+    // Jeder Knopf fragt erst onPick – das Popup schließt nur, wenn es true liefert
+    buttons: buttons.map((b) => ({ ...b, run: async (dlg, done) => { if (await onPick(b.value, dlg)) done(b.value); } })),
   });
 }
 

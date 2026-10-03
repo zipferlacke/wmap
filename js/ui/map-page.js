@@ -1,7 +1,7 @@
 /**
  * Kartenseiten mit Panel (Meine Touren, Entdecken): Karte über den ganzen
- * Bildschirm, daneben das Panel als Seitenleiste zum Ziehen (wuefl-libs
- * userDialog `sheet`) – am Rechner links in voller Höhe, am Handy von unten.
+ * Bildschirm, daneben das Panel als Seitenleiste (ui/side-panel.js – userDialog
+ * aus wuefl-libs) – am Rechner links in voller Höhe, am Handy von unten.
  *
  *   ←  oben links   Liste: zurück zur Übersicht (Dashboard)
  *                   Detail: zurück zur Liste
@@ -13,7 +13,7 @@
  * Esc wirkt wie ←, aber nie bis zur Übersicht – aus der Liste klappt Esc das
  * Panel nur ein.
  */
-import { sheet } from '../../libs/wuefl-libs/userDialog/userDialog.js';
+import { sidePanel } from './side-panel.js';
 import { mountLayerMenu } from './layer-menu.js';
 
 const HOME = './dashboard.html';
@@ -21,10 +21,11 @@ const MAP = './index.html';
 
 export const mobile = () => matchMedia('(max-width: 700px)').matches;
 
-export function mapPage(panel, { map, onFit = () => {}, key = 'wmap.panel' } = {}) {
-  const bar = panel.querySelector('.wege-bar');
-  const title = bar.querySelector('.uD-title');
-  const back = bar.querySelector('[data-act="back"]');
+/**
+ * @param src  Element der Seite mit dem Inhalt des Panels (zieht in den Dialog um)
+ * → { panel (der Dialog), header(), open(), collapse(), padding(), map }
+ */
+export function mapPage(src, { map, title = '', onFit = () => {}, key = 'wmap.panel' } = {}) {
   let backTo = null;                 // Detail: wohin ← führt; null: Liste
 
   // Für die Konsole und Tests, wie auf der Hauptkarte
@@ -34,35 +35,26 @@ export function mapPage(panel, { map, onFit = () => {}, key = 'wmap.panel' } = {
 
   // Nach dem Ziehen den Kartenausschnitt an den freien Platz anpassen
   let fitTimer = null;
-  const side = sheet(panel, {
-    min: 300, key,
+  const side = sidePanel(src, {
+    title, label: title, key,
+    barLeft: { icon: '<span class="msr">arrow_back</span>', title: 'Zurück zur Übersicht', onClick: () => { if (backTo) backTo(); else location.href = HOME; } },
+    barRight: { icon: '<span class="msr">close</span>', title: 'Schließen – zur Karte', onClick: () => { location.href = MAP; } },
     onChange: () => { clearTimeout(fitTimer); fitTimer = setTimeout(onFit, 280); },
+    onEsc: () => { if (backTo) backTo(); else side.collapse(true); },
   });
-
-  panel.addEventListener('click', (e) => {
-    const act = e.target.closest('.wege-bar [data-act]')?.dataset.act;
-    if (act === 'back') { if (backTo) backTo(); else location.href = HOME; }
-    if (act === 'close') location.href = MAP;
-  });
-  panel.addEventListener('cancel', (e) => {
-    e.preventDefault();
-    if (backTo) backTo(); else side.collapse(true);
-  });
-  back.hidden = false;
+  const panel = side.dialog;
+  const back = side.left.querySelector('button');
 
   return {
     /** Kopfzeile: Titel und – für eine Detailansicht – wohin ← führt */
     header(text, onBack = null) {
-      title.textContent = text;
+      side.title.textContent = text;
       backTo = onBack;
       back.title = onBack ? 'Zurück zur Liste' : 'Zurück zur Übersicht';
       panel.classList.toggle('detail', !!onBack);
     },
     get detail() { return !!backTo; },
-    open() {
-      if (!panel.open) panel.show();
-      if (side.collapsed) side.collapse(false);
-    },
+    open() { if (side.collapsed) side.collapse(false); },
     collapse: (on) => side.collapse(on),
     /** Freier Kartenausschnitt neben bzw. über dem Panel */
     padding() {
@@ -70,6 +62,8 @@ export function mapPage(panel, { map, onFit = () => {}, key = 'wmap.panel' } = {
       if (!r) return { top: 60, bottom: mobile() ? 60 : 30, left: mobile() ? 20 : 50, right: 60 };
       return mobile() ? { top: 60, bottom: r.height + 20, left: 20, right: 20 } : { top: 40, bottom: 40, left: r.width + 40, right: 60 };
     },
+    /** Der Dialog selbst */
+    panel,
     map,
   };
 }

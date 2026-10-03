@@ -31,18 +31,15 @@
         <section id="map"></section>
         <p class="tour-hint" hidden></p>
 
-        <!-- Panel wie bei Meine Touren und Entdecken (userDialog sheet): Rechner
+        <!-- Panel wie bei Meine Touren und Entdecken (userDialog #sheet, ui/side-panel.js): Rechner
              links in voller Höhe, Handy unten; ziehen ändert die Größe, ganz
-             einklappen gibt die Karte frei. Kopf: ←, Name, Speichern, ✕ -->
-        <dialog id="sheet" class="userDialog wege-panel tour-panel" data-pos="left" data-pos-mobile="bottom" aria-label="Tour planen">
-            <header class="uD-header wege-bar tour-bar">
-                <a class="button uD-bar-btn" data-shape="round no-background" href="./wege.html?tab=geplant" title="Zu meinen Touren"><span class="msr">arrow_back</span></a>
-                <input id="tour-name" class="tour-name" type="text" placeholder="Name der Tour" aria-label="Name der Tour">
-                <button type="button" id="save" class="button uD-bar-btn save-state" data-shape="round" data-state="new" title="Tour speichern">
-                    <span class="msr">save</span><span class="save-label"></span>
-                </button>
-                <a class="button uD-bar-btn" data-shape="round no-background" href="./index.html" title="Schließen – zur Karte"><span class="msr">close</span></a>
-            </header>
+             einklappen gibt die Karte frei. Kopf: ←, Name, Speichern, ✕ – Name und Speichern
+             stehen hier und ziehen mit dem Inhalt in den Dialog um (pages/tour.js) -->
+        <div id="sheet-src" hidden>
+            <input id="tour-name" class="tour-name" type="text" placeholder="Name der Tour" aria-label="Name der Tour">
+            <button type="button" id="save" class="button uD-bar-btn save-state" data-shape="round" data-state="new" title="Tour speichern">
+                <span class="msr">save</span><span class="save-label"></span>
+            </button>
             <section class="view wege-content">
                 <!-- Oben: Ort suchen, Anleitung (i), Werkzeuge -->
                 <div class="tour-block tour-top edit-only">
@@ -100,7 +97,7 @@
                     <button type="button" class="button edit-only" data-tour="delete"><span class="msr">delete</span> Löschen</button>
                 </div>
             </section>
-        </dialog>
+        </div>
     </main>
 
     <!-- Anleitung als Notiz am i-Knopf: Handy volle Breite, Rechner schmal -->
