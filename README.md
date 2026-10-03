@@ -67,9 +67,14 @@ Man startet immer mit der Karte.
 **Kartenseiten mit Panel** (Meine Touren, Entdecken) sind alle gleich gebaut:
 
 - Karte über den ganzen Bildschirm, daneben das Panel als **Seitenleiste zum
-  Ziehen** (wuefl-libs `userDialog` → `sheet`) – **am Rechner links in voller
-  Höhe, am Handy von unten**. Kein grauer Hintergrund: die Karte bleibt
-  bedienbar.
+  Ziehen** – ein `userDialog` aus wuefl-libs mit `position: { wide: 'left',
+  small: 'bottom' }` und `backgroundUsage` (`js/ui/side-panel.js`): **am
+  Rechner links in voller Höhe, am Handy von unten**. Kein grauer Hintergrund:
+  die Karte bleibt bedienbar. Der Inhalt steht im HTML der Seite und zieht beim
+  Start in den Dialog um – hinter dessen Formular, weil die Seiten eigene
+  Formulare haben (Suche, Bewertung). Was die Bibliothek nicht anbietet, läuft
+  dort über ihren Griff: Starthöhe am Handy (58 %), gemerkte Größe und
+  Einklappen aus dem Programm.
 - **← oben links:** in der Liste zurück zur Übersicht, in einer Detailansicht
   zurück zur Liste. Im Detail steht oben der Name der Tour/des Wegs.
 - **✕ oben rechts:** schließt die Seite und führt zur Karte.
@@ -1639,7 +1644,7 @@ tools/android-auto.sh id3       # Android Auto am Rechner (Simulator), siehe Abs
 - **Release fürs Hochladen:** braucht einmalig den Upload-Schlüssel in
   `.secrets/` (weder in Git noch per FTP auf dem Server). Wie er angelegt
   und für GitHub Actions hochgeladen wird, steht in
-  [`.secrets/README.md`](.secrets/README.md); fehlt er, zeigt auch
+  `.secrets/README.md` (liegt wie der ganze Ordner nur lokal, nicht in Git); fehlt er, zeigt auch
   `tauri-android wmap release` die Schritte. Gradle signiert damit AAB und
   APKs selbst. Die Version (versionCode) kommt aus
   `src-tauri/tauri.conf.json` – vor jedem Upload erhöhen.
@@ -1661,7 +1666,7 @@ tools/android-auto.sh id3       # Android Auto am Rechner (Simulator), siehe Abs
   `-x86_64`) und `wmap-android.aab`. `wuefl-libs` holt `.github/actions/wuefl-libs` (neuester Tag),
   die Web-Dateien kopiert je Job `src-tauri/web-kopieren.sh`
   (`src-tauri/tauri.ci.json` schaltet dafür den beforeBuildCommand ab). Die
-  Android-Signatur kommt aus den Secrets (siehe `.secrets/README.md`).
+  Android-Signatur kommt aus den Secrets (siehe `.secrets/README.md`, nur lokal).
 - Weitere Hinweise: [`tools/README.md`](tools/README.md).
 
 ## Entwicklung
@@ -1764,5 +1769,16 @@ tools/android-auto.sh id3       # Android Auto am Rechner (Simulator), siehe Abs
   nacheinander: Was von selbst kommt (Willkommen, Neuigkeiten, „Navigation
   fortsetzen?“, 3D im Mobilfunk), wartet, bis kein anderer Dialog offen ist
   (`ask({ auto: true })` bzw. `whenFree()` in `js/ui/dialogs.js`).
+
+  **Alle Rückfragen** laufen über `ask()` und damit über den `userDialog`
+  aus wuefl-libs (ab 2.7.0; `sheet()` und eigene `<dialog>`-Fassungen gibt es
+  nicht mehr): am Rechner mittig, am Handy von unten mit Griff. Ein Hauptknopf
+  und höchstens ein zweiter stehen in der Fußzeile der Bibliothek; mehr
+  Knöpfe, „stacked“ und Knöpfe, die den Dialog offen lassen (`run`), stehen
+  als eigene Zeile im Inhalt. ✕ oben rechts und Esc liefern `null`;
+  `closable: false` nimmt beides weg (zwingendes Update). Auch Tastatur-Hilfe,
+  „Mobilfunk erkannt“, Stimme, Update und „Aufzeichnung beenden“ gehen diesen
+  Weg. Das Blatt der Hauptkarte und die Leisten von „Ebenen“ und
+  „Offline-Karten“ sind weiter eigene Blätter (`js/ui/sheet.js`).
   Gemerkt wird in localStorage `wmap.seen`. Zum Ausprobieren:
   `localStorage.setItem('wmap.seen', '{"version":"0.9.0","messages":[]}')`.

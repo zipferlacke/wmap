@@ -10,6 +10,7 @@ import { recorder, defaultName } from '../data/tracks.js';
 import { geo } from '../core/native.js';
 import { PROFILES } from '../core/config.js';
 import { distance, fmtDistance, esc } from '../core/geo.js';
+import { ask } from './dialogs.js';
 
 const KINDS = ['foot', 'hike', 'bike', 'car'];
 
@@ -192,32 +193,18 @@ function clock(s) {
 }
 
 /** → Name, null (verwerfen) oder undefined (weiter aufzeichnen). */
-function askName(suggestion) {
-  return new Promise((resolve) => {
-    const dlg = document.createElement('dialog');
-    dlg.className = 'dialog rec-save';
-    dlg.innerHTML = `
-      <form method="dialog">
-        <h2>Aufzeichnung beenden</h2>
-        <label>Name<input type="text" name="name" value="${esc(suggestion)}" maxlength="80"></label>
-        <div class="rec-save-actions">
-          <button type="button" class="button" data-v="discard"><span class="msr">delete</span> Verwerfen</button>
-          <button type="button" class="button" data-v="back">Weiter</button>
-          <button type="submit" class="button primary" data-v="save"><span class="msr">check</span> Speichern</button>
-        </div>
-      </form>`;
-    document.body.append(dlg);
-    let result;
-    dlg.addEventListener('click', (e) => {
-      const v = e.target.closest('[data-v]')?.dataset.v;
-      if (v === 'discard' && confirm('Aufzeichnung wirklich verwerfen?')) { result = null; dlg.close(); }
-      if (v === 'back') { result = undefined; dlg.close(); }
-    });
-    dlg.querySelector('form').addEventListener('submit', () => {
-      result = dlg.querySelector('input').value.trim() || suggestion;
-    });
-    dlg.addEventListener('close', () => { dlg.remove(); resolve(result); });
-    dlg.showModal();
-    dlg.querySelector('input').select();
+async function askName(suggestion) {
+  const v = await ask({
+    icon: 'stop_circle', title: 'Aufzeichnung beenden', className: 'rec-save',
+    html: `<label>Name<input type="text" name="name" value="${esc(suggestion)}" maxlength="80"></label>`,
+    buttons: [
+      { value: 'discard', label: 'Verwerfen', icon: 'delete', run: (dlg, done) => { if (confirm('Aufzeichnung wirklich verwerfen?')) done('discard'); } },
+      { value: 'back', label: 'Weiter' },
+      { value: 'save', label: 'Speichern', icon: 'check', primary: true },
+    ],
+    read: (dlg) => ({ name: dlg.querySelector('input').value.trim() || suggestion }),
+    setup: (dlg) => dlg.querySelector('input').select(),
   });
+  if (v === 'discard') return null;
+  return v?.name;                    // ✕, Esc und „Weiter“: weiter aufzeichnen
 }

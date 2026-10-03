@@ -20,7 +20,7 @@ for (let i = 0; i < 140; i += 1) pts.push([9.93 + i * 0.0004, 51.53 + Math.sin(i
 await tracks.putQuiet({ ...buildTrack(pts, { kind: 'rec', profile: 'bike', name: 'Feierabendrunde' }), id: 'act1' });
 return 1;"""
 call = lambda b, code: b.d.execute_async_script('const done = arguments[arguments.length - 1]; (async () => {' + code + '})().then(done, (e) => done("FEHLER " + e))')
-DLG = "return [...document.querySelectorAll('dialog[open].confirm')].map((d) => ({ title: d.querySelector('h2').innerText.trim(), buttons: [...d.querySelectorAll('.confirm-actions button')].map((x) => x.innerText.trim()), boxes: [...d.querySelectorAll('.share-opts label')].map((x) => x.innerText.trim()), url: d.querySelector('.share-url')?.textContent ?? null }))"
+DLG = "return [...document.querySelectorAll('dialog[open].confirm')].map((d) => ({ title: d.querySelector('.uD-title').innerText.trim(), buttons: [...d.querySelectorAll('.confirm-actions button')].map((x) => x.innerText.trim()), boxes: [...d.querySelectorAll('.share-opts label')].map((x) => x.innerText.trim()), url: d.querySelector('.share-url')?.textContent ?? null }))"
 press = lambda b, value: b.js("document.querySelector('dialog[open].confirm .confirm-actions button[value=\"%s\"]').click()" % value)
 
 

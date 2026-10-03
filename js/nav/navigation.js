@@ -19,6 +19,7 @@ import { routeExtras, limitAt, lanesAt, roadFeatures, laneShiftAt } from './extr
 import { phrases, laneHint } from './voice.js';
 import { reverse } from '../services/geocode.js';
 import { trustedSpeed } from '../core/smooth.js';
+import { ask } from '../ui/dialogs.js';
 
 const OFF_ROUTE_M = 40;
 const OFF_ROUTE_FIXES = 3;
@@ -104,34 +105,24 @@ const speech = {
 window.speechSynthesis?.addEventListener?.('voiceschanged', () => speech.pickVoice());
 speech.pickVoice();
 
-/** Auswahl der Stimme als Dialog aus wuefl-libs – mit Probe. */
+/** Auswahl der Stimme – mit Probe („Probe“ lässt den Dialog offen). */
 export function openVoiceDialog() {
   speech.pickVoice();
   const list = speech.voices();
-  const dlg = document.createElement('dialog');
-  dlg.className = 'dialog confirm';
-  dlg.innerHTML = `
-    <h2><span class="msr">record_voice_over</span> Stimme für Ansagen</h2>
-    ${list.length ? `<select class="voice-select" aria-label="Stimme">${list.map((v) => `
+  ask({
+    icon: 'record_voice_over', title: 'Stimme für Ansagen',
+    html: `${list.length ? `<select class="voice-select" aria-label="Stimme">${list.map((v) => `
       <option value="${esc(v.name)}" ${v === speech.voice ? 'selected' : ''}>${esc(v.name)}${v.localService ? '' : ' · online'}</option>`).join('')}
     </select>` : androidSpeech() ? '<p>Die App spricht mit der Sprachausgabe von Android – Stimme und Tempo stellst du in den Android-Einstellungen unter „Sprachausgabe“ ein.</p>'
       : '<p>Dieser Browser bietet keine deutsche Stimme an.</p>'}
     <p>Klingt es blechern oder verzerrt, ist meist eine einfache Systemstimme (eSpeak) gewählt.
-       „Google Deutsch“ in Chrome oder die Stimmen von Android, Windows und macOS klingen deutlich besser.</p>
-    <div class="confirm-actions">
-      <button type="button" class="button" value="test"><span class="msr">play_arrow</span> Probe</button>
-      <button type="button" class="button primary" value="ok">Fertig</button>
-    </div>`;
-  document.body.append(dlg);
-  dlg.querySelector('select')?.addEventListener('change', (e) => speech.setVoice(e.target.value));
-  dlg.addEventListener('click', (e) => {
-    const b = e.target.closest('button[value]');
-    if (!b) return;
-    if (b.value === 'test') speech.say('In 300 Metern rechts abbiegen, dann halten Sie sich links.', { force: true });
-    else { dlg.close(); dlg.remove(); }
+       „Google Deutsch“ in Chrome oder die Stimmen von Android, Windows und macOS klingen deutlich besser.</p>`,
+    buttons: [
+      { value: 'test', label: 'Probe', icon: 'play_arrow', run: () => speech.say('In 300 Metern rechts abbiegen, dann halten Sie sich links.', { force: true }) },
+      { value: 'ok', label: 'Fertig', primary: true },
+    ],
+    setup: (dlg) => dlg.querySelector('select')?.addEventListener('change', (e) => speech.setVoice(e.target.value)),
   });
-  dlg.addEventListener('cancel', () => dlg.remove());
-  dlg.showModal();
 }
 
 /* ── Einstellungen ────────────────────────────────────────────────────────── */

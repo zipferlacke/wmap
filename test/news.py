@@ -7,7 +7,7 @@ from common import Browser
 
 def dialog(b):
     time.sleep(6)
-    return b.js("const d = document.querySelector('dialog.news[open]'); return d && [d.querySelector('h2').textContent.trim(), d.querySelectorAll('.news-release').length]")
+    return b.js("const d = document.querySelector('dialog.news[open]'); return d && [d.querySelector('.uD-title').textContent.trim(), d.querySelectorAll('.news-release').length]")
 
 
 def ok(b):
@@ -29,5 +29,5 @@ with Browser(1200, 850) as b:
     b.open('dashboard.html', 1)
     b.css('.dash-version').click()
     time.sleep(1)
-    print('4. Dashboard „Was ist neu“:', b.js("return document.querySelector('dialog.news[open] h2')?.textContent.trim()"))
+    print('4. Dashboard „Was ist neu“:', b.js("return document.querySelector('dialog.news[open] .uD-title')?.textContent.trim()"))
     sys.exit(b.report())

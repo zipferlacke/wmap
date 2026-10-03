@@ -80,12 +80,12 @@ let selected = null;               // gewählter Weg oder Tour
 let folderOn = false;              // Ordner verbunden: „offline verfügbar“ anbieten
 let lookOpen = false;              // Tour: Block „Art, Farbe und Anzeige“ aufgeklappt (bleibt es beim Neuzeichnen)
 
-const panel = $('.wege-panel');
 const content = $('.wege-content');
 
 const { map } = createMap('map', { auto3d: false, zoom: 5 });
 const ready = new Promise((r) => (map.loaded() ? r() : map.once('load', r)));
-const page = mapPage(panel, { map, onFit: () => fitView() });
+const page = mapPage($('.wege-src'), { map, title: 'Meine Touren', onFit: () => fitView() });
+const { panel } = page;
 
 function fitView() {
   if (tab === 'orte' && !selected) {

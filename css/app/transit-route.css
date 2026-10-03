@@ -110,7 +110,7 @@
 }
 
 /* Formular mit Öffnungszeiten: breiter, scrollt in sich */
-.dialog.confirm.osm-edit { width: min(32rem, 94vw); max-width: min(32rem, 94vw); max-height: 88dvh; overflow-y: auto; overflow-x: hidden; }
+.userDialog.confirm.osm-edit { --uD-max-height: 88dvh; @media (min-width: 701px) { --uD-width: min(32rem, 94vw); } }
 
 /* Öffnungszeiten je Tag (osm/hours-editor.js) */
 .oh-block {

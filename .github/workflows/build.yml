@@ -182,7 +182,7 @@ jobs:
       # android-einbinden.py trägt damit die Signatur in Gradle ein, Gradle
       # signiert AAB und APKs selbst. Ohne Secrets: Wegwerfschlüssel (zum
       # Ausprobieren gut, für den Play Store und Updates nicht).
-      # Anlegen: .secrets/README.md („Für GitHub Actions“).
+      # Anlegen: .secrets/README.md („Für GitHub Actions“) – der Ordner liegt nur lokal, nicht in Git.
       - name: Schlüssel bereitlegen
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}

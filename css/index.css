@@ -1,5 +1,6 @@
 @import "../libs/wuefl-libs/css/import.css";
 @import "../libs/wuefl-libs/diagramm/diagramm.css";
+@import "../libs/wuefl-libs/userDialog/userDialog.css";
 @import "./maplibre_custom.css";
 /* Oberfläche über der Karte – Reihenfolge = Kaskade, nicht umsortieren */
 @import "./app/base.css";

@@ -8,7 +8,7 @@
  */
 import { STYLE_URL, TERRAIN_TILES } from '../core/config.js';
 import { local } from '../data/store.js';
-import { whenFree } from '../ui/dialogs.js';
+import { ask } from '../ui/dialogs.js';
 import { byId } from '../core/categories.js';
 import { theme } from '../core/theme.js';
 import { geo, geolocationApi } from '../core/native.js';
@@ -233,27 +233,13 @@ function allow3d() {
   return asking;
 }
 
-/** Rückfrage als Dialog aus wuefl-libs. */
+/** Rückfrage – nicht mitten in das Willkommen oder einen anderen Dialog hinein (`auto`) */
 async function askCellular() {
-  // Nicht mitten in das Willkommen oder einen anderen Dialog hinein
-  await whenFree();
-  return new Promise((resolve) => {
-    const dlg = document.createElement('dialog');
-    dlg.className = 'dialog confirm';
-    dlg.innerHTML = `
-      <h2><span class="msr">signal_cellular_alt</span> Mobilfunk erkannt</h2>
-      <p>Die 3D-Ansicht lädt Gelände- und Höhendaten nach. Im Mobilfunknetz kann das
-         spürbar Datenvolumen kosten. Jetzt aktivieren?</p>
-      <div class="confirm-actions">
-        <button type="button" class="button" value="no">Bei 2D bleiben</button>
-        <button type="button" class="button primary" value="yes"><span class="msr">view_in_ar</span> 3D aktivieren</button>
-      </div>`;
-    document.body.append(dlg);
-    const done = (ok) => { dlg.close(); dlg.remove(); resolve(ok); };
-    dlg.addEventListener('click', (e) => { const b = e.target.closest('button[value]'); if (b) done(b.value === 'yes'); });
-    dlg.addEventListener('cancel', () => done(false));
-    dlg.showModal();
-  });
+  return await ask({
+    auto: true, icon: 'signal_cellular_alt', title: 'Mobilfunk erkannt',
+    text: 'Die 3D-Ansicht lädt Gelände- und Höhendaten nach. Im Mobilfunknetz kann das spürbar Datenvolumen kosten. Jetzt aktivieren?',
+    buttons: [{ value: 'no', label: 'Bei 2D bleiben' }, { value: 'yes', label: '3D aktivieren', icon: 'view_in_ar', primary: true }],
+  }) === 'yes';
 }
 
 function applyDataSaver(map) {

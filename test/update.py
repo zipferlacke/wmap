@@ -23,7 +23,7 @@ const escape = () => dialog()?.dispatchEvent(new Event('cancel', { cancelable: t
   // Neue Version ohne Zwang: Später → erst beim nächsten Start wieder
   let p = checkUpdates({ changelog: [{ version: '9.9.9' }] });
   await wait(300);
-  out.normal = { title: text(dialog()?.querySelector('h2')), buttons: buttons() };
+  out.normal = { title: text(dialog()?.querySelector('.uD-title')), buttons: buttons() };
   dialog().querySelector('button[value=later]').click();
   await p;
   out.afterLater = !!dialog();
@@ -33,7 +33,7 @@ const escape = () => dialog()?.dispatchEvent(new Event('cancel', { cancelable: t
   // minVersion: zwingend, Escape schließt nicht
   checkUpdates({ changelog: [{ version: '9.9.9' }], minVersion: '9.9.9' });
   await wait(300);
-  out.forced = { title: text(dialog()?.querySelector('h2')), buttons: buttons() };
+  out.forced = { title: text(dialog()?.querySelector('.uD-title')), buttons: buttons() };
   escape(); await wait(200);
   out.forcedStays = !!dialog()?.open;
   dialog().remove();
@@ -41,7 +41,7 @@ const escape = () => dialog()?.dispatchEvent(new Event('cancel', { cancelable: t
   window.__TAURI__ = { app: { getVersion: async () => '2.0.0' } };
   checkUpdates({ changelog: [{ version: '2.1.0' }], minAppVersion: '2.1.0' });
   await wait(500);
-  out.app = { title: text(dialog()?.querySelector('h2')), buttons: buttons() };
+  out.app = { title: text(dialog()?.querySelector('.uD-title')), buttons: buttons() };
   escape(); await wait(200);
   out.appStays = !!dialog()?.open;
   dialog().remove();
@@ -78,7 +78,7 @@ with Browser(width=420, height=900) as b:
     b.open('dashboard.html', wait=3)
     b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '2.0.0', messages: [] })); window.__alt = 1;")
     b.js("const s = document.createElement('script'); s.type = 'module'; s.textContent = \"import('./js/ui/news.js').then((m) => m.applyUpdate())\"; document.head.append(s);")
-    news = b.wait("return !window.__alt && document.querySelector('dialog.news[open] h2') && [...document.querySelectorAll('dialog.news[open] .news-release h3')].map((h) => h.innerText.match(/[0-9]+[.][0-9]+[.][0-9]+/)?.[0])", 60)
+    news = b.wait("return !window.__alt && document.querySelector('dialog.news[open] .uD-title') && [...document.querySelectorAll('dialog.news[open] .news-release h3')].map((h) => h.innerText.match(/[0-9]+[.][0-9]+[.][0-9]+/)?.[0])", 60)
     print('Nach dem Aktualisieren – Versionen im Dialog:', news)
     b.shot('update-neu')
     # alle Versionen seit der gesehenen (2.0.0) bis zur laufenden

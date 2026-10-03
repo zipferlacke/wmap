@@ -81,19 +81,15 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) saveV
 
 
 function keysDialog() {
-  const dlg = document.createElement('dialog');
-  dlg.className = 'dialog confirm';
   const rows = [['W / S', 'vor / zurück'], ['A / D', 'nach links / rechts'], ['Q / E', 'drehen'],
     ['R / F', 'nach oben / unten schauen'], ['Leertaste', 'höher'], ['Shift', 'tiefer'],
     ['Esc', 'normale Ansicht – in der Navigation: zum eigenen Standort'],
     ['Fliegen', 'Menü → Fliegen: die Maus schaut, W fliegt zur Bildmitte, Esc beendet']];
-  dlg.innerHTML = `<h2><span class="msr">keyboard</span> Tastatur</h2>
-    <table class="keys-table">${rows.map(([k, v]) => `<tr><th><kbd>${k}</kbd></th><td>${v}</td></tr>`).join('')}</table>
-    <div class="confirm-actions"><button type="button" class="button primary" value="ok">Verstanden</button></div>`;
-  document.body.append(dlg);
-  dlg.addEventListener('click', (e) => { if (e.target.closest('button')) { dlg.close(); dlg.remove(); } });
-  dlg.addEventListener('cancel', () => dlg.remove());
-  dlg.showModal();
+  ask({
+    icon: 'keyboard', title: 'Tastatur',
+    html: `<table class="keys-table">${rows.map(([k, v]) => `<tr><th><kbd>${k}</kbd></th><td>${v}</td></tr>`).join('')}</table>`,
+    buttons: [{ value: 'ok', label: 'Verstanden', primary: true }],
+  });
 }
 
 const appNav = mountAppNav();

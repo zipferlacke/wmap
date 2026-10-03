@@ -138,6 +138,7 @@
 "js/ui/route-prefs.js",
 "js/ui/share.js",
 "js/ui/sheet.js",
+"js/ui/side-panel.js",
 "js/ui/tour-stages.js",
 "js/ui/transit-legs.js",
 "libs/earcut/earcut.js",

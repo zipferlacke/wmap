@@ -23,7 +23,6 @@ import { mapPage } from '../ui/map-page.js';
 import { bbox as bboxOf, simplifyTo, fmtDistance, esc } from '../core/geo.js';
 
 const $ = (s, root = document) => root.querySelector(s);
-const panel = $('.wege-panel');
 const content = $('.wege-content');
 
 // ?view=lon,lat,zoom (Links, Screenshots) – sonst der letzte Kartenausschnitt
@@ -31,7 +30,8 @@ const asked = new URLSearchParams(location.search).get('view')?.split(',').map(N
 const view = asked?.length >= 3 && asked.every(Number.isFinite) ? { center: asked.slice(0, 2), zoom: asked[2] } : local.get('wmap.view');
 const { map } = createMap('map', { auto3d: false, center: view?.center ?? [10.2, 51.2], zoom: view?.zoom ? Math.min(view.zoom, 11) : 6 });
 const ready = new Promise((r) => (map.loaded() ? r() : map.once('load', r)));
-const page = mapPage(panel, { map });
+const page = mapPage($('.wege-src'), { map, title: 'Entdecken' });
+const { panel } = page;
 
 let tab = ['wege', 'andere'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'wege';
 let kind = local.get('wmap.entdecken.kind', 'hike');

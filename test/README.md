@@ -16,6 +16,7 @@ WMAP_URL=https://app.wuefl.de/wmap/ .venv/bin/python smoke.py   # gegen den Serv
 | Test | Was |
 |---|---|
 | `smoke.py` | alle Seiten laden (auch „Offline“); Health-Knopf im Browser versteckt |
+| `dialogs.py` | Dialoge über den `userDialog` aus wuefl-libs: Rückfragen (Fußzeile der Bibliothek oder eigene Knopfzeile, ✕, Esc, Feld mit Enter, Knopf der offen lässt, nicht schließbar) und die Seitenleisten von Meine Touren, Entdecken, Tour planen (Starthöhe 58 % am Handy, größer ziehen, einklappen, Größe gemerkt, bleibt bei Enter und Esc stehen) |
 | `share.py` | Teilen-Dialog (Text mit Link / nur Link) und Toast, hell und dunkel |
 | `geo_links.py` | `?geo=` – Punkt, Punkt mit Namen, Adresse, Suche in der Nähe, kaputter Link |
 | `news.py` | Willkommen, Neues nach Update, nichts bei Link-Aufruf, „Was ist neu“ |
