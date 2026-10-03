@@ -665,6 +665,10 @@ body.stage-mode #map canvas { cursor: crosshair; }
            Schließen stehen am Rand des Panels, der Name der Tour bekommt den Platz dazwischen */
         max-width: none; margin: 0; padding: 0 0 .4rem; gap: .35rem;
         .tour-name { min-width: 0; font-weight: 600; font-size: var(--fs-400); padding: .4rem .6rem; border-radius: .7rem; background: var(--surface-2); text-align: left; }
+        /* Wie in „Meine Touren“: Knöpfe der Leiste ohne Fläche und Schatten (die Regel von oben gilt der alten Leiste) */
+        .button { box-shadow: none; }
+        /* Speichern: nur „wird gespeichert“ und „nur lesen“ behalten ihre Farbe */
+        .button:not(.save-state), .save-state:is([data-state="new"], [data-state="saved"]) { background: none; }
         .save-state { width: 2.5rem; height: 2.5rem; padding: 0; .msr { font-size: 1.4rem; } }
         .save-label:empty { display: none; }
     }
