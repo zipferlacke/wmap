@@ -12,17 +12,17 @@
             "version": "2.2.0",
             "date": "2026-10-03",
             "changes": [
-                "Aufzeichnungen überarbeite: läuft in der Android-App weiter, wenn der Bildschirm aus ist – eine Benachrichtigung zeigt Zeit und Strecke, aufgeklappt mit Pause und Beenden (dafür braucht es die neue App aus dem Store)",
-                "Android Auto: In der Handy App neue Option 'Ans Auto senden' wenn Auto verbunden ist bei - Routen, Orten und geplanten Touren fürs Auto",
+                "Aufzeichnungen überarbeitet: Sie laufen in der Android-App weiter, wenn der Bildschirm aus ist – eine Benachrichtigung zeigt Zeit und Strecke, aufgeklappt mit Pause und Beenden (dafür braucht es die neue App aus dem Store)",
+                "Android Auto: In der Handy-App neue Option „Ans Auto senden“, wenn ein Auto verbunden ist – bei Routen, Orten und geplanten Touren fürs Auto",
                 "Android Auto: Abbiegehinweise gehen auch ans Kombiinstrument bzw. Head-up-Display, wenn das Auto sie dort zeigt",
-                "Fix: Geplante Tour verlassen - Die Navigation führt so schnell wie möglich zurück auf die geplante Strecke"
+                "Fix: Geplante Tour verlassen – die Navigation führt so schnell wie möglich zurück auf die geplante Strecke"
             ]
         },
         {
             "version": "2.1.1",
             "date": "2026-10-03",
             "changes": [
-                "App Dialoge wurde an neue Bibliothek angepasst für einfachern Code."
+                "App-Dialoge wurden an die neue Bibliothek angepasst, für einfacheren Code."
             ]
         },
         {
