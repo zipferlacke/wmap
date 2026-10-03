@@ -22,12 +22,13 @@ Navigation
 Android Auto
 • Karte, Suche und Navigation auf dem Bildschirm im Auto, Ansagen über die Lautsprecher
 • Ihre fürs Auto geplanten Touren, Lesezeichen und letzten Ziele, dazu Parkplätze, Tankstellen und Ladesäulen in der Nähe
+• Am Handy geplant, im Auto gefahren: Ort, Route oder Tour mit einem Tipp ans Auto senden
 • Auch ohne Route: Tempo, Tempolimit und Straßenname
 
 Touren
 • Tour planen für Wandern, Spazieren, Rennrad, Tourenrad, Gravel, Mountainbike oder Auto, auf Wunsch in Tagesetappen
 • Bekannte Wege übernehmen und neu planen, dabei liegt das Original im Hintergrund
-• Wege aufzeichnen mit Zeit, Strecke, Tempo und Höhenmetern, dazu Jahresübersicht
+• Wege aufzeichnen mit Zeit, Strecke, Tempo und Höhenmetern, dazu Jahresübersicht – auch bei ausgeschaltetem Bildschirm
 • Auswerten: Diagramme für Höhe, Tempo, Puls, Frequenz und Leistung, Runden mit schnellster und langsamster
 • Trainings mit Route aus Health Connect übernehmen, etwa von der Uhr
 • GPX öffnen und speichern, Touren per Link teilen oder veröffentlichen
