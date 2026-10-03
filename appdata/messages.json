@@ -12,7 +12,8 @@
             "version": "2.2.0",
             "date": "2026-10-03",
             "changes": [
-                "Aufzeichnen läuft in der Android-App weiter, wenn der Bildschirm aus ist – eine Benachrichtigung zeigt, dass WMap aufzeichnet (dafür braucht es die neue App aus dem Store)"
+                "Aufzeichnen läuft in der Android-App weiter, wenn der Bildschirm aus ist – eine Benachrichtigung zeigt Zeit und Strecke, aufgeklappt mit Pause und Beenden (dafür braucht es die neue App aus dem Store)",
+                "Fix: In der Pause einer Aufzeichnung lief die Zeit weiter"
             ]
         },
         {

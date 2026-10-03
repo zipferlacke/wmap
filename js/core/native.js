@@ -152,26 +152,27 @@ export const geo = {
    * Ältere Apps, iOS und Browser kennen das nicht – `start` meldet dann false, und der Bildschirm bleibt an.
    */
   background: {
-    /**
-     * → läuft der Dienst? `hint`: danach der Hinweis zur Benachrichtigung, falls sie noch nicht erlaubt ist
-     * (neue Aufzeichnung – nicht beim Weiterlaufen nach einem Seitenwechsel)
-     */
-    async start({ hint = false } = {}) {
+    /** → läuft der Dienst? `state`: Stand der Aufzeichnung für die Benachrichtigung (siehe `sync`) */
+    async start(state = {}) {
       if (!nativeGeo || !/Android/i.test(navigator.userAgent)) return false;
       if (!(await allowed({}))) return false;
-      try { await core.invoke('plugin:geolocation|start_recording'); } catch { return false; }
-      if (hint) import('../ui/permissions.js').then((m) => m.recordingNotice()).catch(() => {});
-      return true;
+      try { await core.invoke('plugin:geolocation|start_recording', { state }); return true; } catch { return false; }
     },
     stop() {
       if (core) core.invoke('plugin:geolocation|stop_recording').catch(() => {});
     },
-    /** → [{ point: [lon, lat], accuracy, time }] seit dem letzten Abholen */
-    async take() {
+    /**
+     * Stand abgleichen und abholen, was gesammelt wurde.
+     * `state`: { started, distance, lon, lat } für Zeit und Strecke in der Benachrichtigung; mit `push` gilt
+     * der Pause-Stand der Seite ({ paused, pausedAt, pausedMs }), sonst der des Dienstes („Pause“ in der
+     * Benachrichtigung); `clearStop`: „Beenden“ ist angekommen.
+     * → { points: [{ point, accuracy, time }], paused, pausedAt, pausedMs, stop } oder null
+     */
+    async sync(state = {}) {
       try {
-        const r = await core.invoke('plugin:geolocation|take_recorded');
-        return (r?.points ?? []).map(([x, y, accuracy, time]) => ({ point: [x, y], accuracy, time }));
-      } catch { return []; }
+        const r = await core.invoke('plugin:geolocation|take_recorded', { state });
+        return { ...r, points: (r?.points ?? []).map(([x, y, accuracy, time]) => ({ point: [x, y], accuracy, time })) };
+      } catch { return null; }
     },
   },
 };

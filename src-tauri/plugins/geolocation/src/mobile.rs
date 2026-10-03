@@ -110,9 +110,9 @@ impl<R: Runtime> Geolocation<R> {
     }
 
     /// WMap: Vordergrund-Dienst starten, der den Standort sammelt, solange die App nicht zu sehen ist (nur Android).
-    pub fn start_recording(&self) -> crate::Result<()> {
+    pub fn start_recording(&self, _state: serde_json::Value) -> crate::Result<()> {
         #[cfg(target_os = "android")]
-        return self.0.run_mobile_plugin("startRecording", ()).map_err(Into::into);
+        return self.0.run_mobile_plugin("startRecording", _state).map_err(Into::into);
         #[cfg(not(target_os = "android"))]
         Err(crate::Error::Unavailable)
     }
@@ -125,10 +125,11 @@ impl<R: Runtime> Geolocation<R> {
         Ok(())
     }
 
-    /// WMap: Gesammelte Punkte abholen – `{ points: [[lon, lat, Genauigkeit, Zeit]], running }`.
-    pub fn take_recorded(&self) -> crate::Result<serde_json::Value> {
+    /// WMap: Stand abgleichen und gesammelte Punkte abholen –
+    /// `{ points: [[lon, lat, Genauigkeit, Zeit]], running, paused, pausedAt, pausedMs, stop }`.
+    pub fn take_recorded(&self, _state: serde_json::Value) -> crate::Result<serde_json::Value> {
         #[cfg(target_os = "android")]
-        return self.0.run_mobile_plugin("takeRecorded", ()).map_err(Into::into);
+        return self.0.run_mobile_plugin("takeRecorded", _state).map_err(Into::into);
         #[cfg(not(target_os = "android"))]
         Ok(serde_json::json!({ "points": [], "running": false }))
     }

@@ -24,8 +24,11 @@ Nachgestellt am Gerät: acht `watch_position`, danach bleibt `check_permissions`
   zeichnet auf“. Holt den Standort selbst (alle 2 s, hohe Genauigkeit) und sammelt die Punkte, solange die App
   nicht zu sehen ist (`hidden`, gesetzt in `onPause`/`onResume` des Plugins) – im Arbeitsspeicher, höchstens
   30 000 Punkte.
+- Die Benachrichtigung zeigt Zeit und Strecke und hat „Pause“/„Weiter“ und „Beenden“; den Stand gibt die Seite
+  mit (`state` bei `start_recording` und `take_recorded`: Start, Pausen, Strecke, letzter Punkt), „Beenden“
+  kommt als Vermerk am Start-Intent zurück (`onNewIntent`).
 - Befehle `start_recording`, `stop_recording`, `take_recorded` (`{ points: [[lon, lat, Genauigkeit, Zeit]],
-  running }`) – Kotlin, `src/commands.rs`, `src/mobile.rs`, `build.rs`; freigegeben in
+  running, paused, pausedAt, pausedMs, stop }`) – Kotlin, `src/commands.rs`, `src/mobile.rs`, `build.rs`; freigegeben in
   `capabilities/mobile.json`. Auf dem Rechner und unter iOS meldet `start_recording` einen Fehler – die Seite
   bleibt dann beim angeschalteten Bildschirm.
 - Befehle `notification_state`, `request_notification` (`{ state: "granted" | "prompt" }`) und die

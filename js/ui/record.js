@@ -14,6 +14,7 @@ import { geo } from '../core/native.js';
 import { PROFILES } from '../core/config.js';
 import { distance, fmtDistance, esc } from '../core/geo.js';
 import { ask } from './dialogs.js';
+import { recordingNotice } from './permissions.js';
 
 const KINDS = ['foot', 'hike', 'bike', 'car'];
 
@@ -43,6 +44,8 @@ class RecordUi {
     this.#el.addEventListener('click', (e) => this.#click(e));
     recorder.onChange = () => this.#paint();
     recorder.onBackground = () => { this.#lock?.release?.().catch(() => {}); this.#lock = null; };
+    // „Beenden“ in der Benachrichtigung: wie der Stopp-Knopf
+    recorder.stopHandlers.rec = () => { if (!document.querySelector('dialog.rec-save[open]')) this.#finish(); };
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && recorder.active) this.#keepAwake();
     });
@@ -86,6 +89,9 @@ class RecordUi {
     if (!b) return;
     if (b.dataset.act === 'close') { this.#el.hidden = true; return; }
     if (b.dataset.kind) {
+      // Erst der Hinweis zur Benachrichtigung (und das Fenster von Android) – dann geht es los
+      await recordingNotice();
+      if (recorder.active) return;
       recorder.start({ kind: 'rec', profile: b.dataset.kind });
       this.show();
       this.#toast('Aufzeichnung läuft');
@@ -122,9 +128,8 @@ class RecordUi {
     if (!recorder.active || recorder.kind !== 'rec' || !this.#el.classList.contains('running')) return;
     const pts = recorder.points;
     const info = recorder.info;
-    let len = 0;
-    for (let i = 1; i < pts.length; i += 1) len += distance(pts[i - 1], pts[i]);
-    const secs = Math.round((Date.now() - info.started) / 1000);
+    const len = recorder.length;
+    const secs = Math.round(recorder.elapsed / 1000);
     const $ = (s) => this.#el.querySelector(s);
     $('.rec-time').textContent = clock(secs);
     $('.rec-dist').textContent = fmtDistance(len);

@@ -276,7 +276,9 @@ const MAX_ACCURACY_M = 35;
  * Android-App (ab 2.2.0): Solange aufgezeichnet wird – einzeln oder mit der Navigation –, läuft ein Dienst
  * mit Benachrichtigung (`geo.background`, core/native.js). Er sammelt den Standort, wenn der Bildschirm aus
  * oder eine andere App vorn ist; zurück im Bild werden die Punkte nachgetragen. `background` sagt, ob er
- * läuft – dann muss der Bildschirm nicht an bleiben.
+ * läuft – dann muss der Bildschirm nicht an bleiben. Seine Benachrichtigung zeigt Zeit und Strecke und hat
+ * „Pause“/„Weiter“ und „Beenden“: Solange die Seite zu sehen ist, gleicht der Recorder alle anderthalb
+ * Sekunden ab (`#sync`) – Pause aus der Benachrichtigung kommt so hier an, „Beenden“ ruft `stopHandlers`.
  */
 class Recorder {
   #live = null;
@@ -285,30 +287,87 @@ class Recorder {
   onChange = null;
   /** Der Dienst läuft (oder eben nicht) – z. B. Bildschirm nicht mehr wach halten */
   onBackground = null;
+  /** „Beenden“ in der Benachrichtigung, je Art der Aufzeichnung: { rec: () => …, nav: () => … } */
+  stopHandlers = {};
+  #dirty = false;      // Pause hier geändert – der Dienst übernimmt sie
+  #clearStop = false;
+  #timer = null;
 
   constructor() {
     const saved = local.get(LIVE);
     if (saved?.points && Date.now() - (saved.points.at(-1)?.[2] ?? saved.started) < 12 * 3600e3) this.#live = saved;
     if (this.#live) this.#background(true);
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.#catchUp(); });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.#sync(); });
   }
 
   get background() { return this.#bg; }
 
-  async #background(on, fresh = false) {
+  /** Zeit ohne die Pausen, in ms */
+  get elapsed() {
+    const l = this.#live;
+    return l ? (l.paused && l.pausedAt ? l.pausedAt : Date.now()) - l.started - (l.pausedMs ?? 0) : 0;
+  }
+
+  /** Strecke bisher in Metern */
+  get length() {
+    const l = this.#live;
+    if (!l) return 0;
+    if (l.length === undefined) {
+      l.length = 0;
+      for (let i = 1; i < l.points.length; i += 1) l.length += distance(l.points[i - 1], l.points[i]);
+    }
+    return l.length;
+  }
+
+  #state() {
+    const l = this.#live, last = l.points.at(-1);
+    return {
+      started: l.started, distance: this.length, lon: last?.[0] ?? null, lat: last?.[1] ?? null,
+      push: this.#dirty, paused: !!l.paused, pausedAt: l.pausedAt ?? 0, pausedMs: l.pausedMs ?? 0, clearStop: this.#clearStop,
+    };
+  }
+
+  async #background(on) {
+    clearInterval(this.#timer);
     if (!on) {
       if (this.#bg) geo.background.stop();
       this.#bg = false;
       return;
     }
-    this.#bg = await geo.background.start({ hint: fresh });
+    this.#dirty = true;
+    const state = this.#state();
+    this.#dirty = false;
+    this.#bg = await geo.background.start(state);
     if (!this.#live) { this.#background(false); return; }
-    if (this.#bg) { this.onBackground?.(); this.#catchUp(); }
+    if (!this.#bg) return;
+    this.onBackground?.();
+    this.#timer = setInterval(() => { if (document.visibilityState === 'visible') this.#sync(); }, 1500);
+    this.#sync();
   }
 
-  /** Was der Dienst gesammelt hat, während die App nicht zu sehen war */
-  async #catchUp() {
-    if (this.#bg && this.#live) this.addAll(await geo.background.take());
+  /**
+   * Mit dem Dienst abgleichen: nachtragen, was er gesammelt hat, während die App nicht zu sehen war; Zeit und
+   * Strecke für die Benachrichtigung; Pause und „Beenden“ aus der Benachrichtigung übernehmen.
+   */
+  async #sync() {
+    if (!this.#bg || !this.#live) return;
+    const pushed = this.#dirty, cleared = this.#clearStop, state = this.#state();
+    this.#dirty = false;
+    const r = await geo.background.sync(state);
+    const l = this.#live;
+    if (!r || !l) return;
+    if (cleared) this.#clearStop = false;
+    // Der Dienst sammelt nur außerhalb der Pause – darum auch nachtragen, wenn hier gerade Pause ist
+    const n = this.addAll(r.points, true);
+    if (!pushed && !this.#dirty && r.paused !== !!l.paused) {
+      Object.assign(l, { paused: r.paused, pausedAt: r.pausedAt, pausedMs: r.pausedMs });
+      this.#save();
+      if (!n) this.onChange?.();
+    }
+    if (r.stop && !cleared && this.stopHandlers[l.kind]) {
+      this.#clearStop = true;
+      this.stopHandlers[l.kind]();
+    }
   }
 
   get active() { return !!this.#live; }
@@ -319,9 +378,9 @@ class Recorder {
 
   /** `keep`: auch als Navigation behalten, wenn „Fahrten merken“ aus ist (geplante Tour) */
   start({ kind, profile, name = '', from = '', to = '', keep = false }) {
-    this.#live = { kind, profile, name, from, to, keep, started: Date.now(), paused: false, points: [] };
+    this.#live = { kind, profile, name, from, to, keep, started: Date.now(), paused: false, pausedAt: 0, pausedMs: 0, length: 0, points: [] };
     this.#save();
-    this.#background(true, true);
+    this.#background(true);
   }
 
   /** `time`: wann der Punkt gemessen wurde – für nachgereichte Punkte (sonst: jetzt) */
@@ -332,36 +391,44 @@ class Recorder {
   }
 
   /** Viele Punkte auf einmal (bei ausgeschaltetem Bildschirm gesammelt) – ein Speichern, eine Meldung */
-  addAll(list) {
+  addAll(list, force = false) {
     let n = 0;
-    for (const p of list) if (this.#take(p)) n += 1;
+    for (const p of list) if (this.#take(p, force)) n += 1;
     if (!n) return 0;
     this.#save();
     this.onChange?.();
     return n;
   }
 
-  #take({ point, accuracy, time }) {
+  #take({ point, accuracy, time }, force = false) {
     const l = this.#live;
-    if (!l || l.paused || !point || (accuracy ?? 0) > MAX_ACCURACY_M) return false;
+    if (!l || (l.paused && !force) || !point || (accuracy ?? 0) > MAX_ACCURACY_M) return false;
     const last = l.points.at(-1);
-    if (last && distance(last, point) < MIN_STEP_M) return false;
+    const step = last ? distance(last, point) : 0;
+    if (last && step < MIN_STEP_M) return false;
     // Nachgereichtes nie vor den letzten Punkt oder vor den Start
     if (time && (time < l.started || (last && time < last[2]))) return false;
+    l.length = this.length + step;
     l.points.push([+point[0].toFixed(6), +point[1].toFixed(6), time || Date.now()]);
     return true;
   }
 
   pause(on) {
-    if (!this.#live) return;
-    this.#live.paused = on;
+    const l = this.#live;
+    if (!l || !!l.paused === !!on) return;
+    // Die Zeit steht in der Pause (elapsed)
+    if (on) l.pausedAt = Date.now();
+    else if (l.pausedAt) l.pausedMs = (l.pausedMs ?? 0) + Date.now() - l.pausedAt;
+    l.paused = on;
     this.#save();
+    this.#dirty = true;
+    this.#sync();
   }
 
   /** Beenden und speichern → der Weg (oder null, wenn zu kurz/abgeschaltet). */
   async stop({ name } = {}) {
     // Erst nachtragen, was noch beim Dienst liegt
-    await this.#catchUp();
+    await this.#sync();
     const l = this.#live;
     this.#live = null;
     local.set(LIVE, null);

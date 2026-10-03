@@ -11,6 +11,7 @@ import { NavPip, pipSupported, autoPip } from '../nav/pip.js';
 import { prefs } from '../ui/route-prefs.js';
 import { share, placeUrl, clock } from '../ui/share.js';
 import { ask, toast } from '../ui/dialogs.js';
+import { recordingNotice } from '../ui/permissions.js';
 import { trace, trips } from '../data/trace.js';
 import { registerOffline, saveRouteOffline, offlineSetting, rememberNav, forgetNav, savedNav } from '../data/offline.js';
 import { nearestOnLine, pointAt, simplifyTo, fmtDistance, esc, cumulative } from '../core/geo.js';
@@ -120,9 +121,12 @@ function startRecording() {
   paintRec();
   return true;
 }
+// „Beenden“ in der Benachrichtigung der Aufzeichnung: dieselbe Auswahl wie am Aufnahme-Knopf
+recorder.stopHandlers.nav = () => { if (!document.querySelector('dialog.userDialog.confirm[open]')) recButton.click(); };
 recButton.addEventListener('click', async () => {
   if (recorder.kind !== 'nav') {
     if (recorder.active) { toast('Es läuft schon eine Aufzeichnung'); return; }
+    if (!SIMULATING) await recordingNotice();
     if (startRecording()) toast('Aufzeichnung läuft'); else toast('In der Simulation wird nicht aufgezeichnet');
     return;
   }
@@ -166,6 +170,8 @@ export async function startNav() {
       buttons: [{ value: 'no', label: 'Ohne Aufzeichnung' }, { value: 'yes', label: 'Aufzeichnen', icon: 'radio_button_checked', primary: true }],
     }) === 'yes';
   }
+  // Erst der Hinweis zur Benachrichtigung (und das Fenster von Android) – dann geht es los
+  if (record && !CAR && !SIMULATING && !recorder.active) await recordingNotice();
   if (record) startRecording();
   paintRec();
   nav.start(r, { profile: state.profile, highways: prefs.highways, targets: (state.drive.length ? state.drive : state.points).slice(1) });

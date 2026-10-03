@@ -55,29 +55,34 @@ export async function locationAccess({ ask: prompt = true } = {}) {
 
 /* ── Benachrichtigung beim Aufzeichnen ────────────────────────────────────── */
 
-const NOTE_DENIED = 'wmap.note.denied';   // im Fenster von Android abgelehnt – nicht wieder fragen
-
 /** → 'granted' | 'prompt' | 'none' (App kennt die Abfrage nicht – vor 2.2.0) */
 async function notificationState() {
   try { return (await core.invoke('plugin:geolocation|notification_state')).state; } catch { return 'none'; }
 }
 
+let noteBlocked = false;   // Android zeigt sein Fenster nicht mehr (zweimal abgelehnt) – dann in die Einstellungen
+
+/**
+ * Das Fenster von Android. Kommt die Antwort sofort und heißt nicht „erlaubt“, hat Android es gar nicht mehr
+ * gezeigt – dann öffnen sich die Einstellungen der App, dort lässt es sich erlauben.
+ */
 async function requestNotification() {
+  const t0 = Date.now();
   let st = 'prompt';
   try { st = (await core.invoke('plugin:geolocation|request_notification')).state; } catch { /* Zustand zeigt es */ }
-  try { if (st === 'granted') localStorage.removeItem(NOTE_DENIED); else localStorage.setItem(NOTE_DENIED, '1'); } catch { /* gesperrt */ }
+  noteBlocked = st !== 'granted' && Date.now() - t0 < 500;
+  if (noteBlocked) await healthSettings('app').catch(() => {});
   return st;
 }
 
-const noteDenied = () => { try { return !!localStorage.getItem(NOTE_DENIED); } catch { return false; } };
-
 /**
- * Beim Start einer Aufzeichnung: erst der Hinweis, wofür die Benachrichtigung da ist – „Erlauben“ holt das
- * Fenster von Android. „Später“ (auch ✕): beim nächsten Aufzeichnen kommt der Hinweis wieder. Wer im Fenster
- * von Android ablehnt, wird nicht wieder gefragt (Einstellungen → Berechtigungen).
+ * Vor dem Start einer Aufzeichnung: erst der Hinweis, wofür die Benachrichtigung da ist – „Erlauben“ holt das
+ * Fenster von Android (bzw. die Einstellungen, wenn Android nicht mehr fragt). „Später“ (auch ✕): weiter ohne.
+ * Solange sie nicht erlaubt ist, kommt der Hinweis bei jedem Aufzeichnen wieder. Die Aufzeichnung beginnt
+ * erst danach.
  */
 export async function recordingNotice() {
-  if (!permissionsHere || noteDenied() || (await notificationState()) !== 'prompt') return;
+  if (!permissionsHere || (await notificationState()) !== 'prompt') return;
   const v = await ask({
     icon: 'notifications', title: 'Hinweis: Aufzeichnen bei ausgeschaltetem Bildschirm', className: 'news',
     html: `<p>Deine Aufzeichnung läuft weiter, auch wenn der Bildschirm aus ist oder du eine andere App benutzt.</p>
@@ -93,14 +98,14 @@ export async function recordingNotice() {
 async function notificationItem() {
   const st = await notificationState();
   if (st === 'none') return '';
-  const denied = st !== 'granted' && noteDenied();
+  const denied = st !== 'granted' && noteBlocked;
   return item({
     id: 'notifications', icon: 'notifications', title: 'Benachrichtigung', state: st,
     status: st === 'granted' ? 'Erlaubt' : denied ? 'Nicht erlaubt – Android fragt nicht mehr, bitte in den Einstellungen erlauben' : 'Noch nicht erlaubt',
     text: 'Nur beim Aufzeichnen: „WMap zeichnet auf“ steht in der Leiste, solange dein Weg mitläuft – auch bei '
       + 'ausgeschaltetem Bildschirm. Die Aufzeichnung läuft auch ohne.',
     button: st === 'granted' ? ['app', 'settings', 'In den Einstellungen ändern', false]
-      : denied ? ['app', 'settings', 'In den Einstellungen erlauben', false]
+      : denied ? ['app', 'settings', 'In den Einstellungen erlauben', true]
         : ['notifications', 'notifications', 'Benachrichtigung erlauben', false],
   });
 }

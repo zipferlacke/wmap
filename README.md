@@ -746,11 +746,21 @@ Die ersten zwei:
   startet ein Vordergrund-Dienst mit der Benachrichtigung „WMap zeichnet auf“
   (`src-tauri/plugins/geolocation/…/RecordService.kt`). Er holt den Standort selbst und sammelt die Punkte,
   solange die App nicht zu sehen ist; zurück im Bild trägt der Recorder sie nach (`geo.background` in
-  `js/core/native.js`, `recorder.addAll`). Der Bildschirm muss dann nicht an bleiben. Vor dem Fenster von
-  Android zur Benachrichtigung kommt beim Start einer Aufzeichnung ein **Hinweis** der App, wofür sie da ist
-  (`recordingNotice` in `js/ui/permissions.js`): „Erlauben“ holt das Fenster von Android, „Später“ lässt den
-  Hinweis beim nächsten Aufzeichnen wiederkommen; wer bei Android ablehnt, wird nicht wieder gefragt und
-  findet die Freigabe unter Einstellungen → Berechtigungen. Gilt für jede
+  `js/core/native.js`, `recorder.addAll`). Der Bildschirm muss dann nicht an bleiben.
+  - **Benachrichtigung:** in der Kopfzeile die Zeit (läuft von selbst mit, ohne die Pausen), darunter die
+    Strecke; aufgeklappt „Pause“/„Weiter“ und „Beenden“. Pause wirkt sofort im Dienst, die Seite übernimmt sie
+    beim nächsten Abgleich (alle 1,5 s, solange sie zu sehen ist – `#sync` im Recorder). „Beenden“ holt die
+    App nach vorn und öffnet dort „Aufzeichnung beenden“ (Name, Speichern, Verwerfen) bzw. in der Navigation
+    die Auswahl des Aufnahme-Knopfs. Ist die App nicht zu sehen, zählt der Dienst die Strecke mit denselben
+    Regeln weiter wie der Recorder.
+  - **Hinweis vor der Freigabe:** Vor dem Start einer Aufzeichnung erklärt ein Hinweis der App, wofür die
+    Benachrichtigung da ist (`recordingNotice` in `js/ui/permissions.js`); erst „Erlauben“ holt das Fenster von
+    Android – fragt Android nicht mehr (zweimal abgelehnt), öffnen sich die Einstellungen der App. „Später“:
+    weiter ohne. Solange die Benachrichtigung nicht erlaubt ist, kommt der Hinweis bei jedem Aufzeichnen
+    wieder; die Aufzeichnung beginnt erst danach. Auch unter Einstellungen → Berechtigungen.
+  - **Pause:** Die Zeit steht in der Pause (`recorder.elapsed`, Pausen im laufenden Stand).
+
+  Gilt für jede
   Aufzeichnung, auch die während der Navigation (der Recorder in `js/data/tracks.js` startet den Dienst). Die
   Navigation selbst – Ansagen, Karte – macht weiter, sobald der Bildschirm wieder an ist. Ältere Apps und iOS bleiben
   beim angeschalteten Bildschirm.

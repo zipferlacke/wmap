@@ -6,6 +6,7 @@ package app.tauri.geolocation
 
 import android.Manifest
 import android.app.Activity
+import android.content.Intent
 import android.location.Location
 import android.os.Build
 import android.webkit.WebView
@@ -37,6 +38,21 @@ class WatchArgs {
 @InvokeArg
 class ClearWatchArgs {
     var channelId: Long = 0
+}
+
+// WMap: Stand der Aufzeichnung, wie ihn die Seite führt (data/tracks.js). `push`: Pause-Stand übernehmen –
+// sonst gilt der des Dienstes (Knopf in der Benachrichtigung)
+@InvokeArg
+class RecordState {
+    var started: Long = 0
+    var push: Boolean = false
+    var paused: Boolean = false
+    var pausedAt: Long = 0
+    var pausedMs: Long = 0
+    var distance: Double? = null
+    var lon: Double? = null
+    var lat: Double? = null
+    var clearStop: Boolean = false
 }
 
 // TODO: Plugin does not ask user to enable google location services (like gmaps does)
@@ -73,6 +89,33 @@ class GeolocationPlugin(private val activity: Activity): Plugin(activity) {
     override fun load(webView: WebView) {
         super.load(webView)
         implementation = Geolocation(activity.applicationContext)
+        stopAsked(activity.intent)
+    }
+
+    // WMap: „Beenden“ in der Benachrichtigung der Aufzeichnung startet die App mit diesem Vermerk
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        stopAsked(intent)
+    }
+
+    private fun stopAsked(intent: Intent?) {
+        if (intent?.getBooleanExtra(RecordService.EXTRA_STOP, false) != true) return
+        intent.removeExtra(RecordService.EXTRA_STOP)
+        if (RecordService.running) RecordService.stopRequested = true
+    }
+
+    private fun adopt(state: RecordState) {
+        if (state.started > 0) RecordService.started = state.started
+        if (state.push) {
+            RecordService.paused = state.paused
+            RecordService.pausedAt = state.pausedAt
+            RecordService.pausedMs = state.pausedMs
+        }
+        // Die Strecke führt die Seite, solange sie zu sehen ist
+        state.distance?.let { RecordService.distance = it }
+        val lon = state.lon; val lat = state.lat
+        if (lon != null && lat != null) RecordService.last = doubleArrayOf(lon, lat)
+        if (state.clearStop) RecordService.stopRequested = false
     }
 
     override fun onPause() {
@@ -175,6 +218,7 @@ class GeolocationPlugin(private val activity: Activity): Plugin(activity) {
     @Command
     fun startRecording(invoke: Invoke) {
         try {
+            adopt(invoke.parseArgs(RecordState::class.java))
             // Ohne die Freigabe für Benachrichtigungen läuft der Dienst trotzdem – sie steht dann nur in der
             // Liste der laufenden Apps. Gefragt wird eigens (requestNotification), nach einem Hinweis der App.
             RecordService.start(activity.applicationContext)
@@ -192,9 +236,16 @@ class GeolocationPlugin(private val activity: Activity): Plugin(activity) {
 
     @Command
     fun takeRecorded(invoke: Invoke) {
+        val before = Triple(RecordService.paused, RecordService.distance, RecordService.started)
+        adopt(invoke.parseArgs(RecordState::class.java))
+        if (before != Triple(RecordService.paused, RecordService.distance, RecordService.started)) RecordService.refresh(activity.applicationContext)
         val ret = JSObject()
         ret.put("points", RecordService.take())
         ret.put("running", RecordService.running)
+        ret.put("paused", RecordService.paused)
+        ret.put("pausedAt", RecordService.pausedAt)
+        ret.put("pausedMs", RecordService.pausedMs)
+        ret.put("stop", RecordService.stopRequested)
         invoke.resolve(ret)
     }
 

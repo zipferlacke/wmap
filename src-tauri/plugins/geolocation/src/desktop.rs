@@ -85,7 +85,7 @@ impl<R: Runtime> Geolocation<R> {
     }
 
     /// WMap: nur Android.
-    pub fn start_recording(&self) -> crate::Result<()> {
+    pub fn start_recording(&self, _state: serde_json::Value) -> crate::Result<()> {
         Err(crate::Error::Unavailable)
     }
 
@@ -97,7 +97,7 @@ impl<R: Runtime> Geolocation<R> {
         Ok(serde_json::json!({ "state": "granted" }))
     }
 
-    pub fn take_recorded(&self) -> crate::Result<serde_json::Value> {
+    pub fn take_recorded(&self, _state: serde_json::Value) -> crate::Result<serde_json::Value> {
         Ok(serde_json::json!({ "points": [], "running": false }))
     }
 }

@@ -44,8 +44,8 @@ pub(crate) async fn request_permissions<R: Runtime>(
 // WMap: Aufzeichnen bei ausgeschaltetem Bildschirm (android/src/main/java/RecordService.kt)
 
 #[command]
-pub(crate) async fn start_recording<R: Runtime>(app: AppHandle<R>) -> Result<()> {
-    app.geolocation().start_recording()
+pub(crate) async fn start_recording<R: Runtime>(app: AppHandle<R>, state: Option<serde_json::Value>) -> Result<()> {
+    app.geolocation().start_recording(state.unwrap_or_else(|| serde_json::json!({})))
 }
 
 #[command]
@@ -54,8 +54,8 @@ pub(crate) async fn stop_recording<R: Runtime>(app: AppHandle<R>) -> Result<()> 
 }
 
 #[command]
-pub(crate) async fn take_recorded<R: Runtime>(app: AppHandle<R>) -> Result<serde_json::Value> {
-    app.geolocation().take_recorded()
+pub(crate) async fn take_recorded<R: Runtime>(app: AppHandle<R>, state: Option<serde_json::Value>) -> Result<serde_json::Value> {
+    app.geolocation().take_recorded(state.unwrap_or_else(|| serde_json::json!({})))
 }
 
 #[command]
