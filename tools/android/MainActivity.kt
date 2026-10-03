@@ -16,8 +16,10 @@ import android.util.Rational
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
+import androidx.car.app.connection.CarConnection
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import de.wuefl.wmap.car.CarLink
 
 /**
  * Bild in Bild: Während einer Navigation geht WMap beim Verlassen (Home,
@@ -40,6 +42,11 @@ import androidx.core.view.WindowInsetsCompat
  * Browser-Speicher. Touren, Lesezeichen und Ziele liegen darum zusätzlich in
  * SharedPreferences „wmap_shared“ (WMapAndroid.shareGet/shareSet, dieselben
  * Namen in car/CarWeb.kt) – js/data/car-share.js gleicht beide Seiten ab.
+ *
+ * Ans Auto senden: Ist das Handy mit Android Auto verbunden (CarConnection),
+ * meldet die Seite das (WMapAndroid.carConnected, Ereignis „wmap:car“) und
+ * kann einen Ort, eine Route oder eine Tour hinüberschicken (carSend →
+ * car/CarLink.kt) – js/data/car-link.js.
  */
 class MainActivity : TauriActivity() {
   private var web: WebView? = null
@@ -59,10 +66,15 @@ class MainActivity : TauriActivity() {
   // Im Bild in Bild die Plugins nach der Pause gleich wieder fortgesetzt (GPS)
   private var keptAwake = false
   @Volatile private var insetsJson = "null"
+  @Volatile private var carConnected = false
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    CarConnection(applicationContext).type.observe(this) { type ->
+      carConnected = type == CarConnection.CONNECTION_TYPE_PROJECTION
+      web?.post { web?.evaluateJavascript("dispatchEvent(new CustomEvent('wmap:car',{detail:$carConnected}))", null) }
+    }
     tts = TextToSpeech(this) { status ->
       val t = tts ?: return@TextToSpeech
       if (status != TextToSpeech.SUCCESS) return@TextToSpeech
@@ -108,6 +120,13 @@ class MainActivity : TauriActivity() {
     @JavascriptInterface fun shareSet(key: String, value: String) {
       shared.edit().putString(key, value).apply()
     }
+
+    /** Mit Android Auto verbunden? */
+    @JavascriptInterface fun carConnected(): Boolean = carConnected
+
+    /** Ans Auto senden (JSON) → "sent" (WMap läuft dort), "waiting" (wartet, bis WMap im Auto geöffnet wird), "" (kein Auto) */
+    @JavascriptInterface fun carSend(json: String): String =
+      if (!carConnected) "" else if (CarLink.send(json)) "sent" else "waiting"
 
     /** Ränder in CSS-Pixeln: {top, bottom, left, right} – oder null, solange unbekannt */
     @JavascriptInterface fun insets(): String = insetsJson

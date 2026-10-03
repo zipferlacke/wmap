@@ -37,6 +37,7 @@ import { share, pageUrl } from '../ui/share.js';
 import { tourFromGpx, folder } from '../data/folder.js';
 import { autoSync } from '../data/auto-sync.js';
 import { mapPage } from '../ui/map-page.js';
+import { carLink, sendToCar } from '../data/car-link.js';
 import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, esc, bbox } from '../core/geo.js';
 import { connections, places, DEFAULT_LIST, PLACE_KINDS } from '../data/saved.js';
 import { packJson, unpackJson } from '../data/store.js';
@@ -828,6 +829,7 @@ content.addEventListener('click', async (e) => {
   const act = e.target.closest('[data-do]')?.dataset.do;
   const t = selected;
   if (!act || !t) return;
+  if (act === 'car') { sendToCar({ type: 'tour', id: t.id }, toast); return; }
   if (t.stub && act !== 'delete') { toast('Dafür braucht es die Tour aus dem Ordner – der ist gerade nicht erreichbar'); return; }
   if (act === 'plan') {
     // Der Verlauf als neue Planung im Planer – ungespeichert, wie eine geteilte Tour
@@ -948,6 +950,7 @@ function selectTour(id, { push = false } = {}) {
     <div class="elevation"></div>
     <div class="weg-actions">
       <a class="button primary" href="./index.html?tour=${encodeURIComponent(t.id)}&start"><span class="msr">navigation</span> Tour starten</a>
+      ${carLink.connected && PROFILES[t.profile]?.costing === 'auto' ? '<button type="button" class="button" data-do="car" title="An WMap in Android Auto senden – dort die Übersicht mit „Los“"><span class="msr">directions_car</span> Ans Auto</button>' : ''}
       <a class="button" href="./tour.html?id=${encodeURIComponent(t.id)}"><span class="msr">edit_road</span> Im Planer öffnen</a>
       <button type="button" class="button" data-do="share"><span class="msr">share</span> Teilen</button>
       <button type="button" class="button" data-do="gpx"><span class="msr">download</span> GPX</button>

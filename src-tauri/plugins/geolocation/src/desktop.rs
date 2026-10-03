@@ -83,6 +83,23 @@ impl<R: Runtime> Geolocation<R> {
     ) -> crate::Result<PermissionStatus> {
         Ok(PermissionStatus::default())
     }
+
+    /// WMap: nur Android.
+    pub fn start_recording(&self, _state: serde_json::Value) -> crate::Result<()> {
+        Err(crate::Error::Unavailable)
+    }
+
+    pub fn stop_recording(&self) -> crate::Result<()> {
+        Ok(())
+    }
+
+    pub fn notification(&self, _command: &str) -> crate::Result<serde_json::Value> {
+        Ok(serde_json::json!({ "state": "granted" }))
+    }
+
+    pub fn take_recorded(&self, _state: serde_json::Value) -> crate::Result<serde_json::Value> {
+        Ok(serde_json::json!({ "points": [], "running": false }))
+    }
 }
 
 #[derive(Serialize)]

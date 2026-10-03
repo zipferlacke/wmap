@@ -145,6 +145,36 @@ export const geo = {
   },
 
   available: () => nativeGeo || 'geolocation' in navigator,
+
+  /**
+   * Aufzeichnen bei ausgeschaltetem Bildschirm – nur die Android-App (ab 2.2.0): Ein Dienst mit Benachrichtigung
+   * sammelt den Standort, solange die App nicht zu sehen ist; zurück im Bild holt `take` das Gesammelte ab.
+   * Ältere Apps, iOS und Browser kennen das nicht – `start` meldet dann false, und der Bildschirm bleibt an.
+   */
+  background: {
+    /** → läuft der Dienst? `state`: Stand der Aufzeichnung für die Benachrichtigung (siehe `sync`) */
+    async start(state = {}) {
+      if (!nativeGeo || !/Android/i.test(navigator.userAgent)) return false;
+      if (!(await allowed({}))) return false;
+      try { await core.invoke('plugin:geolocation|start_recording', { state }); return true; } catch { return false; }
+    },
+    stop() {
+      if (core) core.invoke('plugin:geolocation|stop_recording').catch(() => {});
+    },
+    /**
+     * Stand abgleichen und abholen, was gesammelt wurde.
+     * `state`: { started, distance, lon, lat } für Zeit und Strecke in der Benachrichtigung; mit `push` gilt
+     * der Pause-Stand der Seite ({ paused, pausedAt, pausedMs }), sonst der des Dienstes („Pause“ in der
+     * Benachrichtigung); `clearStop`: „Beenden“ ist angekommen.
+     * → { points: [{ point, accuracy, time }], paused, pausedAt, pausedMs, stop } oder null
+     */
+    async sync(state = {}) {
+      try {
+        const r = await core.invoke('plugin:geolocation|take_recorded', { state });
+        return { ...r, points: (r?.points ?? []).map(([x, y, accuracy, time]) => ({ point: [x, y], accuracy, time })) };
+      } catch { return null; }
+    },
+  },
 };
 
 /**

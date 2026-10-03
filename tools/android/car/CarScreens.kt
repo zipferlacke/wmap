@@ -127,7 +127,7 @@ private fun header(screen: Screen, title: String, extra: Action? = null, close: 
   return b.build()
 }
 
-private fun distance(m: Double): Distance = when {
+internal fun distance(m: Double): Distance = when {
   m < 100 -> Distance.create(((m / 10).roundToInt() * 10).toDouble(), Distance.UNIT_METERS)
   m < 1000 -> Distance.create(((m / 50).roundToInt() * 50).toDouble(), Distance.UNIT_METERS)
   m < 10000 -> Distance.create((m / 100).roundToInt() / 10.0, Distance.UNIT_KILOMETERS_P1)
@@ -288,14 +288,17 @@ class MapScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx) {
       .build()
   }
 
-  private fun routing(g: JSONObject): RoutingInfo {
+  private fun routing(g: JSONObject): RoutingInfo =
+    RoutingInfo.Builder().setCurrentStep(step(g), distance(g.optDouble("dist", 0.0))).build()
+
+  /** Der nächste Abbiegehinweis – auch für das Kombiinstrument (WMapSession.updateTrip) */
+  fun step(g: JSONObject): Step {
     val m = Maneuver.Builder(maneuverType(g))
     val exit = g.optInt("exit", 0)
     if (needsExit(g) && exit > 0) m.setRoundaboutExitNumber(exit)
     g.optString("icon").takeIf { it.isNotEmpty() }?.let { m.setIcon(CarIcons.png(it)) }
     val cue = listOf(g.optString("street"), g.optString("toward")).filter { it.isNotEmpty() && it != "null" }.joinToString(" · ")
-    val step = Step.Builder(cue.ifEmpty { "Der Route folgen" }).setManeuver(m.build()).build()
-    return RoutingInfo.Builder().setCurrentStep(step, distance(g.optDouble("dist", 0.0))).build()
+    return Step.Builder(cue.ifEmpty { "Der Route folgen" }).setManeuver(m.build()).build()
   }
 
   private fun needsExit(g: JSONObject) = g.optInt("type", -1) == 26 && g.optInt("exit", 0) > 0
@@ -808,7 +811,12 @@ class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private va
   private var starting = false
 
   private fun loaded(v: Any?, err: String?) {
-    if (v is JSONObject && (v.optJSONArray("routes")?.length() ?: 0) > 0) { result = v; selected = 0; invalidate() }
+    if (v is JSONObject && (v.optJSONArray("routes")?.length() ?: 0) > 0) {
+      result = v
+      // Die Seite sagt, welche Route gewählt ist (vom Handy gesendet: dieselbe wie dort)
+      selected = maxOf(0, v.optJSONArray("routes").objects().indexOfFirst { it.optInt("id") == v.optInt("selected", -1) })
+      invalidate()
+    }
     else { CarToast.makeText(carContext, err ?: "Keine Route gefunden", CarToast.LENGTH_LONG).show(); screenManager.pop() }
   }
 

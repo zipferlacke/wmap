@@ -114,6 +114,58 @@ Denies the get_current_position command without any pre-configured scope.
 <tr>
 <td>
 
+`geolocation:allow-notification-state`
+
+</td>
+<td>
+
+Enables the notification_state command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`geolocation:deny-notification-state`
+
+</td>
+<td>
+
+Denies the notification_state command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`geolocation:allow-request-notification`
+
+</td>
+<td>
+
+Enables the request_notification command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`geolocation:deny-request-notification`
+
+</td>
+<td>
+
+Denies the request_notification command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `geolocation:allow-request-permissions`
 
 </td>
@@ -133,6 +185,84 @@ Enables the request_permissions command without any pre-configured scope.
 <td>
 
 Denies the request_permissions command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`geolocation:allow-start-recording`
+
+</td>
+<td>
+
+Enables the start_recording command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`geolocation:deny-start-recording`
+
+</td>
+<td>
+
+Denies the start_recording command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`geolocation:allow-stop-recording`
+
+</td>
+<td>
+
+Enables the stop_recording command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`geolocation:deny-stop-recording`
+
+</td>
+<td>
+
+Denies the stop_recording command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`geolocation:allow-take-recorded`
+
+</td>
+<td>
+
+Enables the take_recorded command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`geolocation:deny-take-recorded`
+
+</td>
+<td>
+
+Denies the take_recorded command without any pre-configured scope.
 
 </td>
 </tr>

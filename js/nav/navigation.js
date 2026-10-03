@@ -24,6 +24,9 @@ import { ask } from '../ui/dialogs.js';
 const OFF_ROUTE_M = 40;
 const OFF_ROUTE_FIXES = 3;
 const REROUTE_PAUSE_MS = 10000;
+// Geplante Tour verlassen: so weit voraus geht es zurück auf die geplante Strecke (je weiter weg, desto weiter vorn)
+const REJOIN_MIN_M = 300;
+const REJOIN_MAX_M = 2000;
 const GPS_RESTART_MS = 20000;         // so lange ohne Position: Standortabfrage neu starten
 // Stehen: darunter (m/s) gilt eine Meldung als ruhig, zwei ruhige halten den Pfeil fest …
 const STILL_SPEED = 0.5;
@@ -181,7 +184,7 @@ const LANE_ICON = {
 
 export class Navigation {
   #map; #el; #onExit; #onRoute; #onFix; #onReroute; #onSearch; #onArrive; #onReport; #onShare; #onGuidance; #guide = null;
-  #route = null; #profile = 'car'; #highways = true; #targets = []; #extras = null;
+  #route = null; #profile = 'car'; #highways = true; #targets = []; #extras = null; #tourLine = null;
   #watch = null; #sim = null; #wakeLock = null; #marker = null; #targetMarkers = [];
   #roadFor = null; #cover = null; #shift = 0; #lefts = null; #towards = new Map();
   // Fortschritt auf der Route
@@ -285,9 +288,12 @@ export class Navigation {
   /**
    * @param route     die gewählte Route
    * @param targets   Zwischenziele und Ziel als [lon, lat] – für Neuberechnungen
+   * @param follow    geplante Tour: nach dem Verfahren so schnell wie möglich zurück auf diese Strecke
+   *                  (statt auf dem schnellsten Weg zum nächsten Ziel)
    */
-  start(route, { profile, highways, targets }) {
+  start(route, { profile, highways, targets, follow = false }) {
     this.#route = route;
+    this.#tourLine = follow ? { coords: route.coords, cum: route.cum } : null;
     this.#cutAt = null;
     this.#trust = trustedSpeed();
     this.#profile = profile;
@@ -1071,7 +1077,12 @@ export class Navigation {
     speech.say(announce);
     this.#status(announce.replace(/\.$/, ' …'));
     try {
-      const route = await fetchReroute([point, ...this.#targets], this.#profile, { highways: this.#highways, heading });
+      // Geplante Tour: über einen Punkt der geplanten Strecke ein Stück voraus – ab dort wieder wie geplant
+      const back = this.#rejoin(point);
+      const plain = () => fetchReroute([point, ...this.#targets], this.#profile, { highways: this.#highways, heading });
+      const route = back
+        ? await fetchReroute([point, back, ...this.#targets], this.#profile, { highways: this.#highways, heading, through: [1] }).catch(plain)
+        : await plain();
       if (!this.#route) return;
       route.id = this.#route.id;
       this.#route = route;
@@ -1092,6 +1103,18 @@ export class Navigation {
     } finally {
       this.#rerouting = false;
     }
+  }
+
+  /** Punkt auf der geplanten Strecke, an dem es wieder auf sie geht – oder null (keine Tour, kurz vor dem Ziel) */
+  #rejoin(point) {
+    const p = this.#tourLine;
+    if (!p) return null;
+    const s = nearestOnLine(p.coords, p.cum, point);
+    const at = s.along + Math.min(REJOIN_MAX_M, Math.max(REJOIN_MIN_M, s.offset * 2));
+    if (at > p.cum.at(-1) - 100) return null;
+    // Liegt das nächste Zwischenziel davor, führt die Neuberechnung ohnehin dorthin
+    if (this.#targets.length > 1 && nearestOnLine(p.coords, p.cum, this.#targets[0]).along <= at + 50) return null;
+    return pointAt(p.coords, p.cum, at);
   }
 
   #offlineHint() {

@@ -742,6 +742,28 @@ Die ersten zwei:
   laufender Aufzeichnung öffnet er Pause/Weiter, „Beenden und speichern“
   und „Verwerfen“ – die Navigation läuft dabei weiter (`js/app/nav.js`).
 - Browser zeichnen im Hintergrund nicht auf – der Bildschirm bleibt an.
+- **Android-App (ab 2.2.0): Aufzeichnen bei ausgeschaltetem Bildschirm.** Mit dem Start der Aufzeichnung
+  startet ein Vordergrund-Dienst mit der Benachrichtigung „WMap zeichnet auf“
+  (`src-tauri/plugins/geolocation/…/RecordService.kt`). Er holt den Standort selbst und sammelt die Punkte,
+  solange die App nicht zu sehen ist; zurück im Bild trägt der Recorder sie nach (`geo.background` in
+  `js/core/native.js`, `recorder.addAll`). Der Bildschirm muss dann nicht an bleiben.
+  - **Benachrichtigung:** in der Kopfzeile die Zeit (läuft von selbst mit, ohne die Pausen), darunter die
+    Strecke; aufgeklappt „Pause“/„Weiter“ und „Beenden“. Pause wirkt sofort im Dienst, die Seite übernimmt sie
+    beim nächsten Abgleich (alle 1,5 s, solange sie zu sehen ist – `#sync` im Recorder). „Beenden“ holt die
+    App nach vorn und öffnet dort „Aufzeichnung beenden“ (Name, Speichern, Verwerfen) bzw. in der Navigation
+    die Auswahl des Aufnahme-Knopfs. Ist die App nicht zu sehen, zählt der Dienst die Strecke mit denselben
+    Regeln weiter wie der Recorder.
+  - **Hinweis vor der Freigabe:** Vor dem Start einer Aufzeichnung erklärt ein Hinweis der App, wofür die
+    Benachrichtigung da ist (`recordingNotice` in `js/ui/permissions.js`); erst „Erlauben“ holt das Fenster von
+    Android – fragt Android nicht mehr (zweimal abgelehnt), öffnen sich die Einstellungen der App. „Später“:
+    weiter ohne. Solange die Benachrichtigung nicht erlaubt ist, kommt der Hinweis bei jedem Aufzeichnen
+    wieder; die Aufzeichnung beginnt erst danach. Auch unter Einstellungen → Berechtigungen.
+  - **Pause:** Die Zeit steht in der Pause (`recorder.elapsed`, Pausen im laufenden Stand).
+
+  Gilt für jede
+  Aufzeichnung, auch die während der Navigation (der Recorder in `js/data/tracks.js` startet den Dienst). Die
+  Navigation selbst – Ansagen, Karte – macht weiter, sobald der Bildschirm wieder an ist. Ältere Apps und iOS bleiben
+  beim angeschalteten Bildschirm.
 
 ## 13. Entdecken
 
@@ -1430,6 +1452,31 @@ Route planen, Aufzeichnen, Meine Touren (`shortcuts` in
 Mit dem Handy am Auto erscheint WMap in Android Auto als Navigations-App.
 Das Auto zeigt dabei nur Googles Vorlagen – eigene Oberflächen lässt
 Android Auto nicht zu (Ablenkung). WMap malt einzig die Karte selbst:
+
+**Kombiinstrument und Head-up-Display:** Jeder Abbiegehinweis geht auch als Daten ans Auto
+(`NavigationManager.updateTrip` in `tools/android/car/WMapCarService.kt`: nächster Schritt mit Entfernung, Ziel
+mit Reststrecke und Ankunft) – Autos, die das anzeigen, zeigen ihn hinter dem Lenkrad.
+**Simulierte Fahrt:** Schaltet das Auto sie ein (`onAutoDriveEnabled`, Googles Prüfung von Navigations-Apps),
+lädt sich die Karte mit `?sim` neu und fährt jede Route von selbst ab (`autoDrive` in `js/car/car.js`) – ohne
+Aufzeichnung.
+
+**Ans Auto senden** (Android-App ab 2.2.0, nur solange das Handy mit Android Auto verbunden ist –
+`js/data/car-link.js`, `tools/android/car/CarLink.kt`):
+- **Ort:** in der Ortsansicht der Knopf „Ans Auto“ – im Auto öffnet sich die Routenübersicht dorthin, mit dem
+  Parkplatz davor als Ziel (bei Geschäften …) und „Los“.
+- **Route:** in der Routenplanung das Auto-Symbol neben „Starten“ (nur bei Auto-Profilen) – dieselben Punkte,
+  gewählt ist im Auto die Alternative, die der am Handy gewählten am nächsten kommt (Länge und Fahrzeit;
+  gerechnet wird im Auto neu, ab dessen Standort, wenn die Route bei „Mein Standort“ begann).
+- **Geplante Tour:** in „Meine Touren“ bei fürs Auto geplanten Touren „Ans Auto“ – im Auto wie aus „Meine
+  Touren“ dort.
+- Läuft WMap im Auto schon, übernimmt es sofort; sonst wartet das Gesendete bis zu 15 Minuten, bis WMap im Auto
+  geöffnet wird. Im Auto: `shared` in `js/car/car.js`.
+
+**Geplante Tour verlassen:** Wer bei der Navigation einer geplanten Tour von der Strecke abkommt, wird so schnell
+wie möglich auf sie zurückgeführt – die Neuberechnung geht über einen Punkt der geplanten Strecke ein Stück
+voraus (300 m bis 2 km, je weiter weg, desto weiter vorn; `#rejoin` in `js/nav/navigation.js`, Durchfahrtspunkt
+ohne Halt und ohne Ansage), ab dort wieder wie geplant. Andere Navigationen rechnen wie bisher den schnellsten
+Weg zum Ziel. Gilt am Handy und im Auto; nach einem Neustart der App mitten in der Navigation nicht mehr.
 
 - **Start am Standort:** Die Karte beginnt gleich dort, wo das Auto steht,
   geneigt – nicht beim Globus oder beim letzten Ausschnitt der App. Android

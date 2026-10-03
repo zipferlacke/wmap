@@ -11,6 +11,7 @@
  *   permissionsHere        gibt es den Dialog hier? (nur Android-App)
  *   showPermissions({ reason: 'location' | 'health' | null })
  *   locationAccess()       Standort erlaubt? Sonst erst der Dialog → true/false
+ *   recordingNotice()      Hinweis zur Benachrichtigung beim Aufzeichnen, danach das Fenster von Android
  */
 import { ask } from './dialogs.js';
 import { esc } from '../core/geo.js';
@@ -50,6 +51,63 @@ export async function locationAccess({ ask: prompt = true } = {}) {
   if (!prompt) return false;
   await showPermissions({ reason: 'location' });
   return ['granted', 'coarse'].includes(await locationState());
+}
+
+/* ── Benachrichtigung beim Aufzeichnen ────────────────────────────────────── */
+
+/** → 'granted' | 'prompt' | 'none' (App kennt die Abfrage nicht – vor 2.2.0) */
+async function notificationState() {
+  try { return (await core.invoke('plugin:geolocation|notification_state')).state; } catch { return 'none'; }
+}
+
+let noteBlocked = false;   // Android zeigt sein Fenster nicht mehr (zweimal abgelehnt) – dann in die Einstellungen
+
+/**
+ * Das Fenster von Android. Kommt die Antwort sofort und heißt nicht „erlaubt“, hat Android es gar nicht mehr
+ * gezeigt – dann öffnen sich die Einstellungen der App, dort lässt es sich erlauben.
+ */
+async function requestNotification() {
+  const t0 = Date.now();
+  let st = 'prompt';
+  try { st = (await core.invoke('plugin:geolocation|request_notification')).state; } catch { /* Zustand zeigt es */ }
+  noteBlocked = st !== 'granted' && Date.now() - t0 < 500;
+  if (noteBlocked) await healthSettings('app').catch(() => {});
+  return st;
+}
+
+/**
+ * Vor dem Start einer Aufzeichnung: erst der Hinweis, wofür die Benachrichtigung da ist – „Erlauben“ holt das
+ * Fenster von Android (bzw. die Einstellungen, wenn Android nicht mehr fragt). „Später“ (auch ✕): weiter ohne.
+ * Solange sie nicht erlaubt ist, kommt der Hinweis bei jedem Aufzeichnen wieder. Die Aufzeichnung beginnt
+ * erst danach.
+ */
+export async function recordingNotice() {
+  if (!permissionsHere || (await notificationState()) !== 'prompt') return;
+  const v = await ask({
+    icon: 'notifications', title: 'Hinweis: Aufzeichnen bei ausgeschaltetem Bildschirm', className: 'news',
+    html: `<p>Deine Aufzeichnung läuft weiter, auch wenn der Bildschirm aus ist oder du eine andere App benutzt.</p>
+      <p>Solange sie läuft, zeigt WMap die Benachrichtigung <strong>„WMap zeichnet auf“</strong> – so siehst du jederzeit,
+        dass dein Standort gerade aufgezeichnet wird. Dafür fragt Android gleich, ob WMap Benachrichtigungen senden darf.</p>
+      <p class="muted">WMap schickt sonst keine Benachrichtigungen. Die Aufzeichnung läuft auch ohne – du siehst dann nur
+        nicht, dass sie läuft.</p>`,
+    buttons: [{ value: 'later', label: 'Später' }, { value: 'allow', label: 'Erlauben', icon: 'notifications', primary: true }],
+  });
+  if (v === 'allow') await requestNotification();
+}
+
+async function notificationItem() {
+  const st = await notificationState();
+  if (st === 'none') return '';
+  const denied = st !== 'granted' && noteBlocked;
+  return item({
+    id: 'notifications', icon: 'notifications', title: 'Benachrichtigung', state: st,
+    status: st === 'granted' ? 'Erlaubt' : denied ? 'Nicht erlaubt – Android fragt nicht mehr, bitte in den Einstellungen erlauben' : 'Noch nicht erlaubt',
+    text: 'Nur beim Aufzeichnen: „WMap zeichnet auf“ steht in der Leiste, solange dein Weg mitläuft – auch bei '
+      + 'ausgeschaltetem Bildschirm. Die Aufzeichnung läuft auch ohne.',
+    button: st === 'granted' ? ['app', 'settings', 'In den Einstellungen ändern', false]
+      : denied ? ['app', 'settings', 'In den Einstellungen erlauben', true]
+        : ['notifications', 'notifications', 'Benachrichtigung erlauben', false],
+  });
 }
 
 /* ── Dialog ───────────────────────────────────────────────────────────────── */
@@ -129,7 +187,7 @@ const INTRO = {
  */
 export async function showPermissions({ reason = null } = {}) {
   if (!permissionsHere) return;
-  const body = async () => `${await locationItem(reason)}${await healthItem(reason)}`;
+  const body = async () => `${await locationItem(reason)}${await notificationItem()}${await healthItem(reason)}`;
   await ask({
     icon: 'verified_user', title: 'Berechtigungen', className: 'news perms',
     html: `<p>${esc(INTRO[reason] ?? 'WMap fragt nur, was eine Funktion wirklich braucht.')}
@@ -151,6 +209,7 @@ export async function showPermissions({ reason = null } = {}) {
           else { await requestLocation(); asked = !['granted', 'coarse'].includes(await locationState()); }
           if (['granted', 'coarse'].includes(await locationState())) dispatchEvent(new Event('wmap:location'));
         }
+        if (act === 'notifications') await requestNotification();
         if (act === 'app' || act === 'health') await healthSettings(act).catch(() => {});
         if (act === 'health-request') await healthRequest().catch(() => {});
         refresh();

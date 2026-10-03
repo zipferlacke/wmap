@@ -63,6 +63,7 @@
 "js/core/smooth.js",
 "js/core/theme.js",
 "js/data/auto-sync.js",
+"js/data/car-link.js",
 "js/data/car-share.js",
 "js/data/db.js",
 "js/data/duplicates.js",
