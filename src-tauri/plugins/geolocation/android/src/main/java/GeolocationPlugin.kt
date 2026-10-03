@@ -72,6 +72,8 @@ class GeolocationPlugin(private val activity: Activity): Plugin(activity) {
         super.onPause()
         // WMap: Pause vor load() (App gleich nach dem Start wieder verlassen) – im Original stürzte die App
         // hier ab („lateinit property implementation has not been initialized“)
+        // WMap: Ab jetzt sammelt der Aufzeichnungs-Dienst (RecordService) – die Seite bekommt nichts mehr
+        RecordService.hidden = true
         if (!::implementation.isInitialized) return
         // Clear all location updates on pause to avoid possible background location calls
         implementation.clearLocationUpdates()
@@ -79,6 +81,7 @@ class GeolocationPlugin(private val activity: Activity): Plugin(activity) {
 
     override fun onResume() {
         super.onResume()
+        RecordService.hidden = false
         // resume watchers
         for ((watcher, args) in watchers.values) {
             startWatch(watcher, args)
@@ -158,6 +161,38 @@ class GeolocationPlugin(private val activity: Activity): Plugin(activity) {
         }
 
         invoke.resolve()
+    }
+
+    // WMap: Aufzeichnen bei ausgeschaltetem Bildschirm (RecordService)
+
+    @Command
+    fun startRecording(invoke: Invoke) {
+        try {
+            // Ohne die Freigabe läuft der Dienst trotzdem – die Benachrichtigung steht dann nur in der Liste
+            // der laufenden Apps
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                activity.requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 4711)
+            }
+            RecordService.start(activity.applicationContext)
+            invoke.resolve()
+        } catch (e: Exception) {
+            invoke.reject(e.message ?: "Aufzeichnungs-Dienst startet nicht.")
+        }
+    }
+
+    @Command
+    fun stopRecording(invoke: Invoke) {
+        RecordService.stop(activity.applicationContext)
+        invoke.resolve()
+    }
+
+    @Command
+    fun takeRecorded(invoke: Invoke) {
+        val ret = JSObject()
+        ret.put("points", RecordService.take())
+        ret.put("running", RecordService.running)
+        invoke.resolve(ret)
     }
 
     private fun convertLocation(location: Location): JSObject {

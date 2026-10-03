@@ -8,6 +8,9 @@ const COMMANDS: &[&str] = &[
     "clear_watch",
     "check_permissions",
     "request_permissions",
+    "start_recording",
+    "stop_recording",
+    "take_recorded",
 ];
 
 fn main() {

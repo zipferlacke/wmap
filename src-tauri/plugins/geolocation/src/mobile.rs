@@ -108,6 +108,30 @@ impl<R: Runtime> Geolocation<R> {
             )
             .map_err(Into::into)
     }
+
+    /// WMap: Vordergrund-Dienst starten, der den Standort sammelt, solange die App nicht zu sehen ist (nur Android).
+    pub fn start_recording(&self) -> crate::Result<()> {
+        #[cfg(target_os = "android")]
+        return self.0.run_mobile_plugin("startRecording", ()).map_err(Into::into);
+        #[cfg(not(target_os = "android"))]
+        Err(crate::Error::Unavailable)
+    }
+
+    /// WMap: Dienst beenden, Gesammeltes verwerfen.
+    pub fn stop_recording(&self) -> crate::Result<()> {
+        #[cfg(target_os = "android")]
+        return self.0.run_mobile_plugin("stopRecording", ()).map_err(Into::into);
+        #[cfg(not(target_os = "android"))]
+        Ok(())
+    }
+
+    /// WMap: Gesammelte Punkte abholen – `{ points: [[lon, lat, Genauigkeit, Zeit]], running }`.
+    pub fn take_recorded(&self) -> crate::Result<serde_json::Value> {
+        #[cfg(target_os = "android")]
+        return self.0.run_mobile_plugin("takeRecorded", ()).map_err(Into::into);
+        #[cfg(not(target_os = "android"))]
+        Ok(serde_json::json!({ "points": [], "running": false }))
+    }
 }
 
 #[derive(Serialize)]

@@ -21,6 +21,10 @@ pub enum Error {
         #[from]
         tauri::plugin::mobile::PluginInvokeError,
     ),
+    /// WMap: Aufzeichnen im Hintergrund gibt es nur unter Android.
+    #[error("background recording is not available on this platform")]
+    #[allow(dead_code)]
+    Unavailable,
 }
 
 impl Serialize for Error {

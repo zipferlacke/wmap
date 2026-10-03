@@ -33,6 +33,7 @@
  */
 import { local, tours, changed } from './store.js';
 import { store } from './db.js';
+import { geo } from '../core/native.js';
 import { encodePolyline, decodePolyline, simplify, simplifyTo, distance, bbox } from '../core/geo.js';
 
 const SETTING = 'wmap.history';
@@ -271,15 +272,43 @@ const MAX_ACCURACY_M = 35;
 /**
  * Nimmt Standortmeldungen auf. Der laufende Stand liegt zusätzlich im
  * localStorage – nach Neuladen oder Absturz geht es dort weiter.
+ *
+ * Android-App (ab 2.2.0): Solange aufgezeichnet wird – einzeln oder mit der Navigation –, läuft ein Dienst
+ * mit Benachrichtigung (`geo.background`, core/native.js). Er sammelt den Standort, wenn der Bildschirm aus
+ * oder eine andere App vorn ist; zurück im Bild werden die Punkte nachgetragen. `background` sagt, ob er
+ * läuft – dann muss der Bildschirm nicht an bleiben.
  */
 class Recorder {
   #live = null;
   #unsaved = 0;
+  #bg = false;
   onChange = null;
+  /** Der Dienst läuft (oder eben nicht) – z. B. Bildschirm nicht mehr wach halten */
+  onBackground = null;
 
   constructor() {
     const saved = local.get(LIVE);
     if (saved?.points && Date.now() - (saved.points.at(-1)?.[2] ?? saved.started) < 12 * 3600e3) this.#live = saved;
+    if (this.#live) this.#background(true);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.#catchUp(); });
+  }
+
+  get background() { return this.#bg; }
+
+  async #background(on) {
+    if (!on) {
+      if (this.#bg) geo.background.stop();
+      this.#bg = false;
+      return;
+    }
+    this.#bg = await geo.background.start();
+    if (!this.#live) { this.#background(false); return; }
+    if (this.#bg) { this.onBackground?.(); this.#catchUp(); }
+  }
+
+  /** Was der Dienst gesammelt hat, während die App nicht zu sehen war */
+  async #catchUp() {
+    if (this.#bg && this.#live) this.addAll(await geo.background.take());
   }
 
   get active() { return !!this.#live; }
@@ -292,16 +321,35 @@ class Recorder {
   start({ kind, profile, name = '', from = '', to = '', keep = false }) {
     this.#live = { kind, profile, name, from, to, keep, started: Date.now(), paused: false, points: [] };
     this.#save();
+    this.#background(true);
   }
 
-  add({ point, accuracy }) {
-    const l = this.#live;
-    if (!l || l.paused || !point || (accuracy ?? 0) > MAX_ACCURACY_M) return;
-    const last = l.points.at(-1);
-    if (last && distance(last, point) < MIN_STEP_M) return;
-    l.points.push([+point[0].toFixed(6), +point[1].toFixed(6), Date.now()]);
+  /** `time`: wann der Punkt gemessen wurde – für nachgereichte Punkte (sonst: jetzt) */
+  add({ point, accuracy, time }) {
+    if (!this.#take({ point, accuracy, time })) return;
     if (++this.#unsaved >= 10) this.#save();
     this.onChange?.();
+  }
+
+  /** Viele Punkte auf einmal (bei ausgeschaltetem Bildschirm gesammelt) – ein Speichern, eine Meldung */
+  addAll(list) {
+    let n = 0;
+    for (const p of list) if (this.#take(p)) n += 1;
+    if (!n) return 0;
+    this.#save();
+    this.onChange?.();
+    return n;
+  }
+
+  #take({ point, accuracy, time }) {
+    const l = this.#live;
+    if (!l || l.paused || !point || (accuracy ?? 0) > MAX_ACCURACY_M) return false;
+    const last = l.points.at(-1);
+    if (last && distance(last, point) < MIN_STEP_M) return false;
+    // Nachgereichtes nie vor den letzten Punkt oder vor den Start
+    if (time && (time < l.started || (last && time < last[2]))) return false;
+    l.points.push([+point[0].toFixed(6), +point[1].toFixed(6), time || Date.now()]);
+    return true;
   }
 
   pause(on) {
@@ -312,9 +360,12 @@ class Recorder {
 
   /** Beenden und speichern → der Weg (oder null, wenn zu kurz/abgeschaltet). */
   async stop({ name } = {}) {
+    // Erst nachtragen, was noch beim Dienst liegt
+    await this.#catchUp();
     const l = this.#live;
     this.#live = null;
     local.set(LIVE, null);
+    this.#background(false);
     this.onChange?.();
     if (!l) return null;
     if (l.kind === 'nav' && !l.keep && !historySetting.get()) return null;
@@ -323,7 +374,7 @@ class Recorder {
     return t;
   }
 
-  discard() { this.#live = null; local.set(LIVE, null); this.onChange?.(); }
+  discard() { this.#live = null; local.set(LIVE, null); this.#background(false); this.onChange?.(); }
 
   #save() {
     this.#unsaved = 0;

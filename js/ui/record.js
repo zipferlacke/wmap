@@ -5,6 +5,9 @@
  *
  * Läuft nur, solange die Seite offen ist – Browser zeichnen im Hintergrund
  * nicht auf. Darum bleibt der Bildschirm an (Wake Lock).
+ *
+ * Android-App (ab 2.2.0): Der Recorder lässt einen Dienst mitlaufen, der bei ausgeschaltetem Bildschirm
+ * weiter sammelt (data/tracks.js) – dann muss der Bildschirm nicht an bleiben.
  */
 import { recorder, defaultName } from '../data/tracks.js';
 import { geo } from '../core/native.js';
@@ -39,6 +42,7 @@ class RecordUi {
     document.body.append(this.#el);
     this.#el.addEventListener('click', (e) => this.#click(e));
     recorder.onChange = () => this.#paint();
+    recorder.onBackground = () => { this.#lock?.release?.().catch(() => {}); this.#lock = null; };
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && recorder.active) this.#keepAwake();
     });
@@ -183,6 +187,7 @@ class RecordUi {
   }
 
   async #keepAwake() {
+    if (recorder.background) return;
     try { this.#lock = await navigator.wakeLock?.request('screen'); } catch { /* nicht schlimm */ }
   }
 }

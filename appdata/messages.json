@@ -9,6 +9,13 @@
     "messages": [],
     "changelog": [
         {
+            "version": "2.2.0",
+            "date": "2026-10-03",
+            "changes": [
+                "Aufzeichnen läuft in der Android-App weiter, wenn der Bildschirm aus ist – eine Benachrichtigung zeigt, dass WMap aufzeichnet (dafür braucht es die neue App aus dem Store)"
+            ]
+        },
+        {
             "version": "2.1.1",
             "date": "2026-10-03",
             "changes": [
