@@ -1453,6 +1453,13 @@ Mit dem Handy am Auto erscheint WMap in Android Auto als Navigations-App.
 Das Auto zeigt dabei nur Googles Vorlagen – eigene Oberflächen lässt
 Android Auto nicht zu (Ablenkung). WMap malt einzig die Karte selbst:
 
+**Kombiinstrument und Head-up-Display:** Jeder Abbiegehinweis geht auch als Daten ans Auto
+(`NavigationManager.updateTrip` in `tools/android/car/WMapCarService.kt`: nächster Schritt mit Entfernung, Ziel
+mit Reststrecke und Ankunft) – Autos, die das anzeigen, zeigen ihn hinter dem Lenkrad.
+**Simulierte Fahrt:** Schaltet das Auto sie ein (`onAutoDriveEnabled`, Googles Prüfung von Navigations-Apps),
+lädt sich die Karte mit `?sim` neu und fährt jede Route von selbst ab (`autoDrive` in `js/car/car.js`) – ohne
+Aufzeichnung.
+
 **Ans Auto senden** (Android-App ab 2.2.0, nur solange das Handy mit Android Auto verbunden ist –
 `js/data/car-link.js`, `tools/android/car/CarLink.kt`):
 - **Ort:** in der Ortsansicht der Knopf „Ans Auto“ – im Auto öffnet sich die Routenübersicht dorthin, mit dem

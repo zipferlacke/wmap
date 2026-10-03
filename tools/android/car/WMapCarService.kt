@@ -21,6 +21,11 @@ import androidx.car.app.model.AlertCallback
 import androidx.car.app.model.CarText
 import androidx.car.app.navigation.NavigationManager
 import androidx.car.app.navigation.NavigationManagerCallback
+import androidx.car.app.navigation.model.Destination
+import androidx.car.app.navigation.model.TravelEstimate
+import androidx.car.app.navigation.model.Trip
+import androidx.car.app.model.DateTimeWithZone
+import java.util.TimeZone
 import androidx.car.app.validation.HostValidator
 import androidx.car.app.versioning.CarAppApiLevels
 import androidx.core.content.ContextCompat
@@ -85,6 +90,10 @@ class WMapSession : Session() {
     navigation.setNavigationManagerCallback(object : NavigationManagerCallback {
       // Das Auto beendet die Navigation (z. B. eine andere App navigiert jetzt)
       override fun onStopNavigation() { web.call("stop") }
+
+      // Googles Prüfung bzw. die Entwickler-Einstellung „simulierte Fahrt“: Die Seite fährt die Route von
+      // selbst ab (lädt sich dafür mit ?sim neu – js/car/car.js autoDrive)
+      override fun onAutoDriveEnabled() { web.call("autoDrive") }
     })
     lifecycle.addObserver(object : DefaultLifecycleObserver {
       override fun onDestroy(owner: LifecycleOwner) {
@@ -152,6 +161,7 @@ class WMapSession : Session() {
       "guidance" -> {
         nav.guide = o
         mapScreen?.invalidate()
+        updateTrip(o)
       }
       "navStart" -> setNav(true, o?.optString("destination") ?: "")
       "navEnd" -> setNav(false, "")
@@ -165,6 +175,41 @@ class WMapSession : Session() {
       "toast" -> o?.optString("text")?.takeIf { it.isNotEmpty() }?.let { CarToast.makeText(carContext, it, CarToast.LENGTH_SHORT).show() }
       "ask" -> if (o != null) ask(o)
       "askEnd" -> alerts.remove(o?.optInt("id"))?.let { dismissAlert(it) }
+    }
+  }
+
+  /**
+   * Abbiegehinweis, Entfernung und Ankunft als Daten ans Auto – für das Kombiinstrument hinter dem Lenkrad
+   * und das Head-up-Display. Nur zwischen navigationStarted und navigationEnded erlaubt.
+   */
+  private fun updateTrip(g: JSONObject?) {
+    val screen = mapScreen
+    if (!nav.active || g == null || screen == null) return
+    try {
+      val now = System.currentTimeMillis()
+      val zone = TimeZone.getDefault()
+      val secs = g.optDouble("secs", 0.0).coerceAtLeast(0.0)
+      val left = g.optDouble("left", 0.0).coerceAtLeast(0.0)
+      val trip = Trip.Builder()
+      trip.addDestination(
+        Destination.Builder().setName(nav.destination.ifEmpty { "Ziel" }).build(),
+        TravelEstimate.Builder(distance(left), DateTimeWithZone.create(now + (secs * 1000).toLong(), zone))
+          .setRemainingTimeSeconds(secs.toLong()).build(),
+      )
+      if (!g.optBoolean("arrived")) {
+        val dist = g.optDouble("dist", 0.0).coerceAtLeast(0.0)
+        // Zeit bis zum Abbiegen: anteilig an der restlichen Fahrzeit
+        val stepSecs = if (left > 0) (secs * dist / left).coerceIn(0.0, secs) else 0.0
+        trip.addStep(
+          screen.step(g),
+          TravelEstimate.Builder(distance(dist), DateTimeWithZone.create(now + (stepSecs * 1000).toLong(), zone))
+            .setRemainingTimeSeconds(stepSecs.toLong()).build(),
+        )
+        g.optString("road").takeIf { it.isNotEmpty() && it != "null" }?.let { trip.setCurrentRoad(it) }
+      }
+      navigation.updateTrip(trip.build())
+    } catch (e: Exception) {
+      android.util.Log.w("WMapCar", "updateTrip: " + e.message)
     }
   }
 

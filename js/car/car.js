@@ -628,6 +628,18 @@ const methods = {
     return true;
   },
   stop() { if (nav.active) nav.stop(); return true; },
+  /**
+   * Simulierte Fahrt (Googles Prüfung, onAutoDriveEnabled): Die Seite lädt sich mit ?sim neu – ab dann fährt
+   * jede Navigation die Route von selbst ab, ohne Aufzeichnung und ohne Fahrten zu merken (wie ?sim sonst).
+   */
+  autoDrive() {
+    const u = new URL(location.href);
+    if (u.searchParams.has('sim')) return true;
+    if (nav.active) nav.stop();
+    u.searchParams.set('sim', '');
+    location.replace(u);
+    return true;
+  },
   /** Ganze Route zeigen (Navigation) – „Zentrieren“ holt zurück */
   overview() { document.querySelector('#nav .nav-overview')?.click(); return true; },
   /** Ansagen an/aus → true, wenn jetzt stumm */

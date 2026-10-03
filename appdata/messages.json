@@ -14,6 +14,7 @@
             "changes": [
                 "Aufzeichnen läuft in der Android-App weiter, wenn der Bildschirm aus ist – eine Benachrichtigung zeigt Zeit und Strecke, aufgeklappt mit Pause und Beenden (dafür braucht es die neue App aus dem Store)",
                 "Ans Auto senden: Ist das Handy mit Android Auto verbunden, gehen ein Ort, die geplante Route oder eine geplante Tour mit einem Tipp ans Auto – dort die Übersicht mit „Los“",
+                "Android Auto: Abbiegehinweise gehen auch ans Kombiinstrument bzw. Head-up-Display, wenn das Auto sie dort zeigt",
                 "Geplante Tour verlassen: Die Navigation führt so schnell wie möglich zurück auf die geplante Strecke",
                 "Fix: In der Pause einer Aufzeichnung lief die Zeit weiter"
             ]
