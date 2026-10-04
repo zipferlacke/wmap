@@ -7,6 +7,10 @@
  *
  * Mit `showMetric` zeigt dasselbe Diagramm andere Werte über die Strecke:
  * Tempo, Puls, Frequenz, Leistung eines Wegs (pages/wege.js).
+ *
+ * Der Knopf rechts im Kopf öffnet das Diagramm im Vollbild (Diagramm der
+ * Bibliothek: derselbe Knoten wandert in einen <dialog>). Dort lässt es sich
+ * zoomen (Mausrad, zwei Finger), im Blatt nicht.
  */
 import * as echarts from '../../libs/echarts/echarts.esm.min.js';
 import { Diagramm, setIcons } from '../../libs/wuefl-libs/diagramm/diagramm.js';
@@ -35,7 +39,7 @@ function axisRange(min, max) {
 }
 
 export class ElevationProfile {
-  #diagram; #points = []; #host;
+  #diagram; #points = []; #host; #last = null; #mark = null; #watched = null;
 
   constructor(host, { onHover } = {}) {
     this.#host = host;
@@ -47,6 +51,8 @@ export class ElevationProfile {
     this.#on('globalout', () => onHover?.(null));
     // Thema in WMap umgestellt (Einstellung, nicht das System): das Diagramm kennt nur feste Farben – neu zeichnen
     addEventListener('wmap:theme', () => { if (this.#points.length) this.#diagram.refresh(); });
+    // Zurück (Taste am Handy, Browser) schließt das Vollbild, statt es über der nächsten Ansicht stehen zu lassen
+    addEventListener('popstate', () => { if (this.#diagram.fullscreen) this.#diagram.toggleFullscreen(false); });
   }
 
   /**
@@ -55,6 +61,51 @@ export class ElevationProfile {
    */
   #chart() {
     return this.#diagram.instance ?? echarts.getInstanceByDom(this.#host.querySelector('.dg_canvas'));
+  }
+
+  /** Läuft das Diagramm gerade im Vollbild? */
+  get fullscreen() { return !!this.#diagram.fullscreen; }
+
+  /**
+   * Neue Reihe setzen – auch im Vollbild (pages/wege.js schaltet dort zwischen Höhe, Tempo, Puls … um).
+   *
+   * Die Bibliothek baut den Kopf dabei neu: Der Knopf stünde im Vollbild wieder auf „öffnen“. Außerdem hängt sie
+   * ihm das Öffnen fest an (addEventListener) und setzt beim Öffnen und Schließen zusätzlich `onclick` – nach
+   * dem ersten Schließen ginge das Vollbild dadurch auf und im selben Klick wieder zu. Deshalb: ein Knopf ohne
+   * das fest Angehängte, nur mit `onclick`, im Zustand von jetzt.
+   */
+  #config(cfg, mark = this.#mark) {
+    this.#last = cfg;
+    this.#mark = mark;
+    const full = this.fullscreen;
+    // Zoomen nur im Vollbild – im Blatt nähme es dem Finger das Scrollen
+    this.#diagram.setConfig({ ...cfg, zoom: full });
+    // Das Symbol der Reihe (Berg, Herz …) steht vor allen Chips. Der Kopf wird nur in setConfig() neu gebaut,
+    // die Chips danach an Ort und Stelle befüllt – ein vorangestelltes Element überlebt also jedes Nachladen.
+    if (mark) {
+      const el = Object.assign(document.createElement('span'), { className: 'msr elev-mountain', textContent: mark.icon, title: mark.title });
+      if (mark.color) el.style.color = mark.color;
+      this.#host.querySelector('.dg_tools')?.prepend(el);
+    }
+    const old = this.#host.querySelector('.dg_fsbtn');
+    if (!old) return;
+    const btn = old.cloneNode(true);
+    old.replaceWith(btn);
+    btn.title = full ? 'Vollbild verlassen' : 'Vollbild';
+    btn.setAttribute('aria-label', full ? 'Vollbild verlassen' : 'Diagramm im Vollbild öffnen');
+    const ico = btn.querySelector('[data-dg-ico]');
+    ico.dataset.dgIco = full ? 'fullscreenExit' : 'fullscreen';
+    ico.innerHTML = `<span class="msr">${full ? 'fullscreen_exit' : 'fullscreen'}</span>`;
+    btn.onclick = () => {
+      this.#diagram.toggleFullscreen(!full);
+      this.#config(this.#last);
+      // Esc und Zurück schließen an der Bibliothek vorbei – auch dann Knopf und Zoomen zurückstellen
+      const dlg = this.#host.closest('dialog.dg_fs');
+      if (dlg && dlg !== this.#watched) {
+        this.#watched = dlg;
+        dlg.addEventListener('close', () => { if (this.#last) this.#config(this.#last); });
+      }
+    };
   }
 
   #on(name, cb) {
@@ -73,10 +124,8 @@ export class ElevationProfile {
       label: `<span class="msr" title="${title}">${icon}</span>`,
     });
 
-    this.#diagram.setConfig({
+    this.#config({
       card: false,
-      fullscreen: false,
-      zoom: false,
       legend: { hidden: true },
       x_axis: { type: 'value', unit: 'km', decimals: route.length < 5000 ? 1 : 0 },
       y_axes: [{ unit: 'm', min, max, split_number: 3 }],
@@ -90,14 +139,7 @@ export class ElevationProfile {
         key: 'hoehe', name: 'Höhe', data: this.#points,
         color: GREEN, fill: 'gradient', smooth: false, decimals: 0, unit: 'm',
       }],
-    });
-    // Das Berg-Icon steht vor allen Chips. Der Kopf wird nur in setConfig()
-    // neu gebaut, die Chips danach an Ort und Stelle befüllt – ein
-    // vorangestelltes Element überlebt also jedes Nachladen.
-    const tools = this.#host.querySelector('.dg_tools');
-    tools?.prepend(Object.assign(document.createElement('span'), {
-      className: 'msr elev-mountain', textContent: 'landscape', title: 'Höhenmeter',
-    }));
+    }, { icon: 'landscape', title: 'Höhenmeter' });
   }
 
   /**
@@ -110,10 +152,8 @@ export class ElevationProfile {
     this.#points = thin(points);
     const vals = this.#points.map(([, v]) => v);
     const lo = Math.min(...vals), hi = Math.max(...vals), pad = Math.max(1, (hi - lo) * 0.1);
-    this.#diagram.setConfig({
+    this.#config({
       card: false,
-      fullscreen: false,
-      zoom: false,
       legend: { hidden: true },
       x_axis: { type: 'value', unit: 'km', decimals: length < 5000 ? 1 : 0 },
       y_axes: [{ unit, min: Math.max(0, Math.floor(lo - pad)), max: Math.ceil(hi + pad), split_number: 3 }],
@@ -121,10 +161,7 @@ export class ElevationProfile {
         value, unit, decimals, color, label: `<span class="msr" title="${title}">${ic}</span>`,
       })),
       series: [{ key: name, name, data: this.#points, color, fill: 'gradient', smooth: true, decimals, unit }],
-    });
-    const mark = Object.assign(document.createElement('span'), { className: 'msr elev-mountain', textContent: icon, title: name });
-    mark.style.color = color;
-    this.#host.querySelector('.dg_tools')?.prepend(mark);
+    }, { icon, title: name, color });
   }
 
   /** Stelle von außen zeigen, z. B. wenn die Maus über der Route auf der Karte steht. */

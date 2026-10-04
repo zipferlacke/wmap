@@ -740,7 +740,7 @@ content.addEventListener('change', (e) => {
 /** Umschalter über dem Diagramm: Höhe, Tempo, Puls … – nur, was es gibt */
 let metricCache = { id: null, m: {} };
 function paintCharts(t) {
-  const bar = $('.weg-chart-tabs', content);
+  const bar = $('.weg-chart-tabs', content) ?? $('dialog.dg_fs .weg-chart-tabs');
   if (!bar || !elevation) return;
   if (metricCache.id !== t.id) metricCache = { id: t.id, m: metrics(t) };
   const m = metricCache.m;
@@ -810,11 +810,33 @@ function showLap(line) {
   if (line) map.fitBounds(bbox(line), { padding: page.padding(), maxZoom: 16, duration: 600 });
 }
 
+/** Diagramm wählen (Höhe, Tempo, Puls …) – im Blatt und im Vollbild */
+function pickChart(e) {
+  const chart = e.target.closest('[data-chart]')?.dataset.chart;
+  if (!chart || !selected || !('start' in selected)) return false;
+  local.set('wmap.chart', chart);
+  paintCharts(selected);
+  return true;
+}
+
 content.addEventListener('click', (e) => {
   const t = selected;
   if (!t || !('start' in t)) return;
-  const chart = e.target.closest('[data-chart]')?.dataset.chart;
-  if (chart) { local.set('wmap.chart', chart); paintCharts(t); return; }
+  // Diagramm ins Vollbild (Knopf der Bibliothek, das Diagramm steckt jetzt in ihrem <dialog>): Die Umschalter
+  // ziehen mit um und beim Schließen wieder zurück vor das Diagramm
+  if (e.target.closest('.dg_fsbtn') && elevation?.fullscreen) {
+    const dlg = $('dialog.dg_fs:open'), bar = $('.weg-chart-tabs', content);
+    if (dlg && bar) {
+      dlg.prepend(bar);
+      if (!dlg.dataset.wmap) {
+        dlg.dataset.wmap = '1';
+        dlg.addEventListener('click', pickChart);
+        dlg.addEventListener('close', () => { const b = $('.weg-chart-tabs', dlg); if (b) ($('.elevation', content) ?? content.lastChild)?.before(b); });
+      }
+    }
+    return;
+  }
+  if (pickChart(e)) return;
   const size = e.target.closest('[data-lap-size]')?.dataset.lapSize;
   if (size) { local.set('wmap.lapsize', Number(size)); showLap(null); paintLaps(t); return; }
   const row = e.target.closest('tr[data-lap]');

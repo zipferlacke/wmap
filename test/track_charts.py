@@ -1,4 +1,4 @@
-"""Weg mit Puls und Frequenz: Diagramm-Umschalter, Runden (1/2/5 km), schnellste/langsamste, GPX mit Messwerten."""
+"""Weg mit Puls und Frequenz: Diagramm-Umschalter, Diagramm im Vollbild, Runden (1/2/5 km), schnellste/langsamste, GPX mit Messwerten."""
 import sys
 from common import Browser
 
@@ -30,6 +30,28 @@ with Browser(width=420, height=900) as b:
         b.wait("return document.querySelector('.elevation .dg_tools')")
         print(' ', kind, '→', b.js("return document.querySelector('.elevation .elev-mountain')?.textContent + ' | ' + [...document.querySelectorAll('.elevation .dg_chip, .elevation [class*=chip]')].map(x => x.innerText.replace(/\\s+/g, ' ')).slice(0, 3).join(' / ')"))
     b.shot('weg-diagramm')
+    # Vollbild: dasselbe Diagramm im Dialog, die Umschalter ziehen mit; zu per Knopf und per Esc, danach wieder zu öffnen
+    import time
+    state = "const d = document.querySelector('dialog.dg_fs'), bar = document.querySelector('.weg-chart-tabs'); return [!!d?.open, !!bar?.closest('dialog.dg_fs'), bar?.querySelector('[aria-pressed=true]')?.dataset.chart, document.querySelector('.dg_fsbtn')?.title, document.querySelector('.elev-mountain')?.title, document.querySelector('.elevation').offsetHeight > 400]"
+    b.js("document.querySelector('.elevation .dg_fsbtn').click()"); time.sleep(1)
+    full = b.js(state)
+    b.js("document.querySelector('dialog.dg_fs [data-chart=hr]').click()"); time.sleep(1)
+    switched = b.js(state)
+    b.shot('weg-diagramm-vollbild')
+    b.js("document.querySelector('dialog.dg_fs .dg_fsbtn').click()"); time.sleep(1)
+    closed = b.js(state)
+    b.js("document.querySelector('.elevation .dg_fsbtn').click()"); time.sleep(1)
+    again = b.js(state)
+    b.js("document.querySelector('dialog.dg_fs').close()"); time.sleep(1)
+    esc = b.js(state)
+    print('Vollbild:', full, switched, closed, again, esc)
+    for name, ok in {
+        'Vollbild: Diagramm füllt den Dialog, Umschalter sind dabei': full == [True, True, 'cad', 'Vollbild verlassen', 'Schrittfrequenz', True],
+        'Vollbild: umschalten auf Puls, Knopf bleibt „verlassen“': switched == [True, True, 'hr', 'Vollbild verlassen', 'Puls', True],
+        'Vollbild: zu per Knopf – Diagramm und Umschalter zurück im Blatt, Auswahl bleibt': closed == [False, False, 'hr', 'Vollbild', 'Puls', False],
+        'Vollbild: geht danach wieder auf, zu per Esc': again[:2] == [True, True] and esc == closed,
+    }.items():
+        print('ok    ' if ok else 'FALSCH', name)
     for size in [1000, 2000, 5000]:
         b.js(f"document.querySelector('[data-lap-size=\"{size}\"]').click()")
         rows = b.js("return [...document.querySelectorAll('.laps-table tbody tr')].map(r => r.className + ': ' + r.innerText.replace(/\\s+/g, ' '))")
