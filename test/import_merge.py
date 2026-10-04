@@ -4,7 +4,8 @@
    fremde Dateien werden beim Einlesen ausgedünnt); Name, Art, Farbe bleiben.
 3. Abweichender Puls: bleibt der vorhandene (Frage steht auf „nein“).
 4. Datei ohne Neues: nichts geändert. Neue Datei: gespeichert.
-5. Frage „genauere Strecke“ auf nein: nur die Frequenz kommt dazu, die Punkte bleiben."""
+5. Frage „genauere Strecke“ auf nein: nur die Frequenz kommt dazu, die Punkte bleiben.
+6. FIT-Datei (js/data/fit.js): ergänzt eine vorhandene Tour um die Schlagfrequenz; eine neue wird mit Art gespeichert."""
 import json
 import sys
 from common import Browser
@@ -56,7 +57,28 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   document.querySelector('button[data-act=merge]').click();
   await wait(1500);
   out.E = await info('mE');
-  for (const t of await tracks.all()) if (/^m[ABDE]$/.test(t.id) || t.name === 'Ganz neu') await tracks.remove(t.id);
+  // 6. FIT-Datei (wie aus Zepp: Schlagfrequenz steht nur dort) zu einer Tour ohne Frequenz
+  const fit = (pts, sport) => {
+    const bytes = [];
+    const u8 = (x) => bytes.push(x & 255), u16 = (x) => { u8(x); u8(x >> 8); }, u32 = (x) => { u16(x); u16(x >>> 16); };
+    // Definition lokal 0: record (20) – Zeit, Breite, Länge, Puls, Frequenz
+    u8(0x40); u8(0); u8(0); u16(20); u8(5); [[253, 4, 0x86], [0, 4, 0x85], [1, 4, 0x85], [3, 1, 2], [4, 1, 2]].forEach((f) => f.forEach(u8));
+    for (const [lon, lat, ms, hr, cad] of pts) { u8(0); u32(Math.round(ms / 1000) - 631065600); u32(Math.round(lat * 2 ** 31 / 180)); u32(Math.round(lon * 2 ** 31 / 180)); u8(hr); u8(cad || 255); }
+    // Definition lokal 1: session (18) – Sportart
+    u8(0x41); u8(0); u8(0); u16(18); u8(1); [5, 1, 0].forEach(u8); u8(1); u8(sport);
+    const head = [14, 0x20, 0, 0, bytes.length & 255, (bytes.length >> 8) & 255, (bytes.length >> 16) & 255, 0, 0x2e, 0x46, 0x49, 0x54, 0, 0];
+    return new Uint8Array([...head, ...bytes, 0, 0]).buffer;
+  };
+  await tracks.putQuiet({ ...buildTrack(mk(8, N, 10, () => [120, 0, 0]), { kind: 'health', profile: 'foot', name: 'Bootstour', keepAll: true }), id: 'mF', sport: 'rowing' });
+  await addFiles([{ name: 'Zepp.fit', bytes: fit(mk(8, N, 1, (i) => [120, i % 7 ? 28 : 0, 0]), 23) }, { name: 'neu.fit', bytes: fit(mk(9, N, 1, () => [130, 30, 0]), 23) }]);
+  await wait(300);
+  const fitCards = [...document.querySelectorAll('.import section:not(.import-all)')].filter((s) => s.querySelector('h3')).slice(-2);
+  out.fitCards = fitCards.map((s) => [...s.querySelectorAll('.settings-hint')].at(-1).innerText.replace(/\s+/g, ' ').trim() + ' | ' + s.querySelector('.sync-actions > .button').innerText.replace(/\s+/g, ' ').trim());
+  // nach jedem Klick wird neu gezeichnet – die Knöpfe jedes Mal neu suchen
+  for (const act of ['merge', 'track']) { [...document.querySelectorAll(`button[data-act=${act}]`)].at(-1).click(); await wait(1200); }
+  out.F = await info('mF');
+  out.fitNew = await (async () => { const t = (await tracks.all()).find((x) => x.name === 'neu'); return t && { sport: t.sport, cad: mean(t.cad), hr: mean(t.hr) }; })();
+  for (const t of await tracks.all()) if (/^m[ABDEF]$/.test(t.id) || t.name === 'Ganz neu' || t.name === 'neu') await tracks.remove(t.id);
   return out;
 })().then(done, (e) => done('FEHLER ' + e + ' ' + e.stack));
 """
@@ -78,6 +100,8 @@ with Browser(width=420, height=900) as b:
         '3. B: abweichender Puls bleibt der vorhandene': B1 == B0,
         '4. D unverändert, die neue Datei ist gespeichert, sonst kein Eintrag mehr': r['after']['D'] == r['before']['D'] and r['after']['neu'] and r['after']['n'] == r['before']['n'] + 1,
         '4. danach: Karten zeigen „Ergänzt“ bzw. „Gespeichert“': [c.split(' ', 1)[1] for c in r['cardsAfter']] == ['Ergänzt – ansehen', 'Gibt es schon – ansehen', 'Gespeichert – ansehen', 'Gibt es schon – ansehen'],
+        '6. FIT-Datei: Schlagfrequenz kommt in die vorhandene Tour (Strecke bleibt, Frage steht auf nein)': 'Schlagfrequenz (fehlt hier)' in r['fitCards'][0] and r['F']['cad'] == 28 and r['F']['pts'] == 41 and r['F']['sport'] == 'rowing',
+        '6. neue FIT-Datei: gespeichert als Rudern mit Puls und Frequenz': 'Als aufgezeichnete Tour speichern' in r['fitCards'][1] and r['fitNew'] == {'sport': 'rowing', 'cad': 30, 'hr': 130},
         '5. Strecke nein: Frequenz kommt dazu, Punkte und Kilometer bleiben': E1['cad'] == 26 and E1['pts'] == E0['pts'] == 41 and E1['km'] == E0['km'],
     }
     for name, ok in checks.items():

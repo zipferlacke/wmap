@@ -27,7 +27,8 @@
 import { mountAppBar } from '../ui/appbar.js';
 import { toast } from '../ui/dialogs.js';
 import { esc } from '../core/geo.js';
-import { tracks, parseGpx, sameTrack, bulk } from '../data/tracks.js';
+import { tracks, parseGpx, sameTrack, bulk, trackGpx } from '../data/tracks.js';
+import { parseFit } from '../data/fit.js';
 import { gain, enrich } from '../data/duplicates.js';
 import { cadName } from '../data/track-look.js';
 import { devLog } from '../core/devlog.js';
@@ -47,14 +48,21 @@ const opt = { shape: true, values: false };
 let busy = null;   // { i, n } während „Alle übernehmen“
 const valueName = (t, k) => ({ hr: 'Puls', cad: cadName(t), pow: 'Leistung' }[k]);
 
-/** Neue Dateien ({ name, text }) aufnehmen und prüfen */
+/** Neue Dateien ({ name, text } – FIT: { name, bytes }) aufnehmen und prüfen */
 export async function addFiles(list) {
   const t0 = performance.now();
   devLog(`GPX öffnen: ${list.length} Datei(en)`);
   const all = await tracks.all();
-  for (const { name, text } of list) {
+  for (const { name, text: given, bytes } of list) {
+    let text = given;
     const f = { name: name || 'Datei.gpx', text };
     try {
+      // FIT: einlesen und als GPX weiterreichen – danach gilt für beide dasselbe
+      if (bytes) {
+        const [t] = parseFit(bytes, f.name);
+        if (!t) throw new Error('Keine Strecke in der Datei');
+        f.text = text = trackGpx(t);
+      }
       f.tour = tourFromGpx(text, f.name);
       if (!f.tour) throw new Error('Keine Strecke in der Datei');
       if (TIMED.test(text)) {
@@ -168,12 +176,12 @@ async function take(f) {
 
 function render() {
   root.innerHTML = `${files.length > 1 ? summary() : ''}${files.length ? files.map(card).join('') : `<section>
-      <h3><span class="msr">upload_file</span> GPX-Datei öffnen</h3>
-      <p class="settings-hint">Wähle eine GPX-Datei – z. B. von Garmin, Komoot oder einer anderen App. Mit Zeiten kannst du sie als aufgezeichnete Tour speichern, sonst als geplante Tour öffnen.</p>
+      <h3><span class="msr">upload_file</span> GPX- oder FIT-Datei öffnen</h3>
+      <p class="settings-hint">Wähle eine GPX- oder FIT-Datei – z. B. von Garmin, Zepp, Komoot oder einer anderen App. Mit Zeiten kannst du sie als aufgezeichnete Tour speichern, sonst als geplante Tour öffnen.</p>
     </section>`}
     <section>
       <div class="sync-actions">
-        <label class="button"><span class="msr">folder_open</span> ${files.length ? 'Weitere Datei wählen' : 'Datei wählen'}<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx"></label>
+        <label class="button"><span class="msr">folder_open</span> ${files.length ? 'Weitere Datei wählen' : 'Datei wählen'}<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx"></label>
       </div>
     </section>`;
 }
@@ -216,7 +224,7 @@ root.addEventListener('change', async (e) => {
   if (o) { opt[o.dataset.opt] = o.checked; return; }
   const inp = e.target.closest('[data-file="gpx"]');
   if (!inp?.files?.length) return;
-  await addFiles(await Promise.all([...inp.files].map(async (x) => ({ name: x.name, text: await x.text() }))));
+  await addFiles(await Promise.all([...inp.files].map(async (x) => (/\.fit$/i.test(x.name) ? { name: x.name, bytes: await x.arrayBuffer() } : { name: x.name, text: await x.text() }))));
 });
 
 /* ── Woher die Dateien kommen ─────────────────────────────────────────────── */
