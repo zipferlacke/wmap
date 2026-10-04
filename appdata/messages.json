@@ -16,7 +16,7 @@
                 "FIT-Dateien öffnen (Garmin, Zepp …): mit Puls, Frequenz und den Runden der Uhr. Mit der neuen App auch über „Öffnen mit“ und „Teilen“",
                 "Datei öffnen heißt erst ansehen: Danach speicherst du sie als aufgezeichnete oder geplante Tour. Gibt es die Tour schon, wählst du mit Haken, was aus der Datei kommt (Strecke, Puls, Frequenz, Runden)",
                 "Verbundener Ordner: Die Daten liegen jetzt direkt im gewählten Ordner, nicht mehr im Unterordner „WMap“ – der Umzug läuft beim ersten Abgleich von selbst",
-                "Verbundener Ordner: GPX- und FIT-Dateien legst du einfach hinein, egal wohin. WMap fragt, was damit geschehen soll, und sortiert sie nach Jahr und Monat; FIT bleibt FIT. Was sich nicht lesen lässt, kommt nach „Kaputte Dateien“ und wird nach 30 Tagen gelöscht",
+                "Verbundener Ordner: GPX- und FIT-Dateien legst du einfach hinein, egal wohin. WMap fragt, was damit geschehen soll, und sortiert sie nach Jahr und Monat; FIT bleibt FIT. Was sich nicht lesen lässt, kommt nach „Unbekannte Dateien“ und wird nach 30 Tagen gelöscht",
                 "Meine Touren: Runden der Uhr werden angezeigt, Diagramme können im Vollbild geöffnet werden, „Herunterladen“ als GPX oder FIT; Tempo auf der Karte jetzt langsam grün, schnell rot",
                 "Fix: „Gleiche ab …“ blieb nach dem Abgleich mit dem Ordner stehen"
             ]

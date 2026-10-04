@@ -14,7 +14,7 @@
  *   Gelöscht.json                     was auf einem Gerät gelöscht wurde (ein Jahr)
  *   Kartenausschnitt.json             wo die Karte zuletzt stand (readView/writeView)
  *   Inhalt.json                       Verzeichnis: je Datei ID, Art, Fingerabdruck, Stand
- *   Kaputte Dateien/                  was sich nicht lesen ließ – 30 Tage
+ *   Unbekannte Dateien/                was sich nicht lesen ließ – 30 Tage
  *
  * Alles liegt direkt im gewählten Ordner. Bis 2.2 lag es im Unterordner
  * „WMap“ – der Inhalt zieht beim Abgleich eine Ebene hoch (liftOld), ebenso
@@ -22,7 +22,7 @@
  * Dieselbe Ordnung hat der Export als ZIP (zipBackup, dort unter „WMap/“).
  *
  * Abgeglichen wird jede GPX- und FIT-Datei im Ordner, egal wo sie liegt
- * (außer unter „Kaputte Dateien/“), dazu „Bus & Bahn/“ und die Dateien von
+ * (außer unter „Unbekannte Dateien/“), dazu „Bus & Bahn/“ und die Dateien von
  * WMap selbst. Andere Dateien (Fotos, Dokumente …) und Ordner ohne
  * Tourendateien bleiben unberührt. Was nicht an seinem Platz liegt – eigener
  * Unterordner, falscher Ordner –, zieht dorthin; leer gewordene Ordner gehen.
@@ -39,7 +39,7 @@
  *                        choices/combine): Die WMap-Datei des Wegs trägt das
  *                        Ergebnis, GPX geht, FIT bleibt und steht für den Weg.
  *                        Hat die Datei nichts anderes, ohne Frage
- * Lesbar, aber keine Tour darin: nach „Kaputte Dateien/“ – nach 30 Tagen
+ * Lesbar, aber keine Tour darin: nach „Unbekannte Dateien/“ – nach 30 Tagen
  * gelöscht, bis dahin auf „Sicherung & Synchronisation“ genannt. Leere und
  * gerade nicht lesbare Dateien (Cloud-Ordner hakt) bleiben liegen.
  * Löscht man eine Datei von Hand, die dieses Gerät schon kannte, verschwindet
@@ -483,7 +483,7 @@ async function syncAll(c, be, decide = null) {
     manText = await be.read(manPath).catch(() => null);
     try { const m = JSON.parse(manText); manifest = m.files ?? {}; brokenThere = m.broken ?? {}; } catch { manifest = {}; }
   }
-  // Kaputte Dateien: nach 30 Tagen weg (seit wann, steht im Verzeichnis und hier)
+  // Unbekannte Dateien: nach 30 Tagen weg (seit wann, steht im Verzeichnis und hier)
   const broken = {};
   for (const f of listed) {
     if (!f.path.startsWith(BROKEN_DIR)) continue;
@@ -623,18 +623,19 @@ async function syncAll(c, be, decide = null) {
     return [target, at];
   };
 
-  /** Lesbar, aber keine Tour darin: nach „Kaputte Dateien/“ – dort bleibt sie 30 Tage */
+  /** Lesbar, aber keine Tour darin: nach „Unbekannte Dateien/“ – dort bleibt sie 30 Tage */
   const toBroken = async (f) => {
     const [target] = await moveTo(f.path, BROKEN_DIR + f.path.slice(f.path.lastIndexOf('/') + 1));
     broken[target] = Date.now();
   };
 
   /** Die FIT-Datei bleibt und steht für den Weg `item` – an ihrem Platz (Jahr/Monat) */
-  const stand = async (f, item, text, known = null) => {
+  const stand = async (f, item, text, known = null, data = known?.data) => {
     let path = f.path, at = f.lastModified;
     const want = pathOf('track', item, base).replace(/\.gpx$/, '.fit');
     if (dirname(path) !== dirname(want)) [path, at] = await moveTo(path, want);
-    next[path] = { id: item.id, kind: 'track', at, hash: text !== null ? hash(text) : known?.hash, rev: rev(item), ours: false, fit: true };
+    // `data`: was die Datei an Messdaten hat – nur wenn der Weg hier genau das hat, darf er zur Karteikarte werden
+    next[path] = { id: item.id, kind: 'track', at, hash: text !== null ? hash(text) : known?.hash, rev: rev(item), ours: false, fit: true, ...(data ? { data } : {}) };
     return path;
   };
 
@@ -679,7 +680,7 @@ async function syncAll(c, be, decide = null) {
       if (!entry) return;
       seen.add(got.id);
       out.imported += 1;
-      if (fit) first.set(got.id, { path: await stand(f, entry.item, text), ours: false });
+      if (fit) first.set(got.id, { path: await stand(f, entry.item, text, null, dataKey(entry.item)), ours: false });
       else {
         first.set(got.id, { path: await put(null, entry, null), ours: true });
         await be.remove(f.path);
@@ -773,7 +774,7 @@ async function syncAll(c, be, decide = null) {
         const meta = entryIn(f)?.meta;
         if (meta) { item = { ...item, ...meta, updated: entryIn(f).rev ?? item.updated }; await tracks.putQuiet(item); }
         seen.add(got.id);
-        first.set(got.id, { path: await stand(f, item, text, known), ours: false });
+        first.set(got.id, { path: await stand(f, item, text, known, dataKey(item)), ours: false });
         out.imported += 1;
         continue;
       }
@@ -802,6 +803,11 @@ async function syncAll(c, be, decide = null) {
         await tracks.putQuiet(item);
         locals.set(id, { kind: 'track', item });
         out.imported += 1;
+      }
+      // Hier kam etwas dazu, was die FIT-Datei nicht hat (Puls aus Health Connect …): Das trägt eine WMap-Datei
+      if (known?.data && dataKey(item) !== known.data && !Object.values(next).some((v) => v.id === id && v.ours)) {
+        const full = item.stub ? null : item;
+        if (full) await put(null, { kind: 'track', item: full }, null);
       }
       await stand(f, item, text, known);
       continue;
@@ -951,25 +957,32 @@ async function syncAll(c, be, decide = null) {
 async function shelve(next, be, out) {
   const keep = folder.keep;
   const limit = keep === 'all' ? -Infinity : Date.now() - Number(keep) * DAY_MS;
+  // Die WMap-Datei des Wegs – sonst die FIT-Datei, die für ihn steht
   const pathOfId = new Map();
   for (const [path, v] of Object.entries(next)) if (v.kind === 'track' && v.ours && !pathOfId.has(v.id)) pathOfId.set(v.id, path);
+  for (const [path, v] of Object.entries(next)) if (v.kind === 'track' && v.fit && !pathOfId.has(v.id)) pathOfId.set(v.id, path);
   out.shelved = 0;
   out.filled = 0;
   for (const t of await tracks.all()) {
     const path = pathOfId.get(t.id);
     const here = !!t.pin || t.start >= limit;
     if (!t.stub && !here && path && next[path].rev === rev(t)) {
-      // Die Datei muss genau diesen Stand haben – sonst bliebe nichts Ganzes übrig.
-      // Eine Datei aus einer älteren WMap (ohne alle Angaben) wird dafür erst neu geschrieben
-      const text = trackGpx(t);
-      if (next[path].hash !== hash(text)) {
-        try { next[path] = { ...next[path], at: await be.write(path, text), hash: hash(text) }; } catch { continue; }
+      if (next[path].fit) {
+        // FIT lässt sich nicht neu schreiben: Karteikarte nur, wenn die Datei alle Messdaten des Wegs hat
+        if (!next[path].data || next[path].data !== dataKey(t)) continue;
+      } else {
+        // Die Datei muss genau diesen Stand haben – sonst bliebe nichts Ganzes übrig.
+        // Eine Datei aus einer älteren WMap (ohne alle Angaben) wird dafür erst neu geschrieben
+        const text = trackGpx(t);
+        if (next[path].hash !== hash(text)) {
+          try { next[path] = { ...next[path], at: await be.write(path, text), hash: hash(text) }; } catch { continue; }
+        }
       }
       await tracks.putQuiet(stubOf(t, next[path].hash));
       out.shelved += 1;
     } else if (t.stub && here && path) {
       try {
-        const [parsed] = parseGpx(await be.read(path));
+        const [parsed] = parseGpx(await textOfFile(be, path));
         if (parsed) { await tracks.putQuiet(fromFile(t, parsed)); out.filled += 1; }
       } catch { /* bleibt Karteikarte */ }
     }
@@ -1018,7 +1031,7 @@ export async function readTrack(stub, onStep) {
   const path = paths.find((p) => c.index[p].ours) ?? paths[0];
   if (!path) throw new Error('Die Datei zu diesem Weg fehlt im Ordner');
   onStep?.('Datei lesen', { path });
-  const text = await be.read(path);
+  const text = await textOfFile(be, path);
   onStep?.('auswerten', { kb: Math.round(text.length / 1024) });
   const [t] = parseGpx(text);
   if (!t) throw new Error('Die Datei im Ordner ließ sich nicht lesen');
@@ -1045,6 +1058,12 @@ export function sameRecordings(list) {
   }
   return groups.filter((g) => g.length > 1);
 }
+
+/** Inhalt einer Tourendatei als GPX-Text – FIT wird dafür gelesen und umgesetzt */
+const textOfFile = (be, path) => (isFit(path) ? fitText(be, path) : be.read(path));
+
+/** Was ein Weg an Messdaten hat (Punkte, Puls, Frequenz, Leistung) – auch von der Karteikarte */
+const dataKey = (t) => `${t.stub ? t.n : t.times?.length ?? 0}|${['hr', 'cad', 'pow'].filter((k) => (t.stub ? t.has?.includes(k) : hasValues(t, k))).join(',')}`;
 
 /** FIT-Datei aus dem Ordner → GPX-Text ohne Kennung (eine fremde Datei wie ein Garmin-Export); '' = keine Tour darin */
 async function fitText(be, path) {
@@ -1142,7 +1161,7 @@ const CONN_DIR = /(^|\/)Bus & Bahn\/[^/]+\.json$/i;
 // Was abgeglichen wird – Pfad ab dem WMap-Ordner
 const TOUR_FILE = /\.(gpx|fit)$/i;
 const isFit = (path) => /\.fit$/i.test(path);
-const BROKEN_DIR = 'Kaputte Dateien/';
+const BROKEN_DIR = 'Unbekannte Dateien/';
 const BROKEN_KEEP_MS = 30 * DAY_MS;
 // Was zu einer FIT-Datei im Verzeichnis steht (die Datei selbst bleibt, wie die Uhr sie schrieb)
 const FIT_META = ['name', 'sport', 'profile', 'color', 'hidden', 'description'];

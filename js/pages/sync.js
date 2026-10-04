@@ -68,7 +68,7 @@ const TREE = `<details class="sync-tree"><summary>Ordnerstruktur erklärt</summa
 │  └─ 2026/09 September/    je Weg eine GPX-Datei (mit Puls &amp; Co.) oder die FIT-Datei der Uhr
 ├─ Bus &amp; Bahn/              je gemerkte Verbindung eine JSON-Datei
 ├─ Lesezeichen.json         Zuhause, Arbeit, Lesezeichen und Listen
-├─ Kaputte Dateien/         was sich nicht lesen ließ – nach 30 Tagen gelöscht
+├─ Unbekannte Dateien/         was sich nicht lesen ließ – nach 30 Tagen gelöscht
 └─ Inhalt.json              Verzeichnis für den schnellen Abgleich</pre>
   <p class="settings-hint">Jede WMap, die denselben Ordner verbindet, liest ihn ein und gleicht mit ab. Nimm einen Ordner nur für WMap.
     GPX- und FIT-Dateien von woanders (Uhr, Garmin, Komoot …) legst du einfach hinein, egal wohin: WMap fragt, was damit geschehen soll, und sortiert sie an ihren Platz –
@@ -87,13 +87,13 @@ const exportButton = '<button type="button" class="button" data-act="backup"><sp
 const zipLink = `<p class="settings-hint sync-zip">Export als ZIP wieder einspielen:
     <label class="sync-link">ZIP wählen<input type="file" accept=".zip,.json,application/zip,application/json" hidden data-file="restore"></label></p>`;
 
-/** „Kaputte Dateien“: was sich nicht lesen ließ – selbst nachsehen, nach 30 Tagen löscht WMap sie */
+/** „Unbekannte Dateien“: was sich nicht lesen ließ – selbst nachsehen, nach 30 Tagen löscht WMap sie */
 function brokenHtml(i) {
   const list = Object.entries(i.broken ?? {}).sort((a, b) => a[1] - b[1]);
   if (!list.length) return '';
   const until = new Date(list[0][1] + 30 * 24 * 3600 * 1000).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' });
   const names = list.map(([p]) => p.split('/').pop());
-  return `<div class="folder-broken">${status('report', `${list.length === 1 ? 'Eine Datei ließ' : `${list.length} Dateien ließen`} sich nicht lesen und ${list.length === 1 ? 'liegt' : 'liegen'} im Ordner unter „Kaputte Dateien“:
+  return `<div class="folder-broken">${status('report', `${list.length === 1 ? 'Eine Datei ließ' : `${list.length} Dateien ließen`} sich nicht lesen und ${list.length === 1 ? 'liegt' : 'liegen'} im Ordner unter „Unbekannte Dateien“:
       ${esc(names.slice(0, 5).join(', '))}${names.length > 5 ? ' …' : ''}. Schau selbst nach, ob etwas Wichtiges dabei ist – WMap löscht sie 30 Tage nach dem Fund (die erste am ${until}).`, 'warn')}
     ${i.native ? '<div class="sync-actions"><button type="button" class="button" data-act="reveal"><span class="msr">folder_open</span> Im Dateimanager öffnen</button></div>' : ''}</div>`;
 }
@@ -286,7 +286,7 @@ root.addEventListener('click', async (e) => {
   }
   if (act === 'inbox') { offerInbox((await folder.info()).inbox, true); return; }
   if (act === 'reveal') {
-    folder.reveal('Kaputte Dateien').catch(() => toast('Der Dateimanager ließ sich nicht öffnen – der Ordner heißt „Kaputte Dateien“'));
+    folder.reveal('Unbekannte Dateien').catch(() => toast('Der Dateimanager ließ sich nicht öffnen – der Ordner heißt „Unbekannte Dateien“'));
     return;
   }
   if (act === 'sync') {

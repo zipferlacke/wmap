@@ -3,7 +3,7 @@
 1. Neue Dateien (egal wohin gelegt, auch in einen eigenen Unterordner): Ohne Entscheidung bleiben sie liegen und
    stehen in `inbox` (neu / zusammenführen); beim nächsten Abgleich werden sie nicht noch einmal gelesen.
    Eine Datei, die nichts anderes hat als die Tour hier, geht ohne Frage.
-2. Kaputte Dateien (lesbar, keine Tour darin) → „Kaputte Dateien/“; nach 30 Tagen gelöscht.
+2. Unbekannte Dateien (lesbar, keine Tour darin) → „Unbekannte Dateien/“; nach 30 Tagen gelöscht.
 3. Entschieden: neue GPX → WMap-Datei unter Jahr/Monat; neue FIT bleibt FIT und zieht dorthin (keine GPX daneben);
    FIT zu einer vorhandenen Tour (Karteikarte): die angehakten Angaben kommen in deren Datei, die FIT bleibt.
 4. Zweiter Abgleich: nichts zu tun, nichts gelesen.
@@ -11,7 +11,7 @@
    ohne Rückfrage; die FIT-Datei bleibt unverändert.
 6. Seite „Sicherung & Synchronisation“: Die Frage „Neue Datei im Ordner“ kommt von selbst (genaueste / einzeln /
    später); „Später“ lässt alles liegen, der Hinweis mit „Neue Dateien ansehen“ bleibt; „Einzeln entscheiden“ →
-   „Übernehmen“. Kaputte Dateien stehen mit Hinweis da."""
+   „Übernehmen“. Unbekannte Dateien stehen mit Hinweis da."""
 import json
 import sys
 from common import Browser
@@ -98,7 +98,9 @@ out.names = await names();
 const all = await tracks.all();
 const neu = all.find((t) => t.name === 'Ganz neu'), zepp = all.find((t) => /Zepp neu/.test(t.name));
 out.neu = neu && { gpx: gpxOf(neu.id) };
-out.zepp = zepp && { gpx: gpxOf(zepp.id), fit: out.files.find((p) => /Zepp neu\.fit$/.test(p)), sport: zepp.sport, cad: mean(zepp.cad), marks: zepp.marks?.length ?? 0 };
+// Von 2025: in der App nur eine Karteikarte – der ganze Weg kommt beim Öffnen aus der FIT-Datei
+const zeppFull = zepp && await tracks.full(zepp);
+out.zepp = zepp && { stub: !!zepp.stub, gpx: gpxOf(zepp.id), fit: out.files.find((p) => /Zepp neu\.fit$/.test(p)), sport: zeppFull.sport, cad: mean(zeppFull.cad), pts: zeppFull.times.length, marks: zeppFull.marks?.length ?? 0 };
 out.keepA = { name: (await tracks.get('keepA')).name, ...inFile(gpxOf('keepA')), fit: out.files.find((p) => /Meine Ruderrunde\.fit$/.test(p)) ?? null };
 
 // ── 4. Noch einmal: nichts zu tun ──
@@ -120,13 +122,13 @@ out.secondTrack = again && { name: again.name, color: again.color, sport: again.
 out.secondCount = (await tracks.all()).length;
 out.fitSame = files.get(out.zepp.fit)?.bytes.byteLength === fitBytes;
 
-// ── 2. Kaputte Dateien nach 30 Tagen ──
+// ── 2. Unbekannte Dateien nach 30 Tagen ──
 const m = manifest();
 out.brokenBefore = Object.keys(m.broken ?? {}).sort();
 for (const k of Object.keys(m.broken)) m.broken[k] = Date.now() - 31 * 24 * 3600 * 1000;
 files.set('Inhalt.json', { text: JSON.stringify(m), modified: clock += 1000 });
 out.old = await folder.sync();
-out.brokenAfter = [...files.keys()].filter((p) => p.startsWith('Kaputte Dateien/'));
+out.brokenAfter = [...files.keys()].filter((p) => p.startsWith('Unbekannte Dateien/'));
 for (const t of await tracks.all()) await tracks.removeQuiet(t.id);
 localStorage.removeItem('wmap.tracks.keep');
 return out;
@@ -200,14 +202,14 @@ with Browser() as b:
         '0. Umzug: nichts mehr unter „WMap/“, zwei Wege einmal, danach Ruhe': not any(p.startswith('WMap/') for p in r['liftFiles']) and month + '2025-06-03 Meine Ruderrunde.gpx' in r['liftFiles'] and 'Lesezeichen.json' in r['liftFiles'] and r['liftNames'] == ['Meine Ruderrunde', 'Schon ganz da'] and r['liftAgain']['imported'] == 0 and r['liftAgain']['written'] == 0 and r['liftAgain']['removed'] == 0 and r['stub'],
         '1. neue Dateien: erst fragen – drei im Eingang, nichts übernommen': r['inbox'] == [['Zepp alt.fit', 'merge', 'shape- cad+ marks+'], ['Zepp neu.fit', 'new', ''], ['garmin.gpx', 'new', '']] and r['foundNames'] == ['Meine Ruderrunde', 'Schon ganz da'] and 'Meine Touren xy/garmin.gpx' in r['foundFiles'],
         '1. Datei ohne Neues geht ohne Frage; wartende werden nicht noch einmal gelesen': 'Aufgezeichnete Touren/doppelt.gpx' not in r['foundFiles'] and r['parkedReads'] == 0 and len(r['parked']['inbox']) == 3,
-        '2. kaputte GPX und FIT liegen unter „Kaputte Dateien/“, die leere Datei bleibt': r['brokenInfo'] == ['Kaputte Dateien/kaputt.fit', 'Kaputte Dateien/kaputt.gpx'] and 'Meine Touren xy/leer.gpx' in r['foundFiles'],
+        '2. kaputte GPX und FIT liegen unter „Unbekannte Dateien/“, die leere Datei bleibt': r['brokenInfo'] == ['Unbekannte Dateien/kaputt.fit', 'Unbekannte Dateien/kaputt.gpx'] and 'Meine Touren xy/leer.gpx' in r['foundFiles'],
         '3. neue GPX: WMap-Datei unter Jahr/Monat, die hineingelegte weg': bool(r['neu']) and (r['neu']['gpx'] or '').startswith(month) and 'Meine Touren xy/garmin.gpx' not in r['files'],
-        '3. neue FIT: bleibt FIT unter Jahr/Monat, keine GPX daneben – Rudern mit Frequenz und Runden': bool(r['zepp']) and r['zepp']['gpx'] is None and (r['zepp']['fit'] or '').startswith(month) and r['zepp']['sport'] == 'rowing' and r['zepp']['cad'] == 30 and r['zepp']['marks'] == 1,
+        '3. neue FIT: bleibt FIT unter Jahr/Monat, keine GPX daneben; in der App Karteikarte, ganz aus der FIT-Datei (Rudern, Frequenz, Runden)': bool(r['zepp']) and r['zepp']['gpx'] is None and (r['zepp']['fit'] or '').startswith(month) and r['zepp']['sport'] == 'rowing' and r['zepp']['cad'] == 30 and r['zepp']['marks'] == 1 and r['zepp']['stub'] and r['zepp']['pts'] > 50,
         '3. FIT zur vorhandenen Tour: Frequenz und Runden in deren Datei, Strecke bleibt, FIT bleibt daneben': r['keepA']['name'] == 'Meine Ruderrunde' and r['keepA']['cad'] == 28 and r['keepA']['hr'] == 120 and r['keepA']['marks'] == 1 and r['keepA']['id'] == 'keepA' and (r['keepA']['fit'] or '').startswith(month),
         '3. vier Touren, Eingang leer': r['names'] == ['Ganz neu', 'Meine Ruderrunde', 'Schon ganz da', 'Zepp neu'] and r['taken']['inbox'] == [],
         '4. zweiter Abgleich: nichts zu tun, nichts gelesen': r['again']['imported'] == 0 and r['again']['written'] == 0 and r['again']['moved'] == 0 and r['again']['merged'] == 0 and r['againReads'] == 0,
         '5. FIT-Tour umbenannt: Name und Farbe im Verzeichnis, zweites Gerät hat Kennung und Namen, keine Frage': r['meta'] and r['meta']['name'] == 'Rudern am Abend' and r['secondTrack'] == {'name': 'Rudern am Abend', 'color': '#ae3ec9', 'sport': 'rowing'} and r['second']['inbox'] == [] and r['secondCount'] == 4 and r['fitSame'],
-        '2. kaputte Dateien nach 30 Tagen gelöscht': len(r['brokenBefore']) == 2 and r['brokenAfter'] == [],
+        '2. unbekannte Dateien nach 30 Tagen gelöscht': len(r['brokenBefore']) == 2 and r['brokenAfter'] == [],
     }
 
     b.open('sync.html', wait=3)
@@ -221,7 +223,7 @@ with Browser() as b:
     checks.update({
         '6. Frage kommt von selbst: genaueste / einzeln / später': u['title'] == 'Neue Datei im Ordner' and u['buttons'] == ['Immer die genauesten Daten', 'Einzeln entscheiden', 'Später'],
         '6. „Später“: nichts übernommen, Datei bleibt, Hinweis mit „Neue Dateien ansehen“': u['laterNames'] == [] and u['laterFile'] and u['hint'] and 'uhr.gpx' in u['hint'] and 'Neue Dateien ansehen' in u['hint'],
-        '6. kaputte Datei steht mit Hinweis da': bool(u['broken']) and 'murks.gpx' in u['broken'] and 'Kaputte Dateien' in u['broken'] and '30 Tage' in u['broken'],
+        '6. unbekannte Datei steht mit Hinweis da': bool(u['broken']) and 'murks.gpx' in u['broken'] and 'Unbekannte Dateien' in u['broken'] and '30 Tage' in u['broken'],
         '6. einzeln → „Übernehmen“: Tour da, Datei einsortiert, Hinweis weg': bool(u['each']) and u['each'][0] and u['each'][1][0] == 'Übernehmen' and u['names'] == ['Aus der Uhr'] and u['fileGone'] and len(u['sorted']) == 1 and u['sorted'][0].startswith('Aufgezeichnete Touren/2026/06 Juni/') and not u['hintAfter'],
     })
     for k, v in checks.items():

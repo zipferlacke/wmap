@@ -944,7 +944,7 @@ und ohne Server.
 ├─ Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen mit Listen
 ├─ Gelöscht.json                     auf einem Gerät Gelöschtes (IDs, ein Jahr)
 ├─ Kartenausschnitt.json             wo die Karte zuletzt stand
-├─ Kaputte Dateien/                  was sich nicht lesen ließ – 30 Tage
+├─ Unbekannte Dateien/                  was sich nicht lesen ließ – 30 Tage
 └─ Inhalt.json                       Verzeichnis: je Datei ID, Art, Fingerabdruck, Stand
 ```
 
@@ -953,7 +953,7 @@ und ohne Server.
   (`liftOld`), die gemerkten Pfade ziehen mit. Darum `minVersion` 2.3.0: Eine
   ältere Oberfläche fände ihre Dateien nicht mehr und hielte sie für gelöscht.
 - **Jede GPX- und FIT-Datei im Ordner zählt**, egal wo sie liegt (außer unter
-  `Kaputte Dateien/`), dazu `Bus & Bahn/` und die Dateien von WMap selbst.
+  `Unbekannte Dateien/`), dazu `Bus & Bahn/` und die Dateien von WMap selbst.
   Was nicht an seinem Platz liegt (eigener Unterordner, falscher Ordner),
   zieht dorthin; leer gewordene Ordner gehen. Andere Dateien (Fotos,
   Dokumente) und Ordner ohne Tourendateien bleiben unberührt.
@@ -974,7 +974,7 @@ und ohne Server.
     Dialog `js/ui/merge-ask.js`). Das Ergebnis steht in der WMap-Datei der
     Tour; die GPX geht, die FIT bleibt daneben und steht für die Tour. Hat die
     Datei nichts anderes, ohne Frage
-- **Kaputte Dateien:** lesbar, aber keine Tour darin → `Kaputte Dateien/`.
+- **Unbekannte Dateien:** lesbar, aber keine Tour darin → `Unbekannte Dateien/`.
   Die Seite nennt sie mit dem Hinweis, selbst nachzusehen, und (in der App)
   einem Knopf zum Dateimanager (`folder.reveal`); 30 Tage nach dem Fund löscht
   WMap sie (Zeitpunkt in `Inhalt.json`, `broken`). Leere und gerade nicht
