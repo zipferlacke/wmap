@@ -2,4 +2,4 @@
 
 [default]
 description = "Weblinks öffnen (Ansicht mit Leiste oder Standardbrowser), Android: teilen und in die Zwischenablage"
-permissions = ["allow-open", "allow-share", "allow-share-file", "allow-copy"]
+permissions = ["allow-open", "allow-share", "allow-copy"]

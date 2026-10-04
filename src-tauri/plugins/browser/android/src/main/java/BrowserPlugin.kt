@@ -12,9 +12,6 @@ import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.net.Uri
-import android.util.Base64
-import androidx.core.content.FileProvider
-import java.io.File
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.graphics.PathParser
@@ -31,16 +28,6 @@ class ShareArgs {
 }
 
 @InvokeArg
-class ShareFileArgs {
-    var title: String = ""
-    /** Dateiname, z. B. „Rudern.fit“ */
-    var name: String = ""
-    /** Inhalt, Base64 */
-    var data: String = ""
-    var mime: String = "application/octet-stream"
-}
-
-@InvokeArg
 class OpenArgs {
     var url: String = ""
     var external: Boolean = false
@@ -52,8 +39,7 @@ class OpenArgs {
  * „Im Browser öffnen“. `external`: gleich im Standardbrowser.
  *
  * Dazu, weil das WebView es nicht kann: `share { title, text }` öffnet das
- * Teilen-Menü von Android, `shareFile { title, name, data, mime }` gibt eine Datei dorthin,
- * `copy { text }` legt Text in die Zwischenablage.
+ * Teilen-Menü von Android, `copy { text }` legt Text in die Zwischenablage.
  */
 @TauriPlugin
 class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
@@ -87,40 +73,6 @@ class BrowserPlugin(private val activity: Activity) : Plugin(activity) {
             } catch (e: Exception) {
                 invoke.reject(e.message ?: e.toString())
             }
-        }
-    }
-
-    /**
-     * Eine Datei über das Teilen-Menü von Android weitergeben (GPX, FIT – js/ui/share.js shareFile): Sie wird in
-     * den Cache der App geschrieben und über den FileProvider der App (…fileprovider, cache-path) freigegeben.
-     * Im Menü steht auch „Speichern“ bzw. die Dateien-App.
-     */
-    @Command
-    fun shareFile(invoke: Invoke) {
-        val args = invoke.parseArgs(ShareFileArgs::class.java)
-        try {
-            val name = args.name.replace(Regex("[/\\\\]"), "-").ifEmpty { "datei" }
-            val dir = File(activity.cacheDir, "share").apply { mkdirs() }
-            // Altes aufräumen – geteilt ist es längst
-            dir.listFiles()?.forEach { if (System.currentTimeMillis() - it.lastModified() > 3600_000) it.delete() }
-            val file = File(dir, name)
-            file.writeBytes(Base64.decode(args.data, Base64.DEFAULT))
-            val uri = FileProvider.getUriForFile(activity, activity.packageName + ".fileprovider", file)
-            activity.runOnUiThread {
-                try {
-                    val send = Intent(Intent.ACTION_SEND).setType(args.mime)
-                        .putExtra(Intent.EXTRA_STREAM, uri)
-                        .putExtra(Intent.EXTRA_SUBJECT, args.title)
-                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    send.clipData = ClipData.newUri(activity.contentResolver, name, uri)
-                    activity.startActivity(Intent.createChooser(send, args.title.ifEmpty { "Teilen" }))
-                    invoke.resolve()
-                } catch (e: Exception) {
-                    invoke.reject(e.message ?: e.toString())
-                }
-            }
-        } catch (e: Exception) {
-            invoke.reject(e.message ?: e.toString())
         }
     }
 

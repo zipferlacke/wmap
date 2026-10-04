@@ -34,7 +34,7 @@ import { tours, shapeOf, coordsOf, encodeShare, toGpx, download, local } from '.
 import { metrics, laps, lapLine } from '../data/track-stats.js';
 import { PROFILES } from '../core/config.js';
 import { ask, toast } from '../ui/dialogs.js';
-import { share, pageUrl, canShareFiles, shareFile } from '../ui/share.js';
+import { share, pageUrl } from '../ui/share.js';
 import { tourFromGpx, folder } from '../data/folder.js';
 import { autoSync } from '../data/auto-sync.js';
 import { mapPage } from '../ui/map-page.js';
@@ -678,11 +678,11 @@ function paintTrack(t, note = '') {
     </details>
     <div class="weg-actions">${t.shared ? `
       <button type="button" class="button primary" data-do="keep"><span class="msr">bookmark_add</span> Bei mir speichern</button>
-      <button type="button" class="button" data-do="gpx"><span class="msr">download</span> GPX</button>` : `
+      <button type="button" class="button" data-do="gpx" title="Als GPX- oder FIT-Datei"><span class="msr">download</span> Herunterladen</button>` : `
       <a class="button primary" href="./index.html?track=${encodeURIComponent(t.id)}&start"><span class="msr">navigation</span> Navigieren</a>
       <button type="button" class="button" data-do="plan" title="Im Planer als neue Tour öffnen – gespeichert wird erst dort"><span class="msr">edit_road</span> Als Planung öffnen</button>
-      <button type="button" class="button" data-do="share" title="Die Aufzeichnung teilen – mit Zeiten, Tempo und auf Wunsch Puls &amp; Co."><span class="msr">share</span> Teilen</button>
-      <button type="button" class="button" data-do="gpx"><span class="msr">download</span> GPX</button>
+      <button type="button" class="button" data-do="share" title="Die Aufzeichnung als Link teilen – mit Zeiten, Tempo und auf Wunsch Puls &amp; Co."><span class="msr">share</span> Teilen</button>
+      <button type="button" class="button" data-do="gpx" title="Als GPX- oder FIT-Datei"><span class="msr">download</span> Herunterladen</button>
       <button type="button" class="button" data-do="delete"><span class="msr">delete</span> Löschen</button>`}
     </div>`;
   $('.weg-look', content)?.addEventListener('toggle', (e) => { lookOpen = e.target.open; });
@@ -905,6 +905,8 @@ content.addEventListener('click', async (e) => {
     shareTrack(t);
   } else if (act === 'share') {
     share({ title: t.name, text: t.name, url: async () => `${pageUrl('tour.html')}#t=${await encodeShare(t)}` }, toast);
+  } else if (act === 'gpx' && 'start' in t) {
+    downloadTrack(t);
   } else if (act === 'gpx') {
     download(`${(t.name || 'weg').replace(/[^\wäöüß]+/gi, '-')}.gpx`, 'start' in t ? trackGpx(t) : toGpx(t, coordsOf(t.shape)));
   } else if (act === 'delete') {
@@ -927,35 +929,42 @@ content.addEventListener('click', async (e) => {
 async function shareTrack(t) {
   const kinds = [['hr', 'Puls'], ['cad', cadName(t)], ['pow', 'Leistung']].filter(([k]) => t[k]?.some((v) => v > 0));
   const keep = Object.fromEntries(kinds.map(([k]) => [k, true]));
-  // Kann das Gerät Dateien über sein Teilen-Menü weitergeben (Handy)? Dort lässt sie sich auch speichern.
-  // Sonst (Rechner): herunterladen
-  const files = canShareFiles();
-  const verb = files ? 'teilen' : 'herunterladen';
+  // Geteilt wird immer ein Link, der die Daten trägt – nie eine Datei. Wer ihn öffnet, sieht die Tour und kann
+  // sie bei sich speichern oder als GPX bzw. FIT herunterladen (downloadTrack)
   const how = await ask({
-    icon: 'share', title: files ? 'Aufzeichnung teilen' : 'Aufzeichnung teilen oder herunterladen', className: 'stacked',
+    icon: 'share', title: 'Aufzeichnung teilen', className: 'stacked',
     text: 'Geteilt wird die Tour, wie du sie aufgezeichnet hast: Strecke, Zeiten und Tempo.'
       + (kinds.length ? ' Wähle, was noch mit soll:' : ''),
     html: kinds.length ? `<div class="share-opts">${kinds.map(([k, l]) => `
       <label><input type="checkbox" name="${k}" checked> ${esc(l)}</label>`).join('')}</div>` : '',
     buttons: [
       { value: 'link', label: 'Als Link teilen', icon: 'link', primary: true },
-      { value: 'gpx', label: `Als GPX-Datei ${verb}`, icon: files ? 'draft' : 'download' },
-      { value: 'fit', label: `Als FIT-Datei ${verb}`, icon: files ? 'watch' : 'download' },
       { value: 'no', label: 'Abbrechen' },
     ],
     setup: (dlg) => dlg.addEventListener('change', (e) => { if (e.target.name in keep) keep[e.target.name] = e.target.checked; }),
   });
-  if (how === 'link') {
-    const facts = [fmtDistance(t.length), fmtDuration(moving(t))].join(' · ');
-    share({ title: t.name || 'Tour', text: `${t.name || 'Tour'} – ${facts}`, url: async () => `${pageUrl('wege.html')}#weg=${await encodeTrack(t, keep)}` }, toast);
-  } else if (how === 'gpx' || how === 'fit') {
-    // GPX: alles, was WMap zur Tour weiß (auch Art, Farbe, Runden der Uhr); FIT: für Garmin, Strava, Zepp & Co.
-    const name = `${(t.name || 'weg').replace(/[^\wäöüß]+/gi, '-')}.${how}`;
-    const type = how === 'gpx' ? 'application/gpx+xml' : 'application/vnd.ant.fit';
-    const body = how === 'gpx' ? trackGpx(without(t, keep)) : (await import('../data/fit.js')).trackFit(without(t, keep));
-    if (await shareFile(name, body, type, t.name || 'Tour')) return;
-    try { await download(name, how === 'gpx' ? body : new Blob([body], { type }), type); } catch (err) { toast(err.message); }
-  }
+  if (how !== 'link') return;
+  const facts = [fmtDistance(t.length), fmtDuration(moving(t))].join(' · ');
+  share({ title: t.name || 'Tour', text: `${t.name || 'Tour'} – ${facts}`, url: async () => `${pageUrl('wege.html')}#weg=${await encodeTrack(t, keep)}` }, toast);
+}
+
+/** Aufzeichnung herunterladen: als GPX (alles, was WMap zur Tour weiß) oder als FIT (für Garmin, Strava, Zepp & Co.) */
+async function downloadTrack(t) {
+  const how = await ask({
+    icon: 'download', title: 'Herunterladen als', className: 'stacked',
+    text: 'GPX enthält alles, was WMap zur Tour weiß – auch Art, Farbe und die Runden der Uhr. FIT ist das Format der Sportuhren: Punkte, Puls, Frequenz, Leistung, Runden und Sportart.',
+    buttons: [
+      { value: 'gpx', label: 'GPX-Datei', icon: 'draft', primary: true },
+      { value: 'fit', label: 'FIT-Datei', icon: 'watch' },
+      { value: 'no', label: 'Abbrechen' },
+    ],
+  });
+  if (how !== 'gpx' && how !== 'fit') return;
+  const name = `${(t.name || 'weg').replace(/[^\wäöüß]+/gi, '-')}.${how}`;
+  try {
+    if (how === 'gpx') await download(name, trackGpx(t));
+    else await download(name, new Blob([(await import('../data/fit.js')).trackFit(t)], { type: 'application/vnd.ant.fit' }), 'application/vnd.ant.fit');
+  } catch (err) { toast(err.message); }
 }
 
 /** Geteilte Aufzeichnung (wege.html#weg=…) zeigen – gespeichert wird erst auf Wunsch */
