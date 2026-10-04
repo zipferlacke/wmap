@@ -759,17 +759,23 @@ const localHash = (entry) => (entry.item.stub ? entry.item.fhash : hash(serializ
 /**
  * Karteikarte → der ganze Weg aus der Datei im verbundenen Ordner (für
  * tracks.full). Wirft, wenn der Ordner nicht verbunden oder die Datei nicht
- * zu lesen ist.
+ * zu lesen ist. `onStep(name, info)` meldet jeden Schritt, bevor er beginnt
+ * (Zeitmessung in der Ansicht).
  */
-export async function readTrack(stub) {
+export async function readTrack(stub, onStep) {
+  onStep?.('Einstellung laden', { sync: !!progress });
   const c = await load();
   if (!c) throw new Error('Der Ordner ist nicht verbunden');
   const be = backendOf(c);
+  onStep?.('Ordner prüfen');
   if (await be.permission(false).catch(() => 'gone') !== 'granted') throw new Error('Der Ordner ist gerade nicht erreichbar');
   const paths = Object.keys(c.index ?? {}).filter((p) => c.index[p].id === stub.id);
   const path = paths.find((p) => c.index[p].ours) ?? paths[0];
   if (!path) throw new Error('Die Datei zu diesem Weg fehlt im Ordner');
-  const [t] = parseGpx(await be.read(path));
+  onStep?.('Datei lesen', { path });
+  const text = await be.read(path);
+  onStep?.('auswerten', { kb: Math.round(text.length / 1024) });
+  const [t] = parseGpx(text);
   if (!t) throw new Error('Die Datei im Ordner ließ sich nicht lesen');
   return fromFile(stub, t);
 }

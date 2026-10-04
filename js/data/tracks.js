@@ -114,13 +114,14 @@ export const tracks = {
   /**
    * Der ganze Weg mit allen Punkten und Messwerten – eine Karteikarte (stub)
    * wird aus dem verbundenen Ordner gelesen. Wirft, wenn der Ordner gerade
-   * nicht erreichbar ist. `t`: Weg oder ID
+   * nicht erreichbar ist. `t`: Weg oder ID, `onStep`: siehe readTrack
    */
-  async full(t) {
+  async full(t, onStep) {
     const item = typeof t === 'string' ? await db.get(t) : t;
     if (!item?.stub) return item ?? null;
+    onStep?.('Ordner-Teil laden');
     const { readTrack } = await import('./folder.js');
-    return readTrack(item);
+    return readTrack(item, onStep);
   },
   /** Alle Wege ganz (für Sicherung und ZIP); was nicht zu holen ist, bleibt Karteikarte → { list, missing } */
   async allFull() {

@@ -553,14 +553,24 @@ async function select(id, { push = false } = {}) {
   let t = card, missing = '';
   if (card.stub) {
     paintTrack(card, 'Hole die Tour aus dem Ordner …');
-    try { t = await tracks.full(card); } catch (err) { missing = `Punkte und Messwerte liegen im Ordner – ${err.message.replace(/^Der Ordner/, 'der')}.`; }
+    const watch = folderWatch();
+    try { t = await tracks.full(card, watch.step); } catch (err) { missing = `Punkte und Messwerte liegen im Ordner – ${err.message.replace(/^Der Ordner/, 'der')}.`; }
+    const took = watch.done(!missing);
     if (selected !== card) return;
     selected = t;
-  }
-  paintTrack(t, missing);
+    const before = performance.now();
+    paintTrack(t, missing ? `${missing} ${took}` : took);
+    folderPaint = { id: t.id, before };
+  } else paintTrack(t, missing);
   if (t.stub) return;
   paintCharts(t);
   paintLaps(t);
+  if (folderPaint?.id === t.id) {
+    const el = $('.weg-folder span:last-child', content);
+    if (el) el.textContent += ` · anzeigen ${secs(performance.now() - folderPaint.before)}`;
+    console.info('[Ordner]', el?.textContent);
+    folderPaint = null;
+  }
   showElevation(trackCoords(t), t, (h) => {
     $('.st-up', content).textContent = h ? `${h.ascent} m` : '–';
     paintCharts(t);
@@ -574,6 +584,33 @@ async function select(id, { push = false } = {}) {
       if (selected?.id === t.id) select(t.id);
     }).catch(() => {});
   }
+}
+
+/* Zeitmessung beim Holen aus dem Ordner: Der Hinweis nennt, solange gewartet wird, den laufenden Schritt und
+   danach, wie lange jeder gedauert hat – so ist am Gerät zu sehen, wo es hängt. */
+let folderPaint = null;
+const secs = (ms) => `${(ms / 1000).toFixed(ms < 9950 ? 1 : 0).replace('.', ',')} s`;
+function folderWatch() {
+  const steps = [], t0 = performance.now();
+  let sync = false, file = '';
+  const show = () => {
+    const el = $('.weg-folder span:last-child', content), now = steps.at(-1);
+    if (el && now) el.textContent = `Hole die Tour aus dem Ordner … ${now.name}, ${Math.round((performance.now() - t0) / 1000)} s${sync ? ' (der Abgleich läuft gerade)' : ''}`;
+  };
+  const timer = setInterval(show, 500);
+  return {
+    step(name, info = {}) {
+      steps.push({ name, at: performance.now() });
+      if (info.sync) sync = true;
+      if (info.kb != null) file = `, ${info.kb} kB`;
+    },
+    done(ok) {
+      clearInterval(timer);
+      const end = performance.now();
+      const parts = steps.map((s, i) => `${s.name} ${secs((steps[i + 1]?.at ?? end) - s.at)}`);
+      return `${ok ? 'Aus dem Ordner in' : 'Versucht'} ${secs(end - t0)}${file}${sync ? ', während der Abgleich lief' : ''}: ${parts.join(' · ')}`;
+    },
+  };
 }
 
 /** Kopf, Zahlen, Aussehen und Knöpfe eines Wegs; `note`: Hinweis, solange bzw. weil die Punkte fehlen */
@@ -594,7 +631,7 @@ function paintTrack(t, note = '') {
       <br><span class="muted">${esc(originOf(t))}${t.kind === 'health' ? ' · aus Health Connect' : ''}</span>
       ${t.from || t.to ? `<br><span class="muted">${esc([t.from, t.to].filter(Boolean).map((x) => x.split(',')[0]).join(' → '))}</span>` : ''}</p>
     ${t.shared ? '<p class="muted weg-note"><span class="msr">share</span> Geteilte Aufzeichnung – noch nicht gespeichert.</p>' : ''}
-    ${note ? `<p class="muted weg-note"><span class="msr">folder</span> ${esc(note)}</p>` : ''}
+    ${note ? `<p class="muted weg-note weg-folder"><span class="msr">folder</span><span>${esc(note)}</span></p>` : ''}
     <div class="weg-stats">
       <div><strong>${fmtDistance(t.length)}</strong><small>Strecke</small></div>
       <div><strong>${fmtDuration(mv)}</strong><small>in Bewegung</small></div>
@@ -668,7 +705,7 @@ async function saveLook(changes, { quiet = false } = {}) {
   await load();
   // Die Ansicht wird neu gezeichnet – an derselben Stelle bleiben
   const keep = content.scrollTop;
-  paintTrack(t, $('.weg-note', content)?.textContent.trim() ?? '');
+  paintTrack(t, $('.weg-folder span:last-child', content)?.textContent ?? '');
   if (!t.stub) {
     metricCache = { id: null, m: {} };
     paintCharts(t);
@@ -903,6 +940,12 @@ async function openSharedTrack(code) {
   paintTrack(t);
   paintCharts(t);
   paintLaps(t);
+  if (folderPaint?.id === t.id) {
+    const el = $('.weg-folder span:last-child', content);
+    if (el) el.textContent += ` · anzeigen ${secs(performance.now() - folderPaint.before)}`;
+    console.info('[Ordner]', el?.textContent);
+    folderPaint = null;
+  }
   showElevation(trackCoords(t), t, (h) => { $('.st-up', content).textContent = h ? `${h.ascent} m` : '–'; paintCharts(t); paintLaps(t); });
 }
 
