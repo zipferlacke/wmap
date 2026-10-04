@@ -21,13 +21,15 @@
  *
  * Aufruf: wege.html · ?tab=geplant · ?tab=bahn · ?tour=… (geplante Tour) · ?id=… (Weg) · ?conn=… (Verbindung)
  *         · #weg=… (geteilte Aufzeichnung, data/track-share.js)
+ *         · #datei (geöffnete GPX-/FIT-Datei als Vorschau, pages/import.js)
  */
 import { createMap, showHover } from '../map/map.js';
 import { heightsAlong } from '../services/routing.js';
 import { ElevationProfile } from '../ui/elevation.js';
 import { tracks, trackCoords, trackGpx, parseGpx, sameTrack, trackAsTour, hasValues, PROFILE_GROUP } from '../data/tracks.js';
 import { sportOf, sportName, sportIcon, sportColor, colorOf, ageOpacity, shownOnMap, trackShow, paceOf, cadName, lapSizes, SPORTS, COLORS } from '../data/track-look.js';
-import { findDuplicates } from '../data/duplicates.js';
+import { findDuplicates, choices, combine } from '../data/duplicates.js';
+import { askMerge } from '../ui/merge-ask.js';
 import { devLog } from '../core/devlog.js';
 import { encodeTrack, decodeTrack, without } from '../data/track-share.js';
 import { tours, shapeOf, coordsOf, encodeShare, toGpx, download, local } from '../data/store.js';
@@ -627,7 +629,7 @@ function paintTrack(t, note = '') {
       ${LONG.format(t.start)}, ${TIME.format(t.start)}–${TIME.format(t.end)} Uhr
       <br><span class="muted">${esc(originOf(t))}${t.kind === 'health' ? ' · aus Health Connect' : ''}</span>
       ${t.from || t.to ? `<br><span class="muted">${esc([t.from, t.to].filter(Boolean).map((x) => x.split(',')[0]).join(' → '))}</span>` : ''}</p>
-    ${t.shared ? '<p class="muted weg-note"><span class="msr">share</span> Geteilte Aufzeichnung – noch nicht gespeichert.</p>' : ''}
+    ${t.imported ? '<p class="muted weg-note"><span class="msr">upload_file</span> Geöffnete Datei – noch nicht gespeichert.</p>' : t.shared ? '<p class="muted weg-note"><span class="msr">share</span> Geteilte Aufzeichnung – noch nicht gespeichert.</p>' : ''}
     ${note ? `<p class="muted weg-note weg-folder"><span class="msr">folder</span><span>${esc(note)}</span></p>` : ''}
     <div class="weg-stats">
       <div><strong>${fmtDistance(t.length)}</strong><small>Strecke</small></div>
@@ -667,7 +669,9 @@ function paintTrack(t, note = '') {
         ${folderOn ? `<button type="button" class="chip" data-flag="pin" aria-pressed="${!!t.pin}" title="Bleibt ganz in der App – auch ohne den Ordner"><span class="msr">offline_pin</span> Offline verfügbar</button>` : ''}
       </div>
     </details>
-    <div class="weg-actions">${t.shared ? `
+    <div class="weg-actions">${t.imported ? `
+      <button type="button" class="button primary" data-do="keep"><span class="msr">directions_walk</span> Als aufgezeichnete Tour speichern</button>
+      <button type="button" class="button" data-do="plan" title="Im Planer als neue Tour öffnen – gespeichert wird erst dort"><span class="msr">edit_road</span> Als geplante Tour öffnen</button>` : t.shared ? `
       <button type="button" class="button primary" data-do="keep"><span class="msr">bookmark_add</span> Bei mir speichern</button>
       <button type="button" class="button" data-do="gpx" title="Als GPX- oder FIT-Datei"><span class="msr">download</span> Herunterladen</button>` : `
       <a class="button primary" href="./index.html?track=${encodeURIComponent(t.id)}&start"><span class="msr">navigation</span> Navigieren</a>
@@ -958,10 +962,16 @@ async function downloadTrack(t) {
   } catch (err) { toast(err.message); }
 }
 
-/** Geteilte Aufzeichnung (wege.html#weg=…) zeigen – gespeichert wird erst auf Wunsch */
+const IMPORTED = 'wmap.import';   // geöffnete Datei als Weg (JSON), nur für diese Sitzung
+
+/** Geteilte Aufzeichnung (wege.html#weg=…) bzw. geöffnete Datei (#datei) zeigen – gespeichert wird erst auf Wunsch */
 async function openSharedTrack(code) {
   let t;
-  try { t = { ...await decodeTrack(code), id: 'geteilt', shared: true }; } catch (err) { toast(err.message || 'Der Link ließ sich nicht lesen'); showList(); return; }
+  try {
+    // #datei: eine geöffnete Datei (pages/import.js legt sie für diese Sitzung ab) – ansehen, dann entscheiden
+    t = code === null ? { ...JSON.parse(sessionStorage.getItem(IMPORTED)), id: 'geteilt', shared: true, imported: true }
+      : { ...await decodeTrack(code), id: 'geteilt', shared: true };
+  } catch (err) { toast(code === null ? 'Die Datei ist nicht mehr da – bitte noch einmal öffnen' : err.message || 'Der Link ließ sich nicht lesen'); showList(); return; }
   tab = 'wege';
   selected = t;
   heights = null;
@@ -981,8 +991,24 @@ async function openSharedTrack(code) {
 /** Geteilte Aufzeichnung speichern – gibt es sie schon, dorthin */
 async function keepShared(t) {
   const twin = all.find((x) => sameTrack(x, t));
-  if (twin) { toast('Die Tour gibt es bei dir schon'); history.replaceState(null, '', `./wege.html?id=${encodeURIComponent(twin.id)}`); select(twin.id); return; }
-  const { shared: _s, ...rest } = t;
+  if (twin) {
+    // Gibt es schon: zusammenführen – mit Haken, was aus der Datei kommt; Abbrechen ändert nichts
+    let full;
+    try { full = await tracks.full(twin); } catch (err) { toast(`Die vorhandene Tour liegt im Ordner – ${err.message}`); return; }
+    const list = choices(full, t);
+    if (list.length) {
+      const picks = await askMerge(full, list);
+      if (!picks) return;
+      const next = combine(full, t, picks);
+      if (next !== full) { await tracks.put({ ...next, updated: Date.now() }); await load(); toast(`„${full.name}“ ergänzt`); }
+    } else toast('Die Tour gibt es bei dir schon – die Datei hat nichts anderes');
+    sessionStorage.removeItem(IMPORTED);
+    history.replaceState(null, '', `./wege.html?id=${encodeURIComponent(twin.id)}`);
+    select(twin.id);
+    return;
+  }
+  sessionStorage.removeItem(IMPORTED);
+  const { shared: _s, imported: _i, ...rest } = t;
   const saved = { ...rest, id: `w${t.start.toString(36)}${Math.random().toString(36).slice(2, 5)}`, updated: Date.now() };
   await tracks.put(saved);
   await load();
@@ -1273,6 +1299,7 @@ function route() {
   tab = tabOf(p);
   const sharedTrack = location.hash.match(/^#weg=(.+)$/)?.[1];
   if (sharedTrack) openSharedTrack(sharedTrack);
+  else if (location.hash === '#datei') openSharedTrack(null);
   else if (p.get('id')) select(p.get('id'));
   else if (p.get('conn')) selectConn(p.get('conn'));
   else if (p.get('tour')) selectTour(p.get('tour'));
@@ -1280,7 +1307,7 @@ function route() {
 }
 addEventListener('popstate', () => { route(); fitView(); });
 // Geteilte Aufzeichnung geöffnet, während die Seite schon offen ist
-addEventListener('hashchange', () => { if (/^#weg=/.test(location.hash)) { route(); fitView(); } });
+addEventListener('hashchange', () => { if (/^#(weg=|datei$)/.test(location.hash)) { route(); fitView(); } });
 
 /* Aus dem Ordner kam etwas dazu oder ging weg */
 addEventListener('wmap:folder', async () => {

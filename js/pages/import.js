@@ -9,6 +9,10 @@
  *                            (share_target → sw.js legt sie in „wmap-share“)
  *   sonst                    über die Dateiauswahl hier
  *
+ * Eine einzelne geöffnete Datei wird gleich gezeigt (preview): mit Zeiten als
+ * Aufzeichnung in „Meine Touren“ (wege.html#datei – dort „Als aufgezeichnete
+ * Tour speichern“ oder „Als geplante Tour öffnen“), sonst im Planer.
+ *
  * Je Datei:
  *   Als aufgezeichnete Tour  vorher auf Doppelte prüfen (WMap-ID bzw. gleicher
  *   speichern                Weg), dann speichern und gleich zeigen – geht nur
@@ -29,7 +33,8 @@ import { toast } from '../ui/dialogs.js';
 import { esc } from '../core/geo.js';
 import { tracks, parseGpx, sameTrack, bulk, trackGpx } from '../data/tracks.js';
 import { parseFit } from '../data/fit.js';
-import { gain, enrich } from '../data/duplicates.js';
+import { gain, enrich, choices, combine } from '../data/duplicates.js';
+import { askMerge } from '../ui/merge-ask.js';
 import { cadName } from '../data/track-look.js';
 import { devLog } from '../core/devlog.js';
 import { encodeShare } from '../data/store.js';
@@ -93,7 +98,7 @@ function card(f, i) {
     : f.merged
       ? `<a class="button" href="./wege.html?id=${encodeURIComponent(f.dup.id)}"><span class="msr">visibility</span> Ergänzt – ansehen</a>`
       : g?.any
-        ? `<button type="button" class="button primary" data-act="merge" data-i="${i}"><span class="msr">merge</span> In die vorhandene Tour übernehmen</button>`
+        ? `<button type="button" class="button primary" data-act="merge" data-i="${i}"><span class="msr">merge</span> Mit der vorhandenen Tour zusammenführen …</button>`
         : f.dup
           ? `<a class="button" href="./wege.html?id=${encodeURIComponent(f.dup.id)}"><span class="msr">content_copy</span> Gibt es schon – ansehen</a>`
           : f.track ? `<button type="button" class="button primary" data-act="track" data-i="${i}"><span class="msr">directions_walk</span> Als aufgezeichnete Tour speichern</button>` : '';
@@ -104,6 +109,7 @@ function card(f, i) {
     ${f.dup && !f.saved ? `<p class="settings-hint">Diesen Weg hast du schon: „${esc(f.dup.name)}“.${g?.any ? ` Die Datei hat mehr: ${esc(more(f))}.` : f.merged ? '' : f.kept ? ' Nichts übernommen – die vorhandenen Werte bleiben.' : ' Die Datei hat nichts, was hier fehlt.'}</p>` : ''}
     ${f.note ? `<p class="sync-status error"><span class="msr">error</span><span>${esc(f.note)}</span></p>` : ''}
     <div class="sync-actions">
+      ${f.track && !f.saved && !f.merged ? `<button type="button" class="button" data-act="view" data-i="${i}"><span class="msr">visibility</span> Ansehen</button>` : ''}
       ${recorded}
       <button type="button" class="button${f.track ? '' : ' primary'}" data-act="tour" data-i="${i}"><span class="msr">edit_road</span> Als geplante Tour öffnen</button>
     </div>
@@ -175,6 +181,32 @@ async function take(f) {
   return true;
 }
 
+/** Eine Datei mit der vorhandenen Tour zusammenführen – mit Haken, was aus der Datei kommt (ui/merge-ask.js) */
+async function mergeAsk(f) {
+  let full;
+  try { full = await tracks.full(f.dup); } catch (err) { f.note = `Die vorhandene Tour liegt im Ordner – ${err.message}`; return false; }
+  const list = choices(full, f.track);
+  if (!list.length) { f.gain = { ...f.gain, any: false }; return false; }
+  const picks = await askMerge(full, list, { fileName: f.name });
+  if (!picks) return null;
+  const next = combine(full, f.track, picks);
+  devLog('Zusammenführen:', f.name, '→', `„${full.name}“`, picks);
+  if (next === full) { f.gain = { ...f.gain, any: false }; f.kept = true; return false; }
+  await tracks.put({ ...next, updated: Date.now() });
+  f.merged = true;
+  return true;
+}
+
+/** Ansehen, bevor etwas gespeichert wird: mit Zeiten wie eine Aufzeichnung (wege.html#datei), sonst im Planer */
+async function preview(f, replace = false) {
+  let url;
+  if (f.track) {
+    sessionStorage.setItem('wmap.import', JSON.stringify({ ...f.track, id: f.id ?? f.track.id }));
+    url = './wege.html#datei';
+  } else url = `./tour.html#t=${await encodeShare(f.tour)}`;
+  if (replace) location.replace(url); else location.href = url;
+}
+
 function render() {
   root.innerHTML = `${files.length > 1 ? summary() : ''}${files.length ? files.map(card).join('') : `<section>
       <h3><span class="msr">upload_file</span> GPX- oder FIT-Datei öffnen</h3>
@@ -207,8 +239,10 @@ root.addEventListener('click', async (e) => {
     render();
     return;
   }
+  if (b.dataset.act === 'view') { await preview(f); return; }
   if (b.dataset.act === 'track' || b.dataset.act === 'merge') {
-    const did = await take(f);
+    const did = b.dataset.act === 'merge' ? await mergeAsk(f) : await take(f);
+    if (did === null) return;   // abgebrochen: nichts passiert
     if (!did && !f.note) toast(f.kept ? 'Nichts übernommen – die vorhandenen Werte bleiben' : f.dup ? 'Diesen Weg gibt es schon' : 'Nichts zu übernehmen');
     if (did && f.saved && files.length === 1) { location.href = `./wege.html?id=${encodeURIComponent(f.saved)}`; return; }
     if (did) toast(f.saved ? `„${f.track.name}“ gespeichert` : `„${f.dup.name}“ ergänzt`);
@@ -263,7 +297,8 @@ async function incoming() {
 if ('launchQueue' in window) {
   window.launchQueue.setConsumer(async (p) => {
     const list = await Promise.all((p.files ?? []).map(async (h) => fileOf(await h.getFile())));
-    if (list.length) addFiles(list);
+    if (list.length) await addFiles(list);
+    if (list.length === 1 && files.length === 1 && !files[0].error) preview(files[0], true);
   });
 }
 
@@ -271,3 +306,5 @@ mountAppBar();
 render();
 const first = await incoming();
 if (first.length) await addFiles(first);
+// Eine Datei geöffnet („Öffnen mit“, „Teilen“): erst ansehen – gespeichert wird dort auf Wunsch
+if (first.length === 1 && files.length === 1 && !files[0].error) preview(files[0], true);

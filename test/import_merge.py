@@ -42,20 +42,28 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const out = { before };
   out.summary = text('.import-all .settings-hint');
   out.toggles = [...document.querySelectorAll('.import-all [data-opt]')].map((x) => [x.dataset.opt, x.checked]);
-  out.cards = [...document.querySelectorAll('.import section:not(.import-all)')].filter((s) => s.querySelector('h3')).map((s) => [...s.querySelectorAll('.settings-hint')].at(-1).innerText.replace(/\s+/g, ' ').trim() + ' | ' + s.querySelector('.sync-actions > .button').innerText.replace(/\s+/g, ' ').trim());
+  out.cards = [...document.querySelectorAll('.import section:not(.import-all)')].filter((s) => s.querySelector('h3')).map((s) => [...s.querySelectorAll('.settings-hint')].at(-1).innerText.replace(/\s+/g, ' ').trim() + ' | ' + s.querySelector('.sync-actions > .button:not([data-act=view])').innerText.replace(/\s+/g, ' ').trim());
   out.allButton = text('.import-all [data-act=all]');
   document.querySelector('.import-all [data-act=all]').click();
   await wait(2500);
   out.after = { A: await info('mA'), B: await info('mB'), D: await info('mD'), n: (await tracks.all()).length, neu: (await tracks.all()).some((t) => t.name === 'Ganz neu') };
   out.summaryAfter = text('.import-all .settings-hint');
-  out.cardsAfter = [...document.querySelectorAll('.import section:not(.import-all)')].filter((s) => s.querySelector('h3')).map((s) => s.querySelector('.sync-actions > .button').innerText.replace(/\s+/g, ' ').trim());
+  out.cardsAfter = [...document.querySelectorAll('.import section:not(.import-all)')].filter((s) => s.querySelector('h3')).map((s) => s.querySelector('.sync-actions > .button:not([data-act=view])').innerText.replace(/\s+/g, ' ').trim());
   // 5. Strecke: nein
   await addFiles([{ name: 'e.gpx', text: asFile(mk(7, N, 1, () => [120, 26, 0]), 'Zepp E') }]);
   await wait(300);
-  const sw = document.querySelector('.import-all [data-opt=shape]');
-  sw.checked = false; sw.dispatchEvent(new Event('change', { bubbles: true }));
+  // Einzeln: Dialog mit Haken – vorgeschlagen ist, was genauer ist; Strecke hier abwählen
+  const dlg = () => document.querySelector('dialog.merge-ask[open]');
+  const confirmMerge = async (untick = []) => {
+    await wait(600);
+    const picks = [...dlg().querySelectorAll('[data-pick]')].map((x) => [x.dataset.pick, x.checked]);
+    for (const k of untick) dlg().querySelector(`[data-pick=${k}]`).checked = false;
+    [...dlg().querySelectorAll('.confirm-actions button')].find((x) => /Zusammenführen/.test(x.innerText)).click();
+    await wait(1200);
+    return picks;
+  };
   document.querySelector('button[data-act=merge]').click();
-  await wait(1500);
+  out.picksE = await confirmMerge(['shape']);
   out.E = await info('mE');
   // 6. FIT-Datei (wie aus Zepp: Schlagfrequenz steht nur dort) zu einer Tour ohne Frequenz
   const fit = (pts, sport) => {
@@ -76,12 +84,24 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   await addFiles([{ name: 'Zepp.fit', bytes: fit(mk(8, N, 1, (i) => [120, i % 7 ? 28 : 0, 0]), 23) }, { name: 'neu.fit', bytes: fit(mk(9, N, 1, () => [130, 30, 0]), 23) }]);
   await wait(300);
   const fitCards = [...document.querySelectorAll('.import section:not(.import-all)')].filter((s) => s.querySelector('h3')).slice(-2);
-  out.fitCards = fitCards.map((s) => [...s.querySelectorAll('.settings-hint')].at(-1).innerText.replace(/\s+/g, ' ').trim() + ' | ' + s.querySelector('.sync-actions > .button').innerText.replace(/\s+/g, ' ').trim());
+  out.fitCards = fitCards.map((s) => [...s.querySelectorAll('.settings-hint')].at(-1).innerText.replace(/\s+/g, ' ').trim() + ' | ' + s.querySelector('.sync-actions > .button:not([data-act=view])').innerText.replace(/\s+/g, ' ').trim());
   // nach jedem Klick wird neu gezeichnet – die Knöpfe jedes Mal neu suchen
-  for (const act of ['merge', 'track']) { [...document.querySelectorAll(`button[data-act=${act}]`)].at(-1).click(); await wait(1200); }
+  [...document.querySelectorAll('button[data-act=merge]')].at(-1).click();
+  out.picksF = await confirmMerge(['shape']);
+  // Abbrechen: nichts passiert
+  await tracks.putQuiet({ ...buildTrack(mk(10, N, 10, () => [120, 0, 0]), { kind: 'health', profile: 'foot', name: 'Bleibt so', keepAll: true }), id: 'mG' });
+  await addFiles([{ name: 'g.gpx', text: asFile(mk(10, N, 1, () => [120, 27, 0]), 'Zepp G') }]);
+  await wait(300);
+  [...document.querySelectorAll('button[data-act=merge]')].at(-1).click();
+  await wait(600);
+  [...dlg().querySelectorAll('.confirm-actions button')].find((x) => /Abbrechen/.test(x.innerText)).click();
+  await wait(600);
+  out.G = await info('mG');
+  out.view = [...document.querySelectorAll('button[data-act=view]')].length;
+  [...document.querySelectorAll('button[data-act=track]')].at(-1).click(); await wait(1200);
   out.F = await info('mF');
   out.fitNew = await (async () => { const t = (await tracks.all()).find((x) => x.name === 'neu'); return t && { sport: t.sport, cad: mean(t.cad), hr: mean(t.hr) }; })();
-  for (const t of await tracks.all()) if (/^m[ABDEF]$/.test(t.id) || t.name === 'Ganz neu' || t.name === 'neu') await tracks.remove(t.id);
+  for (const t of await tracks.all()) if (/^m[ABDEFG]$/.test(t.id) || t.name === 'Ganz neu' || t.name === 'neu') await tracks.remove(t.id);
   return out;
 })().then(done, (e) => done('FEHLER ' + e + ' ' + e.stack));
 """
@@ -103,8 +123,10 @@ with Browser(width=420, height=900) as b:
         '3. B: abweichender Puls bleibt der vorhandene': B1 == B0,
         '4. D unverändert, die neue Datei ist gespeichert, sonst kein Eintrag mehr': r['after']['D'] == r['before']['D'] and r['after']['neu'] and r['after']['n'] == r['before']['n'] + 1,
         '4. danach: Karten zeigen „Ergänzt“ bzw. „Gespeichert“': [c.split(' ', 1)[1] for c in r['cardsAfter']] == ['Ergänzt – ansehen', 'Gibt es schon – ansehen', 'Gespeichert – ansehen', 'Gibt es schon – ansehen'],
-        '6. FIT-Datei: Schlagfrequenz kommt in die vorhandene Tour (Strecke bleibt, Frage steht auf nein)': 'Schlagfrequenz (fehlt hier)' in r['fitCards'][0] and 'Runden der Uhr (fehlen hier)' in r['fitCards'][0] and r['F']['cad'] == 28 and r['F']['pts'] == 41 and r['F']['sport'] == 'rowing' and r['F'].get('marks') == [1000],
+        '6. FIT-Datei: Schlagfrequenz kommt in die vorhandene Tour (Strecke im Dialog abgewählt)': 'Schlagfrequenz (fehlt hier)' in r['fitCards'][0] and 'Runden der Uhr (fehlen hier)' in r['fitCards'][0] and r['F']['cad'] == 28 and r['F']['pts'] == 41 and r['F']['sport'] == 'rowing' and r['F'].get('marks') == [1000],
         '6. neue FIT-Datei: gespeichert als Rudern mit Puls und Frequenz': 'Als aufgezeichnete Tour speichern' in r['fitCards'][1] and r['fitNew'] == {'sport': 'rowing', 'cad': 30, 'hr': 130},
+        '5. Dialog mit Haken: Strecke und Frequenz vorgeschlagen': ['shape', True] in r['picksE'] and ['cad', True] in r['picksE'],
+        '7. Abbrechen im Dialog: nichts passiert; „Ansehen“ steht an Dateien mit Zeiten': r['G']['cad'] == 0 and r['G']['pts'] == 41 and r['view'] >= 1,
         '5. Strecke nein: Frequenz kommt dazu, Punkte und Kilometer bleiben': E1['cad'] == 26 and E1['pts'] == E0['pts'] == 41 and E1['km'] == E0['km'],
     }
     for name, ok in checks.items():

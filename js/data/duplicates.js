@@ -136,6 +136,54 @@ export function enrich(keep, file, { shape = false, values = false } = {}) {
   return out;
 }
 
+/**
+ * Zusammenführen mit Haken: was die Datei `file` anders hat als derselbe Weg `keep` (ganz, keine Karteikarte) →
+ * [{ key: 'shape' | 'hr' | 'cad' | 'pow' | 'marks', detail, on }] – `on`: vorgeschlagen. Es gewinnen erst einmal
+ * die genaueren Daten: was hier fehlt, kommt dazu; Abweichendes von der Seite mit mehr Punkten.
+ */
+export function choices(keep, file) {
+  const [here, there] = [pointCount(keep), pointCount(file)];
+  const out = [];
+  if (here !== there) out.push({ key: 'shape', detail: `${there} Punkte in der Datei, ${here} hier (${there > here ? 'mehr' : 'weniger'})`, on: there > here });
+  for (const k of VALUES) {
+    if (!hasValues(file, k)) continue;
+    const [a, b] = [meanOf(keep, k), meanOf(file, k)];
+    if (!hasValues(keep, k)) out.push({ key: k, detail: `fehlt hier – in der Datei Ø ${Math.round(b)}`, on: true });
+    else if (Math.abs(a - b) > Math.max(a, b) * 0.03) out.push({ key: k, detail: `Ø ${Math.round(b)} in der Datei, Ø ${Math.round(a)} hier`, on: there > here });
+  }
+  if (file.marks?.length) {
+    if (!keep.marks?.length) out.push({ key: 'marks', detail: `${file.marks.length + 1} Runden in der Datei, hier keine`, on: true });
+    else if (JSON.stringify(keep.marks) !== JSON.stringify(file.marks)) out.push({ key: 'marks', detail: `${file.marks.length + 1} Runden in der Datei, ${keep.marks.length + 1} hier`, on: false });
+  }
+  return out;
+}
+
+/**
+ * `keep` mit dem aus `file`, was angehakt ist (`picks`: { shape, hr, cad, pow, marks }). Name, Art, Farbe,
+ * Kennung und Herkunft bleiben die von hier. → neuer Weg, oder `keep` selbst, wenn nichts angehakt ist
+ */
+export function combine(keep, file, picks) {
+  if (!['shape', ...VALUES, 'marks'].some((k) => picks[k])) return keep;
+  let out = { ...keep };
+  if (picks.shape) {
+    for (const k of VALUES) delete out[k];
+    for (const k of MEASURED) if (file[k] !== undefined) out[k] = file[k];
+    for (const k of VALUES) {
+      // Angehakt: die Werte der Datei (liegen schon auf ihren Punkten); sonst die von hier, nach der Uhrzeit übertragen
+      const v = picks[k] && hasValues(file, k) ? file[k] : hasValues(keep, k) ? valuesAt(keep, k, out) : null;
+      if (v) out[k] = v;
+    }
+  } else {
+    for (const k of VALUES) {
+      const v = picks[k] && hasValues(file, k) ? valuesAt(file, k, keep) : null;
+      if (v) out[k] = v;
+    }
+  }
+  if (picks.marks && file.marks?.length) out.marks = file.marks;
+  if (!out.description && file.description) out.description = file.description;
+  return out;
+}
+
 /** → { tracks: [[vorgeschlagen, …doppelt]], tours: [[behalten, …doppelt]], count } */
 export async function findDuplicates() {
   const list = (await tracks.all()).sort((a, b) => a.start - b.start);
