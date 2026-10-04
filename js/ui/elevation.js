@@ -39,7 +39,7 @@ function axisRange(min, max) {
 }
 
 export class ElevationProfile {
-  #diagram; #points = []; #host; #last = null; #mark = null; #watched = null;
+  #diagram; #points = []; #host;
 
   constructor(host, { onHover } = {}) {
     this.#host = host;
@@ -68,44 +68,15 @@ export class ElevationProfile {
 
   /**
    * Neue Reihe setzen – auch im Vollbild (pages/wege.js schaltet dort zwischen Höhe, Tempo, Puls … um).
-   *
-   * Die Bibliothek baut den Kopf dabei neu: Der Knopf stünde im Vollbild wieder auf „öffnen“. Außerdem hängt sie
-   * ihm das Öffnen fest an (addEventListener) und setzt beim Öffnen und Schließen zusätzlich `onclick` – nach
-   * dem ersten Schließen ginge das Vollbild dadurch auf und im selben Klick wieder zu. Deshalb: ein Knopf ohne
-   * das fest Angehängte, nur mit `onclick`, im Zustand von jetzt.
+   * `mark`: Symbol der Reihe (Berg, Herz …) vor allen Chips. Der Kopf wird nur in setConfig() neu gebaut, die
+   * Chips danach an Ort und Stelle befüllt – ein vorangestelltes Element überlebt also jedes Nachladen.
    */
-  #config(cfg, mark = this.#mark) {
-    this.#last = cfg;
-    this.#mark = mark;
-    const full = this.fullscreen;
+  #config(cfg, mark) {
     // Zoomen nur im Vollbild – im Blatt nähme es dem Finger das Scrollen
-    this.#diagram.setConfig({ ...cfg, zoom: full });
-    // Das Symbol der Reihe (Berg, Herz …) steht vor allen Chips. Der Kopf wird nur in setConfig() neu gebaut,
-    // die Chips danach an Ort und Stelle befüllt – ein vorangestelltes Element überlebt also jedes Nachladen.
-    if (mark) {
-      const el = Object.assign(document.createElement('span'), { className: 'msr elev-mountain', textContent: mark.icon, title: mark.title });
-      if (mark.color) el.style.color = mark.color;
-      this.#host.querySelector('.dg_tools')?.prepend(el);
-    }
-    const old = this.#host.querySelector('.dg_fsbtn');
-    if (!old) return;
-    const btn = old.cloneNode(true);
-    old.replaceWith(btn);
-    btn.title = full ? 'Vollbild verlassen' : 'Vollbild';
-    btn.setAttribute('aria-label', full ? 'Vollbild verlassen' : 'Diagramm im Vollbild öffnen');
-    const ico = btn.querySelector('[data-dg-ico]');
-    ico.dataset.dgIco = full ? 'fullscreenExit' : 'fullscreen';
-    ico.innerHTML = `<span class="msr">${full ? 'fullscreen_exit' : 'fullscreen'}</span>`;
-    btn.onclick = () => {
-      this.#diagram.toggleFullscreen(!full);
-      this.#config(this.#last);
-      // Esc und Zurück schließen an der Bibliothek vorbei – auch dann Knopf und Zoomen zurückstellen
-      const dlg = this.#host.closest('dialog.dg_fs');
-      if (dlg && dlg !== this.#watched) {
-        this.#watched = dlg;
-        dlg.addEventListener('close', () => { if (this.#last) this.#config(this.#last); });
-      }
-    };
+    this.#diagram.setConfig({ ...cfg, zoom: 'fullscreen' });
+    const el = Object.assign(document.createElement('span'), { className: 'msr elev-mountain', textContent: mark.icon, title: mark.title });
+    if (mark.color) el.style.color = mark.color;
+    this.#host.querySelector('.dg_tools')?.prepend(el);
   }
 
   #on(name, cb) {
