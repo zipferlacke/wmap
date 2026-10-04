@@ -6,8 +6,19 @@
     ],
     "minVersion": "2.1.0",
     "minAppVersion": "2.1.0",
+    "appVersion": "2.2.0",
     "messages": [],
     "changelog": [
+        {
+            "version": "2.3.0",
+            "date": "2026-10-04",
+            "changes": [
+                "FIT-Dateien öffnen (Garmin, Zepp …): mit Puls, Frequenz und den Runden der Uhr – beim Rudern kommt so die Schlagfrequenz mit",
+                "Datei zu einer Tour, die es schon gibt: Sie ergänzt die Tour (fehlende Messwerte, Runden, auf Wunsch die genauere Strecke) – bei mehreren Dateien mit Übersicht und „Alle übernehmen“",
+                "Meine Touren: Runden der Uhr, Diagramme im Vollbild, „Herunterladen“ als GPX oder FIT",
+                "Fix: „Gleiche ab …“ blieb nach dem Abgleich mit dem Ordner stehen"
+            ]
+        },
         {
             "version": "2.2.0",
             "date": "2026-10-03",

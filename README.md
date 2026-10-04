@@ -624,8 +624,11 @@ Die ersten zwei:
     gefärbt (langsam orange → schnell grün).
     **Diagramm** mit Umschalter: Höhe, Tempo, Puls, Schritt- bzw.
     Trittfrequenz, Leistung – nur, was gemessen wurde; Zeiger im Diagramm
-    und auf der Linie zeigen dieselbe Stelle.
-    **Runden** zu 1, 2 oder 5 km (gemerkt; Rudern und Paddeln 500 m, 1, 2 km):
+    und auf der Linie zeigen dieselbe Stelle. Der Knopf rechts im Kopf
+    öffnet es im **Vollbild** (auch in der Route und im Tourenplaner; die
+    Umschalter ziehen mit, zoomen geht nur dort – `js/ui/elevation.js`).
+    **Runden** – die der Uhr („Uhr“, wenn die Tour welche hat: aus der
+    FIT-Datei, `marks`) oder zu 1, 2 oder 5 km (gemerkt; Rudern und Paddeln 500 m, 1, 2 km):
     Zeit, Tempo (zu Fuß als min/km, Rudern je 500 m, Schwimmen je 100 m),
     Ø Puls, Anstieg; die schnellste grün, die langsamste rot, eine Runde
     antippen hebt sie auf der Karte hervor (`js/data/track-stats.js`).
@@ -633,7 +636,13 @@ Die ersten zwei:
     (Zepp liefert über Health Connect fürs Rudern nur Puls und Strecke:
     als Frequenz kommen ein paar Werte aus den letzten Sekunden, alle 0,
     und ein einziger Abschnitt mit „1 Wiederholung“ – am Handy
-    nachgemessen. Ein Schlagzahl-Diagramm gibt es dafür darum nicht.)
+    nachgemessen. Die Schlagfrequenz steht nur in der FIT-Datei, die Zepp
+    exportiert – im GPX von Zepp ist sie bei Bootstouren 0. Über „GPX
+    öffnen“ kommt sie in die vorhandene Tour; `tools/zepp/` exportiert
+    alle Trainings aus der Zepp-App.)
+    **Herunterladen** fragt nach GPX (alles, was WMap zur Tour weiß) oder
+    FIT (`js/data/fit.js` – Punkte, Puls, Frequenz, Leistung, Runden,
+    Sportart); **Teilen** gibt immer nur den Link, nie eine Datei.
     **Art, Farbe und Anzeige** – ein Block zum Auf- und Zuklappen (zu; der
     Kopf nennt Art, Farbe und ob die Tour ausgeblendet bzw. offline
     verfügbar ist; beim Ändern bleibt er offen): Art wählen, Farbe (die der
@@ -1105,12 +1114,22 @@ gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
 
 ### GPX öffnen (`import.html`)
 
-Eine GPX-Datei antippen bzw. doppelklicken öffnet WMap – und dort je Datei:
+Eine GPX-Datei antippen bzw. doppelklicken öffnet WMap; über die Dateiauswahl
+geht auch **FIT** (Garmin, Zepp/Amazfit, Wahoo – `js/data/fit.js` liest Ort,
+Zeit, Puls, Frequenz, Leistung, Sportart und die Runden der Uhr). Je Datei:
 
 - **Als aufgezeichnete Tour speichern** (nur mit Zeiten in der Datei):
   vorher Prüfung auf Doppelte (WMap-ID im Stichwort `wmap:…` bzw. derselbe
   Weg – `sameTrack`); gibt es ihn schon: „Gibt es schon – ansehen“. Sonst
   speichern und gleich zeigen (`wege.html?id=…`), der Ordner gleicht ihn mit ab.
+- **In die vorhandene Tour übernehmen:** Hat die Datei mehr als die Tour
+  hier (`data/duplicates.js` `gain`/`enrich`), ergänzt sie sie – Name, Art
+  und Farbe bleiben. Fehlende Messwerte und die Runden der Uhr kommen ohne
+  Rückfrage dazu. Nicht eindeutig sind eine genauere Strecke (mindestens
+  anderthalbmal so viele Punkte) und abweichende Messwerte (Schnitt über
+  3 % anders): dafür stehen oben zwei Schalter, die für alle Dateien
+  gelten. Bei mehreren Dateien: Übersicht (neu / ergänzen / gibt es schon)
+  und „Alle … übernehmen“.
 - **Als geplante Tour öffnen:** nur öffnen, wie eine geteilte Tour
   (`tour.html#t=…`, Speichern mit Ausrufezeichen) – gespeichert wird erst dort.
 
@@ -1786,6 +1805,7 @@ tools/android-auto.sh id3       # Android Auto am Rechner (Simulator), siehe Abs
     "welcome": ["Absatz", "…"],
     "minVersion": "2.1.0",
     "minAppVersion": "2.1.0",
+    "appVersion": "2.2.0",
     "messages": [
       { "id": "wartung-okt", "title": "Wartung", "text": ["Absatz", "…"],
         "icon": "construction", "from": "2026-10-01", "until": "2026-10-05" }
@@ -1801,6 +1821,7 @@ tools/android-auto.sh id3       # Android Auto am Rechner (Simulator), siehe Abs
   | `messages` | Nachrichten als Dialog, jede einmal (gemerkt über `id`); `from`/`until` (Datum) optional, `text` HTML erlaubt |
   | `minVersion` | kleinste Version der **Oberfläche**. Ist die laufende älter (z. B. nach einer Änderung an der Server-API): „Update nötig“ – nur **Aktualisieren**, lädt den neuen Service Worker |
   | `minAppVersion` | kleinste Version der **App selbst** (Tauri-Teil: Rust, Kotlin, Plugins, Rechte). Ist die installierte App älter: gesperrt mit „WMap-App aktualisieren“ – sichern (in den Ordner bzw. als ZIP), dann Play Store bzw. wuefl.de. Im Browser gilt es nicht (`src-tauri/README.md`) |
+  | `appVersion` | die **App** (Tauri-Teil), die zu dieser Oberfläche gehört und im Store liegt. Ist die installierte älter: Hinweis „Neue Version der WMap-App“ mit Link zum Play Store bzw. zu wuefl.de („Später“ geht) – und die neue Oberfläche kommt so lange nicht: Der neue Service Worker fragt die offene Seite nach der App-Version und installiert sich in einer älteren App nicht (`sw.js` `appCurrent`). Erst hochsetzen, wenn die neue App wirklich zu haben ist |
 
   **Neue Version:** oben im `changelog` eintragen, dann
   `python3 appdata/version.py` – trägt die Nummer in `js/core/config.js`,

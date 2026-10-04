@@ -21,6 +21,12 @@ export const offlineSetting = {
 
 export async function registerOffline() {
   if (!('serviceWorker' in navigator)) return;
+  // Ein neuer Service Worker fragt vor dem Installieren, wie alt die App (Tauri-Teil) ist (sw.js appCurrent) –
+  // im Browser: null
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data?.type !== 'app-version' || !e.ports?.[0]) return;
+    Promise.resolve(window.__TAURI__?.app?.getVersion?.() ?? null).catch(() => null).then((v) => e.ports[0].postMessage(v));
+  });
   // Erst die Seite: Beim allerersten Besuch lädt der Service Worker alle
   // Dateien in seinen Speicher – das soll nicht mit dem Aufbau der Seite um
   // die Leitung streiten. Ist er schon da, kostet das Anmelden nichts

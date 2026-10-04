@@ -17,6 +17,8 @@
  * (js/ui/news.js) „Neue Version verfügbar“ bzw. zwingend bei minVersion;
  * „Aktualisieren“ schickt „skip-waiting“, dann lädt die Seite neu. Nur
  * geänderte Dateien bei gleicher Nummer: gilt still ab dem nächsten Start.
+ * In einer App, die älter ist als „appVersion“ (messages.json), installiert
+ * sich die neue Fassung gar nicht erst (appCurrent).
  *
  * Teilen-Menü am Handy (manifest share_target): die GPX-Dateien kommen per
  * POST an import.html – hier in den Cache „wmap-share“, dann weiter zu
@@ -36,11 +38,11 @@
  *   - nach 10 Tagen wird er gelöscht
  *   - reicht der Platz nicht, weicht zuerst die älteste Navigation
  */
-const VERSION = '2.2.0';            // von appdata/version.py – neue Nummer = Update
+const VERSION = '2.3.0';            // von appdata/version.py – neue Nummer = Update
 // Stand der Dateien (Prüfsumme über alles in sw-files.json, von version.py):
 // dieselbe Nummer noch einmal hochgeladen ist trotzdem ein neuer Service Worker
 // mit eigenem Speicher – Alt und Neu mischen sich nie
-const BUILD = 'ce287a84b4';
+const BUILD = '25e82b35c4';
 const APP = `wmap-app-${VERSION}-${BUILD}`;
 const APP_PREFIX = 'wmap-app-';
 const SHARE = 'wmap-share';
@@ -57,7 +59,32 @@ const TILE_HOSTS = ['tiles.openfreemap.org', 'tiles.mapterhorn.com'];
 
 // Neue Version: alle Dateien vorab laden, dann warten, bis die Seite „Aktualisieren“ sagt
 // (die allererste Version wird sofort aktiv – es gibt ja keine alte)
-self.addEventListener('install', (e) => e.waitUntil(precache()));
+self.addEventListener('install', (e) => e.waitUntil(appCurrent().then(precache)));
+
+/*
+ * In der App (Tauri) gehört zu jeder Oberfläche eine App-Version: „appVersion“ in appdata/messages.json. Ist die
+ * installierte App älter, installiert sich diese Fassung nicht – die App bleibt bei ihrer bisherigen Oberfläche
+ * und zeigt den Hinweis „App aktualisieren“ (js/ui/news.js). Der Browser versucht es bei jedem Öffnen wieder;
+ * nach dem Update der App klappt es. Gefragt werden die offenen Seiten (js/data/offline.js antwortet mit der
+ * Version der App, im Browser mit null). Keine Antwort (ältere Oberfläche, keine Seite offen) oder noch gar
+ * kein Service Worker da: installieren – zurückzuhalten gäbe es dann ohnehin nichts.
+ */
+async function appCurrent() {
+  if (DEV || !self.registration.active) return;
+  let want = null;
+  try { want = (await (await fetch('appdata/messages.json', { cache: 'no-store' })).json()).appVersion ?? null; } catch { return; }
+  if (!want) return;
+  const pages = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  const answers = await Promise.all(pages.map((c) => new Promise((resolve) => {
+    const ch = new MessageChannel();
+    const t = setTimeout(() => resolve(undefined), 3000);
+    ch.port1.onmessage = (ev) => { clearTimeout(t); resolve(ev.data); };
+    try { c.postMessage({ type: 'app-version' }, [ch.port2]); } catch { clearTimeout(t); resolve(undefined); }
+  })));
+  const num = (v) => String(v).split('.').map((x) => parseInt(x, 10) || 0);
+  const older = (a, b) => { const [x, y] = [num(a), num(b)]; for (let i = 0; i < 3; i += 1) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0); return false; };
+  if (answers.some((v) => typeof v === 'string' && older(v, want))) throw new Error(`WMap-App älter als ${want} – diese Fassung wartet auf das Update der App`);
+}
 
 /*
  * Alles in den Speicher dieser Fassung – im Hintergrund, die laufende Seite

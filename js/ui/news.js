@@ -17,6 +17,14 @@
  *                                 aller Versionen seit der zuletzt gesehenen
  *   minVersion                    ist die Oberfläche älter: dasselbe zwingend –
  *                                 nur „Aktualisieren“ (z. B. Server-API geändert)
+ *   appVersion                    die App (Tauri-Teil), die zu dieser Oberfläche
+ *                                 gehört und im Store liegt. Ist die installierte
+ *                                 älter: Hinweis „App aktualisieren“ mit Link
+ *                                 (Play Store bzw. wuefl.de), „Später“ geht. Die
+ *                                 neue Oberfläche kommt so lange nicht – der neue
+ *                                 Service Worker installiert sich in einer älteren
+ *                                 App nicht (sw.js appCurrent). Erst hochsetzen,
+ *                                 wenn die neue App wirklich zu haben ist
  *   minAppVersion                 ist die App selbst älter (Tauri-Teil, native.js
  *                                 appVersion): gesperrt – sichern (Ordner bzw.
  *                                 ZIP), dann Play Store bzw. wuefl.de; der
@@ -64,6 +72,7 @@ function load() {
   return loaded;
 }
 
+const LATER_APP = 'wmap.update.app.later'; // sessionStorage: Hinweis auf die neue App erst beim nächsten Start wieder
 const LATER = 'wmap.update.later';     // sessionStorage: diese Version erst beim nächsten Start wieder anbieten
 const UPDATED = 'wmap.update.done';    // sessionStorage: gerade aktualisiert → gleich zeigen, was neu ist
 const session = {
@@ -150,6 +159,12 @@ export async function checkUpdates(m) {
   const latest = m.changelog?.[0]?.version ?? null;
   const app = await appVersion();
   if (app && m.minAppVersion && compareVersions(app, m.minAppVersion) < 0) return appRequired(m.minAppVersion);
+  // Die App ist nicht die aktuelle: erst sie, dann die Oberfläche – das Web-Update wird nicht angeboten
+  if (app && m.appVersion && compareVersions(app, m.appVersion) < 0) {
+    // Geht die Oberfläche hier gar nicht mehr (minVersion), führt kein Weg an der neuen App vorbei
+    if (m.minVersion && compareVersions(APP_VERSION, m.minVersion) < 0) return appRequired(m.appVersion);
+    return session.get(LATER_APP) === m.appVersion ? null : appHint(app, m.appVersion);
+  }
   if (m.minVersion && compareVersions(APP_VERSION, m.minVersion) < 0) return uiUpdate(latest, { forced: true });
   if (latest && compareVersions(APP_VERSION, latest) < 0 && session.get(LATER) !== latest) {
     // Schon im Hintergrund laden – „Aktualisieren“ geht dann schneller
@@ -235,6 +250,36 @@ function installed(worker, ms) {
 const STORE = 'https://play.google.com/store/apps/details?id=de.wuefl.wmap';
 const SITE = 'https://wuefl.de/wmap/#download';
 
+const openStore = (android) => {
+  const url = android ? STORE : SITE;
+  const core = window.__TAURI__?.core;
+  if (core) core.invoke('plugin:browser|open', { url, external: true }).catch(() => window.open(url, '_blank'));
+  else window.open(url, '_blank');
+};
+
+/**
+ * Es gibt eine neuere App (Tauri-Teil) als die installierte: Hinweis mit Link, „Später“ geht. Die neue
+ * Oberfläche kommt erst nach dem Update der App (sw.js appCurrent).
+ */
+function appHint(app, want) {
+  const android = /Android/i.test(navigator.userAgent);
+  return updateDialog({
+    icon: 'system_update',
+    title: 'Neue Version der WMap-App',
+    html: `<p>WMap-App ${esc(want)} ist da – du hast ${esc(app)}. Bitte aktualisiere sie ${android ? 'im Play Store' : 'über wuefl.de'}. Die neue Oberfläche kommt danach von selbst.</p>`,
+    buttons: [
+      { value: 'later', label: 'Später' },
+      { value: 'open', label: android ? 'Zum Play Store' : 'Zur Download-Seite', icon: 'open_in_new', primary: true },
+    ],
+    closable: true,
+    onPick: async (v) => {
+      if (v === 'later') { session.set(LATER_APP, want); return true; }
+      openStore(android);
+      return false;
+    },
+  });
+}
+
 /**
  * Die App selbst ist zu alt (Tauri-Teil): gesperrt. Erst sichern (Ordner bzw.
  * ZIP), dann Play Store bzw. Download-Seite – das Popup bleibt, bis die neue
@@ -269,10 +314,7 @@ async function appRequired(min) {
         busy(dlg, false);
         return false;
       }
-      const url = android ? STORE : SITE;
-      const core = window.__TAURI__?.core;
-      if (core) core.invoke('plugin:browser|open', { url, external: true }).catch(() => window.open(url, '_blank'));
-      else window.open(url, '_blank');
+      openStore(android);
       return false;
     },
   });
