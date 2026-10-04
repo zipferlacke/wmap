@@ -77,6 +77,59 @@ export function withValuesFrom(keep, src) {
   return out;
 }
 
+/* ── Import: Datei zu einem Weg, den es schon gibt (pages/import.js) ───────── */
+
+/** Punkte eines Wegs – die Karteikarte kennt die Zahl ihrer Datei */
+const pointCount = (t) => (t.stub ? t.n ?? 0 : t.times?.length ?? 0);
+const meanOf = (t, k) => { const v = (t[k] ?? []).filter((x) => x > 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
+
+/**
+ * Was die Datei `file` mehr oder anders hat als derselbe Weg `keep` hier →
+ *   add     Messwerte, die hier fehlen (kommen ohne Rückfrage dazu)
+ *   differ  Messwerte, die beide haben und die sich unterscheiden (Schnitt über 3 %) – Rückfrage
+ *   shape   die Datei hat die genauere Strecke (mindestens anderthalbmal so viele Punkte) – Rückfrage
+ *   points  [hier, Datei]
+ */
+export function gain(keep, file) {
+  const add = VALUES.filter((k) => hasValues(file, k) && !hasValues(keep, k));
+  const differ = keep.stub ? [] : VALUES.filter((k) => {
+    if (!hasValues(file, k) || !hasValues(keep, k)) return false;
+    const [a, b] = [meanOf(keep, k), meanOf(file, k)];
+    return Math.abs(a - b) > Math.max(a, b) * 0.03;
+  });
+  const points = [pointCount(keep), pointCount(file)];
+  const shape = points[1] >= points[0] * 1.5 && points[1] - points[0] >= 20;
+  return { add, differ, shape, points, any: add.length > 0 || differ.length > 0 || shape };
+}
+
+const MEASURED = ['start', 'end', 'length', 'moving', 'top', 'shape', 'times', 'bbox'];
+
+/**
+ * Den Weg `keep` (ganz, keine Karteikarte) um die Datei `file` ergänzen. Name, Art, Farbe, Kennung und
+ * Herkunft bleiben die von hier. Fehlende Messwerte kommen immer dazu;
+ *   shape   Strecke, Zeiten und Kilometer der Datei gelten
+ *   values  bei abweichenden Messwerten gelten die der Datei (sonst die von hier)
+ * → neuer Weg, oder `keep` selbst, wenn nichts dazukam
+ */
+export function enrich(keep, file, { shape = false, values = false } = {}) {
+  const g = gain(keep, file);
+  if (!shape || !g.shape) {
+    const out = merge(keep, file);
+    return values && g.differ.length ? withValuesFrom(out, file) : out;
+  }
+  let out = { ...keep };
+  for (const k of VALUES) delete out[k];
+  for (const k of MEASURED) if (file[k] !== undefined) out[k] = file[k];
+  for (const k of VALUES) {
+    // Die eigenen Werte der Datei liegen schon auf ihren Punkten; die von hier werden nach der Uhrzeit übertragen
+    const own = hasValues(file, k) && (values || !g.differ.includes(k));
+    const v = own ? file[k] : hasValues(keep, k) ? valuesAt(keep, k, out) : hasValues(file, k) ? file[k] : null;
+    if (v) out[k] = v;
+  }
+  if (!out.description && file.description) out = { ...out, description: file.description };
+  return out;
+}
+
 /** → { tracks: [[vorgeschlagen, …doppelt]], tours: [[behalten, …doppelt]], count } */
 export async function findDuplicates() {
   const list = (await tracks.all()).sort((a, b) => a.start - b.start);

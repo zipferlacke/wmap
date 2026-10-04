@@ -20,7 +20,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const plain = toGpx({ name: 'Rundweg ohne Zeiten', profile: 'hike', points: [] }, pts.map(([x, y]) => [x + 0.02, y]));
   await addFiles([{ name: 'lauf.gpx', text: timed }, { name: 'rundweg.gpx', text: plain }]);
   await wait(200);
-  const cards = () => [...document.querySelectorAll('.import section')].filter((s) => s.querySelector('h3'))
+  const cards = () => [...document.querySelectorAll('.import section:not(.import-all)')].filter((s) => s.querySelector('h3'))
     .map((s) => ({ title: s.querySelector('h3').innerText.replace(/\s+/g, ' ').trim(), buttons: [...s.querySelectorAll('.sync-actions > .button')].map((b) => [b.innerText.replace(/\s+/g, ' ').trim(), !!b.disabled]) }));
   const out = { first: cards() };
   const before = (await tracks.all()).length;
