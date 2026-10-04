@@ -67,6 +67,13 @@
         "name": "GPX",
         "description": "GPS-Strecke (GPX)",
         "role": "Viewer"
+      },
+      {
+        "ext": ["fit"],
+        "mimeType": "application/vnd.ant.fit",
+        "name": "FIT",
+        "description": "Training (FIT)",
+        "role": "Viewer"
       }
     ],
     "category": "Travel",

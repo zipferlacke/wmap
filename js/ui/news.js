@@ -17,14 +17,15 @@
  *                                 aller Versionen seit der zuletzt gesehenen
  *   minVersion                    ist die Oberfläche älter: dasselbe zwingend –
  *                                 nur „Aktualisieren“ (z. B. Server-API geändert)
- *   appVersion                    die App (Tauri-Teil), die zu dieser Oberfläche
- *                                 gehört und im Store liegt. Ist die installierte
+ *   appVersion (je Eintrag im     die App (Tauri-Teil), die zu dieser Version
+ *   changelog)                    gehört; es gilt die des neuesten Eintrags. Ist
+ *                                 die installierte
  *                                 älter: Hinweis „App aktualisieren“ mit Link
  *                                 (Play Store bzw. wuefl.de), „Später“ geht. Die
  *                                 neue Oberfläche kommt so lange nicht – der neue
  *                                 Service Worker installiert sich in einer älteren
- *                                 App nicht (sw.js appCurrent). Erst hochsetzen,
- *                                 wenn die neue App wirklich zu haben ist
+ *                                 App nicht (sw.js appCurrent). Die neue App
+ *                                 muss also vor der Oberfläche zu haben sein
  *   minAppVersion                 ist die App selbst älter (Tauri-Teil, native.js
  *                                 appVersion): gesperrt – sichern (Ordner bzw.
  *                                 ZIP), dann Play Store bzw. wuefl.de; der
@@ -160,10 +161,12 @@ export async function checkUpdates(m) {
   const app = await appVersion();
   if (app && m.minAppVersion && compareVersions(app, m.minAppVersion) < 0) return appRequired(m.minAppVersion);
   // Die App ist nicht die aktuelle: erst sie, dann die Oberfläche – das Web-Update wird nicht angeboten
-  if (app && m.appVersion && compareVersions(app, m.appVersion) < 0) {
+  // Die App, die zur neuesten Version gehört (steht an jedem Eintrag im changelog)
+  const want = m.changelog?.find((e) => e.appVersion)?.appVersion;
+  if (app && want && compareVersions(app, want) < 0) {
     // Geht die Oberfläche hier gar nicht mehr (minVersion), führt kein Weg an der neuen App vorbei
-    if (m.minVersion && compareVersions(APP_VERSION, m.minVersion) < 0) return appRequired(m.appVersion);
-    return session.get(LATER_APP) === m.appVersion ? null : appHint(app, m.appVersion);
+    if (m.minVersion && compareVersions(APP_VERSION, m.minVersion) < 0) return appRequired(want);
+    return session.get(LATER_APP) === want ? null : appHint(app, want);
   }
   if (m.minVersion && compareVersions(APP_VERSION, m.minVersion) < 0) return uiUpdate(latest, { forced: true });
   if (latest && compareVersions(APP_VERSION, latest) < 0 && session.get(LATER) !== latest) {

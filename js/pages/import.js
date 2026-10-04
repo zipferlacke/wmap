@@ -1,5 +1,5 @@
 /**
- * GPX öffnen (import.html). Die Dateien kommen
+ * GPX und FIT öffnen (import.html). Die Dateien kommen
  *
  *   App (Android, Rechner)   über „Öffnen mit“, „Teilen“ bzw. Doppelklick –
  *                            das Plugin „folder“ hält sie bereit (opened);
@@ -225,10 +225,15 @@ root.addEventListener('change', async (e) => {
   if (o) { opt[o.dataset.opt] = o.checked; return; }
   const inp = e.target.closest('[data-file="gpx"]');
   if (!inp?.files?.length) return;
-  await addFiles(await Promise.all([...inp.files].map(async (x) => (/\.fit$/i.test(x.name) ? { name: x.name, bytes: await x.arrayBuffer() } : { name: x.name, text: await x.text() }))));
+  await addFiles(await Promise.all([...inp.files].map(fileOf)));
 });
 
 /* ── Woher die Dateien kommen ─────────────────────────────────────────────── */
+
+/** Datei bzw. Antwort → { name, text } oder, bei FIT, { name, bytes } */
+async function fileOf(x, name = x.name) {
+  return /\.fit$/i.test(name) ? { name, bytes: await x.arrayBuffer() } : { name, text: await x.text() };
+}
 
 async function incoming() {
   const got = [];
@@ -236,7 +241,8 @@ async function incoming() {
   const core = window.__TAURI__?.core;
   if (core) {
     const r = await core.invoke('plugin:folder|opened', { peek: false }).catch(() => null);
-    got.push(...(r?.files ?? []));
+    // FIT kommt in Base64 (`data`)
+    got.push(...(r?.files ?? []).map((f) => (f.data ? { name: f.name, bytes: Uint8Array.from(atob(f.data), (c) => c.charCodeAt(0)).buffer } : f)));
   }
   // Web-App: Teilen-Menü (sw.js hat die Dateien abgelegt)
   if (new URLSearchParams(location.search).has('shared') && 'caches' in window) {
@@ -244,7 +250,7 @@ async function incoming() {
       const cache = await caches.open(SHARE);
       for (const req of await cache.keys()) {
         const res = await cache.match(req);
-        got.push({ name: decodeURIComponent(res.headers.get('X-Name') ?? 'Datei.gpx'), text: await res.text() });
+        got.push(await fileOf(res, decodeURIComponent(res.headers.get('X-Name') ?? 'Datei.gpx')));
       }
       await caches.delete(SHARE);
     } catch { /* dann eben über die Auswahl */ }
@@ -256,7 +262,7 @@ async function incoming() {
 // Web-App: Dateizuordnung (auch später, wenn das Fenster schon offen ist)
 if ('launchQueue' in window) {
   window.launchQueue.setConsumer(async (p) => {
-    const list = await Promise.all((p.files ?? []).map(async (h) => { const x = await h.getFile(); return { name: x.name, text: await x.text() }; }));
+    const list = await Promise.all((p.files ?? []).map(async (h) => fileOf(await h.getFile())));
     if (list.length) addFiles(list);
   });
 }

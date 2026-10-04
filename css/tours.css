@@ -493,7 +493,7 @@ body.wege-page { overflow: hidden; }
 .weg-actions { display: flex; flex-wrap: wrap; gap: .5rem; .button { background: var(--surface-2); } .button.primary { background: var(--route); color: #fff; } }
 .wege-page .track-legend {
     display: flex; align-items: center; gap: .5rem; color: var(--muted); font-size: var(--fs-200);
-    i { flex: 0 1 8rem; height: .45rem; border-radius: 999px; background: linear-gradient(90deg, hsl(25 80% 48%), hsl(80 80% 44%), hsl(135 80% 40%)); }
+    i { flex: 0 1 8rem; height: .45rem; border-radius: 999px; background: linear-gradient(90deg, hsl(135 80% 40%), hsl(68 80% 44%), hsl(0 80% 48%)); }
     &[hidden] { display: none; }
 }
 

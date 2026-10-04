@@ -621,7 +621,7 @@ Die ersten zwei:
   - Aufgezeichnet: Name änderbar, Datum und Uhrzeit, Strecke, Zeit in
     Bewegung, Ø und max. km/h, Anstieg, Ø/max. Puls, Ø Frequenz und
     Leistung (aus GPX oder Health Connect); die Linie ist nach Tempo
-    gefärbt (langsam orange → schnell grün).
+    gefärbt (langsam grün → schnell rot).
     **Diagramm** mit Umschalter: Höhe, Tempo, Puls, Schritt- bzw.
     Trittfrequenz, Leistung – nur, was gemessen wurde; Zeiger im Diagramm
     und auf der Linie zeigen dieselbe Stelle. Der Knopf rechts im Kopf
@@ -952,7 +952,10 @@ WMap/
 - **Schnell durch das Verzeichnis `Inhalt.json`:** Jede WMap trägt dort ein,
   was sie geschrieben oder gelesen hat. Ein Abgleich holt die Liste des
   Ordners (Namen, Änderungszeit) und das Verzeichnis – den Inhalt einer
-  Datei nur, wenn sie neu ist (nicht im Verzeichnis: von Hand hineingelegt),
+  Datei nur, wenn sie neu ist (nicht im Verzeichnis: von Hand hineingelegt –
+  eine Aufzeichnung als GPX oder FIT unter „Aufgezeichnete Touren/“ wird dabei
+  zur WMap-Datei unter Jahr/Monat, ergänzt einen Weg, den es schon gibt, und
+  die hineingelegte Datei geht; `adopt` in `js/data/folder.js`),
   sich laut Änderungszeit bzw. Verzeichnis geändert hat oder hier fehlt.
   Manche Cloud-Ordner unter Android melden keine Änderungszeit; dort gilt
   der Fingerabdruck aus dem Verzeichnis, sonst würde jedes Mal alles
@@ -1137,8 +1140,8 @@ Wie die Datei ankommt:
 
 | Wo | Wie |
 |---|---|
-| Android-App | „Öffnen mit“ (`ACTION_VIEW`) und „Teilen“ (`ACTION_SEND`) – Intent-Filter aus `tools/android-einbinden.py`, das folder-Plugin liest die Datei (nur mit `<gpx`), `opened` gibt sie der Seite |
-| Rechner-Apps | Dateizuordnung `.gpx` (`bundle.fileAssociations`): Start mit Datei, zweiter Start (single-instance) bzw. macOS „Opened“ → `open_paths()` im folder-Plugin |
+| Android-App | „Öffnen mit“ (`ACTION_VIEW`) und „Teilen“ (`ACTION_SEND`) – Intent-Filter aus `tools/android-einbinden.py`, das folder-Plugin liest die Datei (nur mit `<gpx` oder FIT-Kopf; FIT kommt in Base64 als `data`), `opened` gibt sie der Seite |
+| Rechner-Apps | Dateizuordnung `.gpx` und `.fit` (`bundle.fileAssociations`): Start mit Datei, zweiter Start (single-instance) bzw. macOS „Opened“ → `open_paths()` im folder-Plugin |
 | installierte Web-App | Chrome/Edge am Rechner: `file_handlers` im Manifest (`launchQueue`); am Handy das Teilen-Menü: `share_target` → `sw.js` legt die Dateien in den Cache `wmap-share` → `import.html?shared` |
 | sonst | Dateiauswahl auf der Seite |
 
@@ -1805,12 +1808,11 @@ tools/android-auto.sh id3       # Android Auto am Rechner (Simulator), siehe Abs
     "welcome": ["Absatz", "…"],
     "minVersion": "2.1.0",
     "minAppVersion": "2.1.0",
-    "appVersion": "2.2.0",
     "messages": [
       { "id": "wartung-okt", "title": "Wartung", "text": ["Absatz", "…"],
         "icon": "construction", "from": "2026-10-01", "until": "2026-10-05" }
     ],
-    "changelog": [{ "version": "1.0.0", "date": "2026-09-28", "changes": ["…"] }]
+    "changelog": [{ "version": "1.0.0", "date": "2026-09-28", "appVersion": "1.0.0", "changes": ["…"] }]
   }
   ```
 
@@ -1821,7 +1823,7 @@ tools/android-auto.sh id3       # Android Auto am Rechner (Simulator), siehe Abs
   | `messages` | Nachrichten als Dialog, jede einmal (gemerkt über `id`); `from`/`until` (Datum) optional, `text` HTML erlaubt |
   | `minVersion` | kleinste Version der **Oberfläche**. Ist die laufende älter (z. B. nach einer Änderung an der Server-API): „Update nötig“ – nur **Aktualisieren**, lädt den neuen Service Worker |
   | `minAppVersion` | kleinste Version der **App selbst** (Tauri-Teil: Rust, Kotlin, Plugins, Rechte). Ist die installierte App älter: gesperrt mit „WMap-App aktualisieren“ – sichern (in den Ordner bzw. als ZIP), dann Play Store bzw. wuefl.de. Im Browser gilt es nicht (`src-tauri/README.md`) |
-  | `appVersion` | die **App** (Tauri-Teil), die zu dieser Oberfläche gehört und im Store liegt. Ist die installierte älter: Hinweis „Neue Version der WMap-App“ mit Link zum Play Store bzw. zu wuefl.de („Später“ geht) – und die neue Oberfläche kommt so lange nicht: Der neue Service Worker fragt die offene Seite nach der App-Version und installiert sich in einer älteren App nicht (`sw.js` `appCurrent`). Erst hochsetzen, wenn die neue App wirklich zu haben ist |
+  | `changelog[].appVersion` | die **App** (Tauri-Teil), die zu dieser Version gehört – steht an jedem Eintrag, es gilt die des neuesten. Ist die installierte App älter: Hinweis „Neue Version der WMap-App“ mit Link zum Play Store bzw. zu wuefl.de („Später“ geht) – und die neue Oberfläche kommt so lange nicht: Der neue Service Worker fragt die offene Seite nach der App-Version und installiert sich in einer älteren App nicht (`sw.js` `appCurrent`). Die neue App muss deshalb vor der Web-App zu haben sein |
 
   **Neue Version:** oben im `changelog` eintragen, dann
   `python3 appdata/version.py` – trägt die Nummer in `js/core/config.js`,

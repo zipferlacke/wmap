@@ -47,18 +47,18 @@ const escape = () => dialog()?.dispatchEvent(new Event('cancel', { cancelable: t
   dialog().remove();
   // appVersion: App nicht die aktuelle → Hinweis mit Link, „Später“ geht; das Web-Update wird nicht angeboten
   window.__TAURI__ = { app: { getVersion: async () => '2.1.0' } };
-  checkUpdates({ changelog: [{ version: '9.9.9' }], minAppVersion: '2.1.0', appVersion: '2.2.0' });
+  checkUpdates({ changelog: [{ version: '9.9.9', appVersion: '2.2.0' }, { version: '9.9.8', appVersion: '2.0.0' }], minAppVersion: '2.1.0' });
   await wait(500);
   out.hint = { title: text(dialog()?.querySelector('.uD-title')), buttons: buttons(), text: text(dialog()) };
   [...dialog().querySelectorAll('button')].find((x) => /Später/.test(x.innerText)).click(); await wait(300);
   out.hintGone = !dialog()?.open;
-  checkUpdates({ changelog: [{ version: '9.9.9' }], appVersion: '2.2.0' });
+  checkUpdates({ changelog: [{ version: '9.9.9', appVersion: '2.2.0' }] });
   await wait(300);
   out.hintAgain = !!dialog()?.open;
   // App aktuell: das Web-Update kommt wie immer
   sessionStorage.removeItem('wmap.update.later');
   window.__TAURI__ = { app: { getVersion: async () => '2.2.0' } };
-  checkUpdates({ changelog: [{ version: '9.9.9' }], appVersion: '2.2.0' });
+  checkUpdates({ changelog: [{ version: '9.9.9', appVersion: '2.2.0' }] });
   await wait(500);
   out.current = text(dialog()?.querySelector('.uD-title'));
   dialog()?.remove();

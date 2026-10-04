@@ -10,6 +10,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
 import android.provider.OpenableColumns
+import android.util.Base64
 import android.webkit.WebView
 import androidx.activity.result.ActivityResult
 import app.tauri.annotation.ActivityCallback
@@ -31,6 +32,7 @@ class SlotArgs {
 class PathArgs {
     var slot: String = ""
     var path: String = ""
+    var binary: Boolean = false
 }
 
 @InvokeArg
@@ -62,7 +64,7 @@ class WriteArgs {
  *   disconnect – Pfade relativ zum Ordner, mit „/“.
  *   save { name, data, mime } – eine Datei (Base64) über die Dokumentauswahl
  *   des Systems ablegen (ACTION_CREATE_DOCUMENT), z. B. den ZIP-Export.
- *   opened { peek } – GPX-Dateien aus „Öffnen mit“ (ACTION_VIEW) und „Teilen“
+ *   opened { peek } – GPX- und FIT-Dateien (FIT in Base64 als `data`) aus „Öffnen mit“ (ACTION_VIEW) und „Teilen“
  *   (ACTION_SEND): beim Start und während die App läuft (dann gleich zur
  *   Seite import.html); `peek` zählt nur. Dazu `go`: die Seite eines
  *   Shortcuts, mit dem die App gestartet wurde (einmal, dann null).
@@ -135,7 +137,7 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
         return SHORTCUTS.find { it.id == intent.getStringExtra(EXTRA_GO) }?.page
     }
 
-    /** GPX aus dem Intent lesen (höchstens 50 MB) → true, wenn etwas dazukam */
+    /** GPX und FIT aus dem Intent lesen (höchstens 50 MB) → true, wenn etwas dazukam */
     @Suppress("DEPRECATION")
     private fun take(intent: Intent?): Boolean {
         if (intent == null || intent.getBooleanExtra("wmap.taken", false)) return false
@@ -159,10 +161,16 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
                     }
                 }
                 if (size > 50L * 1024 * 1024) continue
-                val text = resolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } ?: continue
-                // Nur GPX – „Öffnen mit“ kommt je nach Dateimanager auch als octet-stream
-                if (!text.contains("<gpx", ignoreCase = true)) continue
-                opened.add(JSObject().put("name", name ?: uri.lastPathSegment ?: "Datei.gpx").put("text", text))
+                val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: continue
+                // Nur GPX und FIT – „Öffnen mit“ kommt je nach Dateimanager auch als octet-stream
+                if (bytes.size > 12 && String(bytes, 8, 4, Charsets.ISO_8859_1) == ".FIT") {
+                    opened.add(JSObject().put("name", name ?: uri.lastPathSegment ?: "Datei.fit").put("text", "")
+                        .put("data", Base64.encodeToString(bytes, Base64.NO_WRAP)))
+                } else {
+                    val text = bytes.toString(Charsets.UTF_8)
+                    if (!text.contains("<gpx", ignoreCase = true)) continue
+                    opened.add(JSObject().put("name", name ?: uri.lastPathSegment ?: "Datei.gpx").put("text", text))
+                }
                 added = true
             } catch (e: Exception) { /* nicht lesbar – übergehen */ }
         }
@@ -295,7 +303,7 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
                 val path = prefix + name
                 if (c.dir) {
                     if (depth < 5) walk(c.id, "$path/", depth + 1)
-                } else if (name.endsWith(".gpx", true) || name.endsWith(".json", true) || name.endsWith(".geojson", true) || name.endsWith(".js", true) || name.endsWith(".mjs", true)) {
+                } else if (name.endsWith(".gpx", true) || name.endsWith(".fit", true) || name.endsWith(".json", true) || name.endsWith(".geojson", true) || name.endsWith(".js", true) || name.endsWith(".mjs", true)) {
                     ids["$slot\u0000$path"] = c.id
                     out.put(JSObject().put("path", path).put("modified", c.modified))
                 }
@@ -312,8 +320,10 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
         val args = invoke.parseArgs(PathArgs::class.java)
         work(invoke, args.slot) { t ->
             val id = resolve(args.slot, t, args.path, false) ?: return@work invoke.reject("Nicht gefunden: ${args.path}", "missing")
-            val text = resolver.openInputStream(DocumentsContract.buildDocumentUriUsingTree(t, id))!!.use { it.readBytes().toString(Charsets.UTF_8) }
-            invoke.resolve(JSObject().put("text", text))
+            val bytes = resolver.openInputStream(DocumentsContract.buildDocumentUriUsingTree(t, id))!!.use { it.readBytes() }
+            // FIT: der Inhalt in Base64 (`data`)
+            if (args.binary) invoke.resolve(JSObject().put("text", "").put("data", Base64.encodeToString(bytes, Base64.NO_WRAP)))
+            else invoke.resolve(JSObject().put("text", bytes.toString(Charsets.UTF_8)))
         }
     }
 

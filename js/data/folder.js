@@ -22,7 +22,9 @@
  * „Aufgezeichnete Touren/“ (mit beliebigen Unterordnern) und „Bus & Bahn/“
  * liegt. GPX-Dateien von woanders (Garmin, Komoot-Export …) legt man dort
  * hinein – unter „Geplante Touren/“ wird es eine Tour, unter „Aufgezeichnete
- * Touren/“ mit Zeiten ein Weg. Löscht man dort eine Datei von Hand, die
+ * Touren/“ mit Zeiten ein Weg: Dort gehen GPX und FIT, WMap macht daraus
+ * seine eigene Datei am richtigen Platz (Jahr/Monat) und ergänzt einen Weg,
+ * den es schon gibt (adopt); die hineingelegte Datei geht dabei. Löscht man dort eine Datei von Hand, die
  * dieses Gerät schon kannte, verschwindet der Eintrag auch in WMap.
  *
  * Schnell bleibt der Abgleich durch das Verzeichnis Inhalt.json: Jede WMap
@@ -55,8 +57,9 @@
  *                                              Kennung bleibt, was nur die andere
  *                                              hatte (Puls …), kommt dazu; die
  *                                              andere steht in Gelöscht.json
- * Eine fremde Datei ohne Kennung (Garmin-Export …) bleibt liegen und steht
- * für den Weg, den es schon gibt.
+ * Eine fremde Datei ohne Kennung (Garmin-Export …), die schon vor 2.3.0 im
+ * Ordner lag, bleibt liegen und steht für den Weg, den es schon gibt; neu
+ * hineingelegte Aufzeichnungen werden übernommen (adopt).
  * Geändert heißt: andere Änderungszeit und anderer Inhalt als beim letzten
  * Abgleich (manche Cloud-Ordner unter Android melden keine Zeit).
  *
@@ -80,7 +83,8 @@
  */
 import { store } from './db.js';
 import { tracks, trackGpx, parseGpx, sameTrack, backup, restore, bulk, stubOf, fromFile, unstub, hasValues } from './tracks.js';
-import { merge } from './duplicates.js';
+import { merge, gain, enrich } from './duplicates.js';
+import { parseFit } from './fit.js';
 import { makeZip, readZip } from './zip.js';
 import { tours, toGpx, coordsOf, shapeOf, local } from './store.js';
 import { simplifyTo, distance } from '../core/geo.js';
@@ -143,6 +147,7 @@ const nativeBackend = {
   permission: async () => ((await call('info')).connected ? 'granted' : 'gone'),
   list: async () => (await call('list')).files.map((f) => ({ path: f.path, lastModified: f.modified || 0 })),
   read: async (path) => (await call('read', { path })).text,
+  bytes: async (path) => Uint8Array.from(atob((await call('read', { path, binary: true })).data), (c) => c.charCodeAt(0)).buffer,
   write: async (path, text) => (await call('write', { path, text })).modified || 0,
   remove: (path) => call('remove', { path }).catch(() => {}),
 };
@@ -171,7 +176,7 @@ function handleBackend(root) {
           if (name.startsWith('.')) continue;
           const path = prefix + name;
           if (h.kind === 'directory') { if (depth < 5) await walk(h, `${path}/`, depth + 1); }
-          else if (/\.(gpx|json)$/i.test(name)) out.push({ path, lastModified: (await h.getFile()).lastModified });
+          else if (/\.(gpx|fit|json)$/i.test(name)) out.push({ path, lastModified: (await h.getFile()).lastModified });
         }
       };
       await walk(root, '', 0);
@@ -180,6 +185,10 @@ function handleBackend(root) {
     async read(path) {
       const [dir, name] = await dirOf(path, false);
       return (await (await dir.getFileHandle(name)).getFile()).text();
+    },
+    async bytes(path) {
+      const [dir, name] = await dirOf(path, false);
+      return (await (await dir.getFileHandle(name)).getFile()).arrayBuffer();
     },
     async write(path, text) {
       const [dir, name] = await dirOf(path, true);
@@ -324,7 +333,7 @@ export const folder = {
     return true;
   },
 
-  /** Tests: Ordner im Speicher statt echtem Ordner ({ list, read, write, remove }) */
+  /** Tests: Ordner im Speicher statt echtem Ordner ({ list, read, write, remove }, für FIT dazu bytes) */
   _useBackend(backend, name = 'Test') {
     testBackend = backend;
     conf = { id: KEY, name, index: {}, last: null, result: null, error: null };
@@ -352,7 +361,7 @@ function clocked(be) {
     }
   };
   return {
-    be: { ...be, permission: (...a) => be.permission(...a), list: wrap('list'), read: wrap('read'), write: wrap('write'), remove: wrap('remove') },
+    be: { ...be, permission: (...a) => be.permission(...a), list: wrap('list'), read: wrap('read'), bytes: (...a) => be.bytes(...a), write: wrap('write'), remove: wrap('remove') },
     done: () => ({ total: Math.round(performance.now() - t0), ...Object.fromEntries(Object.entries(ops).map(([k, [n, ms]]) => [k, [n, Math.round(ms)]])) }),
   };
 }
@@ -520,7 +529,7 @@ async function syncAll(c, be) {
   // ersten Abgleich (alles neu) sonst ewig
   const reading = new Map();
   const read = (path) => {
-    if (!reading.has(path)) reading.set(path, be.read(path).catch(() => null));
+    if (!reading.has(path)) reading.set(path, (/\.fit$/i.test(path) ? fitText(be, path) : be.read(path)).catch(() => null));
     return reading.get(path);
   };
   const toRead = files.filter((f) => !unread(f)).map((f) => f.path);
@@ -538,6 +547,42 @@ async function syncAll(c, be) {
     const from = path ?? Object.keys(next).find((p) => next[p].id === stub.id) ?? Object.keys(index).find((p) => index[p].id === stub.id && there.has(p));
     const text = from ? await read(from).finally(() => reading.delete(from)) : null;
     try { const [t] = text ? parseGpx(text) : []; return t ? fromFile(stub, t) : null; } catch { return null; }
+  };
+
+  /*
+   * Fremde Datei unter „Aufgezeichnete Touren/“ (von Hand hineingelegt: Export
+   * der Uhr, Garmin, Komoot …): Sie wird zur WMap-Datei an ihrem Platz
+   * (Jahr/Monat), die hineingelegte geht. Gibt es den Weg schon, ergänzt sie
+   * ihn wie bei „GPX öffnen“ – fehlende Messwerte und Runden, die genauere
+   * Strecke; abweichende Messwerte bleiben die von hier. Lässt sich der Weg
+   * hier nicht ganz holen (Karteikarte, Datei nicht lesbar): nächstes Mal.
+   */
+  const adopt = async (f, got) => {
+    if (!got.file) {
+      const entry = await entryOf(got.id);
+      if (!entry) return;
+      const target = await put(null, entry, null);
+      seen.add(got.id);
+      first.set(got.id, { path: target, ours: true });
+      out.imported += 1;
+    } else {
+      const entry = locals.get(got.id) ?? await entryOf(got.id);
+      if (!entry) return;
+      const keep = entry.item.stub ? await fullFrom(entry.item, null) : entry.item;
+      if (!keep) return;
+      if (gain(keep, got.file).any) {
+        const item = { ...enrich(keep, got.file, { shape: true }), updated: Date.now() };
+        await tracks.putQuiet(item);
+        if (syncTracks) syncTracks = syncTracks.map((t) => (t.id === item.id ? item : t));
+        if (locals.has(item.id)) locals.set(item.id, { kind: 'track', item });
+        // Seine Datei ist in diesem Lauf schon durch: gleich neu schreiben (sonst kommt sie noch dran)
+        const own = Object.keys(next).find((p) => next[p].id === item.id && next[p].ours);
+        if (own) await put(own, { kind: 'track', item }, null);
+        out.merged += 1;
+      }
+    }
+    await be.remove(f.path);
+    out.moved += 1;
   };
 
   const unreadable = (f, known) => {
@@ -585,6 +630,8 @@ async function syncAll(c, be) {
 
     if (!mine) {
       const got = await importFile({ ...f, text }, id, null);
+      // Hineingelegte Aufzeichnung (GPX, FIT): übernehmen und einsortieren
+      if (got && !ours && got.kind === 'track' && TRACK_DIR.test(f.path)) { await adopt(f, got); continue; }
       if (got) {
         // Fremde Datei zu einem Weg, den es schon gibt: steht für ihn (got.id ist dann seiner)
         const again = seen.has(got.id);
@@ -834,6 +881,13 @@ export function sameRecordings(list) {
   return groups.filter((g) => g.length > 1);
 }
 
+/** FIT-Datei aus dem Ordner → GPX-Text ohne Kennung (eine fremde Datei wie ein Garmin-Export) */
+async function fitText(be, path) {
+  const [t] = parseFit(await be.bytes(path), path.slice(path.lastIndexOf('/') + 1));
+  if (!t) throw new Error('Keine Strecke in der Datei');
+  return trackGpx(t).replace(/<keywords>[^<]*<\/keywords>/, '');
+}
+
 /** Dateiinhalt → WMap-ID (GPX: Stichwort wmap:ID, Verbindung: id im JSON) */
 function idIn(path, text) {
   if (!text) return null;
@@ -917,7 +971,7 @@ const TOUR_DIR = /(^|\/)(Geplante Touren|Geplant)\//;
 const TRACK_DIR = /(^|\/)(Aufgezeichnete Touren|Abgeschlossen)\//;
 const CONN_DIR = /(^|\/)Bus & Bahn\/[^/]+\.json$/i;
 // Was abgeglichen wird – Pfad ab dem WMap-Ordner
-const STRUCTURE = /^((Geplante Touren|Geplant|Aufgezeichnete Touren|Abgeschlossen)\/.+\.gpx|Bus & Bahn\/[^/]+\.json)$/i;
+const STRUCTURE = /^((Geplante Touren|Geplant)\/.+\.gpx|(Aufgezeichnete Touren|Abgeschlossen)\/.+\.(gpx|fit)|Bus & Bahn\/[^/]+\.json)$/i;
 
 /** Ordner „WMap“ im verbundenen Ordner – außer er heißt schon so */
 const baseOf = (name) => (/^wmap$/i.test(name ?? '') ? '' : 'WMap/');
@@ -986,7 +1040,7 @@ async function importFile(f, id, before = null) {
     // unter zwei Kennungen legt der Abgleich danach zusammen (sameRecordings)
     const all = syncTracks ?? await tracks.all();
     const twin = !before && !id && all.find((x) => sameTrack(x, t));
-    if (twin) return { id: twin.id, kind: 'track', rev: rev(twin) };
+    if (twin) return { id: twin.id, kind: 'track', rev: rev(twin), file: t };
     const source = before?.source || t.source ? { ...before?.source, ...t.source } : undefined;
     const track = { ...unstub(before), ...t, id: id ?? before?.id ?? t.id, ...(source ? { source } : {}), updated: f.lastModified || Date.now() };
     await tracks.putQuiet(track);

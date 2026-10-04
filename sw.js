@@ -17,7 +17,7 @@
  * (js/ui/news.js) „Neue Version verfügbar“ bzw. zwingend bei minVersion;
  * „Aktualisieren“ schickt „skip-waiting“, dann lädt die Seite neu. Nur
  * geänderte Dateien bei gleicher Nummer: gilt still ab dem nächsten Start.
- * In einer App, die älter ist als „appVersion“ (messages.json), installiert
+ * In einer App, die älter ist als „appVersion“ der neuesten Version (messages.json), installiert
  * sich die neue Fassung gar nicht erst (appCurrent).
  *
  * Teilen-Menü am Handy (manifest share_target): die GPX-Dateien kommen per
@@ -42,7 +42,7 @@ const VERSION = '2.3.0';            // von appdata/version.py – neue Nummer = 
 // Stand der Dateien (Prüfsumme über alles in sw-files.json, von version.py):
 // dieselbe Nummer noch einmal hochgeladen ist trotzdem ein neuer Service Worker
 // mit eigenem Speicher – Alt und Neu mischen sich nie
-const BUILD = '25e82b35c4';
+const BUILD = '01b34fa45a';
 const APP = `wmap-app-${VERSION}-${BUILD}`;
 const APP_PREFIX = 'wmap-app-';
 const SHARE = 'wmap-share';
@@ -62,7 +62,7 @@ const TILE_HOSTS = ['tiles.openfreemap.org', 'tiles.mapterhorn.com'];
 self.addEventListener('install', (e) => e.waitUntil(appCurrent().then(precache)));
 
 /*
- * In der App (Tauri) gehört zu jeder Oberfläche eine App-Version: „appVersion“ in appdata/messages.json. Ist die
+ * In der App (Tauri) gehört zu jeder Version eine App-Version: „appVersion“ am neuesten Eintrag im changelog (appdata/messages.json). Ist die
  * installierte App älter, installiert sich diese Fassung nicht – die App bleibt bei ihrer bisherigen Oberfläche
  * und zeigt den Hinweis „App aktualisieren“ (js/ui/news.js). Der Browser versucht es bei jedem Öffnen wieder;
  * nach dem Update der App klappt es. Gefragt werden die offenen Seiten (js/data/offline.js antwortet mit der
@@ -72,7 +72,7 @@ self.addEventListener('install', (e) => e.waitUntil(appCurrent().then(precache))
 async function appCurrent() {
   if (DEV || !self.registration.active) return;
   let want = null;
-  try { want = (await (await fetch('appdata/messages.json', { cache: 'no-store' })).json()).appVersion ?? null; } catch { return; }
+  try { want = (await (await fetch('appdata/messages.json', { cache: 'no-store' })).json()).changelog?.find((x) => x.appVersion)?.appVersion ?? null; } catch { return; }
   if (!want) return;
   const pages = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   const answers = await Promise.all(pages.map((c) => new Promise((resolve) => {

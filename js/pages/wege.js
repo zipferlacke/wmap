@@ -1069,8 +1069,8 @@ function selectConn(id, { push = false } = {}) {
 /* ── Karte ────────────────────────────────────────────────────────────────── */
 
 /**
- * Tempo als Farbverlauf entlang des gewählten Wegs (langsam orange, schnell
- * grün) – eingeordnet zwischen dem langsamsten und schnellsten Zehntel.
+ * Tempo als Farbverlauf entlang des gewählten Wegs (langsam grün, schnell
+ * rot) – eingeordnet zwischen dem langsamsten und schnellsten Zehntel.
  */
 function speedGradient(t) {
   const c = trackCoords(t), ts = t.times, cum = cumulative(c);
@@ -1082,7 +1082,7 @@ function speedGradient(t) {
   const lo = ok[Math.floor(ok.length * 0.1)], hi = ok[Math.floor(ok.length * 0.9)];
   if (hi - lo < 0.5) return null;
   const total = cum.at(-1);
-  const color = (x) => { const k = Math.max(0, Math.min(1, ((x ?? lo) - lo) / (hi - lo))); return `hsl(${Math.round(25 + k * 110)} 80% ${Math.round(48 - k * 8)}%)`; };
+  const color = (x) => { const k = Math.max(0, Math.min(1, ((x ?? lo) - lo) / (hi - lo))); return `hsl(${Math.round(135 - k * 135)} 80% ${Math.round(40 + k * 8)}%)`; };
   const stops = [];
   let last = -1;
   const step = Math.max(1, Math.floor(v.length / 150));

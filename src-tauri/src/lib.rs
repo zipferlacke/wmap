@@ -57,7 +57,7 @@ pub fn run() {
       }
       let handle = app.handle().clone();
       app.deep_link().on_open_url(move |event| open_link(&handle, &event.urls()));
-      // Mit einer GPX-Datei gestartet (Doppelklick, „Öffnen mit“): die Seite
+      // Mit einer GPX- oder FIT-Datei gestartet (Doppelklick, „Öffnen mit“): die Seite
       // holt sie beim Plugin „folder“ ab (core/theme.js → import.html)
       #[cfg(desktop)]
       {
