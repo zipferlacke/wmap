@@ -34,7 +34,7 @@ import { tours, shapeOf, coordsOf, encodeShare, toGpx, download, local } from '.
 import { metrics, laps, lapLine } from '../data/track-stats.js';
 import { PROFILES } from '../core/config.js';
 import { ask, toast } from '../ui/dialogs.js';
-import { share, pageUrl } from '../ui/share.js';
+import { share, pageUrl, canShareFiles, shareFile } from '../ui/share.js';
 import { tourFromGpx, folder } from '../data/folder.js';
 import { autoSync } from '../data/auto-sync.js';
 import { mapPage } from '../ui/map-page.js';
@@ -927,20 +927,20 @@ content.addEventListener('click', async (e) => {
 async function shareTrack(t) {
   const kinds = [['hr', 'Puls'], ['cad', cadName(t)], ['pow', 'Leistung']].filter(([k]) => t[k]?.some((v) => v > 0));
   const keep = Object.fromEntries(kinds.map(([k]) => [k, true]));
-  // Kann das Gerät Dateien über sein Teilen-Menü weitergeben (Handy-Browser)? Dort lässt sie sich auch speichern.
-  // Sonst (Rechner, App): herunterladen
-  const canShareFiles = !!navigator.canShare?.({ files: [new File(['x'], 'x.gpx', { type: 'application/gpx+xml' })] });
-  const verb = canShareFiles ? 'teilen' : 'herunterladen';
+  // Kann das Gerät Dateien über sein Teilen-Menü weitergeben (Handy)? Dort lässt sie sich auch speichern.
+  // Sonst (Rechner): herunterladen
+  const files = canShareFiles();
+  const verb = files ? 'teilen' : 'herunterladen';
   const how = await ask({
-    icon: 'share', title: canShareFiles ? 'Aufzeichnung teilen' : 'Aufzeichnung teilen oder herunterladen', className: 'stacked',
+    icon: 'share', title: files ? 'Aufzeichnung teilen' : 'Aufzeichnung teilen oder herunterladen', className: 'stacked',
     text: 'Geteilt wird die Tour, wie du sie aufgezeichnet hast: Strecke, Zeiten und Tempo.'
       + (kinds.length ? ' Wähle, was noch mit soll:' : ''),
     html: kinds.length ? `<div class="share-opts">${kinds.map(([k, l]) => `
       <label><input type="checkbox" name="${k}" checked> ${esc(l)}</label>`).join('')}</div>` : '',
     buttons: [
       { value: 'link', label: 'Als Link teilen', icon: 'link', primary: true },
-      { value: 'gpx', label: `Als GPX-Datei ${verb}`, icon: canShareFiles ? 'draft' : 'download' },
-      { value: 'fit', label: `Als FIT-Datei ${verb}`, icon: canShareFiles ? 'watch' : 'download' },
+      { value: 'gpx', label: `Als GPX-Datei ${verb}`, icon: files ? 'draft' : 'download' },
+      { value: 'fit', label: `Als FIT-Datei ${verb}`, icon: files ? 'watch' : 'download' },
       { value: 'no', label: 'Abbrechen' },
     ],
     setup: (dlg) => dlg.addEventListener('change', (e) => { if (e.target.name in keep) keep[e.target.name] = e.target.checked; }),
@@ -953,10 +953,7 @@ async function shareTrack(t) {
     const name = `${(t.name || 'weg').replace(/[^\wäöüß]+/gi, '-')}.${how}`;
     const type = how === 'gpx' ? 'application/gpx+xml' : 'application/vnd.ant.fit';
     const body = how === 'gpx' ? trackGpx(without(t, keep)) : (await import('../data/fit.js')).trackFit(without(t, keep));
-    const file = new File([body], name, { type });
-    if (navigator.canShare?.({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: t.name || 'Tour' }); return; } catch (err) { if (err.name === 'AbortError') return; }
-    }
+    if (await shareFile(name, body, type, t.name || 'Tour')) return;
     try { await download(name, how === 'gpx' ? body : new Blob([body], { type }), type); } catch (err) { toast(err.message); }
   }
 }
