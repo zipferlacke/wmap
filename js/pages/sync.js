@@ -20,7 +20,7 @@ import { ask, toast } from '../ui/dialogs.js';
 import { esc, fmtDistance, fmtDuration } from '../core/geo.js';
 import { download } from '../data/store.js';
 import { restore, trackEnd, sameTrack, tracks } from '../data/tracks.js';
-import { folder, zipBackup, restoreZip, importFolder, syncSummary } from '../data/folder.js';
+import { folder, zipBackup, restoreZip, importFolder, syncSummary, syncTimes } from '../data/folder.js';
 import { healthAvailable, healthStatus, healthSync, syncHealth, healthSyncing, appName } from '../services/health.js';
 import { showPermissions } from '../ui/permissions.js';
 import { autoSync } from '../data/auto-sync.js';
@@ -125,6 +125,7 @@ async function folderHtml() {
       : again ? status('folder_managed', 'Der Browser braucht wieder deine Erlaubnis für den Ordner.', 'warn')
         : i.pending ? status('sync_problem', 'Der letzte Abgleich wurde unterbrochen – er läuft beim nächsten Öffnen einer Seite weiter.', 'warn')
           : status('schedule', `Letzter Abgleich: ${when(i.last)}${i.last ? ` – ${esc(syncSummary(i.result))}` : ''}`)}
+    ${!busy && i.last && syncTimes(i.result) ? `<p class="settings-hint">Dauer: ${esc(syncTimes(i.result))}</p>` : ''}
     ${busy ? '<p class="settings-hint">Du kannst WMap weiter benutzen. Wechselst du die Seite, macht die nächste dort weiter, wo dieser Abgleich aufgehört hat.</p>' : ''}
     ${i.error && !busy ? status('error', `Fehler am ${when(i.error.at)}: ${esc(i.error.message)}`, 'error') : ''}
     <div class="sync-actions">

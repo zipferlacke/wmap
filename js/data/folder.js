@@ -327,6 +327,23 @@ export const folder = {
 
 /* ── Abgleich ─────────────────────────────────────────────────────────────── */
 
+/**
+ * Zeitmessung um den Zugang: wie oft und wie lange aufgelistet, gelesen, geschrieben und gelöscht wurde.
+ * Gelesen wird zu mehreren zugleich (READ_AHEAD) – die Lesezeit ist darum die Summe aller Aufrufe und kann
+ * über der Gesamtdauer liegen. → { be, done() → { total, list, read, write, remove: [Anzahl, ms] } }
+ */
+function clocked(be) {
+  const t0 = performance.now(), ops = { list: [0, 0], read: [0, 0], write: [0, 0], remove: [0, 0] };
+  const wrap = (name) => async (...args) => {
+    const t = performance.now();
+    try { return await be[name](...args); } finally { ops[name][0] += 1; ops[name][1] += performance.now() - t; }
+  };
+  return {
+    be: { ...be, permission: (...a) => be.permission(...a), list: wrap('list'), read: wrap('read'), write: wrap('write'), remove: wrap('remove') },
+    done: () => ({ total: Math.round(performance.now() - t0), ...Object.fromEntries(Object.entries(ops).map(([k, [n, ms]]) => [k, [n, Math.round(ms)]])) }),
+  };
+}
+
 async function run(interactive) {
   const c = await load();
   if (!c) return null;
@@ -335,7 +352,10 @@ async function run(interactive) {
   try {
     // Bis zum Ende „angefangen“: bricht er ab, macht die nächste Seite weiter
     if (!c.pending && !testBackend) { c.pending = true; await persist(); }
-    const out = await syncAll(c, be);
+    const watch = clocked(be);
+    const out = await syncAll(c, watch.be);
+    out.times = watch.done();
+    console.info('[Ordner] Abgleich', syncTimes(out));
     c.last = Date.now();
     c.result = out;
     c.error = null;
@@ -1128,6 +1148,16 @@ export function syncSummary(r) {
   const parts = [r.imported && `${r.imported} übernommen`, r.written && `${r.written} gespeichert`, r.removed && `${r.removed} gelöscht`,
     r.moved && `${r.moved} umgezogen`, r.merged && `${r.merged} doppelte zusammengelegt`, r.settings === 'imported' && 'Einstellungen übernommen'].filter(Boolean);
   return parts.length ? parts.join(', ') : 'alles aktuell';
+}
+
+/** Wie lange der Abgleich gedauert hat und womit: „4,2 s – auflisten 0,3 s · 93 gelesen 2,8 s · …“ */
+export function syncTimes(r) {
+  const t = r?.times;
+  if (!t) return '';
+  const s = (ms) => `${(ms / 1000).toFixed(ms < 9950 ? 1 : 0).replace('.', ',')} s`;
+  const parts = [t.list[0] && `auflisten ${s(t.list[1])}`, t.read[0] && `${t.read[0]} gelesen ${s(t.read[1])}`,
+    t.write[0] && `${t.write[0]} geschrieben ${s(t.write[1])}`, t.remove[0] && `${t.remove[0]} gelöscht ${s(t.remove[1])}`].filter(Boolean);
+  return `${s(t.total)}${parts.length ? ` – ${parts.join(' · ')}` : ''}`;
 }
 
 /**
