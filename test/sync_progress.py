@@ -22,7 +22,7 @@ localStorage.setItem('wmap.tracks.keep', '"all"');
   for (let k = 0; k < 60; k += 1) {
     const pts = []; for (let i = 0; i < 40; i += 1) pts.push([9.9 + k * 0.01 + i * 0.0005, 51.5 + i * 0.0003, Date.UTC(2026, 0, 1 + (k % 28), 8 + 3 * Math.floor(k / 28), 0, i * 10)]);
     const t = { ...buildTrack(pts, { kind: 'rec', profile: 'foot', name: `Test ${k}` }), id: `prog${k}` };
-    files.set(`WMap/Aufgezeichnete Touren/2026/01 Januar/Test ${k}.gpx`, { text: trackGpx(t), modified: 1000 + k });
+    files.set(`Aufgezeichnete Touren/2026/01 Januar/Test ${k}.gpx`, { text: trackGpx(t), modified: 1000 + k });
   }
   let reads = 0, fail = Infinity;
   const be = {

@@ -172,11 +172,59 @@ pub fn write<R: Runtime>(app: AppHandle<R>, slot: Option<String>, path: String, 
 
 #[command]
 pub fn remove<R: Runtime>(app: AppHandle<R>, slot: Option<String>, path: String) -> Result<(), String> {
-  let p = inside(&need_root(&app, &slot)?, &path)?;
+  let root = need_root(&app, &slot)?;
+  let p = inside(&root, &path)?;
   match fs::remove_file(&p) {
     Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.to_string()),
-    _ => Ok(()),
+    _ => {
+      prune(&root, p.parent());
+      Ok(())
+    }
   }
+}
+
+/// Leer gewordene Ordner über einer Datei gehen mit – höchstens bis zum verbundenen Ordner
+fn prune(root: &Path, mut dir: Option<&Path>) {
+  while let Some(d) = dir {
+    if d == root || !d.starts_with(root) || fs::remove_dir(d).is_err() {
+      break;
+    }
+    dir = d.parent();
+  }
+}
+
+/// Datei im Ordner verschieben bzw. umbenennen (auch FIT, unverändert); das Ziel darf es noch nicht geben
+#[command]
+pub fn rename<R: Runtime>(app: AppHandle<R>, slot: Option<String>, path: String, to: String) -> Result<Written, String> {
+  let root = need_root(&app, &slot)?;
+  let (a, b) = (inside(&root, &path)?, inside(&root, &to)?);
+  if b.exists() {
+    return Err(format!("Gibt es schon: {to}"));
+  }
+  if let Some(dir) = b.parent() {
+    fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+  }
+  if fs::rename(&a, &b).is_err() {
+    fs::copy(&a, &b).map_err(|e| e.to_string())?;
+    fs::remove_file(&a).map_err(|e| e.to_string())?;
+  }
+  prune(&root, a.parent());
+  Ok(Written { modified: modified(&b) })
+}
+
+/// Den Ordner (bzw. einen Unterordner darin) im Dateimanager des Systems zeigen
+#[command]
+pub fn reveal<R: Runtime>(app: AppHandle<R>, slot: Option<String>, path: Option<String>) -> Result<(), String> {
+  let root = need_root(&app, &slot)?;
+  let mut dir = match path.as_deref() {
+    Some(p) if !p.is_empty() => inside(&root, p)?,
+    _ => root.clone(),
+  };
+  if !dir.is_dir() {
+    dir = root;
+  }
+  let tool = if cfg!(target_os = "windows") { "explorer" } else if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+  std::process::Command::new(tool).arg(&dir).spawn().map(|_| ()).map_err(|e| e.to_string())
 }
 
 #[command]

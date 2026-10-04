@@ -51,7 +51,7 @@ await folder.sync();
 out.before = tourFiles();
 // Das andere Gerät löscht Harzrunde: Datei weg, Eintrag in Gelöscht.json
 files.delete(tourFiles().find((p) => p.includes('Harzrunde')));
-files.set('WMap/Gelöscht.json', { text: JSON.stringify({ app: 'WMap', deleted: { tourA: Date.now() } }), modified: clock += 1000 });
+files.set('Gelöscht.json', { text: JSON.stringify({ app: 'WMap', deleted: { tourA: Date.now() } }), modified: clock += 1000 });
 folder._useBackend(be, 'Nextcloud');          // hier: Index weg (neu verbunden)
 out.one = await folder.sync();
 out.oneTours = tours.all().map((t) => t.name).sort();
@@ -60,7 +60,7 @@ out.oneFiles = tourFiles();
 // ── 2. Neue App: Health Connect war schneller als der Ordner ──
 const pts = []; for (let i = 0; i < 80; i += 1) pts.push([9.9 + i * 0.0005, 51.53 + Math.sin(i / 5) * 0.0005, Date.UTC(2026, 8, 20, 7, 0, i * 10)]);
 const old = { ...buildTrack(pts, { kind: 'rec', profile: 'foot', name: 'Lauf (alte App)' }), id: 'old1' };
-files.set('WMap/Aufgezeichnete Touren/2026/09 September/2026-09-20 Lauf.gpx', { text: trackGpx(old), modified: clock += 1000 });
+files.set('Aufgezeichnete Touren/2026/09 September/2026-09-20 Lauf.gpx', { text: trackGpx(old), modified: clock += 1000 });
 await tracks.putQuiet({ ...buildTrack(pts, { kind: 'health', profile: 'foot', name: 'Lauf am Sonntagmorgen' }), id: 'hc1', source: { health: 'S1', app: 'com.fitbit', type: 'running' } });
 out.two = await folder.sync();
 const all2 = await tracks.all();
@@ -72,7 +72,7 @@ out.twoKeywords = files.get(trackFiles()[0]).text.match(/<keywords>([^<]*)</)?.[
 await tracks.remove('old1');
 await wait(50);
 out.three = await folder.sync();
-out.threeGone = Object.keys(JSON.parse(files.get('WMap/Gelöscht.json').text).deleted).sort();
+out.threeGone = Object.keys(JSON.parse(files.get('Gelöscht.json').text).deleted).sort();
 out.threeFiles = trackFiles();
 out.threeHealthKnown = (await knownHealthIds()).has('S1');
 
@@ -85,7 +85,7 @@ await wait(50);
 out.four = await folder.sync();
 out.fourTours = tours.all().map((t) => t.name).sort();
 out.fourFiles = tourFiles();
-out.fourGone = Object.keys(JSON.parse(files.get('WMap/Gelöscht.json').text).deleted).sort();
+out.fourGone = Object.keys(JSON.parse(files.get('Gelöscht.json').text).deleted).sort();
 
 // ── 5. Datei einmal nicht lesbar, dann dort gelöscht ──
 tours.put({ id: 'tourC', name: 'Werrarunde', profile: 'hike', points: [[9.8, 51.3], [9.85, 51.32]], shape: 'xyz', fixed: true, updated: Date.now(), stats: {} });
@@ -124,7 +124,7 @@ await folder.sync();                               // erster Abgleich mit diesem
 reads = [];
 out.sevenSecond = await folder.sync();
 out.sevenReads = reads.length;
-const manifest = () => JSON.parse(files.get('WMap/Inhalt.json').text).files;
+const manifest = () => JSON.parse(files.get('Inhalt.json').text).files;
 out.sevenListed = Object.values(manifest()).filter((v) => /^m\d$/.test(v.id)).length;
 
 // ── 8. Neu verbunden: Index weg, Einträge da ──
@@ -136,12 +136,17 @@ out.eightCount = (await tracks.all()).filter((t) => /^m\d$/.test(t.id)).length;
 
 // ── 9. Von Hand hineingelegt – in die Ordnung und irgendwohin ──
 const hand = trackGpx(mk(7, 'Von Hand')).replace(/<keywords>[^<]*<\/keywords>/, '');
-files.set('WMap/Aufgezeichnete Touren/2026/09 September/Von Hand.gpx', { text: hand, modified: 0 });
-files.set('WMap/Sonstiges/Irgendwo.gpx', { text: trackGpx(mk(8, 'Irgendwo')).replace(/<keywords>[^<]*<\/keywords>/, ''), modified: 0 });
+files.set('Aufgezeichnete Touren/2026/09 September/Von Hand.gpx', { text: hand, modified: 0 });
+files.set('Sonstiges/Irgendwo.gpx', { text: trackGpx(mk(8, 'Irgendwo')).replace(/<keywords>[^<]*<\/keywords>/, ''), modified: 0 });
 reads = [];
 out.nine = await folder.sync();
-out.nineReads = reads.map((p) => p.split('/').pop());
-out.nineNames = (await tracks.all()).map((t) => t.name).filter((n) => /Von Hand|Irgendwo/.test(n));
+out.nineReads = reads.map((p) => p.split('/').pop()).sort();
+// Neue Dateien bleiben liegen, bis entschieden ist – dann kommen beide dazu, an ihren Platz
+out.nineInbox = out.nine.inbox.map((x) => [x.file, x.kind]).sort();
+out.nineBefore = (await tracks.all()).map((t) => t.name).filter((n) => /Von Hand|Irgendwo/.test(n));
+out.nineTake = await folder.sync({ decide: { rest: 'best' } });
+out.nineGone = !files.has('Sonstiges/Irgendwo.gpx') && !files.has('Aufgezeichnete Touren/2026/09 September/Von Hand.gpx');
+out.nineNames = (await tracks.all()).map((t) => t.name).filter((n) => /Von Hand|Irgendwo/.test(n)).sort();
 out.nineListed = Object.keys(manifest()).some((p) => p.endsWith('Von Hand.gpx'));
 
 // ── 10. Von Hand gelöscht ──
@@ -169,7 +174,7 @@ const base12 = buildTrack(hcPts, { kind: 'health', profile: 'foot', name: 'Ruder
 const twinA = { ...base12, id: 'dupb', source: { health: 'S9', app: 'com.zepp', type: 'rowing' } };
 const twinB = { ...base12, id: 'dupa', source: { health: 'S9', app: 'com.zepp', type: 'rowing' }, hr: base12.times.map(() => 120) };
 const twinC = { ...base12, id: 'dupc', source: { health: 'S9', app: 'com.zepp', type: 'rowing' } };
-const dir12 = 'WMap/Aufgezeichnete Touren/2026/09 September/';
+const dir12 = 'Aufgezeichnete Touren/2026/09 September/';
 files.set(`${dir12}2026-09-25 Rudern am Freitag.gpx`, { text: trackGpx(twinA), modified: clock += 1000 });
 files.set(`${dir12}2026-09-25 Rudern am Freitag (2).gpx`, { text: trackGpx(twinB), modified: clock += 1000 });
 files.set(`${dir12}2026-09-25 Rudern am Freitag (3).gpx`, { text: trackGpx(twinC), modified: clock += 1000 });
@@ -178,7 +183,7 @@ out.twelve = await folder.sync();
 const row = (await tracks.all()).filter((t) => t.source?.health === 'S9');
 out.twelveTracks = row.map((t) => [t.id, (t.hr ?? []).filter((v) => v > 0).length > 0]);
 out.twelveFiles = [...files.keys()].filter((p) => p.includes('Rudern am Freitag')).map((p) => [p.split('/').pop(), files.get(p).text.match(/wmap:(\w+)/)[1], /gpxtpx:hr/.test(files.get(p).text)]);
-out.twelveGone = Object.keys(JSON.parse(files.get('WMap/Gelöscht.json').text).deleted).filter((id) => /^dup/.test(id)).sort();
+out.twelveGone = Object.keys(JSON.parse(files.get('Gelöscht.json').text).deleted).filter((id) => /^dup/.test(id)).sort();
 out.twelveAgain = await folder.sync();
 // Zweites Gerät: hatte „dupb“ (die Datei gibt es nicht mehr) – dort verschwindet er, „dupa“ kommt
 await tracks.removeQuiet('dupa');
@@ -227,7 +232,7 @@ with Browser() as b:
         '6. Kartenausschnitt: schreiben, nicht zu oft, lesen, Abgleich lässt ihn stehen': r['sixFirst'] and not r['sixThrottled'] and r['sixRead'] == 14.2 and r['sixIgnored'],
         '7. Verzeichnis: ohne Änderungszeiten wird beim zweiten Abgleich nichts gelesen': r['sevenReads'] == 0 and r['sevenListed'] == 3 and r['sevenSecond']['imported'] == 0 and r['sevenSecond']['written'] == 0,
         '8. neu verbunden, Einträge da: laut Verzeichnis gleich – nichts gelesen, nichts doppelt': r['eightReads'] == 0 and r['eightCount'] == 3 and r['eight']['imported'] == 0 and r['eight']['written'] == 0,
-        '9. von Hand in die Ordnung gelegt kommt dazu (nur sie wird gelesen), irgendwo abgelegt nicht': r['nineReads'] == ['Von Hand.gpx'] and r['nineNames'] == ['Von Hand'] and r['nineListed'],
+        '9. von Hand hineingelegt (egal wohin): nur sie werden gelesen, erst gefragt – dann übernommen und einsortiert': r['nineReads'] == ['Irgendwo.gpx', 'Von Hand.gpx'] and r['nineInbox'] == [['Irgendwo.gpx', 'new'], ['Von Hand.gpx', 'new']] and r['nineBefore'] == [] and r['nineNames'] == ['Irgendwo', 'Von Hand'] and r['nineListed'] and r['nineGone'] and r['nineTake']['imported'] == 2,
         '10. von Hand gelöscht → Eintrag weg, nicht mehr im Verzeichnis, nicht zurückgeschrieben': r['tenNames'] == ['Verzeichnis 1', 'Verzeichnis 3'] and not r['tenListed'] and not r['tenFiles'],
         '11. Kopie mit derselben Kennung → eine Datei (kleinster Pfad), ein Weg, danach Ruhe': len(r['elevenFiles']) == 1 and '(' not in r['elevenFiles'][0] and r['elevenTracks'] == 1 and r['eleven']['merged'] == 2 and r['elevenAgain']['merged'] == 0,
         '12. dieselbe Aufzeichnung dreimal → kleinste Kennung bleibt, Puls kommt dazu, die anderen in Gelöscht.json': r['twelveTracks'] == [['dupa', True]] and len(r['twelveFiles']) == 1 and r['twelveFiles'][0][1:] == ['dupa', True] and r['twelveGone'] == ['dupb', 'dupc'] and r['twelve']['merged'] == 2 and r['twelveAgain']['merged'] == 0 and r['twelveAgain']['written'] == 0,

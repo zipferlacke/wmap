@@ -45,6 +45,8 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
     desktop::read,
     desktop::write,
     desktop::remove,
+    desktop::rename,
+    desktop::reveal,
     desktop::disconnect,
     desktop::save,
     desktop::opened

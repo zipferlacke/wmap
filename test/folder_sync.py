@@ -33,21 +33,21 @@ places.save({ kind: 'fav', name: 'Oma', label: 'Lange Straße 1', point: [9.93, 
 localStorage.setItem('wmap.theme', '"dark"');
 // Alte Ordnung: eigene Datei unter Abgeschlossen/ (derselbe Weg) und ein fremder Garmin-Export
 const { trackGpx } = await import('./js/data/tracks.js');
-files.set('WMap/Abgeschlossen/2026/2026-09-12 Morgenrunde.gpx', { text: trackGpx(t), modified: 1000 });
+files.set('Abgeschlossen/2026/2026-09-12 Morgenrunde.gpx', { text: trackGpx(t), modified: 1000 });
 files.set('Garmin/lauf.gpx', { text: trackGpx({ ...buildTrack(pts.map(([x, y, ms]) => [x + 0.01, y, ms + 864e5]), { kind: 'gpx', profile: 'foot', name: 'Garmin' }) }).replace(/<keywords>[^<]*<\/keywords>/, ''), modified: 1000 });
-files.set('WMap/Gemerkt.json', { text: JSON.stringify({ connections: [], places: [{ id: 'pold', kind: 'work', name: 'Arbeit', point: [9.95, 51.54], updated: 1 }], deleted: {} }), modified: 1000 });
+files.set('Gemerkt.json', { text: JSON.stringify({ connections: [], places: [{ id: 'pold', kind: 'work', name: 'Arbeit', point: [9.95, 51.54], updated: 1 }], deleted: {} }), modified: 1000 });
 
 out.first = await folder.sync();
 out.paths1 = [...files.keys()].sort();
 
 // Anderes Gerät ändert die Einstellungen
-const s = JSON.parse(files.get('WMap/settings.json').text);
-files.set('WMap/settings.json', { text: JSON.stringify({ ...s, updated: s.updated + 5000, values: { ...s.values, 'wmap.theme': '"light"' } }), modified: clock += 5000 });
+const s = JSON.parse(files.get('settings.json').text);
+files.set('settings.json', { text: JSON.stringify({ ...s, updated: s.updated + 5000, values: { ...s.values, 'wmap.theme': '"light"' } }), modified: clock += 5000 });
 out.second = await folder.sync();
 out.theme = localStorage.getItem('wmap.theme');
 
 // Auf dem anderen Gerät gelöscht: die Verbindungsdatei verschwindet
-const connPath = [...files.keys()].find((p) => p.startsWith('WMap/Bus & Bahn/'));
+const connPath = [...files.keys()].find((p) => p.startsWith('Bus & Bahn/'));
 files.delete(connPath);
 out.third = await folder.sync();
 out.connLeft = connections.all().length;
@@ -76,11 +76,11 @@ with Browser() as b:
     for p in r['paths4']:
         print('   ', p)
     print('Lesezeichen:', r['places'])
-    ok = ('WMap/Geplante Touren/Harzrunde.gpx' in r['paths1']
-          and 'WMap/Aufgezeichnete Touren/2026/09 September/2026-09-12 Morgenrunde.gpx' in r['paths1']
-          and 'Garmin/lauf.gpx' in r['paths1'] and 'WMap/Gemerkt.json' not in r['paths1']
+    ok = ('Geplante Touren/Harzrunde.gpx' in r['paths1']
+          and 'Aufgezeichnete Touren/2026/09 September/2026-09-12 Morgenrunde.gpx' in r['paths1']
+          and 'Garmin/lauf.gpx' in r['paths1'] and 'Gemerkt.json' not in r['paths1']
           and not any('Abgeschlossen' in p for p in r['paths1'])
-          and any(p.startswith('WMap/Bus & Bahn/2026-09-30') for p in r['paths1'])
+          and any(p.startswith('Bus & Bahn/2026-09-30') for p in r['paths1'])
           and r['theme'] == '"light"' and r['connLeft'] == 0
           and not any('Morgenrunde' in p for p in r['paths4'])
           and r['places'] == ['Arbeit', 'Oma'])

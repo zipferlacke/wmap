@@ -935,27 +935,54 @@ gleicht mit ab: dieselben Daten auf allen Geräten, bewusst lokal, ohne Konto
 und ohne Server.
 
 ```
-WMap/
+(der gewählte Ordner)
 ├─ settings.json                     Einstellungen (hell/dunkel, Navigation, Stimme …)
 ├─ Geplante Touren/Harzer Hexenstieg.gpx
 ├─ Aufgezeichnete Touren/2026/09 September/2026-09-20 Radtour am Samstagnachmittag.gpx
+├─ Aufgezeichnete Touren/2026/09 September/2026-09-21 Rudern.fit   FIT der Uhr – bleibt, wie sie ist
 ├─ Bus & Bahn/2026-09-30 08.15 Göttingen → Kassel.json   je gemerkte Verbindung
 ├─ Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen mit Listen
 ├─ Gelöscht.json                     auf einem Gerät Gelöschtes (IDs, ein Jahr)
 ├─ Kartenausschnitt.json             wo die Karte zuletzt stand
+├─ Kaputte Dateien/                  was sich nicht lesen ließ – 30 Tage
 └─ Inhalt.json                       Verzeichnis: je Datei ID, Art, Fingerabdruck, Stand
 ```
 
-- **Es gilt die Ordnung:** Abgeglichen wird nur, was unter `Geplante Touren/`,
-  `Aufgezeichnete Touren/` (mit beliebigen Unterordnern) und `Bus & Bahn/`
-  liegt. Was woanders im Ordner liegt, wird nicht gelesen.
+- **Direkt im gewählten Ordner** (seit 2.3.0). Bis 2.2 lag alles im
+  Unterordner `WMap/` – der Inhalt zieht beim ersten Abgleich eine Ebene hoch
+  (`liftOld`), die gemerkten Pfade ziehen mit. Darum `minVersion` 2.3.0: Eine
+  ältere Oberfläche fände ihre Dateien nicht mehr und hielte sie für gelöscht.
+- **Jede GPX- und FIT-Datei im Ordner zählt**, egal wo sie liegt (außer unter
+  `Kaputte Dateien/`), dazu `Bus & Bahn/` und die Dateien von WMap selbst.
+  Was nicht an seinem Platz liegt (eigener Unterordner, falscher Ordner),
+  zieht dorthin; leer gewordene Ordner gehen. Andere Dateien (Fotos,
+  Dokumente) und Ordner ohne Tourendateien bleiben unberührt.
+- **Neue Dateien: erst fragen.** Eine Datei ohne WMap-Kennung, die kein Gerät
+  kennt (Export der Uhr, Garmin, Komoot …), fasst der Abgleich nicht an – sie
+  steht in `inbox`, und die Seite fragt (`js/ui/folder-inbox.js`): „Immer die
+  genauesten Daten“, „Einzeln entscheiden“ (Datei für Datei, mit „Rest: immer
+  die genauesten“) oder „Später“. Der Abgleich bekommt die Antwort als
+  `folder.sync({ decide })`. Wartende Dateien werden nicht bei jedem Abgleich
+  neu gelesen.
+  - GPX ohne Zeiten → geplante Tour, als WMap-Datei unter `Geplante Touren/`
+  - neue Aufzeichnung → GPX wird zur WMap-Datei unter Jahr/Monat; **FIT bleibt
+    FIT** und zieht dorthin. Name, Art und Farbe einer FIT-Tour stehen im
+    Verzeichnis (`Inhalt.json`, `meta`), ebenso ihre Kennung – auf allen
+    Geräten dieselbe. Solche Touren bleiben ganz in der App (keine Karteikarte)
+  - gibt es die Tour schon → zusammenführen mit Haken je Angabe (Strecke,
+    Puls, Frequenz, Leistung, Runden; `data/duplicates.js` `choices`/`combine`,
+    Dialog `js/ui/merge-ask.js`). Das Ergebnis steht in der WMap-Datei der
+    Tour; die GPX geht, die FIT bleibt daneben und steht für die Tour. Hat die
+    Datei nichts anderes, ohne Frage
+- **Kaputte Dateien:** lesbar, aber keine Tour darin → `Kaputte Dateien/`.
+  Die Seite nennt sie mit dem Hinweis, selbst nachzusehen, und (in der App)
+  einem Knopf zum Dateimanager (`folder.reveal`); 30 Tage nach dem Fund löscht
+  WMap sie (Zeitpunkt in `Inhalt.json`, `broken`). Leere und gerade nicht
+  lesbare Dateien (Cloud-Ordner hakt) bleiben liegen.
 - **Schnell durch das Verzeichnis `Inhalt.json`:** Jede WMap trägt dort ein,
   was sie geschrieben oder gelesen hat. Ein Abgleich holt die Liste des
   Ordners (Namen, Änderungszeit) und das Verzeichnis – den Inhalt einer
-  Datei nur, wenn sie neu ist (nicht im Verzeichnis: von Hand hineingelegt –
-  eine Aufzeichnung als GPX oder FIT unter „Aufgezeichnete Touren/“ wird dabei
-  zur WMap-Datei unter Jahr/Monat, ergänzt einen Weg, den es schon gibt, und
-  die hineingelegte Datei geht; `adopt` in `js/data/folder.js`),
+  Datei nur, wenn sie neu ist (nicht im Verzeichnis: von Hand hineingelegt),
   sich laut Änderungszeit bzw. Verzeichnis geändert hat oder hier fehlt.
   Manche Cloud-Ordner unter Android melden keine Änderungszeit; dort gilt
   der Fingerabdruck aus dem Verzeichnis, sonst würde jedes Mal alles
@@ -1125,7 +1152,18 @@ Zeit, Puls, Frequenz, Leistung, Sportart und die Runden der Uhr). Je Datei:
   vorher Prüfung auf Doppelte (WMap-ID im Stichwort `wmap:…` bzw. derselbe
   Weg – `sameTrack`); gibt es ihn schon: „Gibt es schon – ansehen“. Sonst
   speichern und gleich zeigen (`wege.html?id=…`), der Ordner gleicht ihn mit ab.
-- **In die vorhandene Tour übernehmen:** Hat die Datei mehr als die Tour
+- **Erst ansehen:** Eine einzelne geöffnete Datei („Öffnen mit“, „Teilen“,
+  Doppelklick) wird gleich gezeigt, gespeichert ist da noch nichts – mit
+  Zeiten als Aufzeichnung in Meine Touren (`wege.html#datei`, die Datei liegt
+  für die Sitzung in `sessionStorage`), sonst im Planer. Dort: **Als
+  aufgezeichnete Tour speichern** oder **Als geplante Tour öffnen**. Bei
+  mehreren Dateien hat jede Karte „Ansehen“.
+- **Zusammenführen mit Haken:** Gibt es die Tour schon, kommt ein Dialog mit
+  einem Haken je Angabe, die die Datei anders hat – Strecke („x Punkte in der
+  Datei, y hier“), Puls, Frequenz, Leistung, Runden der Uhr. Angehakt ist, wo
+  die genaueren Daten gewinnen; „Zusammenführen“ übernimmt, „Abbrechen“ ändert
+  nichts (`choices`/`combine`, `js/ui/merge-ask.js`).
+- **Alle übernehmen (mehrere Dateien):** Hat die Datei mehr als die Tour
   hier (`data/duplicates.js` `gain`/`enrich`), ergänzt sie sie – Name, Art
   und Farbe bleiben. Fehlende Messwerte und die Runden der Uhr kommen ohne
   Rückfrage dazu. Nicht eindeutig sind eine genauere Strecke (mindestens

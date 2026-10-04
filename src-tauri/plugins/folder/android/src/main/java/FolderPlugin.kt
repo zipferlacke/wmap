@@ -48,6 +48,13 @@ class OpenedArgs {
 }
 
 @InvokeArg
+class RenameArgs {
+    var slot: String = ""
+    var path: String = ""
+    var to: String = ""
+}
+
+@InvokeArg
 class WriteArgs {
     var slot: String = ""
     var path: String = ""
@@ -351,6 +358,61 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
         work(invoke, args.slot) { t ->
             resolve(args.slot, t, args.path, false)?.let { DocumentsContract.deleteDocument(resolver, DocumentsContract.buildDocumentUriUsingTree(t, it)) }
             ids.remove("${args.slot}\u0000${args.path}")
+            prune(args.slot, t, args.path)
+            invoke.resolve()
+        }
+    }
+
+    /** Leer gewordene Ordner über einer Datei gehen mit – höchstens bis zum verbundenen Ordner */
+    private fun prune(slot: String, tree: Uri, path: String) {
+        var p = path.split('/').dropLast(1)
+        while (p.isNotEmpty()) {
+            val dir = p.joinToString("/")
+            ids.remove("$slot\u0000$dir")
+            val id = try { resolve(slot, tree, dir, false) } catch (e: Exception) { null } ?: break
+            ids.remove("$slot\u0000$dir")
+            if (children(tree, id).isNotEmpty()) break
+            try { DocumentsContract.deleteDocument(resolver, DocumentsContract.buildDocumentUriUsingTree(tree, id)) } catch (e: Exception) { break }
+            p = p.dropLast(1)
+        }
+    }
+
+    /** Datei im Ordner verschieben bzw. umbenennen (auch FIT, unverändert): kopieren, dann die alte löschen */
+    @Command
+    fun rename(invoke: Invoke) {
+        val args = invoke.parseArgs(RenameArgs::class.java)
+        work(invoke, args.slot) { t ->
+            ids.remove("${args.slot}\u0000${args.path}")
+            val from = resolve(args.slot, t, args.path, false) ?: return@work invoke.reject("Nicht gefunden: ${args.path}", "missing")
+            if (resolve(args.slot, t, args.to, false) != null) return@work invoke.reject("Gibt es schon: ${args.to}", "exists")
+            val src = DocumentsContract.buildDocumentUriUsingTree(t, from)
+            val bytes = resolver.openInputStream(src)!!.use { it.readBytes() }
+            val mime = when {
+                args.to.endsWith(".json", true) -> "application/json"
+                args.to.endsWith(".gpx", true) -> "application/gpx+xml"
+                else -> "application/octet-stream"
+            }
+            val dst = DocumentsContract.buildDocumentUriUsingTree(t, resolve(args.slot, t, args.to, true, mime)!!)
+            resolver.openOutputStream(dst, "wt")!!.use { it.write(bytes) }
+            DocumentsContract.deleteDocument(resolver, src)
+            ids.remove("${args.slot}\u0000${args.path}")
+            prune(args.slot, t, args.path)
+            val modified = resolver.query(dst, arrayOf(Document.COLUMN_LAST_MODIFIED), null, null, null)
+                ?.use { if (it.moveToFirst() && !it.isNull(0)) it.getLong(0) else 0L } ?: 0L
+            invoke.resolve(JSObject().put("modified", modified))
+        }
+    }
+
+    /** Den Ordner (bzw. einen Unterordner darin) im Dateimanager des Systems zeigen */
+    @Command
+    fun reveal(invoke: Invoke) {
+        val args = invoke.parseArgs(PathArgs::class.java)
+        work(invoke, args.slot) { t ->
+            val id = (if (args.path.isEmpty()) null else resolve(args.slot, t, args.path, false)) ?: DocumentsContract.getTreeDocumentId(t)
+            val intent = Intent(Intent.ACTION_VIEW)
+                .setDataAndType(DocumentsContract.buildDocumentUriUsingTree(t, id), Document.MIME_TYPE_DIR)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            activity.startActivity(intent)
             invoke.resolve()
         }
     }
