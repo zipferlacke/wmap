@@ -51,7 +51,7 @@ with Browser(width=1300, height=900) as b:
     b.shot('tour-teilen')
     print('Teilen:', first, '→', second[0]['title'], (second[0]['url'] or '')[:70], len(second[0]['url'] or ''))
     url = second[0]['url']
-    checks['2. Teilen fragt, was mit soll (Puls), und bietet Link oder GPX-Datei'] = first[0]['boxes'] == ['Puls'] and [x.split('\n')[-1] for x in first[0]['buttons']][:2] == ['Als Link teilen', 'Als GPX-Datei']
+    checks['2. Teilen fragt, was mit soll (Puls), und bietet Link, GPX- oder FIT-Datei (am Rechner: herunterladen)'] = first[0]['boxes'] == ['Puls'] and [x.split('\n')[-1] for x in first[0]['buttons']][:3] == ['Als Link teilen', 'Als GPX-Datei herunterladen', 'Als FIT-Datei herunterladen']
     checks['2. der Link trägt die Aufzeichnung (wege.html#weg=…), kurz genug zum Verschicken'] = '/wege.html#weg=' in url and len(url) < 4000
     _, bare = link(b, uncheck='hr')
     call(b, "const { tracks } = await import('./js/data/tracks.js'); await tracks.removeQuiet('act1'); return 1;")     # beim Empfänger gibt es sie nicht

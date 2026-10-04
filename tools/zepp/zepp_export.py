@@ -1,4 +1,4 @@
-"""Zepp: alle Trainings der Liste (Seite „Alle“) nach unten hin als GPX exportieren.
+"""Zepp: alle Trainings der Liste (Seite „Alle“) nach unten hin exportieren (GPX, TCX oder FIT).
 
 Zepp schreibt jede Datei nach Download/Zepp<Datum><Uhrzeit>.gpx; am Ende schiebt das Skript alle zusammen
 nach Download/zepp_export/ (nur das Umpacken: python3 zepp_export.py 0).
@@ -9,15 +9,22 @@ sobald der richtige Bildschirm da ist (keine festen Wartezeiten). Gelesen wird d
 
 Vorher: Handy per USB, entsperrt, in Zepp die Trainingsliste offen und dort, wo es losgehen soll (ganz oben
 für alle); währenddessen nicht anfassen. Das Skript geht von dort nach unten bis zum Ende der Liste.
-Aufruf: python3 zepp_export.py [max]   – Stand in zepp_done.json (ein zweiter Lauf überspringt Erledigtes;
-                                         Datei löschen = alles noch einmal)
+Aufruf: python3 zepp_export.py [gpx|tcx|fit] [max]
+        Stand in zepp_done.json (gpx) bzw. zepp_done_fit.json – ein zweiter Lauf überspringt Erledigtes;
+        Datei löschen = alles noch einmal. FIT ist das vollständigste Format (Frequenz auch beim Rudern, Runden).
 Gerät:  ANDROID_SERIAL=… (sonst das in ui.py eingetragene)"""
 import json, os, sys, time
 import ui
 HERE = os.path.dirname(os.path.abspath(__file__))
 DONE = os.path.join(HERE, 'zepp_done.json')
 LIST, DETAIL, EXPORT, OK = 'ExerciseHistoryActivity', 'SportDetailPageActivity', 'ExportGPXActivity', 'ExportSuccessActivity'
-MAX = int(sys.argv[1]) if len(sys.argv) > 1 else 10 ** 6
+ARGS = sys.argv[1:]
+# Format: gpx (Vorgabe), tcx oder fit – FIT ist das vollständigste (Frequenz auch beim Rudern, Runden der Uhr)
+FORMAT = next((a for a in ARGS if a in ('gpx', 'tcx', 'fit')), 'gpx')
+MAX = next((int(a) for a in ARGS if a.isdigit()), 10 ** 6)
+LABEL = {'gpx': 'GPX-Format', 'tcx': 'TCX-Format', 'fit': 'FIT-Format'}[FORMAT]
+SPOT_Y = {'gpx': 427, 'tcx': 631, 'fit': 835}[FORMAT]       # Stelle auf der Exportseite, wenn alle drei Formate da sind
+if FORMAT != 'gpx': DONE = os.path.join(HERE, f'zepp_done_{FORMAT}.json')
 done = json.load(open(DONE)) if os.path.exists(DONE) else {}
 
 def log(*a):
@@ -89,11 +96,18 @@ def export_one(key, x, y):
         ui.tap(spot['x'], spot['y'])
         if not wait(EXPORT, 6): return 'Exportseite ging nicht auf', steps
     lap('Exportseite')
-    # GPX-Format (ohne Strecke: TCX an derselben Stelle): Der erste Tipp verpufft oft (Seite baut sich noch auf) – in kurzen Abständen wiederholen
-    for _ in range(30):
-        ui.tap(540, 427)
+    # Format antippen: Der erste Tipp verpufft oft (Seite baut sich noch auf) – in kurzen Abständen wiederholen.
+    # Trainings ohne Strecke haben weniger Formate, die Stelle stimmt dann nicht: Bildschirm lesen und suchen
+    for _ in range(4):
+        ui.tap(540, SPOT_Y)
         if wait(OK, 0.6): break
-    else: return 'Export nicht bestätigt', steps
+    else:
+        spot = next(iter(ui.find(f'^{LABEL}$')), None)
+        if not spot: return f'kein „{LABEL}“', steps
+        for _ in range(20):
+            ui.tap(spot['x'], spot['y'])
+            if wait(OK, 0.6): break
+        else: return 'Export nicht bestätigt', steps
     lap('GPX')
     new = sorted(files() - before)
     # zurück, bis die Liste da ist (Bestätigung → Exportseite → Ansicht → Liste)
@@ -105,6 +119,7 @@ def export_one(key, x, y):
     # Der Dateiname trägt die Startzeit – passt sie nicht zur Zeile, wurde ein anderes Training getroffen
     begin = key.split('|')[1].replace(':', '')
     if new and new[0][12:16] != begin: return f'andere Zeile getroffen ({new[0]})', steps
+    if new and not new[0].endswith('.' + FORMAT): return f'anderes Format geschrieben ({new[0]})', steps
     return '→ ' + (new[0] if new else 'Zepp (Datei gab es schon)'), steps
 
 def main():

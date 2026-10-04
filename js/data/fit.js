@@ -7,8 +7,11 @@
  * Felder in welcher Größe folgen, danach kommen die Daten in genau dieser Form.
  *
  *   parseFit(buffer, name)  → [Weg] wie parseGpx (leer, wenn die Datei keine Strecke hat)
+ *   trackFit(weg)           → Uint8Array: der Weg als FIT-Datei (Punkte mit Puls, Frequenz, Leistung, Runden der
+ *                             Uhr, Sportart, Zusammenfassung) – für Garmin Connect, Strava, Zepp & Co.
  */
-import { buildTrack } from './tracks.js';
+import { buildTrack, trackCoords } from './tracks.js';
+import { distance } from '../core/geo.js';
 
 const FIT_EPOCH = 631065600;            // Sekunden zwischen 1970 und dem 31.12.1989
 const DEG = 180 / 2 ** 31;              // „Semicircles“ → Grad
@@ -78,4 +81,76 @@ export function parseFit(buffer, fileName = '') {
     .filter((sec) => sec > 0 && sec < (t.end - t.start) / 1000 - 5).sort((a, b) => a - b);
   if (marks.length) t = { ...t, marks };
   return [t];
+}
+
+/* ── Schreiben ────────────────────────────────────────────────────────────── */
+
+const SPORT_OUT = { running: 1, biking: 2, swimming_open_water: 5, swimming_pool: 5, walking: 11, skiing: 13, snowboarding: 14, rowing: 15, hiking: 17, paddling: 19, sailing: 32 };
+const CRC = [0x0000, 0xcc01, 0xd801, 0x1400, 0xf001, 0x3c00, 0x2800, 0xe401, 0xa001, 0x6c00, 0x7800, 0xb401, 0x5000, 0x9c01, 0x8801, 0x4400];
+function crc16(bytes, from, to) {
+  let crc = 0;
+  for (let i = from; i < to; i += 1) {
+    const b = bytes[i];
+    let tmp = CRC[crc & 0xf]; crc = (crc >> 4) & 0x0fff; crc = crc ^ tmp ^ CRC[b & 0xf];
+    tmp = CRC[crc & 0xf]; crc = (crc >> 4) & 0x0fff; crc = crc ^ tmp ^ CRC[(b >> 4) & 0xf];
+  }
+  return crc;
+}
+// Feld: [Nummer, Größe, Basistyp] – 0x00 enum, 0x02 uint8, 0x84 uint16, 0x85 sint32, 0x86 uint32
+const U8 = 0x02, ENUM = 0x00, U16 = 0x84, S32 = 0x85, U32 = 0x86;
+const SIZE = { [U8]: 1, [ENUM]: 1, [U16]: 2, [S32]: 4, [U32]: 4 };
+const NONE = { [U8]: 0xff, [ENUM]: 0xff, [U16]: 0xffff, [S32]: 0x7fffffff, [U32]: 0xffffffff };
+
+export function trackFit(t) {
+  const out = [];
+  const put = (v, type) => { for (let k = 0; k < SIZE[type]; k += 1) out.push((v >>> (8 * k)) & 0xff); };
+  const defined = new Map();
+  /** Eine Meldung schreiben; die Definition dazu beim ersten Mal. `fields`: [[Nummer, Typ, Wert | null]] */
+  const message = (global, fields) => {
+    if (!defined.has(global)) {
+      defined.set(global, defined.size);
+      out.push(0x40 | defined.get(global), 0, 0, global & 0xff, global >> 8, fields.length);
+      for (const [num, type] of fields) out.push(num, SIZE[type], type);
+    }
+    out.push(defined.get(global));
+    for (const [, type, v] of fields) put(v === null || v === undefined || Number.isNaN(v) ? NONE[type] : Math.round(v), type);
+  };
+  const coords = trackCoords(t), times = t.times ?? [];
+  const fit = (ms) => ms / 1000 - FIT_EPOCH;
+  const semi = (deg) => deg / DEG;
+  const start = fit(t.start), end = fit(t.end ?? t.start + (times.at(-1) ?? 0) * 1000);
+  const stat = (k) => { const v = (t[k] ?? []).filter((x) => x > 0); return v.length ? [v.reduce((a, b) => a + b, 0) / v.length, Math.max(...v)] : [null, null]; };
+  const sport = SPORT_OUT[t.sport] ?? (t.profile === 'bike' || ['road', 'tour', 'gravel', 'mtb'].includes(t.profile) ? 2 : 0);
+
+  message(0, [[0, ENUM, 4], [1, U16, 255], [2, U16, 0], [4, U32, start]]);             // file_id: Aktivität
+  message(21, [[253, U32, start], [0, ENUM, 0], [1, ENUM, 0]]);                         // event: Start
+  let dist = 0;
+  const cum = coords.map((c, i) => (i ? (dist += distance(coords[i - 1], c)) : 0));
+  // Die gemessene Länge gilt (aus allen Punkten der Aufzeichnung) – die Punkte hier sind ausgedünnt
+  const scale = dist > 0 && t.length ? t.length / dist : 1;
+  coords.forEach(([lon, lat], i) => message(20, [[253, U32, start + (times[i] ?? 0)], [0, S32, semi(lat)], [1, S32, semi(lon)], [5, U32, cum[i] * scale * 100],
+    [3, U8, t.hr?.[i] > 0 ? t.hr[i] : null], [4, U8, t.cad?.[i] > 0 ? Math.min(254, t.cad[i]) : null], [7, U16, t.pow?.[i] > 0 ? t.pow[i] : null]]));
+  message(21, [[253, U32, end], [0, ENUM, 0], [1, ENUM, 4]]);                           // event: Stopp
+  // Runden: die der Uhr – sonst eine über alles
+  const total = Math.max(1, Math.round(end - start));
+  const edges = [0, ...(t.marks ?? []).filter((x) => x > 0 && x < total), total];
+  const at = (sec) => { let i = 1; while (i < times.length - 1 && times[i] < sec) i += 1; const a = times[i - 1] ?? 0, b = times[i] ?? a; return (cum[i - 1] ?? 0) + (b > a ? Math.min(1, Math.max(0, (sec - a) / (b - a))) : 0) * ((cum[i] ?? 0) - (cum[i - 1] ?? 0)); };
+  for (let n = 1; n < edges.length; n += 1) {
+    const [a, b] = [edges[n - 1], edges[n]];
+    message(19, [[254, U16, n - 1], [253, U32, start + b], [2, U32, start + a], [7, U32, (b - a) * 1000], [8, U32, (b - a) * 1000],
+      [9, U32, (at(b) - at(a)) * scale * 100], [0, ENUM, 9], [1, ENUM, 1], [25, ENUM, sport]]);
+  }
+  const [hrAvg, hrMax] = stat('hr'), [cadAvg, cadMax] = stat('cad');
+  message(18, [[254, U16, 0], [253, U32, end], [2, U32, start], [7, U32, total * 1000], [8, U32, (t.moving || total) * 1000], [9, U32, (t.length ?? dist) * 100],
+    [5, ENUM, sport], [6, ENUM, 0], [16, U8, hrAvg], [17, U8, hrMax], [18, U8, cadAvg], [19, U8, cadMax], [25, U16, 0], [26, U16, edges.length - 1], [0, ENUM, 8], [1, ENUM, 1]]);
+  message(34, [[253, U32, end], [0, U32, total * 1000], [1, U16, 1], [2, ENUM, 0], [3, ENUM, 26], [4, ENUM, 1]]);   // activity
+
+  const head = [14, 0x20, 0x54, 0x08, out.length & 0xff, (out.length >> 8) & 0xff, (out.length >> 16) & 0xff, (out.length >>> 24) & 0xff, 0x2e, 0x46, 0x49, 0x54];
+  const hc = crc16(head, 0, 12);
+  const bytes = new Uint8Array(14 + out.length + 2);
+  bytes.set([...head, hc & 0xff, hc >> 8], 0);
+  bytes.set(out, 14);
+  const fc = crc16(bytes, 0, 14 + out.length);
+  bytes[14 + out.length] = fc & 0xff; bytes[15 + out.length] = fc >> 8;
+  return bytes;
 }

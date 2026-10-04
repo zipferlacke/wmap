@@ -16,13 +16,22 @@ while ((lon - 9.90) * 69500 < 6300) {
 const t = { ...buildTrack(pts, { kind: 'gpx', profile: 'foot', name: 'Testlauf' }), id: 'wtest1', marks: [600, 1500] };
 await tracks.put(t);
 const back = parseGpx(trackGpx(t))[0];
-return { n: t.times.length, hr: !!t.hr, cad: !!t.cad, gpxHr: !!back.hr, gpxCad: !!back.cad, gpxMarks: back.marks };
+// Als FIT geschrieben und wieder gelesen: dieselben Punkte, Messwerte, Runden und die Art
+const { trackFit, parseFit } = await import('./js/data/fit.js');
+const mean = (a) => { const v = (a ?? []).filter((x) => x > 0); return v.length ? Math.round(v.reduce((x, y) => x + y, 0) / v.length) : 0; };
+const bytes = trackFit({ ...t, sport: 'rowing' });
+const fit = parseFit(bytes.buffer, 'Testlauf.fit')[0];
+const fitBack = { size: bytes.length, start: fit.start === t.start, end: fit.end === t.end, km: Math.abs(fit.length - t.length) < t.length * 0.02, hr: [mean(t.hr), mean(fit.hr)], cad: [mean(t.cad), mean(fit.cad)], marks: fit.marks, sport: fit.sport };
+return { n: t.times.length, hr: !!t.hr, cad: !!t.cad, gpxHr: !!back.hr, gpxCad: !!back.cad, gpxMarks: back.marks, fit: fitBack };
 """
 
 with Browser(width=420, height=900) as b:
     b.open('wege.html', wait=3)
-    print('Weg angelegt:', b.d.execute_async_script(
-        'const done = arguments[0]; (async () => {' + MAKE + '})().then(done, (e) => done(String(e)))'))
+    made = b.d.execute_async_script(
+        'const done = arguments[0]; (async () => {' + MAKE + '})().then(done, (e) => done(String(e) + e.stack))')
+    print('Weg angelegt:', made)
+    f = made['fit'] if isinstance(made, dict) else {}
+    print('ok    ' if f and f['start'] and f['end'] and f['km'] and f['hr'][0] == f['hr'][1] and abs(f['cad'][0] - f['cad'][1]) <= 1 and f['marks'] == [600, 1500] and f['sport'] == 'rowing' else 'FALSCH', 'FIT schreiben und lesen: Start, Ende, Länge, Puls, Frequenz, Runden und Art stimmen')
     b.open('wege.html?id=wtest1', wait=5)
     tabs = b.js("return [...document.querySelectorAll('.weg-chart-tabs .chip')].map(c => c.innerText.trim() + (c.getAttribute('aria-pressed') === 'true' ? ' *' : ''))")
     print('Diagramme:', tabs)
