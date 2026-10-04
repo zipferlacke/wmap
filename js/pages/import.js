@@ -30,6 +30,7 @@ import { esc } from '../core/geo.js';
 import { tracks, parseGpx, sameTrack, bulk } from '../data/tracks.js';
 import { gain, enrich } from '../data/duplicates.js';
 import { cadName } from '../data/track-look.js';
+import { devLog } from '../core/devlog.js';
 import { encodeShare } from '../data/store.js';
 import { tourFromGpx } from '../data/folder.js';
 
@@ -48,6 +49,8 @@ const valueName = (t, k) => ({ hr: 'Puls', cad: cadName(t), pow: 'Leistung' }[k]
 
 /** Neue Dateien ({ name, text }) aufnehmen und prüfen */
 export async function addFiles(list) {
+  const t0 = performance.now();
+  devLog(`GPX öffnen: ${list.length} Datei(en)`);
   const all = await tracks.all();
   for (const { name, text } of list) {
     const f = { name: name || 'Datei.gpx', text };
@@ -62,8 +65,11 @@ export async function addFiles(list) {
         if (f.dup) f.gain = gain(f.dup, f.track);
       }
     } catch (err) { f.error = err.message; }
+    devLog('  ', f.name, f.error ? `nicht lesbar: ${f.error}` : !f.track ? 'ohne Zeiten' : !f.dup ? 'neu' : f.gain.any ? `ergänzt „${f.dup.name}“: ${more(f)}` : `gibt es schon („${f.dup.name}“), nichts Neues`,
+      f.dup ? `· hier ${f.dup.stub ? 'Karteikarte' : 'ganz'}, Messwerte hier [${(f.dup.stub ? f.dup.has ?? [] : ['hr', 'cad', 'pow'].filter((k) => f.dup[k]?.some((v) => v > 0))).join(',')}], Datei [${['hr', 'cad', 'pow'].filter((k) => f.track?.[k]?.some((v) => v > 0)).join(',')}], Punkte ${f.gain.points.join(' / ')}` : '');
     files.push(f);
   }
+  devLog(`GPX öffnen: geprüft in ${Math.round(performance.now() - t0)} ms`);
   render();
 }
 
@@ -152,6 +158,7 @@ async function take(f) {
   try { full = await tracks.full(dup); } catch (err) { f.note = `Die vorhandene Tour liegt im Ordner – ${err.message}`; return false; }
   f.gain = gain(full, f.track);
   const next = enrich(full, f.track, opt);
+  devLog('Übernehmen:', f.name, '→', `„${full.name}“`, next === full ? 'nichts geändert' : 'ergänzt', opt);
   // Nichts übernommen (z. B. weicht nur der Puls ab und der vorhandene soll bleiben)
   if (next === full) { f.gain = { ...f.gain, any: false }; f.kept = true; return false; }
   await tracks.put({ ...next, updated: Date.now() });

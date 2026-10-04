@@ -85,6 +85,7 @@ import { makeZip, readZip } from './zip.js';
 import { tours, toGpx, coordsOf, shapeOf, local } from './store.js';
 import { simplifyTo, distance } from '../core/geo.js';
 import { connections, mergePlaces, mergeSaved } from './saved.js';
+import { devLog } from '../core/devlog.js';
 
 const kv = store('kv');
 const KEY = 'folder';
@@ -279,7 +280,12 @@ export const folder = {
    */
   async sync({ interactive = false } = {}) {
     if (syncing) return syncing;
-    syncing = run(interactive).finally(() => { syncing = null; });
+    // „Fertig“ erst melden, wenn `busy` nicht mehr gilt: Wer darauf neu zeichnet (pages/sync.js, dashboard.js),
+    // fragt `folder.busy` – vorher gemeldet blieb „Gleiche ab …“ stehen, bis sich sonst etwas tat
+    syncing = run(interactive).finally(() => {
+      syncing = null;
+      dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { done: true } }));
+    });
     dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { busy: true } }));
     return syncing;
   },
@@ -336,7 +342,14 @@ function clocked(be) {
   const t0 = performance.now(), ops = { list: [0, 0], read: [0, 0], write: [0, 0], remove: [0, 0] };
   const wrap = (name) => async (...args) => {
     const t = performance.now();
-    try { return await be[name](...args); } finally { ops[name][0] += 1; ops[name][1] += performance.now() - t; }
+    // Hängt ein Aufruf, steht er im Protokoll, bevor er zurückkommt
+    const stuck = setTimeout(() => devLog(`Ordner: ${name} wartet seit 5 s`, args[0] ?? ''), 5000);
+    try { return await be[name](...args); } finally {
+      clearTimeout(stuck);
+      const ms = performance.now() - t;
+      ops[name][0] += 1; ops[name][1] += ms;
+      if (ms > 1000 || name === 'list') devLog(`Ordner: ${name} ${Math.round(ms)} ms`, args[0] ?? '');
+    }
   };
   return {
     be: { ...be, permission: (...a) => be.permission(...a), list: wrap('list'), read: wrap('read'), write: wrap('write'), remove: wrap('remove') },
@@ -353,22 +366,22 @@ async function run(interactive) {
     // Bis zum Ende „angefangen“: bricht er ab, macht die nächste Seite weiter
     if (!c.pending && !testBackend) { c.pending = true; await persist(); }
     const watch = clocked(be);
+    devLog('Abgleich beginnt');
     const out = await syncAll(c, watch.be);
     out.times = watch.done();
-    console.info('[Ordner] Abgleich', syncTimes(out));
+    devLog('Abgleich fertig:', syncSummary(out), '·', syncTimes(out));
     c.last = Date.now();
     c.result = out;
     c.error = null;
     c.pending = false;
     await persist();
     if (out.imported || out.removed || out.merged || out.settings === 'imported') dispatchEvent(new CustomEvent('wmap:folder', { detail: out }));
-    dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { done: true } }));
     return out;
   } catch (err) {
     c.error = { at: Date.now(), message: String(err?.message ?? err) };
+    devLog('Abgleich abgebrochen:', c.error.message);
     await persist();
     dispatchEvent(new CustomEvent('wmap:folder', { detail: { error: c.error } }));
-    dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { done: true } }));
     throw err;
   } finally {
     progress = null;

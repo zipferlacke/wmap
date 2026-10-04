@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "debug-log",
+  "description": "Nur für die Debug-Fassung: Die Seite darf ins Protokoll schreiben (js/core/devlog.js). Das Log-Plugin gibt es nur dort (src/lib.rs) – die Webversion auf app.wuefl.de bekommt dieses Recht nicht",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "log:default"
+  ]
+}

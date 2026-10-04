@@ -28,6 +28,7 @@ import { ElevationProfile } from '../ui/elevation.js';
 import { tracks, trackCoords, trackGpx, parseGpx, sameTrack, trackAsTour, hasValues, PROFILE_GROUP } from '../data/tracks.js';
 import { sportOf, sportName, sportIcon, sportColor, colorOf, ageOpacity, shownOnMap, trackShow, paceOf, cadName, lapSizes, SPORTS, COLORS } from '../data/track-look.js';
 import { findDuplicates } from '../data/duplicates.js';
+import { devLog } from '../core/devlog.js';
 import { encodeTrack, decodeTrack, without } from '../data/track-share.js';
 import { tours, shapeOf, coordsOf, encodeShare, toGpx, download, local } from '../data/store.js';
 import { metrics, laps, lapLine } from '../data/track-stats.js';
@@ -551,11 +552,13 @@ async function select(id, { push = false } = {}) {
   page.header(card.name || 'Weg', () => showList({ push: true }));
   // Liegt der Weg nur im Ordner (Karteikarte): erst zeigen, was die App weiß, dann alle Punkte holen
   let t = card, missing = '';
+  devLog('Tour geöffnet:', card.name || card.id, card.stub ? '(liegt nur im Ordner)' : '(ganz in der App)');
   if (card.stub) {
     paintTrack(card, 'Hole die Tour aus dem Ordner …');
     const watch = folderWatch();
     try { t = await tracks.full(card, watch.step); } catch (err) { missing = `Punkte und Messwerte liegen im Ordner – ${err.message.replace(/^Der Ordner/, 'der')}.`; }
     const took = watch.done(!missing);
+    devLog(missing || 'Tour geholt.', took, selected !== card ? '– inzwischen etwas anderes gewählt, nicht gezeigt' : '');
     if (selected !== card) return;
     selected = t;
     const before = performance.now();
@@ -568,7 +571,7 @@ async function select(id, { push = false } = {}) {
   if (folderPaint?.id === t.id) {
     const el = $('.weg-folder span:last-child', content);
     if (el) el.textContent += ` · anzeigen ${secs(performance.now() - folderPaint.before)}`;
-    console.info('[Ordner]', el?.textContent);
+    devLog('Tour gezeigt:', el?.textContent ?? '');
     folderPaint = null;
   }
   showElevation(trackCoords(t), t, (h) => {
@@ -600,6 +603,7 @@ function folderWatch() {
   const timer = setInterval(show, 500);
   return {
     step(name, info = {}) {
+      devLog(`Tour aus dem Ordner: ${name} beginnt`, info.path ?? '', info.sync ? '(Abgleich läuft)' : '');
       steps.push({ name, at: performance.now() });
       if (info.sync) sync = true;
       if (info.kb != null) file = `, ${info.kb} kB`;
@@ -965,7 +969,7 @@ async function openSharedTrack(code) {
   if (folderPaint?.id === t.id) {
     const el = $('.weg-folder span:last-child', content);
     if (el) el.textContent += ` · anzeigen ${secs(performance.now() - folderPaint.before)}`;
-    console.info('[Ordner]', el?.textContent);
+    devLog('Tour gezeigt:', el?.textContent ?? '');
     folderPaint = null;
   }
   showElevation(trackCoords(t), t, (h) => { $('.st-up', content).textContent = h ? `${h.ascent} m` : '–'; paintCharts(t); paintLaps(t); });
