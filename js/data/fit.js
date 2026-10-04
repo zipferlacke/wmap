@@ -3,7 +3,7 @@
  * als GPX trägt es zuverlässig die Frequenz: Zepp schreibt z. B. die Schlagfrequenz beim Rudern nur hier hinein.
  *
  * Gelesen wird nur, was ein Weg braucht: aus den „record“-Meldungen Ort, Zeit, Puls, Frequenz, Leistung, aus
- * „session“ die Sportart. Aufbau der Datei: Kopf, dann Meldungen – eine Definition sagt je Meldungsart, welche
+ * „session“ die Sportart, aus „lap“ die Runden der Uhr. Aufbau der Datei: Kopf, dann Meldungen – eine Definition sagt je Meldungsart, welche
  * Felder in welcher Größe folgen, danach kommen die Daten in genau dieser Form.
  *
  *   parseFit(buffer, name)  → [Weg] wie parseGpx (leer, wenn die Datei keine Strecke hat)
@@ -17,7 +17,7 @@ const TYPES = {
   0: [1, 'getUint8', 0xff], 1: [1, 'getInt8', 0x7f], 2: [1, 'getUint8', 0xff], 3: [2, 'getInt16', 0x7fff], 4: [2, 'getUint16', 0xffff],
   5: [4, 'getInt32', 0x7fffffff], 6: [4, 'getUint32', 0xffffffff], 10: [1, 'getUint8', 0], 11: [2, 'getUint16', 0], 12: [4, 'getUint32', 0], 13: [1, 'getUint8', 0xff],
 };
-const RECORD = 20, SESSION = 18;
+const RECORD = 20, SESSION = 18, LAP = 19;
 // Sportart der FIT-Datei → Art in WMap (track-look.js) und Profil
 const SPORTS = {
   1: ['running', 'foot'], 2: ['biking', 'bike'], 5: ['swimming_open_water', 'foot'], 11: ['walking', 'foot'], 12: ['skiing', 'foot'], 13: ['skiing', 'foot'],
@@ -63,7 +63,7 @@ function messages(buffer, want) {
 }
 
 export function parseFit(buffer, fileName = '') {
-  const m = messages(buffer, [RECORD, SESSION]);
+  const m = messages(buffer, [RECORD, SESSION, LAP]);
   // Feld 253 Zeit, 0 Breite, 1 Länge, 3 Puls, 4 Frequenz, 7 Leistung
   const points = m[RECORD].filter((r) => r[0] !== undefined && r[1] !== undefined && r[253] !== undefined)
     .map((r) => [r[1] * DEG, r[0] * DEG, (r[253] + FIT_EPOCH) * 1000, r[3] ?? 0, r[4] ?? 0, r[7] ?? 0]);
@@ -72,5 +72,10 @@ export function parseFit(buffer, fileName = '') {
   let t = buildTrack(points, { kind: 'gpx', profile: profile ?? 'foot', name });
   if (!t) return [];
   if (sport) t = { ...t, sport };
+  // Runden der Uhr (von Hand gedrückt oder von ihr selbst gesetzt): Feld 253 ist das Ende der Runde. Die letzte
+  // endet mit dem Training – sie ist keine Marke
+  const marks = m[LAP].map((l) => (l[253] === undefined ? null : Math.round(l[253] + FIT_EPOCH - t.start / 1000)))
+    .filter((sec) => sec > 0 && sec < (t.end - t.start) / 1000 - 5).sort((a, b) => a - b);
+  if (marks.length) t = { ...t, marks };
   return [t];
 }

@@ -524,8 +524,10 @@ const top = (a) => { const v = (a ?? []).filter((x) => x > 0); return v.length ?
 
 /** Rundenlänge: gewählt (gemerkt), wenn es sie für die Art gibt – sonst 5 km fürs Rad, 1 km zu Fuß, 500 m auf dem Wasser */
 const lapSize = (t) => {
-  const sizes = lapSizes(t), want = local.get('wmap.lapsize');
-  return sizes.includes(want) ? want : sizes[0] === 1000 && groupKey(t) !== 'foot' && !paceOf(t) ? 5000 : sizes[sizes.length > 2 && sizes[0] < 500 ? 1 : 0];
+  const all = lapSizes(t), want = local.get('wmap.lapsize');
+  if (all.includes(want)) return want;
+  const sizes = all.filter((x) => x !== 'watch');
+  return sizes[0] === 1000 && groupKey(t) !== 'foot' && !paceOf(t) ? 5000 : sizes[sizes.length > 2 && sizes[0] < 500 ? 1 : 0];
 };
 /** „5:12“ bzw. „1:02:03“ */
 const clock = (sec) => {
@@ -785,13 +787,13 @@ function paintLaps(t) {
   box.innerHTML = `<div class="laps-head">
       <h3><span class="msr">flag</span> Runden</h3>
       <div class="chip-row" role="group" aria-label="Länge einer Runde">${lapSizes(t).map((x) => `
-        <button type="button" class="chip" data-lap-size="${x}" aria-pressed="${x === size}">${x < 1000 ? `${x} m` : `${x / 1000} km`}</button>`).join('')}</div>
+        <button type="button" class="chip" data-lap-size="${x}" aria-pressed="${x === size}">${x === 'watch' ? 'Uhr' : x < 1000 ? `${x} m` : `${x / 1000} km`}</button>`).join('')}</div>
     </div>
     <table class="laps-table">
       <thead><tr><th>Runde</th><th>Zeit</th><th>Tempo</th>${hasHr ? '<th>Ø Puls</th>' : ''}${hasUp ? '<th>Anstieg</th>' : ''}</tr></thead>
       <tbody>${r.list.map((l) => `
         <tr data-lap="${l.n}" tabindex="0" class="${l.n === r.fastest ? 'fast' : l.n === r.slowest ? 'slow' : ''}">
-          <td>${l.n}${l.dist < size - 1 ? ` <small>${fmtDistance(l.dist)}</small>` : ''}</td>
+          <td>${l.n}${size === 'watch' || l.dist < size - 1 ? ` <small>${fmtDistance(l.dist)}</small>` : ''}</td>
           <td>${clock(l.time)}</td>
           <td>${tempo(t, l.speed)}${badge(l)}</td>
           ${hasHr ? `<td>${l.hr ?? '–'}</td>` : ''}${hasUp ? `<td>${l.up ?? '–'} m</td>` : ''}
@@ -842,7 +844,7 @@ content.addEventListener('click', (e) => {
   }
   if (pickChart(e)) return;
   const size = e.target.closest('[data-lap-size]')?.dataset.lapSize;
-  if (size) { local.set('wmap.lapsize', Number(size)); showLap(null); paintLaps(t); return; }
+  if (size) { local.set('wmap.lapsize', size === 'watch' ? size : Number(size)); showLap(null); paintLaps(t); return; }
   const row = e.target.closest('tr[data-lap]');
   if (row) {
     const on = !row.classList.contains('shown');

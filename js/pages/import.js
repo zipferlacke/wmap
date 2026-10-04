@@ -114,6 +114,7 @@ function card(f, i) {
 function more(f) {
   const g = f.gain, out = [];
   if (g.add.length) out.push(`${g.add.map((k) => valueName(f.dup, k)).join(', ')} (fehlt hier)`);
+  if (g.marks) out.push('Runden der Uhr (fehlen hier)');
   if (g.shape) out.push(`genauere Strecke (${g.points[1]} statt ${g.points[0]} Punkte)`);
   if (g.differ.length) out.push(`${g.differ.map((k) => valueName(f.dup, k)).join(', ')} weicht ab`);
   return out.join(' · ');

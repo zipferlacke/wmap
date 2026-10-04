@@ -12,10 +12,11 @@ while ((lon - 9.90) * 69500 < 6300) {
   pts.push([lon, 51.53, ms, 120 + Math.round(v * 10), 160 + Math.round(v * 5), 0]);
   lon += v * 10 / 69500; ms += 10000;
 }
-const t = { ...buildTrack(pts, { kind: 'gpx', profile: 'foot', name: 'Testlauf' }), id: 'wtest1' };
+// Runden der Uhr: zwei Marken (nach 10 und 25 Minuten) → drei Runden
+const t = { ...buildTrack(pts, { kind: 'gpx', profile: 'foot', name: 'Testlauf' }), id: 'wtest1', marks: [600, 1500] };
 await tracks.put(t);
 const back = parseGpx(trackGpx(t))[0];
-return { n: t.times.length, hr: !!t.hr, cad: !!t.cad, gpxHr: !!back.hr, gpxCad: !!back.cad };
+return { n: t.times.length, hr: !!t.hr, cad: !!t.cad, gpxHr: !!back.hr, gpxCad: !!back.cad, gpxMarks: back.marks };
 """
 
 with Browser(width=420, height=900) as b:
@@ -50,6 +51,13 @@ with Browser(width=420, height=900) as b:
         'Vollbild: umschalten auf Puls, Knopf bleibt „verlassen“': switched == [True, True, 'hr', 'Vollbild verlassen', 'Puls', True],
         'Vollbild: zu per Knopf – Diagramm und Umschalter zurück im Blatt, Auswahl bleibt': closed == [False, False, 'hr', 'Vollbild', 'Puls', False],
         'Vollbild: geht danach wieder auf, zu per Esc': again[:2] == [True, True] and esc == closed,
+    }.items():
+        print('ok    ' if ok else 'FALSCH', name)
+    b.js("document.querySelector('[data-lap-size=watch]').click()")
+    watch = b.js("return [[...document.querySelectorAll('[data-lap-size]')].map(c => c.innerText.trim()), [...document.querySelectorAll('.laps-table tbody tr')].map(r => r.innerText.replace(/\\s+/g, ' ').split(' ').slice(0, 4).join(' '))]")
+    print('Runden der Uhr:', watch)
+    for name, ok in {
+        'Runden der Uhr: Auswahl „Uhr“ steht vorn, drei Runden mit Strecke und Zeit (10:00, 15:00, Rest)': watch[0][0] == 'Uhr' and len(watch[1]) == 3 and '10:00' in watch[1][0] and '15:00' in watch[1][1] and 'km' in watch[1][0],
     }.items():
         print('ok    ' if ok else 'FALSCH', name)
     for size in [1000, 2000, 5000]:

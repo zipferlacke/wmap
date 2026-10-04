@@ -88,6 +88,7 @@ const meanOf = (t, k) => { const v = (t[k] ?? []).filter((x) => x > 0); return v
  *   add     Messwerte, die hier fehlen (kommen ohne Rückfrage dazu)
  *   differ  Messwerte, die beide haben und die sich unterscheiden (Schnitt über 3 %) – Rückfrage
  *   shape   die Datei hat die genauere Strecke (mindestens anderthalbmal so viele Punkte) – Rückfrage
+ *   marks   die Datei hat Runden der Uhr, die hier fehlen (kommen dazu)
  *   points  [hier, Datei]
  */
 export function gain(keep, file) {
@@ -99,7 +100,9 @@ export function gain(keep, file) {
   });
   const points = [pointCount(keep), pointCount(file)];
   const shape = points[1] >= points[0] * 1.5 && points[1] - points[0] >= 20;
-  return { add, differ, shape, points, any: add.length > 0 || differ.length > 0 || shape };
+  // Runden der Uhr, die hier fehlen
+  const marks = !keep.marks?.length && file.marks?.length > 0;
+  return { add, differ, shape, marks, points, any: add.length > 0 || differ.length > 0 || shape || marks };
 }
 
 const MEASURED = ['start', 'end', 'length', 'moving', 'top', 'shape', 'times', 'bbox'];
@@ -114,7 +117,8 @@ const MEASURED = ['start', 'end', 'length', 'moving', 'top', 'shape', 'times', '
 export function enrich(keep, file, { shape = false, values = false } = {}) {
   const g = gain(keep, file);
   if (!shape || !g.shape) {
-    const out = merge(keep, file);
+    let out = merge(keep, file);
+    if (g.marks) out = { ...out, marks: file.marks };
     return values && g.differ.length ? withValuesFrom(out, file) : out;
   }
   let out = { ...keep };
@@ -127,6 +131,8 @@ export function enrich(keep, file, { shape = false, values = false } = {}) {
     if (v) out[k] = v;
   }
   if (!out.description && file.description) out = { ...out, description: file.description };
+  // Runden der Datei gelten mit ihrer Zeit; hat sie keine, bleiben die von hier (gleicher Start)
+  if (file.marks?.length) out.marks = file.marks;
   return out;
 }
 

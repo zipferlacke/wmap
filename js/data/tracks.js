@@ -516,6 +516,8 @@ export function parseGpx(text, profile = null) {
       const meta = { sport: attr('sport'), color: /^#[0-9a-f]{6}$/i.test(attr('color') ?? '') ? attr('color') : undefined,
         hidden: attr('hidden') === '1' ? true : attr('hidden') === '0' ? false : undefined, from: attr('from'), to: attr('to') };
       one = { ...one, kind, ...Object.fromEntries(Object.entries(meta).filter(([, v]) => v !== undefined)), ...(Object.keys(src).length ? { source: src } : {}) };
+      const marks = (attr('marks') ?? '').split(',').map(Number).filter((x) => Number.isFinite(x) && x > 0);
+      if (marks.length) one = { ...one, marks };
       // Gemessenes nur, wenn die Datei noch die Punkte hat, zu denen die Werte gehören
       if (num('points') === points.length) one = { ...one, length: num('length') ?? one.length, moving: num('moving') ?? one.moving, top: num('top') ?? one.top };
     }
@@ -541,7 +543,9 @@ export function trackGpx(t) {
   // daneben – sonst wäre er auf dem nächsten Gerät kürzer und nur noch „GPX“
   const attrs = { points: coords.length, kind: t.kind, length: t.length, moving: t.moving, top: t.top, app: t.source?.app, type: t.source?.type,
     // Art, Farbe, aus-/eingeblendet, Start und Ziel – auf allen Geräten gleich
-    sport: t.sport, color: t.color, hidden: t.hidden === true ? 1 : t.hidden === false ? 0 : undefined, from: t.from, to: t.to };
+    sport: t.sport, color: t.color, hidden: t.hidden === true ? 1 : t.hidden === false ? 0 : undefined, from: t.from, to: t.to,
+    // Runden der Uhr: Sekunden ab Start, an denen eine Runde endete
+    marks: t.marks?.length ? t.marks.join(',') : undefined };
   const own = `<extensions><wmap:track ${Object.entries(attrs).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => `${k}="${esc(v)}"`).join(' ')}/></extensions>`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="WMap" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" xmlns:wmap="https://app.wuefl.de/wmap/gpx">

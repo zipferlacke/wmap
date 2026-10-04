@@ -73,9 +73,19 @@ function ascentBetween(ele, from, to, scale) {
   return Math.round(up);
 }
 
+/** Stelle (m) zur Zeit `sec` (s ab Start) – linear zwischen den Punkten */
+function distAt({ cum, times }, sec) {
+  let i = 1;
+  while (i < times.length - 1 && times[i] < sec) i += 1;
+  const a = times[i - 1], b = times[i];
+  const f = b > a ? Math.min(1, Math.max(0, (sec - a) / (b - a))) : 0;
+  return cum[i - 1] + f * (cum[i] - cum[i - 1]);
+}
+
 /**
  * Runden zu je `size` Metern. Die letzte ist meist kürzer – sie zählt für
  * schnellste/langsamste nur, wenn sie mindestens halb so lang ist.
+ * `size` 'watch': die Runden der Uhr (t.marks – Sekunden ab Start, an denen eine Runde endete).
  * @param ele  Höhenprofil { elevation: [[km, m]], length (m) } oder null
  * → { list: [{ n, from, to, dist, time, speed (m/s), hr, up }], fastest, slowest }
  */
@@ -83,11 +93,17 @@ export function laps(t, size, ele = null) {
   const b = base(t);
   if (!b) return null;
   const total = b.cum.at(-1);
-  if (total < size * 0.5) return null;
+  const watch = size === 'watch';
+  if (watch ? !t.marks?.length : total < size * 0.5) return null;
   const scale = ele?.length ? ele.length / total : 1;
+  // Grenzen in Metern: gleichmäßig – oder dort, wo die Uhr die Runde beendet hat
+  const edges = [0];
+  if (watch) for (const sec of t.marks) { const m = distAt(b, sec); if (m > edges.at(-1) + 1 && m < total - 1) edges.push(m); }
+  else for (let m = size; m < total - 1; m += size) edges.push(m);
+  edges.push(total);
   const list = [];
-  for (let from = 0, n = 1; from < total - 1; from += size, n += 1) {
-    const to = Math.min(total, from + size);
+  for (let n = 1; n < edges.length; n += 1) {
+    const from = edges[n - 1], to = edges[n];
     const time = timeAt(b, to) - timeAt(b, from);
     const hrs = t.hr ? t.hr.filter((v, i) => v > 0 && b.cum[i] >= from && b.cum[i] <= to) : [];
     list.push({
@@ -97,7 +113,7 @@ export function laps(t, size, ele = null) {
       up: ele?.elevation?.length ? ascentBetween(ele.elevation, from, to, scale) : null,
     });
   }
-  const full = list.filter((l) => l.dist >= size * 0.5 && l.speed);
+  const full = list.filter((l) => (watch || l.dist >= size * 0.5) && l.speed);
   const by = (cmp) => (full.length > 1 ? full.reduce((a, x) => (cmp(x.speed, a.speed) ? x : a)).n : null);
   return { list, fastest: by((x, a) => x > a), slowest: by((x, a) => x < a) };
 }

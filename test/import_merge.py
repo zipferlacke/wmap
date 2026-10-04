@@ -21,7 +21,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const asFile = (pts, name) => trackGpx({ ...buildTrack(pts, { kind: 'gpx', profile: 'foot', name, keepAll: true }), id: 'x' + name }).replace(/<keywords>[^<]*<\/keywords>/, '').replace(/<wmap:track[^>]*\/>/, '');
   const N = 401;
   const mean = (a) => { const v = (a ?? []).filter((x) => x > 0); return v.length ? Math.round(v.reduce((x, y) => x + y, 0) / v.length) : 0; };
-  const info = async (id) => { const t = await tracks.get(id); return t && { name: t.name, sport: t.sport ?? null, color: t.color ?? null, pts: t.times.length, hr: mean(t.hr), cad: mean(t.cad), km: Math.round(t.length) }; };
+  const info = async (id) => { const t = await tracks.get(id); return t && { name: t.name, sport: t.sport ?? null, color: t.color ?? null, pts: t.times.length, hr: mean(t.hr), cad: mean(t.cad), km: Math.round(t.length), ...(t.marks ? { marks: t.marks } : {}) }; };
   // A: hier grob (jeder 10. Punkt), mit Puls, ohne Frequenz – Datei: alle Punkte, Puls gleich, Frequenz
   await tracks.putQuiet({ ...buildTrack(mk(3, N, 10, () => [120, 0, 0]), { kind: 'health', profile: 'foot', name: 'Meine Ruderrunde', keepAll: true }), id: 'mA', sport: 'rowing', color: '#ae3ec9' });
   // B: gleiche Punkte, Puls hier 120 – Datei 140
@@ -66,6 +66,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     for (const [lon, lat, ms, hr, cad] of pts) { u8(0); u32(Math.round(ms / 1000) - 631065600); u32(Math.round(lat * 2 ** 31 / 180)); u32(Math.round(lon * 2 ** 31 / 180)); u8(hr); u8(cad || 255); }
     // Definition lokal 1: session (18) – Sportart
     u8(0x41); u8(0); u8(0); u16(18); u8(1); [5, 1, 0].forEach(u8); u8(1); u8(sport);
+    // Definition lokal 2: lap (19) – Ende der Runde; zwei Runden: Mitte und Schluss
+    u8(0x42); u8(0); u8(0); u16(19); u8(1); [253, 4, 0x86].forEach(u8);
+    for (const ms of [pts[Math.floor(pts.length / 2)][2], pts.at(-1)[2]]) { u8(2); u32(Math.round(ms / 1000) - 631065600); }
     const head = [14, 0x20, 0, 0, bytes.length & 255, (bytes.length >> 8) & 255, (bytes.length >> 16) & 255, 0, 0x2e, 0x46, 0x49, 0x54, 0, 0];
     return new Uint8Array([...head, ...bytes, 0, 0]).buffer;
   };
@@ -100,7 +103,7 @@ with Browser(width=420, height=900) as b:
         '3. B: abweichender Puls bleibt der vorhandene': B1 == B0,
         '4. D unverändert, die neue Datei ist gespeichert, sonst kein Eintrag mehr': r['after']['D'] == r['before']['D'] and r['after']['neu'] and r['after']['n'] == r['before']['n'] + 1,
         '4. danach: Karten zeigen „Ergänzt“ bzw. „Gespeichert“': [c.split(' ', 1)[1] for c in r['cardsAfter']] == ['Ergänzt – ansehen', 'Gibt es schon – ansehen', 'Gespeichert – ansehen', 'Gibt es schon – ansehen'],
-        '6. FIT-Datei: Schlagfrequenz kommt in die vorhandene Tour (Strecke bleibt, Frage steht auf nein)': 'Schlagfrequenz (fehlt hier)' in r['fitCards'][0] and r['F']['cad'] == 28 and r['F']['pts'] == 41 and r['F']['sport'] == 'rowing',
+        '6. FIT-Datei: Schlagfrequenz kommt in die vorhandene Tour (Strecke bleibt, Frage steht auf nein)': 'Schlagfrequenz (fehlt hier)' in r['fitCards'][0] and 'Runden der Uhr (fehlen hier)' in r['fitCards'][0] and r['F']['cad'] == 28 and r['F']['pts'] == 41 and r['F']['sport'] == 'rowing' and r['F'].get('marks') == [1000],
         '6. neue FIT-Datei: gespeichert als Rudern mit Puls und Frequenz': 'Als aufgezeichnete Tour speichern' in r['fitCards'][1] and r['fitNew'] == {'sport': 'rowing', 'cad': 30, 'hr': 130},
         '5. Strecke nein: Frequenz kommt dazu, Punkte und Kilometer bleiben': E1['cad'] == 26 and E1['pts'] == E0['pts'] == 41 and E1['km'] == E0['km'],
     }
