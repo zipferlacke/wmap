@@ -19,10 +19,12 @@ const back = parseGpx(trackGpx(t))[0];
 // Als FIT geschrieben und wieder gelesen: dieselben Punkte, Messwerte, Runden und die Art
 const { trackFit, parseFit } = await import('./js/data/fit.js');
 const mean = (a) => { const v = (a ?? []).filter((x) => x > 0); return v.length ? Math.round(v.reduce((x, y) => x + y, 0) / v.length) : 0; };
+const { encodeTrack, decodeTrack } = await import('./js/data/track-share.js');
+const linkMarks = (await decodeTrack(await encodeTrack(t))).marks;
 const bytes = trackFit({ ...t, sport: 'rowing' });
 const fit = parseFit(bytes.buffer, 'Testlauf.fit')[0];
 const fitBack = { size: bytes.length, start: fit.start === t.start, end: fit.end === t.end, km: Math.abs(fit.length - t.length) < t.length * 0.02, hr: [mean(t.hr), mean(fit.hr)], cad: [mean(t.cad), mean(fit.cad)], marks: fit.marks, sport: fit.sport };
-return { n: t.times.length, hr: !!t.hr, cad: !!t.cad, gpxHr: !!back.hr, gpxCad: !!back.cad, gpxMarks: back.marks, fit: fitBack };
+return { n: t.times.length, hr: !!t.hr, cad: !!t.cad, gpxHr: !!back.hr, gpxCad: !!back.cad, gpxMarks: back.marks, linkMarks, fit: fitBack };
 """
 
 with Browser(width=420, height=900) as b:
@@ -32,6 +34,7 @@ with Browser(width=420, height=900) as b:
     print('Weg angelegt:', made)
     f = made['fit'] if isinstance(made, dict) else {}
     print('ok    ' if f and f['start'] and f['end'] and f['km'] and f['hr'][0] == f['hr'][1] and abs(f['cad'][0] - f['cad'][1]) <= 1 and f['marks'] == [600, 1500] and f['sport'] == 'rowing' else 'FALSCH', 'FIT schreiben und lesen: Start, Ende, Länge, Puls, Frequenz, Runden und Art stimmen')
+    print('ok    ' if isinstance(made, dict) and made['linkMarks'] == [600, 1500] and made['gpxMarks'] == [600, 1500] else 'FALSCH', 'Runden der Uhr gehen im geteilten Link und in der GPX-Datei mit')
     b.open('wege.html?id=wtest1', wait=5)
     tabs = b.js("return [...document.querySelectorAll('.weg-chart-tabs .chip')].map(c => c.innerText.trim() + (c.getAttribute('aria-pressed') === 'true' ? ' *' : ''))")
     print('Diagramme:', tabs)
