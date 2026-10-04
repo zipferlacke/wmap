@@ -71,7 +71,7 @@ localStorage.setItem('wmap.tracks.keep', '"all"');
   // 3. Abgleich ohne Änderung (wie der stille beim Öffnen der Seite): danach steht „Letzter Abgleich“, nicht mehr „Gleiche ab …“
   await folder.sync();
   await new Promise((r) => setTimeout(r, 200));
-  out.idle = [!!document.querySelector('.folder-progress'), [...document.querySelectorAll('.sync-status')].some((x) => /Letzter Abgleich/.test(x.innerText)), /Dauer:/.test(document.querySelector('.sync').innerText)];
+  out.idle = [!!document.querySelector('.folder-progress'), [...document.querySelectorAll('.sync-status')].some((x) => /Letzter Abgleich/.test(x.innerText))];
   await folder.disconnect();
   await new Promise((r) => setTimeout(r, 300));
   out.without = buttons();
@@ -197,7 +197,7 @@ with Browser(width=420, height=900) as b:
     print(json.dumps(r, ensure_ascii=False, indent=1))
     ok = isinstance(r, dict) and r['err'] == 'Seite gewechselt' and r['events'] > 5 and r['partial'] \
         and r['secondReads'] < 40 and r['count'] == 60 and r['done'] and r['pendingAfter'] is False \
-        and r['busyText'] and '%' in r['busyText'] and not r['backupSection'] and r['idle'] == [False, True, True] \
+        and r['busyText'] and '%' in r['busyText'] and not r['backupSection'] and r['idle'] == [False, True] \
         and r['withFolder'] == ['Jetzt abgleichen', 'Ordner ändern', 'Exportieren (ZIP)', 'Trennen'] \
         and r['without'] == ['Ordner synchronisieren', 'Aus Ordner importieren', 'Exportieren (ZIP)']
     print('Abgleich stimmt:', ok)

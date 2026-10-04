@@ -563,17 +563,14 @@ async function select(id, { push = false } = {}) {
     devLog(missing || 'Tour geholt.', took, selected !== card ? '– inzwischen etwas anderes gewählt, nicht gezeigt' : '');
     if (selected !== card) return;
     selected = t;
-    const before = performance.now();
-    paintTrack(t, missing ? `${missing} ${took}` : took);
-    folderPaint = { id: t.id, before };
-  } else paintTrack(t, missing);
+    folderPaint = { id: t.id, before: performance.now(), took };
+  }
+  paintTrack(t, missing);
   if (t.stub) return;
   paintCharts(t);
   paintLaps(t);
   if (folderPaint?.id === t.id) {
-    const el = $('.weg-folder span:last-child', content);
-    if (el) el.textContent += ` · anzeigen ${secs(performance.now() - folderPaint.before)}`;
-    devLog('Tour gezeigt:', el?.textContent ?? '');
+    devLog('Tour gezeigt:', `${folderPaint.took} · anzeigen ${secs(performance.now() - folderPaint.before)}`);
     folderPaint = null;
   }
   showElevation(trackCoords(t), t, (h) => {
@@ -591,18 +588,13 @@ async function select(id, { push = false } = {}) {
   }
 }
 
-/* Zeitmessung beim Holen aus dem Ordner: Der Hinweis nennt, solange gewartet wird, den laufenden Schritt und
-   danach, wie lange jeder gedauert hat – so ist am Gerät zu sehen, wo es hängt. */
+/* Zeitmessung beim Holen aus dem Ordner – nur fürs Protokoll der Debug-Fassung (core/devlog.js): jeder Schritt,
+   bevor er beginnt, und am Ende die Dauer jedes Schritts. In der Ansicht steht davon nichts. */
 let folderPaint = null;
 const secs = (ms) => `${(ms / 1000).toFixed(ms < 9950 ? 1 : 0).replace('.', ',')} s`;
 function folderWatch() {
   const steps = [], t0 = performance.now();
   let sync = false, file = '';
-  const show = () => {
-    const el = $('.weg-folder span:last-child', content), now = steps.at(-1);
-    if (el && now) el.textContent = `Hole die Tour aus dem Ordner … ${now.name}, ${Math.round((performance.now() - t0) / 1000)} s${sync ? ' (der Abgleich läuft gerade)' : ''}`;
-  };
-  const timer = setInterval(show, 500);
   return {
     step(name, info = {}) {
       devLog(`Tour aus dem Ordner: ${name} beginnt`, info.path ?? '', info.sync ? '(Abgleich läuft)' : '');
@@ -611,7 +603,6 @@ function folderWatch() {
       if (info.kb != null) file = `, ${info.kb} kB`;
     },
     done(ok) {
-      clearInterval(timer);
       const end = performance.now();
       const parts = steps.map((s, i) => `${s.name} ${secs((steps[i + 1]?.at ?? end) - s.at)}`);
       return `${ok ? 'Aus dem Ordner in' : 'Versucht'} ${secs(end - t0)}${file}${sync ? ', während der Abgleich lief' : ''}: ${parts.join(' · ')}`;
@@ -981,9 +972,7 @@ async function openSharedTrack(code) {
   paintCharts(t);
   paintLaps(t);
   if (folderPaint?.id === t.id) {
-    const el = $('.weg-folder span:last-child', content);
-    if (el) el.textContent += ` · anzeigen ${secs(performance.now() - folderPaint.before)}`;
-    devLog('Tour gezeigt:', el?.textContent ?? '');
+    devLog('Tour gezeigt:', `${folderPaint.took} · anzeigen ${secs(performance.now() - folderPaint.before)}`);
     folderPaint = null;
   }
   showElevation(trackCoords(t), t, (h) => { $('.st-up', content).textContent = h ? `${h.ascent} m` : '–'; paintCharts(t); paintLaps(t); });
