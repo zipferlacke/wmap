@@ -101,7 +101,7 @@
 import { store } from './db.js';
 import { tracks, trackGpx, parseGpx, sameTrack, backup, restore, bulk, stubOf, fromFile, unstub, hasValues } from './tracks.js';
 import { merge, choices, combine } from './duplicates.js';
-import { parseFit } from './fit.js';
+import { parseFit, trackFit } from './fit.js';
 import { makeZip, readZip } from './zip.js';
 import { tours, toGpx, coordsOf, shapeOf, local } from './store.js';
 import { simplifyTo, distance } from '../core/geo.js';
@@ -461,6 +461,8 @@ function hash(text) {
 
 async function syncAll(c, be, decide = null) {
   const base = '';
+  progress = { i: 0, n: 0, since: Date.now(), what: 'list' };
+  dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { ...progress } }));
   // Bis 2.2: alles lag im Unterordner „WMap“ – eine Ebene hoch
   const listed = await liftOld(c, be, await be.list());
   const at = (path) => listed.find((f) => f.path === path) ?? null;
@@ -521,7 +523,7 @@ async function syncAll(c, be, decide = null) {
    * alle Dateien noch einmal zu lesen (Dateien im Index gelten als bekannt).
    */
   // Erst die Dateien; was danach noch zu schreiben ist, kommt am Ende dazu
-  progress = { i: 0, n: files.length, since: Date.now() };
+  progress = { i: 0, n: files.length, since: Date.now(), what: 'files' };
   let told = 0, saved = Date.now(), shown = 0;
   const step = async () => {
     progress.i += 1;
@@ -1186,24 +1188,38 @@ async function liftOld(c, be, listed) {
   if (Object.keys(c.index ?? {}).some((p) => p.startsWith(OLD))) c.index = strip(c.index);
   if (!listed.some((f) => f.path.startsWith(OLD))) return listed;
   const there = new Set(listed.map((f) => f.path.toLowerCase()));
-  const out = [];
-  for (const f of listed) {
-    if (!f.path.startsWith(OLD)) { out.push(f); continue; }
+  const out = listed.filter((f) => !f.path.startsWith(OLD));
+  const old = listed.filter((f) => f.path.startsWith(OLD));
+  // Mit Fortschritt („Ziehe um … 40 von 243“) und zu viert zugleich – im Cloud-Ordner dauert jede Datei
+  progress = { i: 0, n: old.length, since: Date.now(), what: 'lift' };
+  const tell = () => dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { ...progress } }));
+  tell();
+  const one = async (f) => {
     const to = f.path.slice(OLD.length);
+    let target = to;
     if (there.has(to.toLowerCase())) {
       // Oben liegt schon eine (ein anderes Gerät war schneller): Die Dateien von WMap selbst gibt es einmal,
       // eine Tour bekommt einen freien Namen
-      if (!TOUR_FILE.test(to)) { await be.remove(f.path); continue; }
-      const free = freePath(to, there);
-      there.add(free.toLowerCase());
-      out.push({ path: free, lastModified: await moveFile(be, f.path, free) });
-      continue;
+      if (!TOUR_FILE.test(to)) { await be.remove(f.path); return; }
+      target = freePath(to, there);
     }
-    there.add(to.toLowerCase());
-    const at = await moveFile(be, f.path, to);
-    if (c.index?.[to]) c.index[to] = { ...c.index[to], at };
-    out.push({ path: to, lastModified: at });
-  }
+    there.add(target.toLowerCase());
+    const at = await moveFile(be, f.path, target);
+    if (target === to && c.index?.[to]) c.index[to] = { ...c.index[to], at };
+    out.push({ path: target, lastModified: at });
+  };
+  let next = 0, saved = Date.now();
+  const worker = async () => {
+    while (next < old.length) {
+      const f = old[next]; next += 1;
+      await one(f);
+      progress.i += 1;
+      tell();
+      // Unterwegs merken: Bricht der Umzug ab, kennt der nächste Lauf die schon umgezogenen
+      if (Date.now() - saved > 3000) { saved = Date.now(); await persist(); }
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]);
   return out;
 }
 
@@ -1415,12 +1431,15 @@ async function importFrom(files) {
  * JSON, dazu die vollständige Sicherung (WMap/wmap-sicherung.json – mit allem,
  * was die Dateien nicht fassen). → Blob
  */
-export async function zipBackup() {
+export async function zipBackup({ format = 'gpx' } = {}) {
   const used = new Set();
+  // `format` 'fit': aufgezeichnete Touren als FIT (Format der Sportuhren) – geplante haben keine Zeiten und bleiben GPX.
+  // Wieder einspielen lässt sich beides: Alles steht in wmap-sicherung.json
   const entry = (kind, item) => {
-    const path = freePath(pathOf(kind, item), used);
+    const fit = format === 'fit' && kind === 'track';
+    const path = freePath(fit ? pathOf(kind, item).replace(/\.gpx$/, '.fit') : pathOf(kind, item), used);
     used.add(path.toLowerCase());
-    return { path, data: serialize({ kind, item }), date: new Date(item.updated ?? item.created ?? item.start ?? Date.now()) };
+    return { path, data: fit ? new Uint8Array(trackFit(item)) : serialize({ kind, item }), date: new Date(item.updated ?? item.created ?? item.start ?? Date.now()) };
   };
   const files = [
     ...tours.all().map((t) => entry('tour', t)),

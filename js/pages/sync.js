@@ -46,7 +46,9 @@ const status = (icon, text, cls = '') => `<p class="sync-status ${cls}"><span cl
 
 /** „Gleiche ab … 40 von 96 (42 %) · noch etwa 1 Min.“ */
 function progressText(p) {
-  if (!p?.n) return 'Gleiche ab …';
+  // Was gerade geschieht: erst die Liste des Ordners, dann (einmalig) der Umzug, dann Datei für Datei
+  const what = p?.what === 'lift' ? 'Ziehe aus dem Unterordner „WMap“ um' : 'Gleiche ab';
+  if (!p?.n) return p?.what === 'list' ? 'Lese den Ordner …' : `${what} …`;
   const pct = Math.floor((p.i / p.n) * 100);
   const took = Date.now() - p.since;
   let rest = '';
@@ -54,7 +56,7 @@ function progressText(p) {
     const s = Math.round(((p.n - p.i) * took) / p.i / 1000);
     rest = s < 20 ? ' · gleich fertig' : s < 90 ? ` · noch etwa ${Math.round(s / 10) * 10} s` : ` · noch etwa ${Math.round(s / 60)} Min.`;
   }
-  return `Gleiche ab … ${p.i} von ${p.n} (${pct} %)${rest}`;
+  return `${what} … ${p.i} von ${p.n} (${pct} %)${rest}`;
 }
 const progressBar = (p) => `<div class="sync-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${p?.n ?? 0}" aria-valuenow="${p?.i ?? 0}">
     <i style="width:${p?.n ? Math.round((p.i / p.n) * 100) : 5}%"></i></div>`;
@@ -336,7 +338,17 @@ root.addEventListener('click', async (e) => {
     render();
   }
   if (act === 'backup') {
-    zipBackup().then((blob) => download(`wmap-sicherung-${new Date().toISOString().slice(0, 10)}.zip`, blob, 'application/zip'))
+    const format = await ask({
+      icon: 'folder_zip', title: 'Exportieren als', className: 'stacked',
+      text: 'Alle Touren in einer ZIP-Datei. Aufgezeichnete Touren als GPX (enthält alles, was WMap weiß) oder als FIT (Format der Sportuhren: Punkte, Puls, Frequenz, Leistung, Runden, Sportart). Geplante Touren sind immer GPX.',
+      buttons: [
+        { value: 'gpx', label: 'Aufzeichnungen als GPX', icon: 'draft', primary: true },
+        { value: 'fit', label: 'Aufzeichnungen als FIT', icon: 'watch' },
+        { value: 'no', label: 'Abbrechen' },
+      ],
+    });
+    if (format !== 'gpx' && format !== 'fit') return;
+    zipBackup({ format }).then((blob) => download(`wmap-sicherung-${new Date().toISOString().slice(0, 10)}${format === 'fit' ? '-fit' : ''}.zip`, blob, 'application/zip'))
       .catch((err) => toast(`Sicherung ging nicht: ${err.message}`));
   }
 });

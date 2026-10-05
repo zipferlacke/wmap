@@ -29,8 +29,10 @@ import com.google.android.gms.location.Priority
 
 /**
  * Vordergrund-Dienst mit Benachrichtigung: Solange aufgezeichnet wird, hält er die App am Leben und holt den
- * Standort selbst. Gesammelt wird nur, während die App nicht zu sehen ist (`hidden`) – sonst nimmt die Seite
- * die Punkte wie immer über `watchPosition`. Kommt die App zurück, holt die Seite das Gesammelte ab (`take`).
+ * Standort selbst. Er sammelt immer (ab 2.3.0; `always` in der Antwort von `take_recorded`) – die Seite nimmt
+ * für die Aufzeichnung nur noch seine Punkte und holt sie ab (`take`): alle anderthalb Sekunden, solange sie zu
+ * sehen ist, und beim Zurückkommen. Bis 2.2.0 sammelte er nur, während die App nicht zu sehen war (`hidden`);
+ * die Punkte der Seite und die nachgereichten kamen sich dabei in die Quere (Luftlinie statt Strecke).
  *
  * Die Benachrichtigung zeigt Zeit (läuft von selbst) und Strecke; aufgeklappt hat sie „Pause“/„Weiter“ und
  * „Beenden“. Den Stand (Start, Pausen, Strecke) gibt die Seite vor, solange sie zu sehen ist (`State`);
@@ -82,7 +84,9 @@ class RecordService : Service() {
             .build()
         callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-                if (!hidden || paused) return
+                // Immer sammeln – nicht nur, wenn die App nicht zu sehen ist: Geht nur der Bildschirm an (Sperrbildschirm),
+                // gilt die App schon als „vorn“, die Seite bekommt aber noch nichts. Die Seite holt alles hier ab (take)
+                if (paused) return
                 val before = text()
                 synchronized(points) {
                     for (l in result.locations) {

@@ -37,6 +37,7 @@ import { metrics, laps, lapLine } from '../data/track-stats.js';
 import { PROFILES } from '../core/config.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { share, pageUrl } from '../ui/share.js';
+import { shortLink, resolveShort } from '../data/short-link.js';
 import { tourFromGpx, folder } from '../data/folder.js';
 import { autoSync } from '../data/auto-sync.js';
 import { mapPage } from '../ui/map-page.js';
@@ -940,7 +941,8 @@ async function shareTrack(t) {
   });
   if (how !== 'link') return;
   const facts = [fmtDistance(t.length), fmtDuration(moving(t))].join(' · ');
-  share({ title: t.name || 'Tour', text: `${t.name || 'Tour'} – ${facts}`, url: async () => `${pageUrl('wege.html')}#weg=${await encodeTrack(t, keep)}` }, toast);
+  const code = await encodeTrack(t, keep);
+  share({ title: t.name || 'Tour', text: `${t.name || 'Tour'} – ${facts}`, url: `${pageUrl('wege.html')}#weg=${code}`, short: () => shortLink('weg', code) }, toast);
 }
 
 /** Aufzeichnung herunterladen: als GPX (alles, was WMap zur Tour weiß) oder als FIT (für Garmin, Strava, Zepp & Co.) */
@@ -1307,7 +1309,15 @@ function route() {
 }
 addEventListener('popstate', () => { route(); fitView(); });
 // Geteilte Aufzeichnung geöffnet, während die Seite schon offen ist
-addEventListener('hashchange', () => { if (/^#(weg=|datei$)/.test(location.hash)) { route(); fitView(); } });
+addEventListener('hashchange', async () => {
+  if (/^#k=/.test(location.hash)) await openShort();
+  if (/^#(weg=|datei$)/.test(location.hash)) { route(); fitView(); }
+});
+/** Kurzer Link (#k=…): den Inhalt vom Server holen – danach steht der lange in der Adresse */
+async function openShort() {
+  const r = await resolveShort();
+  if (typeof r === 'string') toast(r);
+}
 
 /* Aus dem Ordner kam etwas dazu oder ging weg */
 addEventListener('wmap:folder', async () => {
@@ -1318,6 +1328,7 @@ addEventListener('wmap:folder', async () => {
 
 await load();
 if (params.get('liste')) await openSharedList(params.get('liste'));
+await openShort();
 route();
 fitView();
 autoSync();

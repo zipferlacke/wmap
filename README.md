@@ -968,7 +968,8 @@ und ohne Server.
   - neue Aufzeichnung → GPX wird zur WMap-Datei unter Jahr/Monat; **FIT bleibt
     FIT** und zieht dorthin. Name, Art und Farbe einer FIT-Tour stehen im
     Verzeichnis (`Inhalt.json`, `meta`), ebenso ihre Kennung – auf allen
-    Geräten dieselbe. Solche Touren bleiben ganz in der App (keine Karteikarte)
+    Geräten dieselbe. Außerhalb der Aufbewahrungszeit liegt in der App nur die
+    Karteikarte, der ganze Weg kommt beim Öffnen aus der FIT-Datei
   - gibt es die Tour schon → zusammenführen mit Haken je Angabe (Strecke,
     Puls, Frequenz, Leistung, Runden; `data/duplicates.js` `choices`/`combine`,
     Dialog `js/ui/merge-ask.js`). Das Ergebnis steht in der WMap-Datei der
@@ -1138,7 +1139,9 @@ in Health Connect WMap → Trainingsrouten „Immer erlauben“). Dazu
 ### Export als ZIP
 
 Dieselbe Ordnung wie im Ordner (GPX, Bus & Bahn, `Lesezeichen.json`), dazu
-`WMap/wmap-sicherung.json` mit allem für die Wiederherstellung. „ZIP wählen“
+`WMap/wmap-sicherung.json` mit allem für die Wiederherstellung. Beim Export
+fragt ein Dialog, ob die aufgezeichneten Touren als GPX oder als FIT in die ZIP
+kommen (`zipBackup({ format })`); geplante Touren sind immer GPX. „ZIP wählen“
 nimmt das ZIP (oder eine alte `.json`); ein ZIP ohne JSON, etwa ein
 gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
 
@@ -1188,6 +1191,15 @@ In der App schickt `js/core/theme.js` beim Start einer Seite zu
 
 ## 16. Teilen, Standort anfragen, Bild in Bild
 
+- **Kurzer Link** (`js/data/short-link.js`, `bEnd/api_share.php`): Der Link
+  einer Aufzeichnung oder Tour ist bei vielen Daten zu lang für manches
+  Chatfeld. Ab 400 Zeichen bietet der Teilen-Dialog „Kurzen Link erstellen“:
+  Der gepackte Inhalt liegt dann 30 Tage unverschlüsselt auf dem WMap-Server
+  (Tabelle `Shares`), der Link trägt nur die Kennung (`wege.html#k=…`,
+  `tour.html#k=…`). Beim Öffnen holt die Seite den Inhalt und setzt den langen
+  Link in die Adresse (`resolveShort`). Ohne Anmeldung, höchstens 40 Links je
+  Herkunft und Tag; Älteres löscht der Server bei jedem Aufruf. Der lange Link
+  ohne Server bleibt die Voreinstellung.
 - **Teilen per Link** – ohne Server, alles steckt in der Adresse: ein Ort,
   „Hier bin ich“ (mit Uhrzeit), eine Route mit Profil und Wegpunkten, eine
   Tour (`tour.html#t=…`), in der Navigation die Ankunftszeit. Die Links

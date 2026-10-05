@@ -31,6 +31,7 @@
  * „Aufzeichnen“ – beides mit dem Recorder unten, der nach einem Absturz
  * oder Neuladen weitermacht.
  */
+import { devLog } from '../core/devlog.js';
 import { local, tours, changed } from './store.js';
 import { store } from './db.js';
 import { geo } from '../core/native.js';
@@ -280,6 +281,9 @@ const MAX_ACCURACY_M = 35;
  * läuft – dann muss der Bildschirm nicht an bleiben. Seine Benachrichtigung zeigt Zeit und Strecke und hat
  * „Pause“/„Weiter“ und „Beenden“: Solange die Seite zu sehen ist, gleicht der Recorder alle anderthalb
  * Sekunden ab (`#sync`) – Pause aus der Benachrichtigung kommt so hier an, „Beenden“ ruft `stopHandlers`.
+ * Ab der App 2.3.0 sammelt der Dienst immer (`always`): Dann zählen für die Aufzeichnung nur seine Punkte, die
+ * der Seite (`add`) bleiben außen vor. Mit der App 2.2.0 sammelt er nur ohne Bild; zurück im Bild warten die
+ * eigenen Punkte, bis das Gesammelte nachgetragen ist (`#catching`).
  */
 class Recorder {
   #live = null;
@@ -293,12 +297,19 @@ class Recorder {
   #dirty = false;      // Pause hier geändert – der Dienst übernimmt sie
   #clearStop = false;
   #timer = null;
+  #always = false;     // App ab 2.3.0: Der Dienst sammelt immer – nur seine Punkte zählen
+  #catching = false;   // zurück im Bild: erst das Gesammelte nachtragen, dann wieder eigene Punkte
+  #held = [];
 
   constructor() {
     const saved = local.get(LIVE);
     if (saved?.points && Date.now() - (saved.points.at(-1)?.[2] ?? saved.started) < 12 * 3600e3) this.#live = saved;
     if (this.#live) this.#background(true);
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.#sync(); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      this.#catching = this.#bg;
+      this.#sync();
+    });
   }
 
   get background() { return this.#bg; }
@@ -338,7 +349,10 @@ class Recorder {
     this.#dirty = true;
     const state = this.#state();
     this.#dirty = false;
+    // Bis zum ersten Abgleich warten die eigenen Punkte (Seite neu geladen, während der Dienst schon sammelt)
+    this.#catching = true;
     this.#bg = await geo.background.start(state);
+    if (!this.#bg) { this.#catching = false; const held = this.#held; this.#held = []; for (const p of held) this.add(p); }
     if (!this.#live) { this.#background(false); return; }
     if (!this.#bg) return;
     this.onBackground?.();
@@ -356,10 +370,18 @@ class Recorder {
     this.#dirty = false;
     const r = await geo.background.sync(state);
     const l = this.#live;
+    if (r) this.#always = !!r.always;
+    // Das Gesammelte zuerst, dann, was die Seite inzwischen selbst bekam – sonst gälte das Gesammelte als „zu alt“
+    // (Luftlinie statt Strecke). Sammelt der Dienst immer, braucht es die eigenen Punkte gar nicht
+    const held = this.#held;
+    this.#held = [];
+    this.#catching = false;
+    const n = r && l ? this.addAll(r.points, true) : 0;
+    if (r?.points?.length) devLog(`Aufzeichnung: ${r.points.length} Punkte vom Dienst, ${n} eingetragen${this.#always ? '' : ' (App sammelt nur ohne Bild)'}`);
+    if (!this.#always) for (const p of held) this.add(p);
     if (!r || !l) return;
     if (cleared) this.#clearStop = false;
-    // Der Dienst sammelt nur außerhalb der Pause – darum auch nachtragen, wenn hier gerade Pause ist
-    const n = this.addAll(r.points, true);
+    // (Der Dienst sammelt nur außerhalb der Pause – darum wird oben auch nachgetragen, wenn hier gerade Pause ist)
     if (!pushed && !this.#dirty && r.paused !== !!l.paused) {
       Object.assign(l, { paused: r.paused, pausedAt: r.pausedAt, pausedMs: r.pausedMs });
       this.#save();
@@ -386,6 +408,10 @@ class Recorder {
 
   /** `time`: wann der Punkt gemessen wurde – für nachgereichte Punkte (sonst: jetzt) */
   add({ point, accuracy, time }) {
+    // Android-App mit Dienst: Die Punkte kommen von ihm (ab 2.3.0 alle; davor die aus der Zeit ohne Bild –
+    // bis sie nachgetragen sind, warten die eigenen)
+    if (this.#bg && this.#always) return;
+    if (this.#bg && this.#catching) { this.#held.push({ point, accuracy, time: time || Date.now() }); return; }
     if (!this.#take({ point, accuracy, time })) return;
     if (++this.#unsaved >= 10) this.#save();
     this.onChange?.();

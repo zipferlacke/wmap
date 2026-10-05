@@ -11,7 +11,8 @@
    ohne Rückfrage; die FIT-Datei bleibt unverändert.
 6. Seite „Sicherung & Synchronisation“: Die Frage „Neue Datei im Ordner“ kommt von selbst (genaueste / einzeln /
    später); „Später“ lässt alles liegen, der Hinweis mit „Neue Dateien ansehen“ bleibt; „Einzeln entscheiden“ →
-   „Übernehmen“. Unbekannte Dateien stehen mit Hinweis da."""
+   „Übernehmen“. Unbekannte Dateien stehen mit Hinweis da.
+7. Export als ZIP: aufgezeichnete Touren als GPX oder als FIT."""
 import json
 import sys
 from common import Browser
@@ -102,6 +103,18 @@ out.neu = neu && { gpx: gpxOf(neu.id) };
 const zeppFull = zepp && await tracks.full(zepp);
 out.zepp = zepp && { stub: !!zepp.stub, gpx: gpxOf(zepp.id), fit: out.files.find((p) => /Zepp neu\.fit$/.test(p)), sport: zeppFull.sport, cad: mean(zeppFull.cad), pts: zeppFull.times.length, marks: zeppFull.marks?.length ?? 0 };
 out.keepA = { name: (await tracks.get('keepA')).name, ...inFile(gpxOf('keepA')), fit: out.files.find((p) => /Meine Ruderrunde\.fit$/.test(p)) ?? null };
+
+// ── 7. Export als ZIP: Aufzeichnungen als GPX oder FIT ──
+const { zipBackup } = await import('./js/data/folder.js');
+const { readZip } = await import('./js/data/zip.js');
+const zipNames = async (format) => {
+  const list = await readZip(await zipBackup({ format }));
+  let fitOk = true;
+  for (const f of list.filter((x) => /\.fit$/.test(x.path))) fitOk = fitOk && new TextDecoder().decode((await f.bytes()).slice(8, 12)) === '.FIT';
+  return { paths: list.map((f) => f.path).filter((p) => p.includes('Aufgezeichnete Touren/')).map((p) => p.split('.').pop()).sort(), fitOk };
+};
+out.zipGpx = await zipNames('gpx');
+out.zipFit = await zipNames('fit');
 
 // ── 4. Noch einmal: nichts zu tun ──
 reads = [];
@@ -209,6 +222,7 @@ with Browser() as b:
         '3. vier Touren, Eingang leer': r['names'] == ['Ganz neu', 'Meine Ruderrunde', 'Schon ganz da', 'Zepp neu'] and r['taken']['inbox'] == [],
         '4. zweiter Abgleich: nichts zu tun, nichts gelesen': r['again']['imported'] == 0 and r['again']['written'] == 0 and r['again']['moved'] == 0 and r['again']['merged'] == 0 and r['againReads'] == 0,
         '5. FIT-Tour umbenannt: Name und Farbe im Verzeichnis, zweites Gerät hat Kennung und Namen, keine Frage': r['meta'] and r['meta']['name'] == 'Rudern am Abend' and r['secondTrack'] == {'name': 'Rudern am Abend', 'color': '#ae3ec9', 'sport': 'rowing'} and r['second']['inbox'] == [] and r['secondCount'] == 4 and r['fitSame'],
+        '7. Export: vier Aufzeichnungen als GPX bzw. als FIT (mit FIT-Kopf)': r['zipGpx']['paths'] == ['gpx'] * 4 and r['zipFit']['paths'] == ['fit'] * 4 and r['zipFit']['fitOk'],
         '2. unbekannte Dateien nach 30 Tagen gelöscht': len(r['brokenBefore']) == 2 and r['brokenAfter'] == [],
     }
 

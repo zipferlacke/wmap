@@ -74,6 +74,7 @@
 "js/data/offline.js",
 "js/data/plugin-folders.js",
 "js/data/saved.js",
+"js/data/short-link.js",
 "js/data/store.js",
 "js/data/trace.js",
 "js/data/track-look.js",

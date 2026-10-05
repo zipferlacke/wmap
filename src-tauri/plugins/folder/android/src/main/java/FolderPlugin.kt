@@ -243,6 +243,7 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     /** Dokument-ID zu einem Pfad; `create`: fehlende Ordner (und die Datei) anlegen */
+    @Synchronized
     private fun resolve(slot: String, tree: Uri, path: String, create: Boolean, mime: String = "application/octet-stream"): String? {
         ids["$slot\u0000$path"]?.let { return it }
         var id = DocumentsContract.getTreeDocumentId(tree)
@@ -386,6 +387,25 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
             val from = resolve(args.slot, t, args.path, false) ?: return@work invoke.reject("Nicht gefunden: ${args.path}", "missing")
             if (resolve(args.slot, t, args.to, false) != null) return@work invoke.reject("Gibt es schon: ${args.to}", "exists")
             val src = DocumentsContract.buildDocumentUriUsingTree(t, from)
+            // Schnell: der Anbieter verschiebt selbst (ein Aufruf statt lesen, schreiben, löschen) – wenn er es kann
+            // und der Name bleibt
+            val fromParts = args.path.split('/'); val toParts = args.to.split('/')
+            if (fromParts.last() == toParts.last()) {
+                try {
+                    val oldDir = if (fromParts.size > 1) resolve(args.slot, t, fromParts.dropLast(1).joinToString("/"), false) else DocumentsContract.getTreeDocumentId(t)
+                    val newDir = if (toParts.size > 1) resolve(args.slot, t, toParts.dropLast(1).joinToString("/"), true, Document.MIME_TYPE_DIR) else DocumentsContract.getTreeDocumentId(t)
+                    val moved = if (oldDir != null && newDir != null) DocumentsContract.moveDocument(resolver, src,
+                        DocumentsContract.buildDocumentUriUsingTree(t, oldDir), DocumentsContract.buildDocumentUriUsingTree(t, newDir)) else null
+                    if (moved != null) {
+                        ids.remove("${args.slot}\u0000${args.path}")
+                        ids["${args.slot}\u0000${args.to}"] = DocumentsContract.getDocumentId(moved)
+                        prune(args.slot, t, args.path)
+                        val at = resolver.query(moved, arrayOf(Document.COLUMN_LAST_MODIFIED), null, null, null)
+                            ?.use { if (it.moveToFirst() && !it.isNull(0)) it.getLong(0) else 0L } ?: 0L
+                        return@work invoke.resolve(JSObject().put("modified", at))
+                    }
+                } catch (e: Exception) { /* kann der Anbieter nicht: kopieren */ }
+            }
             val bytes = resolver.openInputStream(src)!!.use { it.readBytes() }
             val mime = when {
                 args.to.endsWith(".json", true) -> "application/json"
