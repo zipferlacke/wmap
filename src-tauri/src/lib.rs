@@ -54,9 +54,8 @@ pub fn run() {
       // Karten-Links „geo:…“ und (Handy) geteilte Links auf app.wuefl.de/wmap:
       // beim Start und während die App läuft
       if let Some(urls) = app.deep_link().get_current()? {
-        // Für die Seite bereitlegen (pending_link) – und gleich versuchen (am Rechner reicht das)
+        // Für die Seite bereitlegen – sie holt es beim Laden ab (pending_link, js/core/theme.js)
         *app.state::<Pending>().0.lock().unwrap_or_else(|e| e.into_inner()) = link_target(&urls);
-        open_link(app.handle(), &urls);
       }
       let handle = app.handle().clone();
       app.deep_link().on_open_url(move |event| open_link(&handle, &event.urls()));
@@ -153,13 +152,19 @@ fn link_target(urls: &[Url]) -> Option<String> {
   Some(target)
 }
 
-/// Link in der App öffnen (link_target) – während sie läuft
+/// Link in der App öffnen (link_target) – während sie läuft. Die Seite wechselt selbst (`eval`): Das kehrt
+/// sofort zurück. `win.url()` und `navigate` fragen am Handy den Haupt-Thread – auf dem dieser Aufruf schon
+/// läuft: Die App stand 10 s weiß da und stürzte dann ab (wry main_pipe, SendError). Das Ziel liegt zusätzlich
+/// für `pending_link` bereit, falls die Seite gerade erst lädt.
 fn open_link(app: &tauri::AppHandle, urls: &[Url]) {
-  let Some(win) = app.get_webview_window("main") else { return };
-  let Ok(here) = win.url() else { return };
   let Some(target) = link_target(urls) else { return };
-  let Ok(page) = here.join(&target) else { return };
-  let _ = win.navigate(page);
+  *app.state::<Pending>().0.lock().unwrap_or_else(|e| e.into_inner()) = Some(target.clone());
+  let Some(win) = app.get_webview_window("main") else { return };
+  let Ok(rel) = serde_json::to_string(&target) else { return };
+  let _ = win.eval(format!(
+    "(() => {{ const to = new URL({rel}, location.href); window.__TAURI__?.core?.invoke('pending_link').catch(() => {{}}); if (to.href !== location.href) location.assign(to); }})()"
+  ));
+  #[cfg(desktop)]
   let _ = win.set_focus();
 }
 
