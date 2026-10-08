@@ -19,7 +19,8 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   // Wie aus Garmin: mit Zeiten, ohne WMap-Stichwort
   const timed = trackGpx({ ...buildTrack(pts, { kind: 'gpx', profile: 'foot', name: 'Morgenlauf Import' }), id: 'imp-x' }).replace(/<keywords>[^<]*<\/keywords>/, '');
   const plain = toGpx({ name: 'Rundweg ohne Zeiten', profile: 'hike', points: [] }, pts.map(([x, y]) => [x + 0.02, y]));
-  await addFiles([{ name: 'lauf.gpx', text: timed }, { name: 'rundweg.gpx', text: plain }]);
+  // ohne die Frage für alle (ui/import-ask.js) – hier geht es um die Karten
+  await addFiles([{ name: 'lauf.gpx', text: timed }, { name: 'rundweg.gpx', text: plain }], false);
   await wait(200);
   const cards = () => [...document.querySelectorAll('.import section:not(.import-all)')].filter((s) => s.querySelector('h3'))
     .map((s) => ({ title: s.querySelector('h3').innerText.replace(/\s+/g, ' ').trim(), buttons: [...s.querySelectorAll('.sync-actions > .button')].map((b) => [b.innerText.replace(/\s+/g, ' ').trim(), !!b.disabled]) }));

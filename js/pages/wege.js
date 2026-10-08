@@ -11,7 +11,7 @@
  *                  einzelne Wege lassen sich ein- und ausblenden (Auge). Der
  *                  gewählte Weg zeigt Tempo, Höhe und Puls; dort wählt man
  *                  Art und Farbe, „offline verfügbar“ und navigiert ihn
- *                  erneut. GPX-Dateien lassen sich auf die Seite ziehen.
+ *                  erneut. GPX- und FIT-Dateien lassen sich auf die Seite ziehen.
  *   Bus & Bahn     gemerkte Verbindungen (data/saved.js): kommende oben,
  *                  vergangene zugeklappt darunter; im Detail alle Abschnitte
  *
@@ -26,10 +26,12 @@
 import { createMap, showHover } from '../map/map.js';
 import { heightsAlong } from '../services/routing.js';
 import { ElevationProfile } from '../ui/elevation.js';
-import { tracks, trackCoords, trackGpx, parseGpx, sameTrack, trackAsTour, hasValues, PROFILE_GROUP } from '../data/tracks.js';
+import { tracks, trackCoords, trackGpx, sameTrack, trackAsTour, hasValues, PROFILE_GROUP } from '../data/tracks.js';
 import { sportOf, sportName, sportIcon, sportColor, colorOf, ageOpacity, shownOnMap, trackShow, paceOf, cadName, lapSizes, SPORTS, COLORS } from '../data/track-look.js';
 import { findDuplicates, choices, combine } from '../data/duplicates.js';
 import { askMerge } from '../ui/merge-ask.js';
+import { readFiles, fileOf } from '../data/import-files.js';
+import { importAsk, importSummary } from '../ui/import-ask.js';
 import { devLog } from '../core/devlog.js';
 import { encodeTrack, decodeTrack, without } from '../data/track-share.js';
 import { tours, shapeOf, coordsOf, encodeShare, toGpx, download, local } from '../data/store.js';
@@ -38,7 +40,7 @@ import { PROFILES } from '../core/config.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { share, pageUrl, canShareFiles, shareFile } from '../ui/share.js';
 import { shortLink, resolveShort } from '../data/short-link.js';
-import { tourFromGpx, folder } from '../data/folder.js';
+import { folder } from '../data/folder.js';
 import { autoSync } from '../data/auto-sync.js';
 import { mapPage } from '../ui/map-page.js';
 import { carLink, sendToCar } from '../data/car-link.js';
@@ -176,9 +178,9 @@ function showList({ push = false } = {}) {
         : 'Aufgezeichnet: Wege, die du wirklich gefahren oder gelaufen bist – mit Zeit, Tempo und Puls.'}</p>
     ${isBahn || isOrte ? '' : `<div class="wege-tools">${isPlan ? `
       <a class="button" href="./tour.html"><span class="msr">add_road</span> Tour planen</a>
-      <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>` : `
+      <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>` : `
       <a class="button" href="./index.html?action=record"><span class="msr">radio_button_checked</span> Aufzeichnen</a>
-      <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx"></label>`}
+      <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx"></label>`}
     </div>`}
     <form class="wege-search tour-search" role="search" onsubmit="return false">
       <span class="msr">search</span>
@@ -442,30 +444,23 @@ content.addEventListener('mouseover', (e) => {
   const tr = e.target.closest('tr[data-id], tr[data-tour], tr[data-conn]');
   hover(tr?.dataset.id ?? tr?.dataset.tour ?? tr?.dataset.conn ?? null);
 });
-/** GPX-Dateien übernehmen – als aufgezeichnete Wege (`gpx`) oder geplante Touren (`gpx-tour`) */
+/**
+ * GPX- und FIT-Dateien übernehmen (gewählt oder hineingezogen) – als aufgezeichnete Touren (`gpx`) oder geplante
+ * (`gpx-tour`). Aufzeichnungen: mehrere bzw. solche, die es schon gibt, mit der Rückfrage (ui/import-ask.js);
+ * Dateien ohne Zeiten werden geplante Touren.
+ */
 async function importFiles(files, kind) {
   try {
-    let n = 0;
-    if (kind === 'gpx') {
-      let twice = 0;
-      for (const f of files) {
-        for (const t of parseGpx(await f.text())) {
-          if (all.some((x) => sameTrack(x, t))) { twice += 1; continue; }
-          await tracks.put(t);
-          all.push(t);
-          n += 1;
-        }
-      }
-      toast(n ? `${n} ${n === 1 ? 'Weg' : 'Wege'} importiert${twice ? ` (${twice} gab es schon)` : ''}` : twice ? 'Die Wege gibt es schon' : 'In der Datei war kein Weg');
-    } else {
-      for (const f of files) {
-        const t = tourFromGpx(await f.text(), f.name);
-        if (!t) continue;
-        tours.save({ ...t, id: tours.newId(), description: t.description || `Aus ${f.name} importiert` });
-        n += 1;
-      }
-      toast(n ? `${n} ${n === 1 ? 'Tour' : 'Touren'} importiert – mit Originalverlauf` : 'In der Datei war keine Tour');
-    }
+    const read = await readFiles(await Promise.all(files.map((f) => fileOf(f))));
+    const bad = read.filter((f) => f.error).length;
+    const plan = read.filter((f) => !f.error && (kind === 'gpx-tour' || !f.track));
+    for (const f of plan) tours.save({ ...f.tour, id: tours.newId(), description: f.tour.description || `Aus ${f.name} importiert` });
+    const planned = plan.length ? `${plan.length} ${plan.length === 1 ? 'Tour' : 'Touren'} als geplante Tour importiert${kind === 'gpx' ? ' (ohne Zeiten)' : ' – mit Originalverlauf'}` : '';
+    const failed = bad ? `${bad} nicht lesbar` : '';
+    if (kind === 'gpx' && read.some((f) => !f.error && f.track)) {
+      const out = await importAsk(read);
+      toast([out ? importSummary(out) : 'Nichts übernommen', planned, failed].filter(Boolean).join(' · '));
+    } else toast([planned, failed].filter(Boolean).join(' · ') || 'In der Datei war keine Tour');
   } catch (err) { toast(err.message); }
   await load();
   showList();
@@ -479,8 +474,8 @@ content.addEventListener('change', async (e) => {
 });
 
 /*
- * GPX-Dateien auf die Seite ziehen: unter „Geplant“ werden es Touren, sonst
- * aufgezeichnete Wege (wie „GPX importieren“).
+ * GPX- und FIT-Dateien auf die Seite ziehen, eine oder mehrere: unter „Geplant“
+ * werden es Touren, sonst aufgezeichnete Wege (wie „GPX/FIT importieren“).
  */
 const dropHint = Object.assign(document.createElement('div'), { className: 'wege-drop', hidden: true });
 document.body.append(dropHint);
@@ -489,7 +484,7 @@ let dragDepth = 0;
 addEventListener('dragenter', (e) => {
   if (!hasFiles(e)) return;
   dragDepth += 1;
-  dropHint.innerHTML = `<div><span class="msr">upload_file</span><strong>GPX hier ablegen</strong>
+  dropHint.innerHTML = `<div><span class="msr">upload_file</span><strong>GPX oder FIT hier ablegen</strong>
     <small>${tab === 'geplant' ? 'wird als geplante Tour übernommen' : 'wird als aufgezeichnete Tour übernommen'}</small></div>`;
   dropHint.hidden = false;
 });
@@ -500,8 +495,8 @@ addEventListener('drop', async (e) => {
   e.preventDefault();
   dragDepth = 0;
   dropHint.hidden = true;
-  const files = [...e.dataTransfer.files].filter((f) => /\.gpx$/i.test(f.name) || /gpx/.test(f.type));
-  if (!files.length) { toast('Das sind keine GPX-Dateien'); return; }
+  const files = [...e.dataTransfer.files].filter((f) => /\.(gpx|fit)$/i.test(f.name) || /gpx/.test(f.type));
+  if (!files.length) { toast('Das sind keine GPX- oder FIT-Dateien'); return; }
   const plan = tab === 'geplant';
   if (!plan && tab !== 'wege') tab = 'wege';
   await importFiles(files, plan ? 'gpx-tour' : 'gpx');

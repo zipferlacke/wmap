@@ -4,7 +4,7 @@
 //!
 //!   pick                Ordner wählen → { connected, name }
 //!   info                { connected, name }
-//!   list                Dateien (.gpx, .json, .geojson, .js) bis 5 Ebenen tief → { files: [{ path, modified }] }
+//!   list { all }        Dateien (.gpx, .fit, .json, .geojson, .js – mit `all` jede) bis 5 Ebenen tief → { files: [{ path, modified }] }
 //!   read { path }       → { text }
 //!   write { path, text } legt fehlende Ordner an → { modified }
 //!   remove { path }

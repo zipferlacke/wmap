@@ -14,7 +14,7 @@
  *   Gelöscht.json                     was auf einem Gerät gelöscht wurde (ein Jahr)
  *   Kartenausschnitt.json             wo die Karte zuletzt stand (readView/writeView)
  *   Inhalt.json                       Verzeichnis: je Datei ID, Art, Fingerabdruck, Stand
- *   Unbekannte Dateien/                was sich nicht lesen ließ – 30 Tage
+ *   Unbekannte Dateien/                was keine Tour ist oder sich nicht lesen ließ – 30 Tage
  *
  * Alles liegt direkt im gewählten Ordner. Bis 2.2 lag es im Unterordner
  * „WMap“ – der Inhalt zieht beim Abgleich eine Ebene hoch (liftOld), ebenso
@@ -100,7 +100,7 @@
  */
 import { store } from './db.js';
 import { tracks, trackGpx, parseGpx, sameTrack, backup, restore, bulk, stubOf, fromFile, unstub, hasValues } from './tracks.js';
-import { merge, choices, combine } from './duplicates.js';
+import { merge, offers, picksFor, combine } from './duplicates.js';
 import { parseFit, trackFit } from './fit.js';
 import { makeZip, readZip } from './zip.js';
 import { tours, toGpx, coordsOf, shapeOf, local } from './store.js';
@@ -162,7 +162,7 @@ const call = (cmd, args = {}) => core.invoke(`plugin:folder|${cmd}`, args);
 /** In der App: das Plugin „folder“ */
 const nativeBackend = {
   permission: async () => ((await call('info')).connected ? 'granted' : 'gone'),
-  list: async () => (await call('list')).files.map((f) => ({ path: f.path, lastModified: f.modified || 0 })),
+  list: async () => (await call('list', { all: true })).files.map((f) => ({ path: f.path, lastModified: f.modified || 0 })),
   read: async (path) => (await call('read', { path })).text,
   bytes: async (path) => Uint8Array.from(atob((await call('read', { path, binary: true })).data), (c) => c.charCodeAt(0)).buffer,
   write: async (path, text) => (await call('write', { path, text })).modified || 0,
@@ -194,7 +194,7 @@ function handleBackend(root) {
           if (name.startsWith('.')) continue;
           const path = prefix + name;
           if (h.kind === 'directory') { if (depth < 5) await walk(h, `${path}/`, depth + 1); }
-          else if (/\.(gpx|fit|json)$/i.test(name)) out.push({ path, lastModified: (await h.getFile()).lastModified });
+          else out.push({ path, lastModified: (await h.getFile()).lastModified });
         }
       };
       await walk(root, '', 0);
@@ -270,7 +270,7 @@ export const folder = {
     if (!c) return { connected: false };
     const permission = await backendOf(c).permission(false).catch(() => 'gone');
     if (permission === 'gone') { await this.disconnect({ keepStubs: true }); return { connected: false }; }
-    return { connected: true, name: c.name, permission, last: c.last ?? null, result: c.result ?? null, error: c.error ?? null, pending: !!c.pending, inbox: c.inbox ?? [], broken: c.broken ?? {}, native: !!c.native };
+    return { connected: true, name: c.name, permission, last: c.last ?? null, result: c.result ?? null, error: c.error ?? null, pending: !!c.pending, inbox: c.inbox ?? [], broken: c.broken ?? {}, others: c.others ?? [], sweep: c.sweep ?? null, native: !!c.native };
   },
 
   /** Ordner auswählen (braucht einen Klick) und gleich abgleichen. */
@@ -433,10 +433,14 @@ async function run(interactive, decide = null) {
     await persist();
     c.inbox = out.inbox;
     c.broken = out.broken;
+    c.others = out.others;
+    if (decide?.others) c.sweep = decide.others === 'move';
     await persist();
     if (out.imported || out.removed || out.merged || out.settings === 'imported' || out.inbox.length || decide) dispatchEvent(new CustomEvent('wmap:folder', { detail: out }));
     // Neue Dateien, über die noch nicht entschieden ist: fragen (ui/folder-inbox.js)
     if (out.inbox.length && !decide) dispatchEvent(new CustomEvent('wmap:folder-inbox', { detail: { inbox: out.inbox } }));
+    // Andere Dateien (keine Touren), über die noch nie entschieden wurde: einmal fragen
+    if (out.others.length && c.sweep === undefined && !decide) dispatchEvent(new CustomEvent('wmap:folder-others', { detail: { others: out.others } }));
     return out;
   } catch (err) {
     c.error = { at: Date.now(), message: String(err?.message ?? err) };
@@ -509,8 +513,8 @@ async function syncAll(c, be, decide = null) {
   const index = c.index ?? {};
   const next = {};
   const seen = new Set();
-  const used = new Set(files.map((f) => f.path.toLowerCase()));
-  const out = { imported: 0, written: 0, removed: 0, moved: 0, merged: 0, inbox: [], broken };
+  const used = new Set([...files, ...listed.filter((f) => f.path.startsWith(BROKEN_DIR))].map((f) => f.path.toLowerCase()));
+  const out = { imported: 0, written: 0, removed: 0, moved: 0, merged: 0, inbox: [], broken, others: [] };
   const waiting = {};         // neu entdeckt, noch nicht entschieden: Pfad → { at, item }
   const choiceFor = (path) => decide?.files?.[path] ?? decide?.rest ?? null;
   const first = new Map();    // ID → erste Datei dazu { path, ours }
@@ -631,6 +635,18 @@ async function syncAll(c, be, decide = null) {
     broken[target] = Date.now();
   };
 
+  /*
+   * Was keine Tour ist und nicht von WMap (Bilder, PDFs, Tabellen …): nach „Unbekannte Dateien/“ – aber erst,
+   * wenn das einmal bestätigt ist (c.sweep bzw. decide.others = 'move'): Wer einen Ordner mit anderem Inhalt
+   * verbindet, soll ihn nicht ungefragt leergeräumt finden. Bis dahin stehen sie in out.others.
+   */
+  const sweep = decide?.others ? decide.others === 'move' : c.sweep === true;
+  for (const f of listed) {
+    if (!foreign(f.path)) continue;
+    used.add(f.path.toLowerCase());
+    if (sweep) await toBroken(f).catch(() => out.others.push(f.path)); else out.others.push(f.path);
+  }
+
   /** Die FIT-Datei bleibt und steht für den Weg `item` – an ihrem Platz (Jahr/Monat) */
   const stand = async (f, item, text, known = null, data = known?.data) => {
     let path = f.path, at = f.lastModified;
@@ -694,12 +710,11 @@ async function syncAll(c, be, decide = null) {
     const keep = twin.stub ? await fullFrom(twin, null) : twin;
     if (!keep) return;
     // Hat die Datei nur die gröbere Strecke und sonst nichts anderes, gibt es nichts zu fragen
-    const list = choices(keep, t).some((x) => x.on || x.key !== 'shape') ? choices(keep, t) : [];
+    const list = offers(keep, t);
     if (list.length && !go) { park({ path: f.path, file: name, name: t.name, start: t.start, length: t.length, kind: 'merge', keep: { id: keep.id, name: keep.name, sport: keep.sport ?? null, profile: keep.profile ?? null }, list }); return; }
     let item = keep;
     if (list.length) {
-      const picks = typeof choice === 'object' ? choice : Object.fromEntries(list.map((x) => [x.key, x.on]));
-      const merged = combine(keep, t, picks);
+      const merged = combine(keep, t, picksFor(list, choice));
       if (merged !== keep) {
         item = { ...merged, updated: Date.now() };
         await tracks.putQuiet(item);
@@ -1188,6 +1203,10 @@ const TOUR_FILE = /\.(gpx|fit)$/i;
 const isFit = (path) => /\.fit$/i.test(path);
 const BROKEN_DIR = 'Unbekannte Dateien/';
 const BROKEN_KEEP_MS = 30 * DAY_MS;
+// Was WMap selbst in den Ordner schreibt (neben Touren und Verbindungen)
+const OWN_FILES = new Set([MANIFEST, VIEW_FILE, 'Gelöscht.json', 'Lesezeichen.json', 'Gemerkt.json', 'settings.json'].map((n) => n.toLowerCase()));
+/** Weder Tour noch von WMap – gehört nicht in den Ordner */
+const foreign = (path) => !TOUR_FILE.test(path) && !CONN_DIR.test(path) && !OWN_FILES.has(path.toLowerCase()) && !path.startsWith(BROKEN_DIR);
 // Was zu einer FIT-Datei im Verzeichnis steht (die Datei selbst bleibt, wie die Uhr sie schrieb)
 const FIT_META = ['name', 'sport', 'profile', 'color', 'hidden', 'description'];
 
@@ -1223,7 +1242,7 @@ async function liftOld(c, be, listed) {
     if (there.has(to.toLowerCase())) {
       // Oben liegt schon eine (ein anderes Gerät war schneller): Die Dateien von WMap selbst gibt es einmal,
       // eine Tour bekommt einen freien Namen
-      if (!TOUR_FILE.test(to)) { await be.remove(f.path); return; }
+      if (!TOUR_FILE.test(to) && !foreign(to)) { await be.remove(f.path); return; }
       target = freePath(to, there);
     }
     there.add(target.toLowerCase());
@@ -1272,7 +1291,7 @@ function pathOf(kind, item, base = 'WMap/') {
 function freePath(path, used) {
   if (!used.has(path.toLowerCase())) return path;
   for (let n = 2; ; n += 1) {
-    const p = path.replace(/(\.\w+)$/, ` (${n})$1`);
+    const p = /\.\w+$/.test(path) ? path.replace(/(\.\w+)$/, ` (${n})$1`) : `${path} (${n})`;
     if (!used.has(p.toLowerCase())) return p;
   }
 }

@@ -33,7 +33,8 @@ pub fn run() {
   // Weblinks über der App (js/core/links.js): Custom Tab bzw. eigenes Fenster
   let builder = builder.plugin(tauri_plugin_browser::init());
   builder
-    .invoke_handler(tauri::generate_handler![overpass])
+    .manage(Pending::default())
+    .invoke_handler(tauri::generate_handler![overpass, pending_link])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -53,6 +54,8 @@ pub fn run() {
       // Karten-Links „geo:…“ und (Handy) geteilte Links auf app.wuefl.de/wmap:
       // beim Start und während die App läuft
       if let Some(urls) = app.deep_link().get_current()? {
+        // Für die Seite bereitlegen (pending_link) – und gleich versuchen (am Rechner reicht das)
+        *app.state::<Pending>().0.lock().unwrap_or_else(|e| e.into_inner()) = link_target(&urls);
         open_link(app.handle(), &urls);
       }
       let handle = app.handle().clone();
@@ -108,35 +111,55 @@ fn open_page(app: &tauri::AppHandle, page: &str) {
   let _ = win.set_focus();
 }
 
-/// Link in der App öffnen – neben der gerade offenen Seite, eingepackt oder
-/// die Webversion:
+/// Link, mit dem die App gestartet wurde – die Seite holt ihn ab (`pending_link`)
+#[derive(Default)]
+struct Pending(std::sync::Mutex<Option<String>>);
+
+/// Mit einem Link gestartet? → Ziel neben der offenen Seite (z. B. `index.html?geo=…`), einmal.
+/// Am Handy kommt das Umschalten beim Start (open_link aus `setup`) nicht an: Die erste Seite
+/// lädt da noch. Darum fragt jede Seite beim Laden hier nach (js/core/theme.js).
+#[tauri::command]
+fn pending_link(state: tauri::State<Pending>) -> Option<String> {
+  state.0.lock().unwrap_or_else(|e| e.into_inner()).take()
+}
+
+/// Link → Ziel neben der gerade offenen Seite, eingepackt oder die Webversion:
 ///   geo:…                      → `index.html?geo=…` (tauri-start.js reicht
 ///                                `?geo=` beim Wechsel weiter; js/app.js openGeo)
 ///   https://app.wuefl.de/wmap/… → dieselbe Seite samt `?…` und `#…` (geteilte
 ///                                Orte, Routen, Touren, Listen – ui/share.js)
+fn link_target(urls: &[Url]) -> Option<String> {
+  if let Some(link) = urls.iter().find(|u| u.scheme() == "geo") {
+    let mut page = Url::parse("http://x/index.html").ok()?;
+    page.query_pairs_mut().append_pair("geo", link.as_str());
+    return Some(format!("index.html?{}", page.query()?));
+  }
+  let link = urls.iter().find(|u| u.scheme() == "https" && u.host_str() == Some("app.wuefl.de"))?;
+  // Nur Seiten von WMap: „/wmap/tour.html“ → „tour.html“, „/wmap/“ → „index.html“
+  let rest = link.path().strip_prefix("/wmap/")?;
+  let name = if rest.is_empty() { "index.html" } else { rest };
+  if name.contains('/') || !name.ends_with(".html") {
+    return None;
+  }
+  let mut target = name.to_string();
+  if let Some(q) = link.query() {
+    target.push('?');
+    target.push_str(q);
+  }
+  if let Some(f) = link.fragment() {
+    target.push('#');
+    target.push_str(f);
+  }
+  Some(target)
+}
+
+/// Link in der App öffnen (link_target) – während sie läuft
 fn open_link(app: &tauri::AppHandle, urls: &[Url]) {
   let Some(win) = app.get_webview_window("main") else { return };
   let Ok(here) = win.url() else { return };
-  let target = if let Some(link) = urls.iter().find(|u| u.scheme() == "geo") {
-    let Ok(mut page) = here.join("index.html") else { return };
-    page.query_pairs_mut().clear().append_pair("geo", link.as_str());
-    page.set_fragment(None);
-    page
-  } else if let Some(link) = urls.iter().find(|u| u.scheme() == "https" && u.host_str() == Some("app.wuefl.de")) {
-    // Nur Seiten von WMap: „/wmap/tour.html“ → „tour.html“, „/wmap/“ → „index.html“
-    let Some(rest) = link.path().strip_prefix("/wmap/") else { return };
-    let name = if rest.is_empty() { "index.html" } else { rest };
-    if name.contains('/') || !name.ends_with(".html") {
-      return;
-    }
-    let Ok(mut page) = here.join(name) else { return };
-    page.set_query(link.query());
-    page.set_fragment(link.fragment());
-    page
-  } else {
-    return;
-  };
-  let _ = win.navigate(target);
+  let Some(target) = link_target(urls) else { return };
+  let Ok(page) = here.join(&target) else { return };
+  let _ = win.navigate(page);
   let _ = win.set_focus();
 }
 

@@ -114,7 +114,8 @@ pub fn info<R: Runtime>(app: AppHandle<R>, slot: Option<String>) -> Info {
   info_of(root(&app, &slot))
 }
 
-fn walk(dir: &Path, prefix: &str, depth: usize, out: &mut Vec<Entry>) {
+/// `all`: jede Datei – sonst nur, was WMap liest (Touren, JSON, eigene Ebenen)
+fn walk(dir: &Path, prefix: &str, depth: usize, all: bool, out: &mut Vec<Entry>) {
   let Ok(entries) = fs::read_dir(dir) else { return };
   for e in entries.flatten() {
     let name = e.file_name().to_string_lossy().into_owned();
@@ -125,11 +126,11 @@ fn walk(dir: &Path, prefix: &str, depth: usize, out: &mut Vec<Entry>) {
     let rel = format!("{prefix}{name}");
     if path.is_dir() {
       if depth < MAX_DEPTH {
-        walk(&path, &format!("{rel}/"), depth + 1, out);
+        walk(&path, &format!("{rel}/"), depth + 1, all, out);
       }
     } else {
       let lower = name.to_lowercase();
-      if [".gpx", ".fit", ".json", ".geojson", ".js", ".mjs"].iter().any(|e| lower.ends_with(e)) {
+      if all || [".gpx", ".fit", ".json", ".geojson", ".js", ".mjs"].iter().any(|e| lower.ends_with(e)) {
         out.push(Entry { path: rel, modified: modified(&path) });
       }
     }
@@ -137,11 +138,11 @@ fn walk(dir: &Path, prefix: &str, depth: usize, out: &mut Vec<Entry>) {
 }
 
 #[command]
-pub async fn list<R: Runtime>(app: AppHandle<R>, slot: Option<String>) -> Result<Files, String> {
+pub async fn list<R: Runtime>(app: AppHandle<R>, slot: Option<String>, all: Option<bool>) -> Result<Files, String> {
   let root = need_root(&app, &slot)?;
   tauri::async_runtime::spawn_blocking(move || {
     let mut files = Vec::new();
-    walk(&root, "", 0, &mut files);
+    walk(&root, "", 0, all.unwrap_or(false), &mut files);
     Files { files }
   })
   .await

@@ -9,9 +9,13 @@
 4. Zweiter Abgleich: nichts zu tun, nichts gelesen.
 5. FIT-Tour umbenannt: Der Name steht im Verzeichnis – ein zweites Gerät bekommt dieselbe Kennung und den Namen,
    ohne Rückfrage; die FIT-Datei bleibt unverändert.
-6. Seite „Sicherung & Synchronisation“: Die Frage „Neue Datei im Ordner“ kommt von selbst (genaueste / einzeln /
-   später); „Später“ lässt alles liegen, der Hinweis mit „Neue Dateien ansehen“ bleibt; „Einzeln entscheiden“ →
-   „Übernehmen“. Unbekannte Dateien stehen mit Hinweis da.
+6. Seite „Sicherung & Synchronisation“: Die Frage „Neue Datei im Ordner“ kommt von selbst (ja, überall die
+   genaueren / selbst einstellen / später – dieselbe wie beim Wählen und Hineinziehen, ui/import-ask.js); „Später“
+   lässt alles liegen, der Hinweis mit „Neue Dateien ansehen“ bleibt; „Selbst einstellen“: Eine neue Tour kommt
+   ohne weitere Frage. Unbekannte Dateien stehen mit Hinweis da.
+8. Datei zu einer Tour, die es schon gibt: „Selbst einstellen“ → die Haken; Strecke abgewählt, Frequenz kommt dazu.
+9. Andere Dateien (Bild, Text): einmal fragen; „Liegen lassen“ → Hinweis mit „Aufräumen“; danach liegen sie unter
+   „Unbekannte Dateien/“, die nächste geht ohne Frage dorthin.
 7. Export als ZIP: aufgezeichnete Touren als GPX oder als FIT."""
 import json
 import sys
@@ -173,7 +177,7 @@ UI = r"""
     const buttons = () => [...dlg().querySelectorAll('.confirm-actions button')].map((x) => x.innerText.replace(/^\S+\s+/, '').trim());
     const press = (re) => [...dlg().querySelectorAll('.confirm-actions button')].find((x) => re.test(x.innerText)).click();
     const names = async () => (await tracks.all()).map((t) => t.name).filter((n) => n === 'Aus der Uhr');
-    const out = {};
+    const out = {}; window.__o = out;
     await folder.sync();
     await wait(1200);
     out.title = dlg()?.querySelector('.uD-title')?.innerText.replace(/^\S+\s+/, '').trim() ?? null;
@@ -186,20 +190,56 @@ UI = r"""
     out.broken = document.querySelector('.folder-broken')?.innerText.replace(/\s+/g, ' ').trim() ?? null;
     document.querySelector('.folder-inbox [data-act=inbox]').click();
     await wait(800);
-    press(/Einzeln/);
-    await wait(800);
-    out.each = dlg() ? [dlg().innerText.includes('Aus der Uhr'), buttons()] : null;
-    press(/Übernehmen/);
+    // Selbst einstellen: Eine neue Tour kommt ohne weitere Frage dazu
+    press(/Selbst einstellen/);
     await wait(1800);
+    out.eachOpen = !!dlg();
     out.names = await names();
     out.fileGone = !files.has('Meine Sachen/uhr.gpx');
     out.sorted = [...files.keys()].filter((p) => p.endsWith('Aus der Uhr.gpx'));
     out.hintAfter = !!document.querySelector('.folder-inbox');
+    // Datei zu einer Tour, die es schon gibt: selbst einstellen → die Haken (wie beim Import)
+    const mk = (step, cad) => { const p = []; for (let i = 0; i < 401; i += step) p.push([9.91 + i * 0.0003, 51.6 + Math.sin(i / 40) * 0.003, Date.UTC(2026, 5, 20, 7, 0, i * 5), 120, cad, 0]); return p; };
+    await tracks.put({ ...buildTrack(mk(10, 0), { kind: 'health', profile: 'foot', name: 'Schon in der App', keepAll: true }), id: 'inApp' });
+    await folder.sync();
+    // „Später“ von eben gilt für die Sitzung – hier soll die Frage wieder von selbst kommen
+    sessionStorage.removeItem('wmap.folder.inbox.later');
+    files.set('Von der Uhr/genauer.gpx', { text: trackGpx({ ...buildTrack(mk(1, 26), { kind: 'gpx', profile: 'foot', name: 'Zepp genauer', keepAll: true }), id: 'zz' }).replace(/<keywords>[^<]*<\/keywords>/, '').replace(/<wmap:track[^>]*\/>/, ''), modified: clock += 1000 });
+    await folder.sync();
+    await wait(1200);
+    out.mergeAsk = dlg() ? buttons() : null;
+    press(/Selbst einstellen/);
+    await wait(800);
+    out.mergeOne = dlg() ? [dlg().querySelector('.uD-title').innerText.replace(/^\S+\s+/, '').trim(), [...dlg().querySelectorAll('[data-pick]')].map((x) => [x.dataset.pick, x.checked]), buttons()] : null;
+    dlg().querySelector('[data-pick=shape]').checked = false;
+    press(/Zusammenführen/);
+    await wait(1800);
+    // älter als die Aufbewahrungszeit: in der App nur die Karteikarte – ganz aus dem Ordner
+    const merged = await tracks.full(await tracks.get('inApp'));
+    out.merged = { pts: merged.times.length, cad: Math.round(merged.cad?.find((v) => v > 0) ?? 0), name: merged.name, fileGone: !files.has('Von der Uhr/genauer.gpx') };
+    // Andere Dateien (keine Touren): einmal fragen – liegen lassen, später aufräumen; danach ohne Frage
+    files.set('Meine Sachen/foto.jpg', { text: 'JPEG', modified: clock += 1000 });
+    await folder.sync();
+    await wait(1200);
+    out.othersAsk = dlg() ? [dlg().querySelector('.uD-title').innerText.replace(/^\S+\s+/, '').trim(), buttons()] : null;
+    press(/Liegen lassen/);
+    await wait(1500);
+    out.othersKept = [files.has('Meine Sachen/foto.jpg'), document.querySelector('.folder-others')?.innerText.replace(/\s+/g, ' ').trim() ?? null];
+    document.querySelector('.folder-others [data-act=others]').click();
+    await wait(800);
+    press(/Unbekannte Dateien/);
+    await wait(1800);
+    out.othersMoved = [files.has('Meine Sachen/foto.jpg'), files.has('Unbekannte Dateien/foto.jpg'), !!document.querySelector('.folder-others'), document.querySelector('.folder-broken')?.innerText.includes('foto.jpg') ?? false];
+    files.set('notiz.txt', { text: 'Einkaufen', modified: clock += 1000 });
+    await folder.sync();
+    await wait(1200);
+    out.othersQuiet = [!!dlg(), files.has('notiz.txt'), files.has('Unbekannte Dateien/notiz.txt')];
+    await tracks.removeQuiet('inApp');
     for (const t of await tracks.all()) if (t.name === 'Aus der Uhr') await tracks.removeQuiet(t.id);
     sessionStorage.removeItem('wmap.folder.inbox.later');
     await folder.disconnect();
     done(out);
-  } catch (e) { done('FEHLER ' + e + ' ' + e.stack); }
+  } catch (e) { done('FEHLER ' + e + ' ' + e.stack + ' bis dahin: ' + JSON.stringify(window.__o)); }
 })();
 """
 
@@ -235,10 +275,14 @@ with Browser() as b:
     print(json.dumps(u, ensure_ascii=False, indent=1))
     b.shot('folder-drop')
     checks.update({
-        '6. Frage kommt von selbst: genaueste / einzeln / später': u['title'] == 'Neue Datei im Ordner' and u['buttons'] == ['Immer die genauesten Daten', 'Einzeln entscheiden', 'Später'],
+        '6. Frage kommt von selbst: ja, überall die genaueren / selbst einstellen / später': u['title'] == 'Neue Datei im Ordner' and u['buttons'] == ['Ja, überall die genaueren Daten', 'Selbst einstellen', 'Später'],
         '6. „Später“: nichts übernommen, Datei bleibt, Hinweis mit „Neue Dateien ansehen“': u['laterNames'] == [] and u['laterFile'] and u['hint'] and 'uhr.gpx' in u['hint'] and 'Neue Dateien ansehen' in u['hint'],
         '6. unbekannte Datei steht mit Hinweis da': bool(u['broken']) and 'murks.gpx' in u['broken'] and 'Unbekannte Dateien' in u['broken'] and '30 Tage' in u['broken'],
-        '6. einzeln → „Übernehmen“: Tour da, Datei einsortiert, Hinweis weg': bool(u['each']) and u['each'][0] and u['each'][1][0] == 'Übernehmen' and u['names'] == ['Aus der Uhr'] and u['fileGone'] and len(u['sorted']) == 1 and u['sorted'][0].startswith('Aufgezeichnete Touren/2026/06 Juni/') and not u['hintAfter'],
+        '6. selbst einstellen, neue Tour: ohne weitere Frage da, Datei einsortiert, Hinweis weg': not u['eachOpen'] and u['names'] == ['Aus der Uhr'] and u['fileGone'] and len(u['sorted']) == 1 and u['sorted'][0].startswith('Aufgezeichnete Touren/2026/06 Juni/') and not u['hintAfter'],
+        '8. Datei zu vorhandener Tour: dieselbe Frage, dann die Haken (Strecke und Frequenz vorgeschlagen)': u['mergeAsk'] == ['Ja, überall die genaueren Daten', 'Selbst einstellen', 'Später'] and bool(u['mergeOne']) and u['mergeOne'][0] == 'Zusammenführen' and ['shape', True] in u['mergeOne'][1] and ['cad', True] in u['mergeOne'][1] and u['mergeOne'][2] == ['Zusammenführen', 'Später', 'Abbrechen'],
+        '8. Strecke abgewählt: nur die Frequenz kommt dazu, Name bleibt, die hineingelegte Datei ist weg': u['merged'] == {'pts': 41, 'cad': 26, 'name': 'Schon in der App', 'fileGone': True},
+        '9. andere Datei (Bild): einmal fragen; „Liegen lassen“ → bleibt, Hinweis mit „Aufräumen“': u['othersAsk'] == ['Eine andere Datei im Ordner', ['Nach „Unbekannte Dateien“', 'Liegen lassen']] and u['othersKept'][0] and 'foto.jpg' in (u['othersKept'][1] or '') and 'Aufräumen' in (u['othersKept'][1] or ''),
+        '9. „Aufräumen“: liegt unter „Unbekannte Dateien/“ und steht dort im Hinweis; die nächste geht ohne Frage dorthin': u['othersMoved'] == [False, True, False, True] and u['othersQuiet'] == [False, False, True],
     })
     for k, v in checks.items():
         print(('ok    ' if v else 'FALSCH') + ' ' + k)

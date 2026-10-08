@@ -24,7 +24,7 @@ import { folder, zipBackup, restoreZip, importFolder, syncSummary } from '../dat
 import { healthAvailable, healthStatus, healthSync, syncHealth, healthSyncing, appName } from '../services/health.js';
 import { showPermissions } from '../ui/permissions.js';
 import { autoSync } from '../data/auto-sync.js';
-import { offerInbox } from '../ui/folder-inbox.js';
+import { offerInbox, offerOthers } from '../ui/folder-inbox.js';
 import { findDuplicates, removeDuplicates, valueKinds } from '../data/duplicates.js';
 
 const root = document.querySelector('.sync');
@@ -89,15 +89,20 @@ const exportButton = '<button type="button" class="button" data-act="backup"><sp
 const zipLink = `<p class="settings-hint sync-zip">Export als ZIP wieder einspielen:
     <label class="sync-link">ZIP wählen<input type="file" accept=".zip,.json,application/zip,application/json" hidden data-file="restore"></label></p>`;
 
-/** „Unbekannte Dateien“: was sich nicht lesen ließ – selbst nachsehen, nach 30 Tagen löscht WMap sie */
+/** „Unbekannte Dateien“: was keine Tour ist oder sich nicht lesen ließ – selbst nachsehen, nach 30 Tagen löscht WMap sie */
 function brokenHtml(i) {
   const list = Object.entries(i.broken ?? {}).sort((a, b) => a[1] - b[1]);
-  if (!list.length) return '';
+  const reveal = i.native ? '<div class="sync-actions"><button type="button" class="button" data-act="reveal"><span class="msr">folder_open</span> Im Dateimanager öffnen</button></div>' : '';
+  // Andere Dateien, die (noch) liegen bleiben
+  const others = (i.others ?? []).map((p) => p.split('/').pop());
+  const othersHtml = others.length ? `<div class="folder-others">${status('folder_delete', `${others.length === 1 ? 'Eine Datei im Ordner ist keine Tour' : `${others.length} Dateien im Ordner sind keine Touren`} und ${others.length === 1 ? 'bleibt' : 'bleiben'} liegen: ${esc(others.slice(0, 5).join(', '))}${others.length > 5 ? ' …' : ''}.`, 'warn')}
+    <div class="sync-actions"><button type="button" class="button" data-act="others"><span class="msr">drive_file_move</span> Aufräumen …</button></div></div>` : '';
+  if (!list.length) return othersHtml;
   const until = new Date(list[0][1] + 30 * 24 * 3600 * 1000).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' });
   const names = list.map(([p]) => p.split('/').pop());
-  return `<div class="folder-broken">${status('report', `${list.length === 1 ? 'Eine Datei ließ' : `${list.length} Dateien ließen`} sich nicht lesen und ${list.length === 1 ? 'liegt' : 'liegen'} im Ordner unter „Unbekannte Dateien“:
+  return `${othersHtml}<div class="folder-broken">${status('report', `${list.length === 1 ? 'Eine Datei ist keine Tour oder ließ' : `${list.length} Dateien sind keine Touren oder ließen`} sich nicht lesen und ${list.length === 1 ? 'liegt' : 'liegen'} im Ordner unter „Unbekannte Dateien“:
       ${esc(names.slice(0, 5).join(', '))}${names.length > 5 ? ' …' : ''}. Schau selbst nach, ob etwas Wichtiges dabei ist – WMap löscht sie 30 Tage nach dem Fund (die erste am ${until}).`, 'warn')}
-    ${i.native ? '<div class="sync-actions"><button type="button" class="button" data-act="reveal"><span class="msr">folder_open</span> Im Dateimanager öffnen</button></div>' : ''}</div>`;
+    ${reveal}</div>`;
 }
 
 async function folderHtml() {
@@ -287,6 +292,7 @@ root.addEventListener('click', async (e) => {
     connecting = false; render();
   }
   if (act === 'inbox') { offerInbox((await folder.info()).inbox, true); return; }
+  if (act === 'others') { offerOthers((await folder.info()).others, true); return; }
   if (act === 'reveal') {
     folder.reveal('Unbekannte Dateien').catch(() => toast('Der Dateimanager ließ sich nicht öffnen – der Ordner heißt „Unbekannte Dateien“'));
     return;

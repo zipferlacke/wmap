@@ -158,6 +158,15 @@ export function choices(keep, file) {
   return out;
 }
 
+/** Was es zu fragen gibt: Hat die Datei nur die gröbere Strecke und sonst nichts anderes, nichts */
+export function offers(keep, file) {
+  const list = choices(keep, file);
+  return list.some((x) => x.on || x.key !== 'shape') ? list : [];
+}
+
+/** Haken für `list`: was `choice` (Haken aus einer Rückfrage) nennt, sonst der Vorschlag */
+export const picksFor = (list, choice = null) => Object.fromEntries(list.map((x) => [x.key, choice && typeof choice === 'object' && x.key in choice ? !!choice[x.key] : x.on]));
+
 /**
  * `keep` mit dem aus `file`, was angehakt ist (`picks`: { shape, hr, cad, pow, marks }). Name, Art, Farbe,
  * Kennung und Herkunft bleiben die von hier. → neuer Weg, oder `keep` selbst, wenn nichts angehakt ist
@@ -238,6 +247,45 @@ export async function removeDuplicates(keepIds = [], valueIds = []) {
     const merged = rest.reduce(merge, withValuesFrom(keep, group.find((t) => values.has(t.id))));
     if (merged !== keep) await tracks.put({ ...merged, updated: Date.now() });
     for (const other of rest) { await tracks.remove(other.id); n += 1; }
+  }
+  for (const [, ...rest] of found.tours) {
+    for (const other of rest) { tours.remove(other.id); n += 1; }
+  }
+  return n;
+}
+
+/**
+ * Doppelte zusammenführen mit Haken – wie beim Import (ui/duplicates-ask.js). Je Gruppe bleibt die vorgeschlagene
+ * Aufzeichnung; `pick(keep, other, list)` sagt je doppelter, was von ihr kommt: Haken ({ shape, hr, … }), null
+ * (der Vorschlag), 'later' (das Paar bleibt doppelt) oder 'abort' (nichts geschieht – geschrieben wird erst am
+ * Ende). Doppelte geplante Touren sind gleich und gehen ohne Frage. → Anzahl entfernt, oder null (abgebrochen)
+ */
+export async function resolveDuplicates(pick = null) {
+  const found = await findDuplicates();
+  const plan = [];
+  for (const cards of found.tracks) {
+    const group = await Promise.all(cards.map((t) => tracks.full(t).catch(() => t)));
+    let keep = group[0];
+    const drop = [];
+    for (const other of group.slice(1)) {
+      // Karteikarte, deren Datei gerade nicht zu lesen ist: bleibt für später
+      if (keep.stub || other.stub) continue;
+      const list = choices(keep, other).map((x) => ({ ...x, detail: x.detail.replace('in der Datei', 'in der doppelten') }));
+      const p = pick && offers(keep, other).length ? await pick(keep, other, list) : null;
+      if (p === 'abort') return null;
+      if (p === 'later') continue;
+      let next = combine(keep, other, picksFor(list, p));
+      if (other.source && Object.keys(other.source).some((k) => next.source?.[k] === undefined)) next = { ...next, source: { ...other.source, ...next.source } };
+      if (!next.description && other.description) next = { ...next, description: other.description };
+      keep = next;
+      drop.push(other.id);
+    }
+    if (drop.length) plan.push({ keep: keep === group[0] ? null : keep, drop });
+  }
+  let n = 0;
+  for (const { keep, drop } of plan) {
+    if (keep) await tracks.put({ ...keep, updated: Date.now() });
+    for (const id of drop) { await tracks.remove(id); n += 1; }
   }
   for (const [, ...rest] of found.tours) {
     for (const other of rest) { tours.remove(other.id); n += 1; }

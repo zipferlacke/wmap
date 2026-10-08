@@ -585,11 +585,13 @@ Die ersten zwei:
 | Gruppen | Zu Fuß · Rad · Auto | Jahre, jede Tour in der Farbe ihrer Art |
 | Zahlen | Strecke, Anstieg | Strecke, Zeit in Bewegung, Tempo, Puls |
 
-- **Oben:** Tour planen bzw. Aufzeichnen und GPX importieren (doppelte Wege
-  werden erkannt), darunter die Suche (Name, Ort, Jahr, Monat, Profil …),
+- **Oben:** Tour planen bzw. Aufzeichnen und GPX/FIT importieren (mehrere
+  Dateien bzw. solche, die es als Tour schon gibt: mit der Rückfrage aus
+  [15](#mehrere-dateien-eine-frage-für-alle)), darunter die Suche (Name, Ort, Jahr, Monat, Profil …),
   dann je Gruppe eine Tabelle – Jahre bzw. Gruppen als Aufklapp-Zeile mit
   Pfeil. Überfahren einer Zeile hebt die Linie auf der Karte hervor.
-  **GPX-Dateien lassen sich auf die Seite ziehen** (Drag & Drop): unter
+  **GPX- und FIT-Dateien lassen sich auf die Seite ziehen** (Drag & Drop, eine
+  oder mehrere – dieselbe Rückfrage): unter
   „Geplant“ werden es Touren, sonst aufgezeichnete Touren.
 - **Aufgezeichnet – Art, Farbe, Alter** (`js/data/track-look.js`):
   - Jede Tour hat eine **Art** (Gehen, Wandern, Laufen, Rad, Auto, Rudern …):
@@ -946,7 +948,7 @@ und ohne Server.
 ├─ Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen mit Listen
 ├─ Gelöscht.json                     auf einem Gerät Gelöschtes (IDs, ein Jahr)
 ├─ Kartenausschnitt.json             wo die Karte zuletzt stand
-├─ Unbekannte Dateien/                  was sich nicht lesen ließ – 30 Tage
+├─ Unbekannte Dateien/                  was keine Tour ist oder sich nicht lesen ließ – 30 Tage
 └─ Inhalt.json                       Verzeichnis: je Datei ID, Art, Fingerabdruck, Stand
 ```
 
@@ -957,14 +959,24 @@ und ohne Server.
 - **Jede GPX- und FIT-Datei im Ordner zählt**, egal wo sie liegt (außer unter
   `Unbekannte Dateien/`), dazu `Bus & Bahn/` und die Dateien von WMap selbst.
   Was nicht an seinem Platz liegt (eigener Unterordner, falscher Ordner),
-  zieht dorthin; leer gewordene Ordner gehen. Andere Dateien (Fotos,
-  Dokumente) und Ordner ohne Tourendateien bleiben unberührt.
+  zieht dorthin; leer gewordene Ordner gehen.
+- **Andere Dateien** (Fotos, Dokumente – weder GPX/FIT noch von WMap,
+  `foreign` in `data/folder.js`) gehören nicht in den Ordner: Sie kommen nach
+  `Unbekannte Dateien/` – aber erst, wenn das einmal bestätigt ist. Beim
+  ersten Fund fragt die Seite (`offerOthers` in `js/ui/folder-inbox.js`):
+  „Nach ‚Unbekannte Dateien‘“ oder „Liegen lassen“. Die Antwort gilt für den
+  Ordner (`sweep`), auch für alles, was später dazukommt; wer sie liegen
+  lässt, sieht sie auf der Seite mit „Aufräumen …“. So räumt WMap keinen
+  Ordner ungefragt leer, der noch anderes enthält. Die Plugins listen dafür
+  alle Dateien (`list { all }`).
 - **Neue Dateien: erst fragen.** Eine Datei ohne WMap-Kennung, die kein Gerät
   kennt (Export der Uhr, Garmin, Komoot …), fasst der Abgleich nicht an – sie
-  steht in `inbox`, und die Seite fragt (`js/ui/folder-inbox.js`): „Immer die
-  genauesten Daten“, „Einzeln entscheiden“ (Datei für Datei, mit „Rest: immer
-  die genauesten“) oder „Später“. Der Abgleich bekommt die Antwort als
-  `folder.sync({ decide })`. Wartende Dateien werden nicht bei jedem Abgleich
+  steht in `inbox`, und die Seite fragt beim Start (`js/ui/folder-inbox.js`)
+  mit derselben Rückfrage wie beim Wählen und Hineinziehen von Dateien
+  ([Mehrere Dateien](#mehrere-dateien-eine-frage-für-alle)): „Ja, überall die
+  genaueren Daten“, „Selbst einstellen“ oder „Später“. Der Abgleich bekommt
+  die Antwort als `folder.sync({ decide })` (`rest`: `'best'`, `'later'` oder
+  Haken für alle; `files`: je Pfad). Wartende Dateien werden nicht bei jedem Abgleich
   neu gelesen.
   - GPX ohne Zeiten → geplante Tour, als WMap-Datei unter `Geplante Touren/`
   - neue Aufzeichnung → GPX wird zur WMap-Datei unter Jahr/Monat; **FIT bleibt
@@ -977,7 +989,8 @@ und ohne Server.
     Dialog `js/ui/merge-ask.js`). Das Ergebnis steht in der WMap-Datei der
     Tour; die GPX geht, die FIT bleibt daneben und steht für die Tour. Hat die
     Datei nichts anderes, ohne Frage
-- **Unbekannte Dateien:** lesbar, aber keine Tour darin → `Unbekannte Dateien/`.
+- **Unbekannte Dateien:** GPX/FIT, lesbar, aber keine Tour darin → `Unbekannte Dateien/`
+  (ohne Frage), ebenso andere Dateien nach der Bestätigung oben.
   Die Seite nennt sie mit dem Hinweis, selbst nachzusehen, und (in der App)
   einem Knopf zum Dateimanager (`folder.reveal`); 30 Tage nach dem Fund löscht
   WMap sie (Zeitpunkt in `Inhalt.json`, `broken`). Leere und gerade nicht
@@ -1090,7 +1103,14 @@ und ohne Server.
     Aufzeichnung stehen Herkunft, km, Dauer, Punkte und z. B. „Puls (Ø 120)“
     da); die Werte kommen nach der Uhrzeit an die Punkte der gewählten
     Strecke (`withValuesFrom`)
-  - schon vorhandene Doppelte: Abschnitt „Doppelte Touren“ mit
+  - schon vorhandene Doppelte: **Frage am Anfang** (einmal je Sitzung,
+    `js/ui/duplicates-ask.js` aus `data/auto-sync.js`) mit denselben Dialogen
+    wie beim Import – „Ja, überall die genaueren Daten“ (je Gruppe bleibt die
+    Aufzeichnung mit den meisten Angaben, von den anderen kommt, was fehlt,
+    und Abweichendes von der Seite mit mehr Punkten), „Selbst einstellen“
+    (Haken je doppelter Aufzeichnung) oder „Später“; geschrieben wird erst am
+    Ende (`resolveDuplicates`). Wer wählen will, welche Aufzeichnung bleibt:
+    Abschnitt „Doppelte Touren“ mit
     „Zusammenführen“ auf dieser Seite, nur wenn es welche gibt
     (`js/data/duplicates.js`) – je Gruppe bleibt die gewählte Aufzeichnung,
     ohne Wahl der Eintrag mit den meisten Angaben (Kennung aus Health
@@ -1168,16 +1188,39 @@ Zeit, Puls, Frequenz, Leistung, Sportart und die Runden der Uhr). Je Datei:
   Datei, y hier“), Puls, Frequenz, Leistung, Runden der Uhr. Angehakt ist, wo
   die genaueren Daten gewinnen; „Zusammenführen“ übernimmt, „Abbrechen“ ändert
   nichts (`choices`/`combine`, `js/ui/merge-ask.js`).
-- **Alle übernehmen (mehrere Dateien):** Hat die Datei mehr als die Tour
-  hier (`data/duplicates.js` `gain`/`enrich`), ergänzt sie sie – Name, Art
-  und Farbe bleiben. Fehlende Messwerte und die Runden der Uhr kommen ohne
-  Rückfrage dazu. Nicht eindeutig sind eine genauere Strecke (mindestens
-  anderthalbmal so viele Punkte) und abweichende Messwerte (Schnitt über
-  3 % anders): dafür stehen oben zwei Schalter, die für alle Dateien
-  gelten. Bei mehreren Dateien: Übersicht (neu / ergänzen / gibt es schon)
-  und „Alle … übernehmen“.
+- **Mehrere Dateien:** oben die Übersicht (neu / zu einer Tour, die es schon
+  gibt / gibt es schon) und „Alle … übernehmen …“; die Frage für alle kommt
+  gleich nach dem Wählen von selbst (nächster Abschnitt).
 - **Als geplante Tour öffnen:** nur öffnen, wie eine geteilte Tour
   (`tour.html#t=…`, Speichern mit Ausrufezeichen) – gespeichert wird erst dort.
+
+#### Mehrere Dateien: eine Frage für alle
+
+Dieselbe Rückfrage auf allen drei Wegen (`js/ui/import-ask.js`; eingelesen und
+übernommen wird in `js/data/import-files.js`):
+
+| Weg | Wo |
+|---|---|
+| Dateien wählen | „GPX/FIT öffnen“ (`import.html`), „GPX/FIT importieren“ auf Meine Touren |
+| Hineinziehen | auf Meine Touren, eine oder mehrere GPX/FIT |
+| Ordner | von Hand in den verbundenen Ordner gelegt – gefragt wird beim Start |
+
+1. **Eine Frage für alle** (`askAll`): „Ja, überall die genaueren Daten“ ·
+   „Selbst einstellen“ · „Abbrechen“ (Ordner: „Später“). Sie kommt, sobald es
+   etwas zu entscheiden gibt – mehrere Dateien, von denen mindestens eine zu
+   einer vorhandenen Tour gehört (im Ordner immer: dort fasst WMap sonst
+   nichts an). Nur neue Touren: werden ohne Frage gespeichert. Eine einzelne
+   Datei, die es schon gibt: gleich die Haken.
+2. **Ja:** Neue werden gespeichert; gibt es die Tour schon, gilt der Vorschlag
+   (`choices`: was fehlt, kommt dazu; Abweichendes von der Seite mit mehr
+   Punkten). Name, Art und Farbe bleiben.
+3. **Selbst einstellen** (`askOne`): Neue kommen dazu; je Datei, die es schon
+   gibt, die Haken – vorbelegt mit dem Vorschlag. Darunter **Weiter** (bei der
+   letzten „Zusammenführen“), **Für alle so übernehmen** (die Haken gelten
+   für den Rest), **Für alle die genaueren Daten**, **Später weitermachen**
+   (diese und der Rest bleiben liegen – auf `import.html` in der Liste, im
+   Ordner als wartende Dateien) und **Abbrechen**: Dann passiert nichts, auch
+   nicht mit dem, was schon gewählt war.
 
 Wie die Datei ankommt:
 
@@ -1506,8 +1549,8 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 | `?reach=lon,lat` | Erreichbarkeit |
 | `?action=route\|record\|fly\|reach\|survey` | Ansicht öffnen |
 | `?ort=…`, `?route=…`, `?anfrage=…` | Geteiltes |
-| `?geo=geo:51.53,9.93?q=…` | Karten-Link einer anderen App (`geo:`) – Punkt, Punkt mit Namen oder Suche |
-| `?sim`, `?tempo=4` | Navigation simulieren |
+| `?geo=geo:51.53,9.93?q=…` | Karten-Link einer anderen App (`geo:`) – Punkt, Punkt mit Namen oder Suche. In der App: `open_link` (läuft schon) bzw. beim Start `pending_link` – die Seite holt den Link selbst ab (`js/core/theme.js`), am Handy kommt das Umschalten beim Start sonst nicht an |
+| `?sim`, `?tempo=4` | Navigation simulieren – auch am Handy im Browser oder in der App (Link `https://app.wuefl.de/wmap/index.html?from=…&to=…&profile=car&sim` öffnen); `sim=verfahren`, `sim=rauschen` |
 | `?car`, `&at=lon,lat` | Karte für den Autobildschirm (Android Auto, siehe [23](#23-android-auto)); `at`: dort beginnen |
 | `?tour=ID&start`, `?track=ID&start` | geplante bzw. aufgezeichnete Tour navigieren |
 | `wege.html?tab=geplant`, `?tour=ID`, `?id=ID`, `#weg=…` | Meine Touren; `#weg=` ist eine geteilte Aufzeichnung |

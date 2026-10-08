@@ -6,6 +6,7 @@ Weblinks öffnen (Ansicht mit Leiste oder Standardbrowser), Android: teilen und 
 
 - `allow-open`
 - `allow-share`
+- `allow-share-file`
 - `allow-copy`
 
 ## Permission Table
@@ -91,6 +92,32 @@ Enables the share command without any pre-configured scope.
 <td>
 
 Denies the share command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`browser:allow-share-file`
+
+</td>
+<td>
+
+Enables the share_file command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`browser:deny-share-file`
+
+</td>
+<td>
+
+Denies the share_file command without any pre-configured scope.
 
 </td>
 </tr>

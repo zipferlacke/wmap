@@ -17,72 +17,50 @@
  *   Als aufgezeichnete Tour  vorher auf Doppelte prüfen (WMap-ID bzw. gleicher
  *   speichern                Weg), dann speichern und gleich zeigen – geht nur
  *                            mit Zeiten in der Datei
- *   Gibt es schon            hat die Datei mehr als der Weg hier, ergänzt sie
- *                            ihn (data/duplicates.js gain/enrich): Fehlende
- *                            Messwerte kommen ohne Rückfrage dazu. Nicht
- *                            eindeutig sind eine genauere Strecke und
- *                            abweichende Messwerte – dafür stehen oben zwei
- *                            Fragen, die für alle Dateien gelten
- *
- * Bei mehreren Dateien: oben die Übersicht und „Alle übernehmen“.
+ *   Gibt es schon            zusammenführen – mit Haken, was aus der Datei
+ *                            kommt (ui/merge-ask.js)
  *   Als geplante Tour öffnen nur öffnen (tour.html#t=…, wie eine geteilte
  *                            Tour) – gespeichert wird erst mit Speichern dort
+ *
+ * Bei mehreren Dateien kommt gleich die Frage für alle (ui/import-ask.js: die
+ * genaueren Daten überall / selbst einstellen / abbrechen); oben steht die
+ * Übersicht, von dort geht es später weiter.
  */
 import { mountAppBar } from '../ui/appbar.js';
 import { toast } from '../ui/dialogs.js';
 import { esc } from '../core/geo.js';
-import { tracks, parseGpx, sameTrack, bulk, trackGpx } from '../data/tracks.js';
-import { parseFit } from '../data/fit.js';
-import { gain, enrich, choices, combine } from '../data/duplicates.js';
-import { askMerge } from '../ui/merge-ask.js';
 import { cadName } from '../data/track-look.js';
-import { devLog } from '../core/devlog.js';
 import { encodeShare } from '../data/store.js';
-import { tourFromGpx } from '../data/folder.js';
+import { readFiles, takeFile, fileOf } from '../data/import-files.js';
+import { importAsk, importSummary } from '../ui/import-ask.js';
 
 const root = document.querySelector('.import');
 const SHARE = 'wmap-share';
-const TIMED = /<trkpt[^>]*>(?:(?!<\/trkpt>)[\s\S])*<time>/;
 const DAY = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 const km = (m) => `${(m / 1000).toLocaleString('de-DE', { maximumFractionDigits: m < 10000 ? 1 : 0 })} km`;
 
 /** [{ name, text, tour, track, id, dup, gain, saved, merged, note, error }] */
 const files = [];
-/** Antworten auf die beiden Fragen – gelten für alle Dateien */
-const opt = { shape: true, values: false };
-let busy = null;   // { i, n } während „Alle übernehmen“
+let busy = null;   // { i, n } während alle übernommen werden
 const valueName = (t, k) => ({ hr: 'Puls', cad: cadName(t), pow: 'Leistung' }[k]);
+const open = () => files.filter((f) => !f.error && f.track && !f.saved && !f.merged && (!f.dup || f.gain?.any));
 
-/** Neue Dateien ({ name, text } – FIT: { name, bytes }) aufnehmen und prüfen */
-export async function addFiles(list) {
-  const t0 = performance.now();
-  devLog(`GPX öffnen: ${list.length} Datei(en)`);
-  const all = await tracks.all();
-  for (const { name, text: given, bytes } of list) {
-    let text = given;
-    const f = { name: name || 'Datei.gpx', text };
-    try {
-      // FIT: einlesen und als GPX weiterreichen – danach gilt für beide dasselbe
-      if (bytes) {
-        const [t] = parseFit(bytes, f.name);
-        if (!t) throw new Error('Keine Strecke in der Datei');
-        f.text = text = trackGpx(t);
-      }
-      f.tour = tourFromGpx(text, f.name);
-      if (!f.tour) throw new Error('Keine Strecke in der Datei');
-      if (TIMED.test(text)) {
-        f.track = parseGpx(text)[0] ?? null;
-        // Aus WMap exportiert: die ID steht im Stichwort wmap:…
-        f.id = text.match(/<keywords>[^<]*\bwmap:([\w-]+)/)?.[1] ?? f.track?.id;
-        f.dup = f.track ? all.find((t) => t.id === f.id || sameTrack(t, f.track)) ?? null : null;
-        if (f.dup) f.gain = gain(f.dup, f.track);
-      }
-    } catch (err) { f.error = err.message; }
-    devLog('  ', f.name, f.error ? `nicht lesbar: ${f.error}` : !f.track ? 'ohne Zeiten' : !f.dup ? 'neu' : f.gain.any ? `ergänzt „${f.dup.name}“: ${more(f)}` : `gibt es schon („${f.dup.name}“), nichts Neues`,
-      f.dup ? `· hier ${f.dup.stub ? 'Karteikarte' : 'ganz'}, Messwerte hier [${(f.dup.stub ? f.dup.has ?? [] : ['hr', 'cad', 'pow'].filter((k) => f.dup[k]?.some((v) => v > 0))).join(',')}], Datei [${['hr', 'cad', 'pow'].filter((k) => f.track?.[k]?.some((v) => v > 0)).join(',')}], Punkte ${f.gain.points.join(' / ')}` : '');
-    files.push(f);
-  }
-  devLog(`GPX öffnen: geprüft in ${Math.round(performance.now() - t0)} ms`);
+/** Neue Dateien ({ name, text } – FIT: { name, bytes }) aufnehmen und prüfen; mehrere: gleich fragen */
+export async function addFiles(list, ask = list.length > 1) {
+  files.push(...await readFiles(list));
+  render();
+  if (ask && open().length) await takeAll();
+}
+
+/** Alle offenen übernehmen – mit der Frage für alle (ui/import-ask.js) */
+async function takeAll() {
+  if (busy) return;
+  busy = { i: 0, n: open().length };
+  let out = null;
+  try {
+    out = await importAsk(files, { step: (i, n) => { busy = { i, n }; if (i % 5 === 1) render(); } });
+  } finally { busy = null; }
+  if (out) toast(importSummary(out));
   render();
 }
 
@@ -106,7 +84,7 @@ function card(f, i) {
     <h3><span class="msr">route</span> ${esc(f.tour.name)}</h3>
     <p class="settings-hint">${esc(facts)} · ${esc(f.name)}</p>
     ${!f.track ? '<p class="settings-hint">Ohne Zeiten in der Datei geht sie nur als geplante Tour.</p>' : ''}
-    ${f.dup && !f.saved ? `<p class="settings-hint">Diesen Weg hast du schon: „${esc(f.dup.name)}“.${g?.any ? ` Die Datei hat mehr: ${esc(more(f))}.` : f.merged ? '' : f.kept ? ' Nichts übernommen – die vorhandenen Werte bleiben.' : ' Die Datei hat nichts, was hier fehlt.'}</p>` : ''}
+    ${f.dup && !f.saved ? `<p class="settings-hint">Diesen Weg hast du schon: „${esc(f.dup.name)}“.${g?.any ? ` ${esc(more(f))}` : f.merged ? '' : f.kept ? ' Nichts übernommen – die vorhandenen Werte bleiben.' : ' Die Datei hat nichts, was hier fehlt.'}</p>` : ''}
     ${f.note ? `<p class="sync-status error"><span class="msr">error</span><span>${esc(f.note)}</span></p>` : ''}
     <div class="sync-actions">
       ${f.track && !f.saved && !f.merged ? `<button type="button" class="button" data-act="view" data-i="${i}"><span class="msr">visibility</span> Ansehen</button>` : ''}
@@ -116,85 +94,36 @@ function card(f, i) {
   </section>`;
 }
 
-/** Was die Datei mehr hat als der Weg hier – in Worten */
+/** Was die Datei mehr oder anders hat als der Weg hier – in Worten */
 function more(f) {
   const g = f.gain, out = [];
   if (g.add.length) out.push(`${g.add.map((k) => valueName(f.dup, k)).join(', ')} (fehlt hier)`);
   if (g.marks) out.push('Runden der Uhr (fehlen hier)');
-  if (g.shape) out.push(`genauere Strecke (${g.points[1]} statt ${g.points[0]} Punkte)`);
+  if (g.points[1] > g.points[0]) out.push(`genauere Strecke (${g.points[1]} statt ${g.points[0]} Punkte)`);
   if (g.differ.length) out.push(`${g.differ.map((k) => valueName(f.dup, k)).join(', ')} weicht ab`);
-  return out.join(' · ');
+  return out.length ? `Die Datei hat mehr: ${out.join(' · ')}.` : 'Die Datei weicht ab.';
 }
 
-/** Übersicht über alle Dateien, die beiden Fragen und „Alle übernehmen“ */
+/** Übersicht über alle Dateien und „Übernehmen …“ */
 function summary() {
   const ok = files.filter((f) => !f.error && f.track);
   const fresh = ok.filter((f) => !f.dup && !f.saved), plus = ok.filter((f) => f.dup && f.gain?.any && !f.merged);
   const same = ok.filter((f) => f.dup && !f.gain?.any && !f.merged), did = ok.filter((f) => f.saved || f.merged);
   const bad = files.filter((f) => f.error).length, plain = files.filter((f) => !f.error && !f.track).length;
   const line = [
-    fresh.length && `${fresh.length} neu`, plus.length && `${plus.length} ergänzen eine vorhandene Tour`,
+    fresh.length && `${fresh.length} neu`, plus.length && `${plus.length} zu einer Tour, die es schon gibt`,
     same.length && `${same.length} gibt es schon`, did.length && `${did.length} übernommen`,
     plain && `${plain} ohne Zeiten (nur als geplante Tour)`, bad && `${bad} nicht lesbar`,
   ].filter(Boolean).join(' · ');
   const todo = fresh.length + plus.length;
-  const askShape = plus.some((f) => f.gain.shape), askValues = plus.some((f) => f.gain.differ.length);
   return `<section class="import-all">
     <h3><span class="msr">library_add</span> ${files.length} Dateien</h3>
     <p class="settings-hint">${esc(line)}</p>
-    ${plus.length ? '<p class="settings-hint">Messwerte, die einer vorhandenen Tour fehlen, kommen dazu. Name, Art und Farbe der Tour bleiben.</p>' : ''}
-    ${askShape ? `<label class="settings-toggle"><span><strong>Genauere Strecke aus der Datei nehmen</strong><small>Hat die Datei deutlich mehr Punkte, gelten ihre Strecke, Zeit und Kilometer</small></span>
-      <input type="checkbox" data-opt="shape" data-shape="toggle" ${opt.shape ? 'checked' : ''}></label>` : ''}
-    ${askValues ? `<label class="settings-toggle"><span><strong>Abweichende Messwerte aus der Datei nehmen</strong><small>Sonst bleiben Puls, Frequenz und Leistung der vorhandenen Tour</small></span>
-      <input type="checkbox" data-opt="values" data-shape="toggle" ${opt.values ? 'checked' : ''}></label>` : ''}
     <div class="sync-actions">
-      ${busy ? `<p class="settings-hint">Übernehme ${busy.i} von ${busy.n} …</p>`
-    : todo ? `<button type="button" class="button primary" data-act="all"><span class="msr">done_all</span> Alle ${todo} übernehmen</button>` : ''}
+      ${busy ? `<p class="settings-hint">${busy.i ? `Übernehme ${busy.i} von ${busy.n} …` : 'Warte auf deine Antwort …'}</p>`
+    : todo ? `<button type="button" class="button primary" data-act="all"><span class="msr">done_all</span> ${todo === 1 ? 'Eine Datei' : `Alle ${todo}`} übernehmen …</button>` : ''}
     </div>
   </section>`;
-}
-
-/** Eine Datei übernehmen: neu speichern oder die vorhandene Tour ergänzen → hat sich etwas getan? */
-async function take(f) {
-  if (f.error || !f.track || f.saved || f.merged) return false;
-  // Kurz vorher noch einmal: vielleicht kam der Weg inzwischen über den Ordner
-  const dup = (await tracks.all()).find((t) => t.id === f.id || sameTrack(t, f.track)) ?? null;
-  if (!dup) {
-    const t = { ...f.track, id: f.id ?? f.track.id, updated: Date.now() };
-    await tracks.put(t);
-    f.saved = t.id;
-    return true;
-  }
-  f.dup = dup;
-  f.gain = gain(dup, f.track);
-  if (!f.gain.any) return false;
-  let full;
-  // Liegt die Tour nur im Ordner (Karteikarte): erst ganz holen
-  try { full = await tracks.full(dup); } catch (err) { f.note = `Die vorhandene Tour liegt im Ordner – ${err.message}`; return false; }
-  f.gain = gain(full, f.track);
-  const next = enrich(full, f.track, opt);
-  devLog('Übernehmen:', f.name, '→', `„${full.name}“`, next === full ? 'nichts geändert' : 'ergänzt', opt);
-  // Nichts übernommen (z. B. weicht nur der Puls ab und der vorhandene soll bleiben)
-  if (next === full) { f.gain = { ...f.gain, any: false }; f.kept = true; return false; }
-  await tracks.put({ ...next, updated: Date.now() });
-  f.merged = true;
-  return true;
-}
-
-/** Eine Datei mit der vorhandenen Tour zusammenführen – mit Haken, was aus der Datei kommt (ui/merge-ask.js) */
-async function mergeAsk(f) {
-  let full;
-  try { full = await tracks.full(f.dup); } catch (err) { f.note = `Die vorhandene Tour liegt im Ordner – ${err.message}`; return false; }
-  const list = choices(full, f.track);
-  if (!list.length) { f.gain = { ...f.gain, any: false }; return false; }
-  const picks = await askMerge(full, list, { fileName: f.name });
-  if (!picks) return null;
-  const next = combine(full, f.track, picks);
-  devLog('Zusammenführen:', f.name, '→', `„${full.name}“`, picks);
-  if (next === full) { f.gain = { ...f.gain, any: false }; f.kept = true; return false; }
-  await tracks.put({ ...next, updated: Date.now() });
-  f.merged = true;
-  return true;
 }
 
 /** Ansehen, bevor etwas gespeichert wird: mit Zeiten wie eine Aufzeichnung (wege.html#datei), sonst im Planer */
@@ -224,25 +153,16 @@ root.addEventListener('click', async (e) => {
   if (!b || busy) return;
   const f = files[Number(b.dataset.i)];
   if (!f && b.dataset.act !== 'all') return;
-  if (b.dataset.act === 'all') {
-    const todo = files.filter((x) => !x.error && x.track && !x.saved && !x.merged && (!x.dup || x.gain?.any));
-    let n = 0;
-    bulk.active += 1;   // der Ordner-Abgleich wartet, bis alle gespeichert sind
-    try {
-      for (const [k, x] of todo.entries()) {
-        busy = { i: k + 1, n: todo.length };
-        if (k % 5 === 0) render();
-        try { if (await take(x)) n += 1; } catch (err) { x.note = err.message; }
-      }
-    } finally { bulk.active -= 1; busy = null; }
-    toast(`${n} ${n === 1 ? 'Datei' : 'Dateien'} übernommen`);
-    render();
-    return;
-  }
+  if (b.dataset.act === 'all') { await takeAll(); return; }
   if (b.dataset.act === 'view') { await preview(f); return; }
   if (b.dataset.act === 'track' || b.dataset.act === 'merge') {
-    const did = b.dataset.act === 'merge' ? await mergeAsk(f) : await take(f);
-    if (did === null) return;   // abgebrochen: nichts passiert
+    let did;
+    if (b.dataset.act === 'merge') {
+      // Eine Datei: gleich die Haken (ui/import-ask.js)
+      const out = await importAsk([f]);
+      if (!out || out.later) return;   // abgebrochen bzw. später: nichts passiert
+      did = out.merged > 0;
+    } else did = await takeFile(f);
     if (!did && !f.note) toast(f.kept ? 'Nichts übernommen – die vorhandenen Werte bleiben' : f.dup ? 'Diesen Weg gibt es schon' : 'Nichts zu übernehmen');
     if (did && f.saved && files.length === 1) { location.href = `./wege.html?id=${encodeURIComponent(f.saved)}`; return; }
     if (did) toast(f.saved ? `„${f.track.name}“ gespeichert` : `„${f.dup.name}“ ergänzt`);
@@ -255,19 +175,12 @@ root.addEventListener('click', async (e) => {
 });
 
 root.addEventListener('change', async (e) => {
-  const o = e.target.closest('[data-opt]');
-  if (o) { opt[o.dataset.opt] = o.checked; return; }
   const inp = e.target.closest('[data-file="gpx"]');
   if (!inp?.files?.length) return;
   await addFiles(await Promise.all([...inp.files].map(fileOf)));
 });
 
 /* ── Woher die Dateien kommen ─────────────────────────────────────────────── */
-
-/** Datei bzw. Antwort → { name, text } oder, bei FIT, { name, bytes } */
-async function fileOf(x, name = x.name) {
-  return /\.fit$/i.test(name) ? { name, bytes: await x.arrayBuffer() } : { name, text: await x.text() };
-}
 
 async function incoming() {
   const got = [];

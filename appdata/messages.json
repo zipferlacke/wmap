@@ -15,11 +15,15 @@
             "changes": [
                 "FIT-Dateien öffnen (Garmin, Zepp …): mit Puls, Frequenz und den Runden der Uhr. Mit der neuen App auch über „Öffnen mit“ und „Teilen“",
                 "Datei öffnen heißt erst ansehen: Danach speicherst du sie als aufgezeichnete oder geplante Tour. Gibt es die Tour schon, wählst du mit Haken, was aus der Datei kommt (Strecke, Puls, Frequenz, Runden)",
+                "Mehrere Dateien wählen oder auf „Meine Touren“ ziehen (GPX und FIT): eine Frage für alle – überall die genaueren Daten übernehmen oder selbst einstellen. Dieselbe Frage kommt beim Start, wenn es Touren doppelt gibt",
                 "Verbundener Ordner: Die Daten liegen jetzt direkt im gewählten Ordner, nicht mehr im Unterordner „WMap“ – der Umzug läuft beim ersten Abgleich von selbst",
-                "Verbundener Ordner: GPX- und FIT-Dateien legst du einfach hinein, egal wohin. WMap fragt, was damit geschehen soll, und sortiert sie nach Jahr und Monat; FIT bleibt FIT. Was sich nicht lesen lässt, kommt nach „Unbekannte Dateien“ und wird nach 30 Tagen gelöscht",
-                "Teilen: Ist der Link zu lang fürs Chatfeld, gibt es „Kurzen Link erstellen“ – die Tour liegt dafür 30 Tage auf dem WMap-Server. Export als ZIP wahlweise mit Aufzeichnungen als GPX oder FIT",
-                "Meine Touren: Runden der Uhr werden angezeigt, Diagramme können im Vollbild geöffnet werden, „Herunterladen“ als GPX oder FIT; Tempo auf der Karte jetzt langsam grün, schnell rot",
-                "Fix: „Gleiche ab …“ blieb nach dem Abgleich mit dem Ordner stehen"
+                "Verbundener Ordner: GPX- und FIT-Dateien legst du einfach hinein, egal wohin. WMap fragt, was damit geschehen soll, und sortiert sie nach Jahr und Monat; FIT bleibt FIT. Was keine Tour ist oder sich nicht lesen lässt, kommt nach „Unbekannte Dateien“ und wird nach 30 Tagen gelöscht – bei anderen Dateien fragt WMap vorher einmal",
+                "Tour teilen: als Link, 30 Tage online mit kurzem Link (liegt so lange auf dem WMap-Server), als Datei senden oder herunterladen (GPX oder FIT). Export als ZIP wahlweise mit Aufzeichnungen als GPX oder FIT",
+                "Meine Touren: Runden der Uhr werden angezeigt, Diagramme können im Vollbild geöffnet werden; Tempo auf der Karte jetzt langsam grün, schnell rot",
+                "Navigation: Die Karte zoomt nah nicht mehr ganz so stark heran und zeigt auf freier Strecke mehr",
+                "Health Connect: Die Berechtigung für Geschwindigkeit entfällt (neue App)",
+                "Fix: Aufzeichnen bei ausgeschaltetem Bildschirm verlor die Strecke; geo:-Links öffneten am Handy nur die App (beides mit der neuen App)",
+                "Fix: „Gleiche ab …“ blieb nach dem Abgleich mit dem Ordner stehen; Einstellungen im Ordner überschreiben sich zwischen Geräten nicht mehr; Diagramm-Hinweis im dunklen Design lesbar"
             ]
         },
         {

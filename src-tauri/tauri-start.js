@@ -48,6 +48,9 @@
         if (r?.count) location.assign('./import.html');
         else if (r?.go) location.assign(new URL(r.go, location.href));
       }).catch(() => {});
+    // … und ebenso den Link, mit dem die App gestartet wurde (geo:, geteilte Tour)
+    window.__TAURI__?.core?.invoke('pending_link')
+      .then((rel) => { if (rel) location.assign(new URL(rel, location.href)); }).catch(() => {});
   };
 
   const ctl = new AbortController();

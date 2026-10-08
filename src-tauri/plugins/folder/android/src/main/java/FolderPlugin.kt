@@ -29,6 +29,13 @@ class SlotArgs {
 }
 
 @InvokeArg
+class ListArgs {
+    var slot: String = ""
+    /** jede Datei – sonst nur, was WMap liest */
+    var all: Boolean = false
+}
+
+@InvokeArg
 class PathArgs {
     var slot: String = ""
     var path: String = ""
@@ -302,7 +309,8 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
 
     @Command
     fun list(invoke: Invoke) {
-      val slot = invoke.parseArgs(SlotArgs::class.java).slot
+      val args = invoke.parseArgs(ListArgs::class.java)
+      val slot = args.slot
       work(invoke, slot) { t ->
         val out = JSArray()
         fun walk(id: String, prefix: String, depth: Int) {
@@ -311,7 +319,7 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
                 val path = prefix + name
                 if (c.dir) {
                     if (depth < 5) walk(c.id, "$path/", depth + 1)
-                } else if (name.endsWith(".gpx", true) || name.endsWith(".fit", true) || name.endsWith(".json", true) || name.endsWith(".geojson", true) || name.endsWith(".js", true) || name.endsWith(".mjs", true)) {
+                } else if (args.all || name.endsWith(".gpx", true) || name.endsWith(".fit", true) || name.endsWith(".json", true) || name.endsWith(".geojson", true) || name.endsWith(".js", true) || name.endsWith(".mjs", true)) {
                     ids["$slot\u0000$path"] = c.id
                     out.put(JSObject().put("path", path).put("modified", c.modified))
                 }
