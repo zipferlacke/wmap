@@ -97,6 +97,26 @@ export async function share({ title, text = '', url: make, short = null, note = 
   return null;
 }
 
+/** Kann dieses Gerät Dateien über sein Teilen-Menü weitergeben? (Handy-Browser, Android-App) */
+export const canShareFiles = () => androidApp || !!navigator.canShare?.({ files: [new File(['x'], 'x.gpx', { type: 'application/gpx+xml' })] });
+
+/**
+ * Eine Datei über das Teilen-Menü des Systems weitergeben (Messenger, Mail …).
+ * `body`: Text oder Uint8Array. → true (Menü geöffnet bzw. dort abgebrochen) | false (geht hier nicht:
+ * dann herunterladen – auch in einer älteren App, die den Befehl noch nicht kennt)
+ */
+export async function shareFile(name, body, type, title = '') {
+  if (androidApp) {
+    const bytes = typeof body === 'string' ? new TextEncoder().encode(body) : body;
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    try { await core.invoke('plugin:browser|share_file', { title, name, data: btoa(bin), mime: type }); return true; } catch { return false; }
+  }
+  const file = new File([body], name, { type });
+  if (!navigator.canShare?.({ files: [file] })) return false;
+  try { await navigator.share({ files: [file], title }); return true; } catch (err) { return err.name === 'AbortError'; }
+}
+
 /** In die Zwischenablage – geht das nicht, zum Markieren und selbst Kopieren. */
 async function copy(value, done, title, toast) {
   try {

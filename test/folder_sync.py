@@ -46,6 +46,17 @@ files.set('settings.json', { text: JSON.stringify({ ...s, updated: s.updated + 5
 out.second = await folder.sync();
 out.theme = localStorage.getItem('wmap.theme');
 
+// Beide ändern etwas anderes: hier die Stimme, dort stumm – keins überschreibt das andere; dasselbe geändert: hier gilt
+localStorage.setItem('wmap.voice', '"Anna"');
+localStorage.setItem('wmap.lapsize', '"2000"');
+const s2 = JSON.parse(files.get('settings.json').text);
+files.set('settings.json', { text: JSON.stringify({ ...s2, updated: s2.updated + 5000, values: { ...s2.values, 'wmap.muted': 'true', 'wmap.lapsize': '"500"', 'wmap.neu': '"x"' } }), modified: clock += 5000 });
+out.merge = (await folder.sync()).settings;
+const s3 = JSON.parse(files.get('settings.json').text).values;
+out.merged = { voiceFile: s3['wmap.voice'], mutedFile: s3['wmap.muted'], mutedHere: localStorage.getItem('wmap.muted'), lapFile: s3['wmap.lapsize'], lapHere: localStorage.getItem('wmap.lapsize'), themeFile: s3['wmap.theme'], kept: s3['wmap.neu'] };
+out.mergeAgain = (await folder.sync()).settings;
+for (const k of ['wmap.voice', 'wmap.muted', 'wmap.lapsize']) localStorage.removeItem(k);
+
 // Auf dem anderen Gerät gelöscht: die Verbindungsdatei verschwindet
 const connPath = [...files.keys()].find((p) => p.startsWith('Bus & Bahn/'));
 files.delete(connPath);
@@ -71,6 +82,7 @@ with Browser() as b:
     for p in r['paths1']:
         print('   ', p)
     print('2. Einstellungen vom anderen Gerät:', r['second'].get('settings'), '→ Theme', r['theme'])
+    print('2b. Einstellungen zusammengeführt:', r['merge'], r['merged'], '· danach', r['mergeAgain'])
     print('3. Verbindung dort gelöscht:', r['third'], '→ noch', r['connLeft'])
     print('4. Weg hier gelöscht:', r['fourth'])
     for p in r['paths4']:
@@ -82,6 +94,8 @@ with Browser() as b:
           and not any('Abgeschlossen' in p for p in r['paths1'])
           and any(p.startswith('Bus & Bahn/2026-09-30') for p in r['paths1'])
           and r['theme'] == '"light"' and r['connLeft'] == 0
+          and r['merge'] == 'imported' and r['mergeAgain'] is None
+          and r['merged'] == {'voiceFile': '"Anna"', 'mutedFile': 'true', 'mutedHere': 'true', 'lapFile': '"2000"', 'lapHere': '"2000"', 'themeFile': '"light"', 'kept': '"x"'}
           and not any('Morgenrunde' in p for p in r['paths4'])
           and r['places'] == ['Arbeit', 'Oma'])
     print('stimmt' if ok else 'STIMMT NICHT')

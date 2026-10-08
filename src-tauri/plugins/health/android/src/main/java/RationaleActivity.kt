@@ -14,7 +14,7 @@ class RationaleActivity : Activity() {
             setPadding(pad, pad, pad, pad)
             textSize = 16f
             text = "WMap liest aus Health Connect nur deine Trainings, ihre Routen und die " +
-                "Messwerte dazu (Puls, Tempo, Schritt- und Trittfrequenz, Leistung), um sie " +
+                "Messwerte dazu (Puls, Schritt- und Trittfrequenz, Leistung), um sie " +
                 "unter „Meine Touren“ als Wege mit Diagrammen und Runden zu zeigen.\n\n" +
                 "Die Daten bleiben auf diesem Gerät – WMap lädt nichts hoch und schreibt " +
                 "nichts in Health Connect zurück. Nur wenn du selbst einen Ordner verbindest " +

@@ -16,7 +16,6 @@ import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.PowerRecord
 import androidx.health.connect.client.records.Record
-import androidx.health.connect.client.records.SpeedRecord
 import androidx.health.connect.client.records.StepsCadenceRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
@@ -69,7 +68,7 @@ class SettingsArgs {
  *                       fremden Routen einzeln nach, wenn es keine
  *                       Dauerfreigabe gibt
  *   samples { start, end }
- *                       Messwerte in der Zeit (ms): hr, speed (m/s), steps
+ *                       Messwerte in der Zeit (ms): hr, steps
  *                       (Schritte/min), pedal (U/min), power (W) – je Liste
  *                       [zeit, wert]; ohne Freigabe für eine Art bleibt sie leer
  *   open_settings { target }
@@ -93,7 +92,6 @@ class HealthPlugin(private val activity: Activity) : Plugin(activity) {
         HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY,
         // Messwerte zum Training: Diagramme und Runden
         HealthPermission.getReadPermission(HeartRateRecord::class),
-        HealthPermission.getReadPermission(SpeedRecord::class),
         HealthPermission.getReadPermission(StepsCadenceRecord::class),
         HealthPermission.getReadPermission(CyclingPedalingCadenceRecord::class),
         HealthPermission.getReadPermission(PowerRecord::class),
@@ -234,7 +232,6 @@ class HealthPlugin(private val activity: Activity) : Plugin(activity) {
                 val range = TimeRangeFilter.between(from, to)
                 val out = JSObject()
                 out.put("hr", series(c, HeartRateRecord::class, range, from, to) { r -> r.samples.map { it.time to it.beatsPerMinute.toDouble() } })
-                out.put("speed", series(c, SpeedRecord::class, range, from, to) { r -> r.samples.map { it.time to it.speed.inMetersPerSecond } })
                 out.put("steps", series(c, StepsCadenceRecord::class, range, from, to) { r -> r.samples.map { it.time to it.rate } })
                 out.put("pedal", series(c, CyclingPedalingCadenceRecord::class, range, from, to) { r -> r.samples.map { it.time to it.revolutionsPerMinute } })
                 out.put("power", series(c, PowerRecord::class, range, from, to) { r -> r.samples.map { it.time to it.power.inWatts } })

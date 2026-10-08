@@ -1123,29 +1123,52 @@ function snapshot() {
  * geändert → übernehmen. Beim ersten Abgleich eines Geräts gilt die Datei.
  * → 'imported' | 'written' | null
  */
+/**
+ * Einstellungen: je Einstellung zusammenführen, nie die ganze Datei überschreiben. Erst wird gelesen, was im
+ * Ordner steht; verglichen wird mit dem Stand des letzten Abgleichs (`settingsSnap`):
+ *   nur im Ordner geändert   → hier übernehmen
+ *   nur hier geändert        → kommt in die Datei, alles andere dort bleibt stehen
+ *   beides geändert          → die Änderung von hier gilt (sie ist die jüngste Handlung an diesem Gerät)
+ * Beim ersten Abgleich (kein Stand) gilt der Ordner; was dort fehlt, kommt von hier dazu.
+ */
 async function syncSettings(c, be, file, path) {
   const mine = snapshot();
-  const mineJson = JSON.stringify(mine);
   let theirs = null;
   if (file) { try { theirs = JSON.parse(await be.read(path)); } catch { /* kaputt: neu schreiben */ } }
-  const localChanged = c.settingsSnap !== undefined && mineJson !== c.settingsSnap;
-  if (theirs?.values && theirs.updated !== c.settingsAt && !localChanged) {
-    for (const [k, v] of Object.entries(theirs.values)) {
-      if (SETTINGS.includes(k) && typeof v === 'string') { try { localStorage.setItem(k, v); } catch { /* gesperrt */ } }
-    }
-    c.settingsSnap = JSON.stringify(snapshot());
-    c.settingsAt = theirs.updated;
-    return 'imported';
-  }
-  if (!theirs?.values || localChanged) {
+  const their = theirs?.values && typeof theirs.values === 'object' ? theirs.values : null;
+  let base = null;
+  try { base = c.settingsSnap ? JSON.parse(c.settingsSnap) : null; } catch { base = null; }
+  if (!their) {
     const updated = Date.now();
     await be.write(path, JSON.stringify({ app: 'WMap', updated, values: mine }, null, 1));
     c.settingsAt = updated;
-    c.settingsSnap = mineJson;
+    c.settingsSnap = JSON.stringify(mine);
     return 'written';
   }
-  c.settingsSnap = mineJson;
-  return null;
+  // Was die Datei sonst noch trägt (Einstellungen einer neueren WMap), bleibt stehen
+  const merged = { ...their };
+  let took = false;
+  for (const k of SETTINGS) {
+    const m = mine[k], t = typeof their[k] === 'string' ? their[k] : undefined;
+    if (m === t) continue;
+    const changedHere = base ? m !== base[k] : t === undefined;
+    if (changedHere) {
+      if (m === undefined) delete merged[k]; else merged[k] = m;
+    } else {
+      took = true;
+      try { if (t === undefined) localStorage.removeItem(k); else localStorage.setItem(k, t); } catch { /* gesperrt */ }
+    }
+  }
+  const sorted = (o) => JSON.stringify(Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]])));
+  let wrote = false;
+  if (sorted(merged) !== sorted(their)) {
+    const updated = Date.now();
+    await be.write(path, JSON.stringify({ app: 'WMap', updated, values: merged }, null, 1));
+    c.settingsAt = updated;
+    wrote = true;
+  } else c.settingsAt = theirs.updated;
+  c.settingsSnap = JSON.stringify(snapshot());
+  return took ? 'imported' : wrote ? 'written' : null;
 }
 
 /* ── Pfade ────────────────────────────────────────────────────────────────── */

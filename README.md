@@ -359,11 +359,11 @@ als aus Fahrersicht, damit Häuser Straße und Abzweig nicht verdecken:
 
 | Umgebung | normal | kurz vor dem Abbiegen* |
 |---|---|---|
-| Stadt | Zoom 17,5 · 45° | 18,1 · 45° |
-| Land | 16,6 · 50° | 17,5 · 50° |
-| Autobahn/schnell (≥ 100 km/h) | 15,6 · 52° | 16,9 · 52° |
-| Zu Fuß | 18,1 · 40° | 18,7 · 45° |
-| verzwickte Stelle (Kreisel, ≥ 3 Spuren, zwei Manöver dicht) | – | 18,4 · 40° |
+| Stadt | Zoom 17,1 · 49° | 17,8 · 45° |
+| Land | 16,2 · 54° | 17,2 · 50° |
+| Autobahn/schnell (≥ 100 km/h) | 15,2 · 56° | 16,6 · 52° |
+| Zu Fuß | 17,7 · 44° | 18,4 · 45° |
+| verzwickte Stelle (Kreisel, ≥ 3 Spuren, zwei Manöver dicht) | – | 18,1 · 40° |
 
 \* „kurz vor dem Abbiegen“: weniger als 30 s oder 150 m (zu Fuß 40 m).
 Einstellung „Zoom in der Navigation“: Näher +0,7, Mehr Überblick −0,9. Der
@@ -861,7 +861,9 @@ ansehen“) – GeoJSON auf heller Karte (z. B. aus QGIS).
 **Health Connect** (nur Android-App): Sicherung & Synchronisation → „Trainings
 holen“ übernimmt neue Trainings mit Route als Wege (Name aus dem Training
 oder „Rudern am …“, Profil aus der Art, sonst am Tempo erkannt), dazu Puls,
-Tempo, Frequenz und Leistung je Punkt. Jeder Weg behält Art und App: Symbol
+Frequenz und Leistung je Punkt (das Tempo rechnet WMap aus der Strecke – die
+Geschwindigkeit aus Health Connect wird nicht gelesen, die Berechtigung dafür
+gibt es seit 2.3.0 nicht mehr). Jeder Weg behält Art und App: Symbol
 und „Rudern · Zepp“ in Liste und Detail, auch in der Suche. Schon
 Übernommenes kommt nicht doppelt. Indoor-Trainings (Rudergerät, Workout,
 Laufband …) haben keine Strecke – hängt eine App trotzdem eine Route mit
