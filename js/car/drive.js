@@ -21,6 +21,7 @@ import { nav } from '../app/nav.js';
 import { alongMap } from '../app/ask-along.js';
 import { trace } from '../data/trace.js';
 import { local } from '../data/store.js';
+import { timed } from './carlog.js';
 
 const ROADS = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service'];
 const SNAP_M = 30;
@@ -39,8 +40,10 @@ const bearingOf = ([x1, y1], [x2, y2]) => {
  * der Ebene „transportation“, der Name in „transportation_name“.
  */
 function snap(p, heading) {
+  const done = timed('strasse');
   const road = nearest(p, heading, 'transportation');
   if (road) road.name = nearest(road.point, heading, 'transportation_name')?.name ?? '';
+  done();
   return road;
 }
 
@@ -159,6 +162,11 @@ function camera(point, kmh, dt) {
 }
 
 function onFix(pos) {
+  const done = timed('fahrt');
+  try { fixed(pos); } finally { done(); }
+}
+
+function fixed(pos) {
   const c = pos.coords;
   const raw = [c.longitude, c.latitude];
   const now = pos.timestamp || Date.now();

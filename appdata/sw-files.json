@@ -51,6 +51,7 @@
 "js/app/traffic-along.js",
 "js/app/views.js",
 "js/car/car.js",
+"js/car/carlog.js",
 "js/car/drive.js",
 "js/core/categories.js",
 "js/core/config.js",

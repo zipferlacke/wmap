@@ -22,6 +22,7 @@
                 "Meine Touren: Runden der Uhr werden angezeigt, Diagramme können im Vollbild geöffnet werden; Tempo auf der Karte jetzt langsam grün, schnell rot",
                 "Navigation: Die Karte zoomt nah nicht mehr ganz so stark heran und zeigt auf freier Strecke mehr",
                 "Health Connect: Die Berechtigung für Geschwindigkeit entfällt (neue App)",
+                "Android Auto: Hängt die Karte im Auto, lässt sich in den Einstellungen ein Fahrt-Protokoll einschalten (neue App) – die Datei liegt danach unter Download/WMap",
                 "Fix: Aufzeichnen bei ausgeschaltetem Bildschirm verlor die Strecke; geo:-Links öffneten am Handy nur die App (beides mit der neuen App)",
                 "Fix: „Gleiche ab …“ blieb nach dem Abgleich mit dem Ordner stehen; Einstellungen im Ordner überschreiben sich zwischen Geräten nicht mehr; Diagramm-Hinweis im dunklen Design lesbar"
             ]

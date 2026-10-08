@@ -160,13 +160,17 @@ class WMapSession : Session() {
       }
       "guidance" -> {
         nav.guide = o
+        CarLog.count("hinweis")
+        val t0 = android.os.SystemClock.uptimeMillis()
         mapScreen?.invalidate()
         updateTrip(o)
+        (android.os.SystemClock.uptimeMillis() - t0).let { if (it > 50) CarLog.line("hinweis", "ans Auto geben dauerte $it ms") }
       }
       "navStart" -> setNav(true, o?.optString("destination") ?: "")
       "navEnd" -> setNav(false, "")
       "recenter" -> {
         recenterIcon = o?.optString("icon") ?: "my_location"
+        CarLog.count("knopf")
         screens.top.invalidate()
       }
       "list" -> if (o != null) listListeners.toList().forEach { it(o) }

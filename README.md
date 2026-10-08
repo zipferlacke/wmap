@@ -1698,6 +1698,26 @@ Weg zum Ziel. Gilt am Handy und im Auto; nach einem Neustart der App mitten in d
 - „Navigiere zu …“ aus anderen Apps oder per Sprache (`geo:`) öffnet die
   Routenwahl bzw. die Suche.
 
+**Fahrt-Protokoll (Fehlersuche bei Hängern im Auto):** Einstellungen → „Android Auto: Fahrt protokollieren“
+(nur in der Android-App; liegt im gemeinsamen Speicher `wmap_shared`, Schlüssel `carlog`). Ab dem nächsten Start
+von WMap im Auto schreibt die App je Fahrt eine Datei – erst nach `Android/data/<Paket>/files/car-log/`, am Ende
+der Fahrt (bzw. beim nächsten Start) nach **Download/WMap/**`wmap-auto-<Datum>.log`. Geht auch in der fertigen App
+aus dem Play Store – eine Debug-Fassung nimmt Google Play nicht an. Zeilen (`tools/android/car/CarLog.kt`,
+`js/car/carlog.js`):
+
+| Zeile | Inhalt |
+|---|---|
+| `start`, `js anfang` | Gerät, Android, App, Fläche des Autos; wer zeichnet (`grafik` – „SwiftShader“ hieße: ohne Grafikchip), Bildpunkte, Bildrate |
+| `fix` | Standort vom Handy: Alter der Messung, Abstand zur vorigen, Genauigkeit, Tempo |
+| `js` (je Sekunde) | `b` Kartenbilder · `pause` längste Zeit zwischen zwei Bildern · `lang` lange Aufgaben (Anzahl/Summe/längste) · `takt` größter Verzug eines 100-ms-Takts · `fix`, `weg` (App → Seite), `alter` (GPS-Zeit → Seite) · Messstellen `fahrt`, `strasse`, `hinweis` (Anzahl/Summe/längste) · `nav`, Zoom, Neigung, Kacheln geladen |
+| `call` | Anfrage der Vorlagen an die Seite über 300 ms |
+| `mainlag` | Haupt-Thread der App hing über 150 ms (er trägt das WebView, die Vorlagen und den Standort) |
+| `sys` (alle 10 s), `thermal` | Wärmestufe, Akku-Temperatur, Handy-Bildschirm an?, Zähler (Hinweise, Neuzeichnen) |
+| `surface`, `page` | Fläche des Autos kam/ging; Warnungen und Fehler der Seite |
+
+Die Zeilen der Seite kommen nur, wenn die Karte im Auto diesen Stand der Webversion lädt (fertige App:
+app.wuefl.de; Debug-Fassung: der Rechner über `adb reverse`, sonst ebenfalls app.wuefl.de).
+
 Technik: Die Vorlagen stehen in `tools/android/car/` (Kotlin, Car App
 Library), `tools/android-einbinden.py` setzt sie ins erzeugte Android-Projekt.
 Die Karte ist die Webversion mit `?car` (`js/car/car.js`, `js/car/drive.js`, `css/app/car.css`)
