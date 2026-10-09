@@ -1,0 +1,5 @@
+• FIT-Dateien öffnen, mehrere Dateien auf einmal übernehmen
+• Verbundener Ordner: Dateien einfach hineinlegen
+• Tour teilen per Link oder als Datei
+• Health Connect ohne Geschwindigkeit
+• Fehler behoben: Aufzeichnen bei ausgeschaltetem Bildschirm, geo:-Links

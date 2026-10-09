@@ -4,7 +4,7 @@ Rückfrage wie auf „GPX/FIT öffnen“ und im Ordner:
    alle kommt; „Ja, überall die genaueren Daten“ → Frequenz und genauere Strecke kommen in die vorhandene Tour (Name
    bleibt), die neue ist gespeichert, die ohne Zeiten ist eine geplante Tour.
 2. Eine Datei über „GPX/FIT importieren“ gewählt, die es schon gibt: gleich die Haken; Strecke abgewählt.
-3. Zwei Dateien hineingezogen, „Selbst einstellen“ → „Abbrechen“: nichts passiert.
+3. Zwei Dateien hineingezogen, „Selbst einstellen“ → „Später weitermachen“: nichts passiert.
 4. FIT-Datei hineingezogen: als Rudern gespeichert, ohne Frage."""
 import json
 import sys
@@ -67,7 +67,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     out.ask2 = title();
     await press(/Selbst einstellen/, 900);
     out.first = [title(), labels()];
-    await press(/Abbrechen/, 1500);
+    await press(/Später weitermachen/, 1500);
     out.CD = [await info('dC'), await info('dD')];
 
     // 4. FIT hineinziehen
@@ -107,10 +107,10 @@ with Browser() as b:
         '1. drei Dateien gezogen: Frage für alle (zwei Aufzeichnungen: 1 neu, 1 gibt es schon)': r['ask'] == ['2 Dateien', BUTTONS, True],
         '1. ja: Frequenz und genauere Strecke in der vorhandenen Tour, Name bleibt': r['A'] == {'name': 'Tour dA', 'pts': 88, 'hr': 120, 'cad': 24},
         '1. die neue ist gespeichert und steht in der Liste, die ohne Zeiten ist eine geplante Tour': r['count'] == [1, 1, True] and r['listed'],
-        '2. „GPX/FIT importieren“ nimmt auch FIT; eine Datei, die es schon gibt: gleich die Haken': '.fit' in r['accept'] and r['one'][0] == 'Zusammenführen' and ['shape', True] in r['one'][1] and ['cad', True] in r['one'][1] and r['one'][2] == ['Zusammenführen', 'Später', 'Abbrechen'],
+        '2. „GPX/FIT importieren“ nimmt auch FIT; eine Datei, die es schon gibt: gleich die Haken': '.fit' in r['accept'] and r['one'][0] == 'Zusammenführen' and ['shape', True] in r['one'][1] and ['cad', True] in r['one'][1] and r['one'][2] == ['Zusammenführen', 'Später weitermachen'],
         '2. Strecke abgewählt: nur die Frequenz kommt dazu': r['B'] == {'name': 'Tour dB', 'pts': 41, 'hr': 120, 'cad': 26},
-        '3. zwei gezogen, selbst einstellen: Haken 1 von 2 mit Weiter / für alle so / für alle die genaueren / später': r['ask2'] == '2 Dateien' and r['first'] == ['Zusammenführen (1 von 2)', ['Weiter', 'Für alle so übernehmen', 'Für alle die genaueren Daten', 'Später weitermachen', 'Abbrechen']],
-        '3. Abbrechen: nichts passiert': [(x['pts'], x['cad']) for x in r['CD']] == [(41, 0), (41, 0)],
+        '3. zwei gezogen, selbst einstellen: Schalter 1 von 2 mit Weiter / für alle Dateien so / für alle die genaueren / später weitermachen': r['ask2'] == '2 Dateien' and r['first'] == ['Zusammenführen (1 von 2)', ['Weiter', 'Für alle Dateien so übernehmen', 'Für alle die genaueren Daten', 'Später weitermachen']],
+        '3. später weitermachen: nichts passiert': [(x['pts'], x['cad']) for x in r['CD']] == [(41, 0), (41, 0)],
         '4. FIT gezogen: ohne Frage als Rudern mit Puls und Frequenz gespeichert': not r['fitOpen'] and r['fit'] == {'sport': 'rowing', 'cad': 30, 'hr': 130},
     }
     for k, v in checks.items():

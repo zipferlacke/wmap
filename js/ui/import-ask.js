@@ -9,10 +9,11 @@
  *   Ja, überall die genaueren Daten   alle übernehmen; gibt es die Tour schon, gilt der Vorschlag
  *                                     (was fehlt, kommt dazu; Abweichendes von der Seite mit mehr Punkten)
  *   Selbst einstellen                 je Datei, die es als Tour schon gibt, die Haken (askOne, ui/merge-ask.js) –
- *                                     vorbelegt mit dem Vorschlag. Darunter „Weiter“, „Für alle so übernehmen“,
- *                                     „Für alle die genaueren Daten“, „Später weitermachen“ (der Rest bleibt
- *                                     liegen). Neue Touren kommen ohne Frage dazu
- *   Abbrechen bzw. Später             nichts passiert – auch nicht mit dem, was schon gewählt war
+ *                                     vorbelegt mit dem Vorschlag. Darunter „Weiter“, „Für alle Dateien so
+ *                                     übernehmen“, „Für alle die genaueren Daten“ und „Später weitermachen“:
+ *                                     Was bis dahin gewählt ist, gilt, diese und der Rest bleiben liegen –
+ *                                     auch das ✕ heißt das. Neue Touren kommen ohne Frage dazu
+ *   Abbrechen bzw. Später             (nur bei der ersten Frage) nichts passiert
  *
  * Doppelte Touren, die schon in der App sind, laufen genauso (ui/duplicates-ask.js).
  */
@@ -37,21 +38,21 @@ export async function askAll({ title, text, later = 'Abbrechen', icon = 'library
 
 /**
  * Die Haken für eine Datei (Nummer `i` von `n`, ab 0) → Haken | { same: Haken } (für alle so) | 'best' (für
- * diese und den Rest die genaueren) | 'later' (diese und der Rest bleiben) | null (abbrechen)
+ * diese und den Rest die genaueren) | 'later' (diese und der Rest bleiben – auch beim Schließen mit ✕)
  */
 export async function askOne(keep, list, { fileName = '', from = null, i = 0, n = 1 } = {}) {
   const last = i >= n - 1;
   const r = await askMerge(keep, list, {
-    fileName, from,
+    fileName, from, cancel: false,
     title: n > 1 ? `Zusammenführen (${i + 1} von ${n})` : 'Zusammenführen',
     go: last ? 'Zusammenführen' : 'Weiter',
-    extra: last ? [{ value: 'later', label: 'Später', icon: 'schedule' }] : [
-      { value: 'same', label: 'Für alle so übernehmen', icon: 'done_all', picks: true },
+    extra: last ? [{ value: 'later', label: 'Später weitermachen', icon: 'schedule' }] : [
+      { value: 'same', label: 'Für alle Dateien so übernehmen', icon: 'done_all', picks: true },
       { value: 'best', label: 'Für alle die genaueren Daten', icon: 'auto_awesome' },
       { value: 'later', label: 'Später weitermachen', icon: 'schedule' },
     ],
   });
-  return r?.value === 'same' ? { same: r.picks } : r;
+  return r === null ? 'later' : r?.value === 'same' ? { same: r.picks } : r;
 }
 
 /**
@@ -73,7 +74,6 @@ export async function askFiles(items, { title, text, later = 'Abbrechen', icon, 
     const got = x.prepare ? await x.prepare() : x;
     if (!got?.list?.length) continue;
     const r = await askOne(got.keep, got.list, { fileName: x.file, i, n: merges.length });
-    if (r === null) return null;
     if (r === 'best') return out;
     if (r === 'later') { out.rest = 'later'; return out; }
     if (r.same) { out.files.set(x, r.same); out.rest = r.same; return out; }

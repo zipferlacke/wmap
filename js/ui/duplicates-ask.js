@@ -9,7 +9,7 @@
  *   Später                            bleibt, wie es ist – gefragt wird beim nächsten Start wieder. Wer wählen
  *                                     will, welche Aufzeichnung bleibt: „Sicherung & Synchronisation“
  *
- * Geschrieben wird erst am Ende – „Abbrechen“ mittendrin ändert nichts. Die doppelten gehen wie von Hand gelöscht
+ * Geschrieben wird am Ende; „Später weitermachen“ (oder ✕) lässt diese und die übrigen doppelt. Die doppelten gehen wie von Hand gelöscht
  * (der Ordner-Abgleich trägt sie in Gelöscht.json ein).
  */
 import { toast } from './dialogs.js';
@@ -37,8 +37,7 @@ export async function offerDuplicates(force = false) {
     const n = await resolveDuplicates(async (keep, other, list) => {
       if (rest === 'best') return null;
       if (rest) return rest;
-      const r = await askOne(keep, list, { from: `Von der doppelten Aufzeichnung${other.name && other.name !== keep.name ? ` „${other.name}“` : ''} übernehmen:`, i: i++, n: pairs });
-      if (r === null) return 'abort';
+      const r = await askOne(keep, list, { from: `Die Tour „${keep.name ?? 'Tour'}“ gibt es doppelt. Was willst du von der doppelten Aufzeichnung${other.name && other.name !== keep.name ? ` „${other.name}“` : ''} übernehmen?`, i: i++, n: pairs });
       if (r === 'best') { rest = 'best'; return null; }
       if (r === 'later') { rest = 'later'; return 'later'; }
       if (r.same) { rest = r.same; return r.same; }
