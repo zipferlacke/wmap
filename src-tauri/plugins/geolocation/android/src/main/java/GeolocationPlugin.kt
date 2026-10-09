@@ -246,6 +246,8 @@ class GeolocationPlugin(private val activity: Activity): Plugin(activity) {
         ret.put("pausedAt", RecordService.pausedAt)
         ret.put("pausedMs", RecordService.pausedMs)
         ret.put("stop", RecordService.stopRequested)
+        // Ab 2.3.0: Der Dienst sammelt immer – die Seite nimmt für die Aufzeichnung nur seine Punkte
+        ret.put("always", true)
         invoke.resolve(ret)
     }
 

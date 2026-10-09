@@ -10,6 +10,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
 import android.provider.OpenableColumns
+import android.util.Base64
 import android.webkit.WebView
 import androidx.activity.result.ActivityResult
 import app.tauri.annotation.ActivityCallback
@@ -28,9 +29,17 @@ class SlotArgs {
 }
 
 @InvokeArg
+class ListArgs {
+    var slot: String = ""
+    /** jede Datei – sonst nur, was WMap liest */
+    var all: Boolean = false
+}
+
+@InvokeArg
 class PathArgs {
     var slot: String = ""
     var path: String = ""
+    var binary: Boolean = false
 }
 
 @InvokeArg
@@ -43,6 +52,13 @@ class SaveArgs {
 @InvokeArg
 class OpenedArgs {
     var peek: Boolean = false
+}
+
+@InvokeArg
+class RenameArgs {
+    var slot: String = ""
+    var path: String = ""
+    var to: String = ""
 }
 
 @InvokeArg
@@ -62,7 +78,7 @@ class WriteArgs {
  *   disconnect – Pfade relativ zum Ordner, mit „/“.
  *   save { name, data, mime } – eine Datei (Base64) über die Dokumentauswahl
  *   des Systems ablegen (ACTION_CREATE_DOCUMENT), z. B. den ZIP-Export.
- *   opened { peek } – GPX-Dateien aus „Öffnen mit“ (ACTION_VIEW) und „Teilen“
+ *   opened { peek } – GPX- und FIT-Dateien (FIT in Base64 als `data`) aus „Öffnen mit“ (ACTION_VIEW) und „Teilen“
  *   (ACTION_SEND): beim Start und während die App läuft (dann gleich zur
  *   Seite import.html); `peek` zählt nur. Dazu `go`: die Seite eines
  *   Shortcuts, mit dem die App gestartet wurde (einmal, dann null).
@@ -135,7 +151,7 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
         return SHORTCUTS.find { it.id == intent.getStringExtra(EXTRA_GO) }?.page
     }
 
-    /** GPX aus dem Intent lesen (höchstens 50 MB) → true, wenn etwas dazukam */
+    /** GPX und FIT aus dem Intent lesen (höchstens 50 MB) → true, wenn etwas dazukam */
     @Suppress("DEPRECATION")
     private fun take(intent: Intent?): Boolean {
         if (intent == null || intent.getBooleanExtra("wmap.taken", false)) return false
@@ -159,10 +175,16 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
                     }
                 }
                 if (size > 50L * 1024 * 1024) continue
-                val text = resolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } ?: continue
-                // Nur GPX – „Öffnen mit“ kommt je nach Dateimanager auch als octet-stream
-                if (!text.contains("<gpx", ignoreCase = true)) continue
-                opened.add(JSObject().put("name", name ?: uri.lastPathSegment ?: "Datei.gpx").put("text", text))
+                val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: continue
+                // Nur GPX und FIT – „Öffnen mit“ kommt je nach Dateimanager auch als octet-stream
+                if (bytes.size > 12 && String(bytes, 8, 4, Charsets.ISO_8859_1) == ".FIT") {
+                    opened.add(JSObject().put("name", name ?: uri.lastPathSegment ?: "Datei.fit").put("text", "")
+                        .put("data", Base64.encodeToString(bytes, Base64.NO_WRAP)))
+                } else {
+                    val text = bytes.toString(Charsets.UTF_8)
+                    if (!text.contains("<gpx", ignoreCase = true)) continue
+                    opened.add(JSObject().put("name", name ?: uri.lastPathSegment ?: "Datei.gpx").put("text", text))
+                }
                 added = true
             } catch (e: Exception) { /* nicht lesbar – übergehen */ }
         }
@@ -228,6 +250,7 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     /** Dokument-ID zu einem Pfad; `create`: fehlende Ordner (und die Datei) anlegen */
+    @Synchronized
     private fun resolve(slot: String, tree: Uri, path: String, create: Boolean, mime: String = "application/octet-stream"): String? {
         ids["$slot\u0000$path"]?.let { return it }
         var id = DocumentsContract.getTreeDocumentId(tree)
@@ -286,7 +309,8 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
 
     @Command
     fun list(invoke: Invoke) {
-      val slot = invoke.parseArgs(SlotArgs::class.java).slot
+      val args = invoke.parseArgs(ListArgs::class.java)
+      val slot = args.slot
       work(invoke, slot) { t ->
         val out = JSArray()
         fun walk(id: String, prefix: String, depth: Int) {
@@ -295,7 +319,7 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
                 val path = prefix + name
                 if (c.dir) {
                     if (depth < 5) walk(c.id, "$path/", depth + 1)
-                } else if (name.endsWith(".gpx", true) || name.endsWith(".json", true) || name.endsWith(".geojson", true) || name.endsWith(".js", true) || name.endsWith(".mjs", true)) {
+                } else if (args.all || name.endsWith(".gpx", true) || name.endsWith(".fit", true) || name.endsWith(".json", true) || name.endsWith(".geojson", true) || name.endsWith(".js", true) || name.endsWith(".mjs", true)) {
                     ids["$slot\u0000$path"] = c.id
                     out.put(JSObject().put("path", path).put("modified", c.modified))
                 }
@@ -312,8 +336,10 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
         val args = invoke.parseArgs(PathArgs::class.java)
         work(invoke, args.slot) { t ->
             val id = resolve(args.slot, t, args.path, false) ?: return@work invoke.reject("Nicht gefunden: ${args.path}", "missing")
-            val text = resolver.openInputStream(DocumentsContract.buildDocumentUriUsingTree(t, id))!!.use { it.readBytes().toString(Charsets.UTF_8) }
-            invoke.resolve(JSObject().put("text", text))
+            val bytes = resolver.openInputStream(DocumentsContract.buildDocumentUriUsingTree(t, id))!!.use { it.readBytes() }
+            // FIT: der Inhalt in Base64 (`data`)
+            if (args.binary) invoke.resolve(JSObject().put("text", "").put("data", Base64.encodeToString(bytes, Base64.NO_WRAP)))
+            else invoke.resolve(JSObject().put("text", bytes.toString(Charsets.UTF_8)))
         }
     }
 
@@ -341,6 +367,80 @@ class FolderPlugin(private val activity: Activity) : Plugin(activity) {
         work(invoke, args.slot) { t ->
             resolve(args.slot, t, args.path, false)?.let { DocumentsContract.deleteDocument(resolver, DocumentsContract.buildDocumentUriUsingTree(t, it)) }
             ids.remove("${args.slot}\u0000${args.path}")
+            prune(args.slot, t, args.path)
+            invoke.resolve()
+        }
+    }
+
+    /** Leer gewordene Ordner über einer Datei gehen mit – höchstens bis zum verbundenen Ordner */
+    private fun prune(slot: String, tree: Uri, path: String) {
+        var p = path.split('/').dropLast(1)
+        while (p.isNotEmpty()) {
+            val dir = p.joinToString("/")
+            ids.remove("$slot\u0000$dir")
+            val id = try { resolve(slot, tree, dir, false) } catch (e: Exception) { null } ?: break
+            ids.remove("$slot\u0000$dir")
+            if (children(tree, id).isNotEmpty()) break
+            try { DocumentsContract.deleteDocument(resolver, DocumentsContract.buildDocumentUriUsingTree(tree, id)) } catch (e: Exception) { break }
+            p = p.dropLast(1)
+        }
+    }
+
+    /** Datei im Ordner verschieben bzw. umbenennen (auch FIT, unverändert): kopieren, dann die alte löschen */
+    @Command
+    fun rename(invoke: Invoke) {
+        val args = invoke.parseArgs(RenameArgs::class.java)
+        work(invoke, args.slot) { t ->
+            ids.remove("${args.slot}\u0000${args.path}")
+            val from = resolve(args.slot, t, args.path, false) ?: return@work invoke.reject("Nicht gefunden: ${args.path}", "missing")
+            if (resolve(args.slot, t, args.to, false) != null) return@work invoke.reject("Gibt es schon: ${args.to}", "exists")
+            val src = DocumentsContract.buildDocumentUriUsingTree(t, from)
+            // Schnell: der Anbieter verschiebt selbst (ein Aufruf statt lesen, schreiben, löschen) – wenn er es kann
+            // und der Name bleibt
+            val fromParts = args.path.split('/'); val toParts = args.to.split('/')
+            if (fromParts.last() == toParts.last()) {
+                try {
+                    val oldDir = if (fromParts.size > 1) resolve(args.slot, t, fromParts.dropLast(1).joinToString("/"), false) else DocumentsContract.getTreeDocumentId(t)
+                    val newDir = if (toParts.size > 1) resolve(args.slot, t, toParts.dropLast(1).joinToString("/"), true, Document.MIME_TYPE_DIR) else DocumentsContract.getTreeDocumentId(t)
+                    val moved = if (oldDir != null && newDir != null) DocumentsContract.moveDocument(resolver, src,
+                        DocumentsContract.buildDocumentUriUsingTree(t, oldDir), DocumentsContract.buildDocumentUriUsingTree(t, newDir)) else null
+                    if (moved != null) {
+                        ids.remove("${args.slot}\u0000${args.path}")
+                        ids["${args.slot}\u0000${args.to}"] = DocumentsContract.getDocumentId(moved)
+                        prune(args.slot, t, args.path)
+                        val at = resolver.query(moved, arrayOf(Document.COLUMN_LAST_MODIFIED), null, null, null)
+                            ?.use { if (it.moveToFirst() && !it.isNull(0)) it.getLong(0) else 0L } ?: 0L
+                        return@work invoke.resolve(JSObject().put("modified", at))
+                    }
+                } catch (e: Exception) { /* kann der Anbieter nicht: kopieren */ }
+            }
+            val bytes = resolver.openInputStream(src)!!.use { it.readBytes() }
+            val mime = when {
+                args.to.endsWith(".json", true) -> "application/json"
+                args.to.endsWith(".gpx", true) -> "application/gpx+xml"
+                else -> "application/octet-stream"
+            }
+            val dst = DocumentsContract.buildDocumentUriUsingTree(t, resolve(args.slot, t, args.to, true, mime)!!)
+            resolver.openOutputStream(dst, "wt")!!.use { it.write(bytes) }
+            DocumentsContract.deleteDocument(resolver, src)
+            ids.remove("${args.slot}\u0000${args.path}")
+            prune(args.slot, t, args.path)
+            val modified = resolver.query(dst, arrayOf(Document.COLUMN_LAST_MODIFIED), null, null, null)
+                ?.use { if (it.moveToFirst() && !it.isNull(0)) it.getLong(0) else 0L } ?: 0L
+            invoke.resolve(JSObject().put("modified", modified))
+        }
+    }
+
+    /** Den Ordner (bzw. einen Unterordner darin) im Dateimanager des Systems zeigen */
+    @Command
+    fun reveal(invoke: Invoke) {
+        val args = invoke.parseArgs(PathArgs::class.java)
+        work(invoke, args.slot) { t ->
+            val id = (if (args.path.isEmpty()) null else resolve(args.slot, t, args.path, false)) ?: DocumentsContract.getTreeDocumentId(t)
+            val intent = Intent(Intent.ACTION_VIEW)
+                .setDataAndType(DocumentsContract.buildDocumentUriUsingTree(t, id), Document.MIME_TYPE_DIR)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            activity.startActivity(intent)
             invoke.resolve()
         }
     }

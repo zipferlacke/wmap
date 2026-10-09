@@ -379,6 +379,30 @@
           "markdownDescription": "Denies the remove command without any pre-configured scope."
         },
         {
+          "description": "Enables the rename command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-rename",
+          "markdownDescription": "Enables the rename command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the rename command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-rename",
+          "markdownDescription": "Denies the rename command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the reveal command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-reveal",
+          "markdownDescription": "Enables the reveal command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the reveal command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-reveal",
+          "markdownDescription": "Denies the reveal command without any pre-configured scope."
+        },
+        {
           "description": "Enables the save command without any pre-configured scope.",
           "type": "string",
           "const": "allow-save",
@@ -403,10 +427,10 @@
           "markdownDescription": "Denies the write command without any pre-configured scope."
         },
         {
-          "description": "Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, löschen – nur im gewählten Ordner; eine Datei über den Speichern-Dialog ablegen; mit WMap geöffnete GPX-Dateien abholen\n#### This default permission set includes:\n\n- `allow-pick`\n- `allow-info`\n- `allow-list`\n- `allow-read`\n- `allow-write`\n- `allow-remove`\n- `allow-disconnect`\n- `allow-save`\n- `allow-opened`",
+          "description": "Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, verschieben, löschen – nur im gewählten Ordner; eine Datei über den Speichern-Dialog ablegen; mit WMap geöffnete GPX-Dateien abholen\n#### This default permission set includes:\n\n- `allow-pick`\n- `allow-info`\n- `allow-list`\n- `allow-read`\n- `allow-write`\n- `allow-remove`\n- `allow-rename`\n- `allow-reveal`\n- `allow-disconnect`\n- `allow-save`\n- `allow-opened`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, löschen – nur im gewählten Ordner; eine Datei über den Speichern-Dialog ablegen; mit WMap geöffnete GPX-Dateien abholen\n#### This default permission set includes:\n\n- `allow-pick`\n- `allow-info`\n- `allow-list`\n- `allow-read`\n- `allow-write`\n- `allow-remove`\n- `allow-disconnect`\n- `allow-save`\n- `allow-opened`"
+          "markdownDescription": "Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, verschieben, löschen – nur im gewählten Ordner; eine Datei über den Speichern-Dialog ablegen; mit WMap geöffnete GPX-Dateien abholen\n#### This default permission set includes:\n\n- `allow-pick`\n- `allow-info`\n- `allow-list`\n- `allow-read`\n- `allow-write`\n- `allow-remove`\n- `allow-rename`\n- `allow-reveal`\n- `allow-disconnect`\n- `allow-save`\n- `allow-opened`"
         }
       ]
     }

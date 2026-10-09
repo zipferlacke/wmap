@@ -11,7 +11,7 @@
  *                  einzelne Wege lassen sich ein- und ausblenden (Auge). Der
  *                  gewählte Weg zeigt Tempo, Höhe und Puls; dort wählt man
  *                  Art und Farbe, „offline verfügbar“ und navigiert ihn
- *                  erneut. GPX-Dateien lassen sich auf die Seite ziehen.
+ *                  erneut. GPX- und FIT-Dateien lassen sich auf die Seite ziehen.
  *   Bus & Bahn     gemerkte Verbindungen (data/saved.js): kommende oben,
  *                  vergangene zugeklappt darunter; im Detail alle Abschnitte
  *
@@ -21,20 +21,26 @@
  *
  * Aufruf: wege.html · ?tab=geplant · ?tab=bahn · ?tour=… (geplante Tour) · ?id=… (Weg) · ?conn=… (Verbindung)
  *         · #weg=… (geteilte Aufzeichnung, data/track-share.js)
+ *         · #datei (geöffnete GPX-/FIT-Datei als Vorschau, pages/import.js)
  */
 import { createMap, showHover } from '../map/map.js';
 import { heightsAlong } from '../services/routing.js';
 import { ElevationProfile } from '../ui/elevation.js';
-import { tracks, trackCoords, trackGpx, parseGpx, sameTrack, trackAsTour, hasValues, PROFILE_GROUP } from '../data/tracks.js';
+import { tracks, trackCoords, trackGpx, sameTrack, trackAsTour, hasValues, PROFILE_GROUP } from '../data/tracks.js';
 import { sportOf, sportName, sportIcon, sportColor, colorOf, ageOpacity, shownOnMap, trackShow, paceOf, cadName, lapSizes, SPORTS, COLORS } from '../data/track-look.js';
-import { findDuplicates } from '../data/duplicates.js';
+import { findDuplicates, choices, combine } from '../data/duplicates.js';
+import { askMerge } from '../ui/merge-ask.js';
+import { readFiles, fileOf } from '../data/import-files.js';
+import { importAsk, importSummary } from '../ui/import-ask.js';
+import { devLog } from '../core/devlog.js';
 import { encodeTrack, decodeTrack, without } from '../data/track-share.js';
 import { tours, shapeOf, coordsOf, encodeShare, toGpx, download, local } from '../data/store.js';
 import { metrics, laps, lapLine } from '../data/track-stats.js';
 import { PROFILES } from '../core/config.js';
 import { ask, toast } from '../ui/dialogs.js';
-import { share, pageUrl } from '../ui/share.js';
-import { tourFromGpx, folder } from '../data/folder.js';
+import { share, pageUrl, canShareFiles, shareFile } from '../ui/share.js';
+import { shortLink, resolveShort } from '../data/short-link.js';
+import { folder } from '../data/folder.js';
 import { autoSync } from '../data/auto-sync.js';
 import { mapPage } from '../ui/map-page.js';
 import { carLink, sendToCar } from '../data/car-link.js';
@@ -172,9 +178,9 @@ function showList({ push = false } = {}) {
         : 'Aufgezeichnet: Wege, die du wirklich gefahren oder gelaufen bist – mit Zeit, Tempo und Puls.'}</p>
     ${isBahn || isOrte ? '' : `<div class="wege-tools">${isPlan ? `
       <a class="button" href="./tour.html"><span class="msr">add_road</span> Tour planen</a>
-      <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>` : `
+      <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>` : `
       <a class="button" href="./index.html?action=record"><span class="msr">radio_button_checked</span> Aufzeichnen</a>
-      <label class="button"><span class="msr">upload_file</span> GPX importieren<input type="file" accept=".gpx,application/gpx+xml" multiple hidden data-file="gpx"></label>`}
+      <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx"></label>`}
     </div>`}
     <form class="wege-search tour-search" role="search" onsubmit="return false">
       <span class="msr">search</span>
@@ -438,30 +444,23 @@ content.addEventListener('mouseover', (e) => {
   const tr = e.target.closest('tr[data-id], tr[data-tour], tr[data-conn]');
   hover(tr?.dataset.id ?? tr?.dataset.tour ?? tr?.dataset.conn ?? null);
 });
-/** GPX-Dateien übernehmen – als aufgezeichnete Wege (`gpx`) oder geplante Touren (`gpx-tour`) */
+/**
+ * GPX- und FIT-Dateien übernehmen (gewählt oder hineingezogen) – als aufgezeichnete Touren (`gpx`) oder geplante
+ * (`gpx-tour`). Aufzeichnungen: mehrere bzw. solche, die es schon gibt, mit der Rückfrage (ui/import-ask.js);
+ * Dateien ohne Zeiten werden geplante Touren.
+ */
 async function importFiles(files, kind) {
   try {
-    let n = 0;
-    if (kind === 'gpx') {
-      let twice = 0;
-      for (const f of files) {
-        for (const t of parseGpx(await f.text())) {
-          if (all.some((x) => sameTrack(x, t))) { twice += 1; continue; }
-          await tracks.put(t);
-          all.push(t);
-          n += 1;
-        }
-      }
-      toast(n ? `${n} ${n === 1 ? 'Weg' : 'Wege'} importiert${twice ? ` (${twice} gab es schon)` : ''}` : twice ? 'Die Wege gibt es schon' : 'In der Datei war kein Weg');
-    } else {
-      for (const f of files) {
-        const t = tourFromGpx(await f.text(), f.name);
-        if (!t) continue;
-        tours.save({ ...t, id: tours.newId(), description: t.description || `Aus ${f.name} importiert` });
-        n += 1;
-      }
-      toast(n ? `${n} ${n === 1 ? 'Tour' : 'Touren'} importiert – mit Originalverlauf` : 'In der Datei war keine Tour');
-    }
+    const read = await readFiles(await Promise.all(files.map((f) => fileOf(f))));
+    const bad = read.filter((f) => f.error).length;
+    const plan = read.filter((f) => !f.error && (kind === 'gpx-tour' || !f.track));
+    for (const f of plan) tours.save({ ...f.tour, id: tours.newId(), description: f.tour.description || `Aus ${f.name} importiert` });
+    const planned = plan.length ? `${plan.length} ${plan.length === 1 ? 'Tour' : 'Touren'} als geplante Tour importiert${kind === 'gpx' ? ' (ohne Zeiten)' : ' – mit Originalverlauf'}` : '';
+    const failed = bad ? `${bad} nicht lesbar` : '';
+    if (kind === 'gpx' && read.some((f) => !f.error && f.track)) {
+      const out = await importAsk(read);
+      toast([out ? importSummary(out) : 'Nichts übernommen', planned, failed].filter(Boolean).join(' · '));
+    } else toast([planned, failed].filter(Boolean).join(' · ') || 'In der Datei war keine Tour');
   } catch (err) { toast(err.message); }
   await load();
   showList();
@@ -475,8 +474,8 @@ content.addEventListener('change', async (e) => {
 });
 
 /*
- * GPX-Dateien auf die Seite ziehen: unter „Geplant“ werden es Touren, sonst
- * aufgezeichnete Wege (wie „GPX importieren“).
+ * GPX- und FIT-Dateien auf die Seite ziehen, eine oder mehrere: unter „Geplant“
+ * werden es Touren, sonst aufgezeichnete Wege (wie „GPX/FIT importieren“).
  */
 const dropHint = Object.assign(document.createElement('div'), { className: 'wege-drop', hidden: true });
 document.body.append(dropHint);
@@ -485,7 +484,7 @@ let dragDepth = 0;
 addEventListener('dragenter', (e) => {
   if (!hasFiles(e)) return;
   dragDepth += 1;
-  dropHint.innerHTML = `<div><span class="msr">upload_file</span><strong>GPX hier ablegen</strong>
+  dropHint.innerHTML = `<div><span class="msr">upload_file</span><strong>GPX oder FIT hier ablegen</strong>
     <small>${tab === 'geplant' ? 'wird als geplante Tour übernommen' : 'wird als aufgezeichnete Tour übernommen'}</small></div>`;
   dropHint.hidden = false;
 });
@@ -496,8 +495,8 @@ addEventListener('drop', async (e) => {
   e.preventDefault();
   dragDepth = 0;
   dropHint.hidden = true;
-  const files = [...e.dataTransfer.files].filter((f) => /\.gpx$/i.test(f.name) || /gpx/.test(f.type));
-  if (!files.length) { toast('Das sind keine GPX-Dateien'); return; }
+  const files = [...e.dataTransfer.files].filter((f) => /\.(gpx|fit)$/i.test(f.name) || /gpx/.test(f.type));
+  if (!files.length) { toast('Das sind keine GPX- oder FIT-Dateien'); return; }
   const plan = tab === 'geplant';
   if (!plan && tab !== 'wege') tab = 'wege';
   await importFiles(files, plan ? 'gpx-tour' : 'gpx');
@@ -523,8 +522,10 @@ const top = (a) => { const v = (a ?? []).filter((x) => x > 0); return v.length ?
 
 /** Rundenlänge: gewählt (gemerkt), wenn es sie für die Art gibt – sonst 5 km fürs Rad, 1 km zu Fuß, 500 m auf dem Wasser */
 const lapSize = (t) => {
-  const sizes = lapSizes(t), want = local.get('wmap.lapsize');
-  return sizes.includes(want) ? want : sizes[0] === 1000 && groupKey(t) !== 'foot' && !paceOf(t) ? 5000 : sizes[sizes.length > 2 && sizes[0] < 500 ? 1 : 0];
+  const all = lapSizes(t), want = local.get('wmap.lapsize');
+  if (all.includes(want)) return want;
+  const sizes = all.filter((x) => x !== 'watch');
+  return sizes[0] === 1000 && groupKey(t) !== 'foot' && !paceOf(t) ? 5000 : sizes[sizes.length > 2 && sizes[0] < 500 ? 1 : 0];
 };
 /** „5:12“ bzw. „1:02:03“ */
 const clock = (sec) => {
@@ -551,16 +552,25 @@ async function select(id, { push = false } = {}) {
   page.header(card.name || 'Weg', () => showList({ push: true }));
   // Liegt der Weg nur im Ordner (Karteikarte): erst zeigen, was die App weiß, dann alle Punkte holen
   let t = card, missing = '';
+  devLog('Tour geöffnet:', card.name || card.id, card.stub ? '(liegt nur im Ordner)' : '(ganz in der App)');
   if (card.stub) {
     paintTrack(card, 'Hole die Tour aus dem Ordner …');
-    try { t = await tracks.full(card); } catch (err) { missing = `Punkte und Messwerte liegen im Ordner – ${err.message.replace(/^Der Ordner/, 'der')}.`; }
+    const watch = folderWatch();
+    try { t = await tracks.full(card, watch.step); } catch (err) { missing = `Punkte und Messwerte liegen im Ordner – ${err.message.replace(/^Der Ordner/, 'der')}.`; }
+    const took = watch.done(!missing);
+    devLog(missing || 'Tour geholt.', took, selected !== card ? '– inzwischen etwas anderes gewählt, nicht gezeigt' : '');
     if (selected !== card) return;
     selected = t;
+    folderPaint = { id: t.id, before: performance.now(), took };
   }
   paintTrack(t, missing);
   if (t.stub) return;
   paintCharts(t);
   paintLaps(t);
+  if (folderPaint?.id === t.id) {
+    devLog('Tour gezeigt:', `${folderPaint.took} · anzeigen ${secs(performance.now() - folderPaint.before)}`);
+    folderPaint = null;
+  }
   showElevation(trackCoords(t), t, (h) => {
     $('.st-up', content).textContent = h ? `${h.ascent} m` : '–';
     paintCharts(t);
@@ -574,6 +584,28 @@ async function select(id, { push = false } = {}) {
       if (selected?.id === t.id) select(t.id);
     }).catch(() => {});
   }
+}
+
+/* Zeitmessung beim Holen aus dem Ordner – nur fürs Protokoll der Debug-Fassung (core/devlog.js): jeder Schritt,
+   bevor er beginnt, und am Ende die Dauer jedes Schritts. In der Ansicht steht davon nichts. */
+let folderPaint = null;
+const secs = (ms) => `${(ms / 1000).toFixed(ms < 9950 ? 1 : 0).replace('.', ',')} s`;
+function folderWatch() {
+  const steps = [], t0 = performance.now();
+  let sync = false, file = '';
+  return {
+    step(name, info = {}) {
+      devLog(`Tour aus dem Ordner: ${name} beginnt`, info.path ?? '', info.sync ? '(Abgleich läuft)' : '');
+      steps.push({ name, at: performance.now() });
+      if (info.sync) sync = true;
+      if (info.kb != null) file = `, ${info.kb} kB`;
+    },
+    done(ok) {
+      const end = performance.now();
+      const parts = steps.map((s, i) => `${s.name} ${secs((steps[i + 1]?.at ?? end) - s.at)}`);
+      return `${ok ? 'Aus dem Ordner in' : 'Versucht'} ${secs(end - t0)}${file}${sync ? ', während der Abgleich lief' : ''}: ${parts.join(' · ')}`;
+    },
+  };
 }
 
 /** Kopf, Zahlen, Aussehen und Knöpfe eines Wegs; `note`: Hinweis, solange bzw. weil die Punkte fehlen */
@@ -593,8 +625,8 @@ function paintTrack(t, note = '') {
       ${LONG.format(t.start)}, ${TIME.format(t.start)}–${TIME.format(t.end)} Uhr
       <br><span class="muted">${esc(originOf(t))}${t.kind === 'health' ? ' · aus Health Connect' : ''}</span>
       ${t.from || t.to ? `<br><span class="muted">${esc([t.from, t.to].filter(Boolean).map((x) => x.split(',')[0]).join(' → '))}</span>` : ''}</p>
-    ${t.shared ? '<p class="muted weg-note"><span class="msr">share</span> Geteilte Aufzeichnung – noch nicht gespeichert.</p>' : ''}
-    ${note ? `<p class="muted weg-note"><span class="msr">folder</span> ${esc(note)}</p>` : ''}
+    ${t.imported ? '<p class="muted weg-note"><span class="msr">upload_file</span> Geöffnete Datei – noch nicht gespeichert.</p>' : t.shared ? '<p class="muted weg-note"><span class="msr">share</span> Geteilte Aufzeichnung – noch nicht gespeichert.</p>' : ''}
+    ${note ? `<p class="muted weg-note weg-folder"><span class="msr">folder</span><span>${esc(note)}</span></p>` : ''}
     <div class="weg-stats">
       <div><strong>${fmtDistance(t.length)}</strong><small>Strecke</small></div>
       <div><strong>${fmtDuration(mv)}</strong><small>in Bewegung</small></div>
@@ -633,13 +665,15 @@ function paintTrack(t, note = '') {
         ${folderOn ? `<button type="button" class="chip" data-flag="pin" aria-pressed="${!!t.pin}" title="Bleibt ganz in der App – auch ohne den Ordner"><span class="msr">offline_pin</span> Offline verfügbar</button>` : ''}
       </div>
     </details>
-    <div class="weg-actions">${t.shared ? `
+    <div class="weg-actions">${t.imported ? `
+      <button type="button" class="button primary" data-do="keep"><span class="msr">directions_walk</span> Als aufgezeichnete Tour speichern</button>
+      <button type="button" class="button" data-do="plan" title="Im Planer als neue Tour öffnen – gespeichert wird erst dort"><span class="msr">edit_road</span> Als geplante Tour öffnen</button>` : t.shared ? `
       <button type="button" class="button primary" data-do="keep"><span class="msr">bookmark_add</span> Bei mir speichern</button>
-      <button type="button" class="button" data-do="gpx"><span class="msr">download</span> GPX</button>` : `
+      <button type="button" class="button" data-do="gpx" title="Als GPX- oder FIT-Datei"><span class="msr">download</span> Herunterladen</button>` : `
       <a class="button primary" href="./index.html?track=${encodeURIComponent(t.id)}&start"><span class="msr">navigation</span> Navigieren</a>
       <button type="button" class="button" data-do="plan" title="Im Planer als neue Tour öffnen – gespeichert wird erst dort"><span class="msr">edit_road</span> Als Planung öffnen</button>
-      <button type="button" class="button" data-do="share" title="Die Aufzeichnung teilen – mit Zeiten, Tempo und auf Wunsch Puls &amp; Co."><span class="msr">share</span> Teilen</button>
-      <button type="button" class="button" data-do="gpx"><span class="msr">download</span> GPX</button>
+      <button type="button" class="button" data-do="share" title="Die Aufzeichnung als Link teilen – mit Zeiten, Tempo und auf Wunsch Puls &amp; Co."><span class="msr">share</span> Teilen</button>
+      <button type="button" class="button" data-do="gpx" title="Als GPX- oder FIT-Datei"><span class="msr">download</span> Herunterladen</button>
       <button type="button" class="button" data-do="delete"><span class="msr">delete</span> Löschen</button>`}
     </div>`;
   $('.weg-look', content)?.addEventListener('toggle', (e) => { lookOpen = e.target.open; });
@@ -668,7 +702,7 @@ async function saveLook(changes, { quiet = false } = {}) {
   await load();
   // Die Ansicht wird neu gezeichnet – an derselben Stelle bleiben
   const keep = content.scrollTop;
-  paintTrack(t, $('.weg-note', content)?.textContent.trim() ?? '');
+  paintTrack(t, $('.weg-folder span:last-child', content)?.textContent ?? '');
   if (!t.stub) {
     metricCache = { id: null, m: {} };
     paintCharts(t);
@@ -703,7 +737,7 @@ content.addEventListener('change', (e) => {
 /** Umschalter über dem Diagramm: Höhe, Tempo, Puls … – nur, was es gibt */
 let metricCache = { id: null, m: {} };
 function paintCharts(t) {
-  const bar = $('.weg-chart-tabs', content);
+  const bar = $('.weg-chart-tabs', content) ?? $('dialog.dg_fs .weg-chart-tabs');
   if (!bar || !elevation) return;
   if (metricCache.id !== t.id) metricCache = { id: t.id, m: metrics(t) };
   const m = metricCache.m;
@@ -744,13 +778,13 @@ function paintLaps(t) {
   box.innerHTML = `<div class="laps-head">
       <h3><span class="msr">flag</span> Runden</h3>
       <div class="chip-row" role="group" aria-label="Länge einer Runde">${lapSizes(t).map((x) => `
-        <button type="button" class="chip" data-lap-size="${x}" aria-pressed="${x === size}">${x < 1000 ? `${x} m` : `${x / 1000} km`}</button>`).join('')}</div>
+        <button type="button" class="chip" data-lap-size="${x}" aria-pressed="${x === size}">${x === 'watch' ? 'Uhr' : x < 1000 ? `${x} m` : `${x / 1000} km`}</button>`).join('')}</div>
     </div>
     <table class="laps-table">
       <thead><tr><th>Runde</th><th>Zeit</th><th>Tempo</th>${hasHr ? '<th>Ø Puls</th>' : ''}${hasUp ? '<th>Anstieg</th>' : ''}</tr></thead>
       <tbody>${r.list.map((l) => `
         <tr data-lap="${l.n}" tabindex="0" class="${l.n === r.fastest ? 'fast' : l.n === r.slowest ? 'slow' : ''}">
-          <td>${l.n}${l.dist < size - 1 ? ` <small>${fmtDistance(l.dist)}</small>` : ''}</td>
+          <td>${l.n}${size === 'watch' || l.dist < size - 1 ? ` <small>${fmtDistance(l.dist)}</small>` : ''}</td>
           <td>${clock(l.time)}</td>
           <td>${tempo(t, l.speed)}${badge(l)}</td>
           ${hasHr ? `<td>${l.hr ?? '–'}</td>` : ''}${hasUp ? `<td>${l.up ?? '–'} m</td>` : ''}
@@ -773,13 +807,35 @@ function showLap(line) {
   if (line) map.fitBounds(bbox(line), { padding: page.padding(), maxZoom: 16, duration: 600 });
 }
 
+/** Diagramm wählen (Höhe, Tempo, Puls …) – im Blatt und im Vollbild */
+function pickChart(e) {
+  const chart = e.target.closest('[data-chart]')?.dataset.chart;
+  if (!chart || !selected || !('start' in selected)) return false;
+  local.set('wmap.chart', chart);
+  paintCharts(selected);
+  return true;
+}
+
 content.addEventListener('click', (e) => {
   const t = selected;
   if (!t || !('start' in t)) return;
-  const chart = e.target.closest('[data-chart]')?.dataset.chart;
-  if (chart) { local.set('wmap.chart', chart); paintCharts(t); return; }
+  // Diagramm ins Vollbild (Knopf der Bibliothek, das Diagramm steckt jetzt in ihrem <dialog>): Die Umschalter
+  // ziehen mit um und beim Schließen wieder zurück vor das Diagramm
+  if (e.target.closest('.dg_fsbtn') && elevation?.fullscreen) {
+    const dlg = $('dialog.dg_fs:open'), bar = $('.weg-chart-tabs', content);
+    if (dlg && bar) {
+      dlg.prepend(bar);
+      if (!dlg.dataset.wmap) {
+        dlg.dataset.wmap = '1';
+        dlg.addEventListener('click', pickChart);
+        dlg.addEventListener('close', () => { const b = $('.weg-chart-tabs', dlg); if (b) ($('.elevation', content) ?? content.lastChild)?.before(b); });
+      }
+    }
+    return;
+  }
+  if (pickChart(e)) return;
   const size = e.target.closest('[data-lap-size]')?.dataset.lapSize;
-  if (size) { local.set('wmap.lapsize', Number(size)); showLap(null); paintLaps(t); return; }
+  if (size) { local.set('wmap.lapsize', size === 'watch' ? size : Number(size)); showLap(null); paintLaps(t); return; }
   const row = e.target.closest('tr[data-lap]');
   if (row) {
     const on = !row.classList.contains('shown');
@@ -840,6 +896,8 @@ content.addEventListener('click', async (e) => {
     shareTrack(t);
   } else if (act === 'share') {
     share({ title: t.name, text: t.name, url: async () => `${pageUrl('tour.html')}#t=${await encodeShare(t)}` }, toast);
+  } else if (act === 'gpx' && 'start' in t) {
+    downloadTrack(t);
   } else if (act === 'gpx') {
     download(`${(t.name || 'weg').replace(/[^\wäöüß]+/gi, '-')}.gpx`, 'start' in t ? trackGpx(t) : toGpx(t, coordsOf(t.shape)));
   } else if (act === 'delete') {
@@ -859,6 +917,14 @@ content.addEventListener('click', async (e) => {
  * Empfänger kann sie speichern) oder als GPX-Datei. Strecke, Zeiten und Tempo
  * gehen immer mit; Puls, Frequenz und Leistung nur, wenn angehakt.
  */
+/**
+ * Teilen: ein Dialog für alle Wege, auf denen eine Aufzeichnung das Gerät verlässt. Oben die Haken, was mit soll
+ * (Puls, Frequenz, Leistung) – sie gelten für alles darunter:
+ *   Als Link teilen      der Link trägt die Daten selbst (ohne Server)
+ *   30 Tage online       kurzer Link, die Daten liegen so lange auf dem WMap-Server (data/short-link.js)
+ *   Datei senden         GPX oder FIT über das Teilen-Menü des Geräts (wo es das gibt)
+ *   Herunterladen        GPX oder FIT als Datei
+ */
 async function shareTrack(t) {
   const kinds = [['hr', 'Puls'], ['cad', cadName(t)], ['pow', 'Leistung']].filter(([k]) => t[k]?.some((v) => v > 0));
   const keep = Object.fromEntries(kinds.map(([k]) => [k, true]));
@@ -870,30 +936,60 @@ async function shareTrack(t) {
       <label><input type="checkbox" name="${k}" checked> ${esc(l)}</label>`).join('')}</div>` : '',
     buttons: [
       { value: 'link', label: 'Als Link teilen', icon: 'link', primary: true },
-      { value: 'gpx', label: 'Als GPX-Datei', icon: 'draft' },
+      { value: 'short', label: '30 Tage online (kurzer Link)', icon: 'cloud_upload' },
+      ...(canShareFiles() ? [{ value: 'send', label: 'Datei senden …', icon: 'send' }] : []),
+      { value: 'file', label: 'Herunterladen …', icon: 'download' },
       { value: 'no', label: 'Abbrechen' },
     ],
     setup: (dlg) => dlg.addEventListener('change', (e) => { if (e.target.name in keep) keep[e.target.name] = e.target.checked; }),
   });
-  if (how === 'link') {
-    const facts = [fmtDistance(t.length), fmtDuration(moving(t))].join(' · ');
-    share({ title: t.name || 'Tour', text: `${t.name || 'Tour'} – ${facts}`, url: async () => `${pageUrl('wege.html')}#weg=${await encodeTrack(t, keep)}` }, toast);
-  } else if (how === 'gpx') {
-    const name = `${(t.name || 'weg').replace(/[^\wäöüß]+/gi, '-')}.gpx`;
-    const text = trackGpx(without(t, keep));
-    const file = new File([text], name, { type: 'application/gpx+xml' });
-    // Wo das Gerät Dateien teilen kann: Teilen-Menü – sonst speichern
-    if (navigator.canShare?.({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: t.name || 'Tour' }); return; } catch (err) { if (err.name === 'AbortError') return; }
-    }
-    download(name, text);
+  if (how === 'file' || how === 'send') { await downloadTrack(without(t, keep), how === 'send'); return; }
+  if (how !== 'link' && how !== 'short') return;
+  const facts = [fmtDistance(t.length), fmtDuration(moving(t))].join(' · ');
+  const title = t.name || 'Tour', text = `${title} – ${facts}`;
+  const code = await encodeTrack(t, keep);
+  if (how === 'short') {
+    let url;
+    try { url = await shortLink('weg', code); } catch (err) { toast(err.message || 'Der kurze Link ließ sich nicht anlegen'); return; }
+    share({ title, text, url, note: 'Kurzer Link: Die Tour liegt dafür 30 Tage auf dem WMap-Server – danach geht der Link nicht mehr.' }, toast);
+    return;
   }
+  share({ title, text, url: `${pageUrl('wege.html')}#weg=${code}`, short: () => shortLink('weg', code) }, toast);
 }
 
-/** Geteilte Aufzeichnung (wege.html#weg=…) zeigen – gespeichert wird erst auf Wunsch */
+/** Als GPX oder FIT: herunterladen – oder (`send`) über das Teilen-Menü des Geräts an jemanden schicken */
+async function downloadTrack(t, send = false) {
+  const how = await ask({
+    icon: send ? 'send' : 'download', title: send ? 'Datei senden als' : 'Herunterladen als', className: 'stacked',
+    text: 'GPX enthält alles, was WMap zur Tour weiß – auch Art, Farbe und die Runden der Uhr. FIT ist das Format der Sportuhren: Punkte, Puls, Frequenz, Leistung, Runden und Sportart.',
+    buttons: [
+      { value: 'gpx', label: 'GPX-Datei', icon: 'draft', primary: true },
+      { value: 'fit', label: 'FIT-Datei', icon: 'watch' },
+      { value: 'no', label: 'Abbrechen' },
+    ],
+  });
+  if (how !== 'gpx' && how !== 'fit') return;
+  const name = `${(t.name || 'weg').replace(/[^\wäöüß]+/gi, '-')}.${how}`;
+  const type = how === 'gpx' ? 'application/gpx+xml' : 'application/vnd.ant.fit';
+  try {
+    const body = how === 'gpx' ? trackGpx(t) : (await import('../data/fit.js')).trackFit(t);
+    // Senden geht hier nicht (ältere App, Browser am Rechner): dann eben herunterladen
+    if (send && await shareFile(name, body, type, t.name || 'Tour')) return;
+    if (send) toast('Senden geht hier nicht – die Datei wird heruntergeladen');
+    await download(name, how === 'gpx' ? body : new Blob([body], { type }), how === 'gpx' ? undefined : type);
+  } catch (err) { toast(err.message); }
+}
+
+const IMPORTED = 'wmap.import';   // geöffnete Datei als Weg (JSON), nur für diese Sitzung
+
+/** Geteilte Aufzeichnung (wege.html#weg=…) bzw. geöffnete Datei (#datei) zeigen – gespeichert wird erst auf Wunsch */
 async function openSharedTrack(code) {
   let t;
-  try { t = { ...await decodeTrack(code), id: 'geteilt', shared: true }; } catch (err) { toast(err.message || 'Der Link ließ sich nicht lesen'); showList(); return; }
+  try {
+    // #datei: eine geöffnete Datei (pages/import.js legt sie für diese Sitzung ab) – ansehen, dann entscheiden
+    t = code === null ? { ...JSON.parse(sessionStorage.getItem(IMPORTED)), id: 'geteilt', shared: true, imported: true }
+      : { ...await decodeTrack(code), id: 'geteilt', shared: true };
+  } catch (err) { toast(code === null ? 'Die Datei ist nicht mehr da – bitte noch einmal öffnen' : err.message || 'Der Link ließ sich nicht lesen'); showList(); return; }
   tab = 'wege';
   selected = t;
   heights = null;
@@ -903,14 +999,34 @@ async function openSharedTrack(code) {
   paintTrack(t);
   paintCharts(t);
   paintLaps(t);
+  if (folderPaint?.id === t.id) {
+    devLog('Tour gezeigt:', `${folderPaint.took} · anzeigen ${secs(performance.now() - folderPaint.before)}`);
+    folderPaint = null;
+  }
   showElevation(trackCoords(t), t, (h) => { $('.st-up', content).textContent = h ? `${h.ascent} m` : '–'; paintCharts(t); paintLaps(t); });
 }
 
 /** Geteilte Aufzeichnung speichern – gibt es sie schon, dorthin */
 async function keepShared(t) {
   const twin = all.find((x) => sameTrack(x, t));
-  if (twin) { toast('Die Tour gibt es bei dir schon'); history.replaceState(null, '', `./wege.html?id=${encodeURIComponent(twin.id)}`); select(twin.id); return; }
-  const { shared: _s, ...rest } = t;
+  if (twin) {
+    // Gibt es schon: zusammenführen – mit Haken, was aus der Datei kommt; Abbrechen ändert nichts
+    let full;
+    try { full = await tracks.full(twin); } catch (err) { toast(`Die vorhandene Tour liegt im Ordner – ${err.message}`); return; }
+    const list = choices(full, t);
+    if (list.length) {
+      const picks = await askMerge(full, list);
+      if (!picks) return;
+      const next = combine(full, t, picks);
+      if (next !== full) { await tracks.put({ ...next, updated: Date.now() }); await load(); toast(`„${full.name}“ ergänzt`); }
+    } else toast('Die Tour gibt es bei dir schon – die Datei hat nichts anderes');
+    sessionStorage.removeItem(IMPORTED);
+    history.replaceState(null, '', `./wege.html?id=${encodeURIComponent(twin.id)}`);
+    select(twin.id);
+    return;
+  }
+  sessionStorage.removeItem(IMPORTED);
+  const { shared: _s, imported: _i, ...rest } = t;
   const saved = { ...rest, id: `w${t.start.toString(36)}${Math.random().toString(36).slice(2, 5)}`, updated: Date.now() };
   await tracks.put(saved);
   await load();
@@ -997,8 +1113,8 @@ function selectConn(id, { push = false } = {}) {
 /* ── Karte ────────────────────────────────────────────────────────────────── */
 
 /**
- * Tempo als Farbverlauf entlang des gewählten Wegs (langsam orange, schnell
- * grün) – eingeordnet zwischen dem langsamsten und schnellsten Zehntel.
+ * Tempo als Farbverlauf entlang des gewählten Wegs (langsam grün, schnell
+ * rot) – eingeordnet zwischen dem langsamsten und schnellsten Zehntel.
  */
 function speedGradient(t) {
   const c = trackCoords(t), ts = t.times, cum = cumulative(c);
@@ -1010,7 +1126,7 @@ function speedGradient(t) {
   const lo = ok[Math.floor(ok.length * 0.1)], hi = ok[Math.floor(ok.length * 0.9)];
   if (hi - lo < 0.5) return null;
   const total = cum.at(-1);
-  const color = (x) => { const k = Math.max(0, Math.min(1, ((x ?? lo) - lo) / (hi - lo))); return `hsl(${Math.round(25 + k * 110)} 80% ${Math.round(48 - k * 8)}%)`; };
+  const color = (x) => { const k = Math.max(0, Math.min(1, ((x ?? lo) - lo) / (hi - lo))); return `hsl(${Math.round(135 - k * 135)} 80% ${Math.round(40 + k * 8)}%)`; };
   const stops = [];
   let last = -1;
   const step = Math.max(1, Math.floor(v.length / 150));
@@ -1201,6 +1317,7 @@ function route() {
   tab = tabOf(p);
   const sharedTrack = location.hash.match(/^#weg=(.+)$/)?.[1];
   if (sharedTrack) openSharedTrack(sharedTrack);
+  else if (location.hash === '#datei') openSharedTrack(null);
   else if (p.get('id')) select(p.get('id'));
   else if (p.get('conn')) selectConn(p.get('conn'));
   else if (p.get('tour')) selectTour(p.get('tour'));
@@ -1208,7 +1325,15 @@ function route() {
 }
 addEventListener('popstate', () => { route(); fitView(); });
 // Geteilte Aufzeichnung geöffnet, während die Seite schon offen ist
-addEventListener('hashchange', () => { if (/^#weg=/.test(location.hash)) { route(); fitView(); } });
+addEventListener('hashchange', async () => {
+  if (/^#k=/.test(location.hash)) await openShort();
+  if (/^#(weg=|datei$)/.test(location.hash)) { route(); fitView(); }
+});
+/** Kurzer Link (#k=…): den Inhalt vom Server holen – danach steht der lange in der Adresse */
+async function openShort() {
+  const r = await resolveShort();
+  if (typeof r === 'string') toast(r);
+}
 
 /* Aus dem Ordner kam etwas dazu oder ging weg */
 addEventListener('wmap:folder', async () => {
@@ -1219,6 +1344,7 @@ addEventListener('wmap:folder', async () => {
 
 await load();
 if (params.get('liste')) await openSharedList(params.get('liste'));
+await openShort();
 route();
 fitView();
 autoSync();

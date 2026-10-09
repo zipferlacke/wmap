@@ -24,6 +24,7 @@ import { sidePanel } from '../ui/side-panel.js';
 import { mountLayerMenu } from '../ui/layer-menu.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { share, pageUrl } from '../ui/share.js';
+import { shortLink, resolveShort } from '../data/short-link.js';
 import * as geocode from '../services/geocode.js';
 import { distance, nearestOnLine, pointAt, simplifyTo, bbox, cumulative, fmtDistance, fmtDuration, esc } from '../core/geo.js';
 import { setupStages } from '../ui/tour-stages.js';
@@ -42,6 +43,8 @@ const debounce = (fn, ms) => {
    ══════════════════════════════════════════════════════════════════════════ */
 
 const TOUR_PROFILES = Object.entries(PROFILES).filter(([, p]) => p.tour).map(([id]) => id);
+// Kurzer Link (#k=…): der Inhalt kommt vom Server und steht danach als #t=… in der Adresse
+const shortError = await resolveShort();
 const shareCode = new URLSearchParams(location.hash.slice(1)).get('t');
 const idParam = new URLSearchParams(location.search).get('id');
 
@@ -57,6 +60,7 @@ if (shareCode) {
   tour = tours.get(idParam);
   if (!tour) toast('Tour nicht gefunden – hier geht es mit einer neuen los');
 }
+if (typeof shortError === 'string') toast(shortError);
 tour ??= { id: null, name: '', description: '', profile: local.get('wmap.tourProfile', 'hike'), points: [] };
 tour.backgrounds ??= [];
 if (!TOUR_PROFILES.includes(tour.profile)) tour.profile = 'hike';
@@ -938,7 +942,7 @@ async function shareTour() {
   if (tour.points.length < 2) { toast('Erst eine Strecke planen'); return; }
   const name = tour.name || nameInput.value || 'Tour';
   const code = await encodeShare({ ...tour, name });
-  share({ title: 'Tour teilen', text: `Tour: ${name}`, url: `${pageUrl('tour.html')}#t=${code}` }, toast);
+  share({ title: 'Tour teilen', text: `Tour: ${name}`, url: `${pageUrl('tour.html')}#t=${code}`, short: () => shortLink('tour', code) }, toast);
 }
 
 /* GPX mit Höhen */

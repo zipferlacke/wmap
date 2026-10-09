@@ -24,6 +24,7 @@ import { folder, zipBackup, restoreZip, importFolder, syncSummary } from '../dat
 import { healthAvailable, healthStatus, healthSync, syncHealth, healthSyncing, appName } from '../services/health.js';
 import { showPermissions } from '../ui/permissions.js';
 import { autoSync } from '../data/auto-sync.js';
+import { offerInbox, offerOthers } from '../ui/folder-inbox.js';
 import { findDuplicates, removeDuplicates, valueKinds } from '../data/duplicates.js';
 
 const root = document.querySelector('.sync');
@@ -45,7 +46,9 @@ const status = (icon, text, cls = '') => `<p class="sync-status ${cls}"><span cl
 
 /** „Gleiche ab … 40 von 96 (42 %) · noch etwa 1 Min.“ */
 function progressText(p) {
-  if (!p?.n) return 'Gleiche ab …';
+  // Was gerade geschieht: erst die Liste des Ordners, dann (einmalig) der Umzug, dann Datei für Datei
+  const what = p?.what === 'lift' ? 'Ziehe aus dem Unterordner „WMap“ um' : 'Gleiche ab';
+  if (!p?.n) return p?.what === 'list' ? 'Lese den Ordner …' : `${what} …`;
   const pct = Math.floor((p.i / p.n) * 100);
   const took = Date.now() - p.since;
   let rest = '';
@@ -53,24 +56,26 @@ function progressText(p) {
     const s = Math.round(((p.n - p.i) * took) / p.i / 1000);
     rest = s < 20 ? ' · gleich fertig' : s < 90 ? ` · noch etwa ${Math.round(s / 10) * 10} s` : ` · noch etwa ${Math.round(s / 60)} Min.`;
   }
-  return `Gleiche ab … ${p.i} von ${p.n} (${pct} %)${rest}`;
+  return `${what} … ${p.i} von ${p.n} (${pct} %)${rest}`;
 }
 const progressBar = (p) => `<div class="sync-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${p?.n ?? 0}" aria-valuenow="${p?.i ?? 0}">
     <i style="width:${p?.n ? Math.round((p.i / p.n) * 100) : 5}%"></i></div>`;
 
 /* ── Ordner ───────────────────────────────────────────────────────────────── */
 
-const TREE = `<details class="sync-tree"><summary>Ordnerstruktur erklärt</summary><pre>WMap/
+const TREE = `<details class="sync-tree"><summary>Ordnerstruktur erklärt</summary><pre>Dein Ordner/
 ├─ settings.json            Einstellungen
 ├─ Geplante Touren/         je Tour eine GPX-Datei
 ├─ Aufgezeichnete Touren/
-│  └─ 2026/09 September/    je Weg eine GPX-Datei (mit Puls &amp; Co.)
+│  └─ 2026/09 September/    je Weg eine GPX-Datei (mit Puls &amp; Co.) oder die FIT-Datei der Uhr
 ├─ Bus &amp; Bahn/              je gemerkte Verbindung eine JSON-Datei
 ├─ Lesezeichen.json         Zuhause, Arbeit, Lesezeichen und Listen
+├─ Unbekannte Dateien/         was sich nicht lesen ließ – nach 30 Tagen gelöscht
 └─ Inhalt.json              Verzeichnis für den schnellen Abgleich</pre>
-  <p class="settings-hint">Jede WMap, die denselben Ordner verbindet, liest ihn ein und gleicht mit ab. Heißt der Ordner selbst „WMap“, entfällt die Ebene.
-    GPX-Dateien von woanders (Garmin, Komoot …) legst du in „Geplante Touren“ bzw. „Aufgezeichnete Touren“ – woanders im Ordner werden sie nicht gelesen.
-    Löschst du dort eine Datei, verschwindet der Eintrag auch in WMap.</p></details>`;
+  <p class="settings-hint">Jede WMap, die denselben Ordner verbindet, liest ihn ein und gleicht mit ab. Nimm einen Ordner nur für WMap.
+    GPX- und FIT-Dateien von woanders (Uhr, Garmin, Komoot …) legst du einfach hinein, egal wohin: WMap fragt, was damit geschehen soll, und sortiert sie an ihren Platz –
+    auch aus eigenen Unterordnern. Eine FIT-Datei bleibt, wie die Uhr sie schrieb. Andere Dateien (Fotos, Dokumente) fasst WMap nicht an.
+    Löschst du eine Tourendatei, verschwindet der Eintrag auch in WMap.</p></details>`;
 
 /*
  * Knöpfe: Importieren liest einen Ordner einmal ein (App: Ordnerdialog,
@@ -83,6 +88,22 @@ const importButton = () => (nativeHere
 const exportButton = '<button type="button" class="button" data-act="backup"><span class="msr">folder_zip</span> Exportieren (ZIP)</button>';
 const zipLink = `<p class="settings-hint sync-zip">Export als ZIP wieder einspielen:
     <label class="sync-link">ZIP wählen<input type="file" accept=".zip,.json,application/zip,application/json" hidden data-file="restore"></label></p>`;
+
+/** „Unbekannte Dateien“: was keine Tour ist oder sich nicht lesen ließ – selbst nachsehen, nach 30 Tagen löscht WMap sie */
+function brokenHtml(i) {
+  const list = Object.entries(i.broken ?? {}).sort((a, b) => a[1] - b[1]);
+  const reveal = i.native ? '<div class="sync-actions"><button type="button" class="button" data-act="reveal"><span class="msr">folder_open</span> Im Dateimanager öffnen</button></div>' : '';
+  // Andere Dateien, die (noch) liegen bleiben
+  const others = (i.others ?? []).map((p) => p.split('/').pop());
+  const othersHtml = others.length ? `<div class="folder-others">${status('folder_delete', `${others.length === 1 ? 'Eine Datei im Ordner ist keine Tour' : `${others.length} Dateien im Ordner sind keine Touren`} und ${others.length === 1 ? 'bleibt' : 'bleiben'} liegen: ${esc(others.slice(0, 5).join(', '))}${others.length > 5 ? ' …' : ''}.`, 'warn')}
+    <div class="sync-actions"><button type="button" class="button" data-act="others"><span class="msr">drive_file_move</span> Aufräumen …</button></div></div>` : '';
+  if (!list.length) return othersHtml;
+  const until = new Date(list[0][1] + 30 * 24 * 3600 * 1000).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' });
+  const names = list.map(([p]) => p.split('/').pop());
+  return `${othersHtml}<div class="folder-broken">${status('report', `${list.length === 1 ? 'Eine Datei ist keine Tour oder ließ' : `${list.length} Dateien sind keine Touren oder ließen`} sich nicht lesen und ${list.length === 1 ? 'liegt' : 'liegen'} im Ordner unter „Unbekannte Dateien“:
+      ${esc(names.slice(0, 5).join(', '))}${names.length > 5 ? ' …' : ''}. Schau selbst nach, ob etwas Wichtiges dabei ist – WMap löscht sie 30 Tage nach dem Fund (die erste am ${until}).`, 'warn')}
+    ${reveal}</div>`;
+}
 
 async function folderHtml() {
   if (!folder.supported) {
@@ -127,6 +148,9 @@ async function folderHtml() {
           : status('schedule', `Letzter Abgleich: ${when(i.last)}${i.last ? ` – ${esc(syncSummary(i.result))}` : ''}`)}
     ${busy ? '<p class="settings-hint">Du kannst WMap weiter benutzen. Wechselst du die Seite, macht die nächste dort weiter, wo dieser Abgleich aufgehört hat.</p>' : ''}
     ${i.error && !busy ? status('error', `Fehler am ${when(i.error.at)}: ${esc(i.error.message)}`, 'error') : ''}
+    ${i.inbox.length && !busy ? `<div class="folder-inbox">${status('drive_folder_upload', `${i.inbox.length === 1 ? 'Eine neue Datei liegt' : `${i.inbox.length} neue Dateien liegen`} im Ordner und ${i.inbox.length === 1 ? 'wartet' : 'warten'} auf deine Entscheidung: ${esc(i.inbox.slice(0, 3).map((x) => x.file).join(', '))}${i.inbox.length > 3 ? ' …' : ''}`, 'warn')}
+      <div class="sync-actions"><button type="button" class="button primary" data-act="inbox"><span class="msr">checklist</span> Neue Dateien ansehen</button></div></div>` : ''}
+    ${brokenHtml(i)}
     <div class="sync-actions">
       <button type="button" class="button${again ? ' primary' : ''}" data-act="sync" ${busy ? 'disabled' : ''}><span class="msr">sync</span> ${again ? 'Erlauben und abgleichen' : 'Jetzt abgleichen'}</button>
       <button type="button" class="button" data-act="change" ${busy ? 'disabled' : ''}><span class="msr">drive_file_move</span> Ordner ändern</button>
@@ -267,6 +291,12 @@ root.addEventListener('click', async (e) => {
     } catch (err) { if (err.name !== 'AbortError') toast(`Verbinden ging nicht: ${err.message}`); }
     connecting = false; render();
   }
+  if (act === 'inbox') { offerInbox((await folder.info()).inbox, true); return; }
+  if (act === 'others') { offerOthers((await folder.info()).others, true); return; }
+  if (act === 'reveal') {
+    folder.reveal('Unbekannte Dateien').catch(() => toast('Der Dateimanager ließ sich nicht öffnen – der Ordner heißt „Unbekannte Dateien“'));
+    return;
+  }
   if (act === 'sync') {
     try {
       const r = await folder.sync({ interactive: true });
@@ -314,7 +344,17 @@ root.addEventListener('click', async (e) => {
     render();
   }
   if (act === 'backup') {
-    zipBackup().then((blob) => download(`wmap-sicherung-${new Date().toISOString().slice(0, 10)}.zip`, blob, 'application/zip'))
+    const format = await ask({
+      icon: 'folder_zip', title: 'Exportieren als', className: 'stacked',
+      text: 'Alle Touren in einer ZIP-Datei. Aufgezeichnete Touren als GPX (enthält alles, was WMap weiß) oder als FIT (Format der Sportuhren: Punkte, Puls, Frequenz, Leistung, Runden, Sportart). Geplante Touren sind immer GPX.',
+      buttons: [
+        { value: 'gpx', label: 'Aufzeichnungen als GPX', icon: 'draft', primary: true },
+        { value: 'fit', label: 'Aufzeichnungen als FIT', icon: 'watch' },
+        { value: 'no', label: 'Abbrechen' },
+      ],
+    });
+    if (format !== 'gpx' && format !== 'fit') return;
+    zipBackup({ format }).then((blob) => download(`wmap-sicherung-${new Date().toISOString().slice(0, 10)}${format === 'fit' ? '-fit' : ''}.zip`, blob, 'application/zip'))
       .catch((err) => toast(`Sicherung ging nicht: ${err.message}`));
   }
 });

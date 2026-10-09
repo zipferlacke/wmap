@@ -23,6 +23,7 @@ require_once(__DIR__."/api_auth.php");
 require_once(__DIR__."/api_tours.php");
 require_once(__DIR__."/api_plugins.php");
 require_once(__DIR__."/api_stats.php");
+require_once(__DIR__."/api_share.php");
 
 $db_helper = new DB_Helper();
 $result = $db_helper->openDatabase();
@@ -37,6 +38,7 @@ switch ($request) {
     case 'tours':   echo json_encode(tours($requestArray, $data)); break;
     case 'plugins': echo json_encode(plugins($requestArray, $data)); break;
     case 'stats':   echo json_encode(stats($requestArray, $data)); break;
+    case 'share':   echo json_encode(share($requestArray, $data)); break;
     default:        die(json_encode([1, "nix gefunden... Anfrage falsch"]));
 }
 

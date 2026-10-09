@@ -126,5 +126,5 @@ export function cadName(t) {
   return 'Frequenz';
 }
 
-/** Rundenlängen zur Auswahl: auf dem Wasser auch 500 m */
-export const lapSizes = (t) => (WATER.has(sportOf(t)) ? [500, 1000, 2000] : SWIM.has(sportOf(t)) ? [100, 500, 1000] : [1000, 2000, 5000]);
+/** Rundenlängen zur Auswahl: auf dem Wasser auch 500 m; 'watch' = die Runden der Uhr, wenn der Weg welche hat */
+export const lapSizes = (t) => [...(t.marks?.length ? ['watch'] : []), ...(WATER.has(sportOf(t)) ? [500, 1000, 2000] : SWIM.has(sportOf(t)) ? [100, 500, 1000] : [1000, 2000, 5000])];

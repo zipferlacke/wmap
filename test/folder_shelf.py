@@ -113,7 +113,7 @@ for (const t of await tracks.all()) await tracks.removeQuiet(t.id);
 files.clear();
 const legacy = mk('leg1', 'Aus alter App', 300);
 const legacyText = trackGpx(legacy).replace(/<extensions><wmap:track[^>]*\/><\/extensions>/, '');
-files.set('WMap/Aufgezeichnete Touren/2025/12 Dezember/Aus alter App.gpx', { text: legacyText, modified: clock += 1000 });
+files.set('Aufgezeichnete Touren/2025/12 Dezember/Aus alter App.gpx', { text: legacyText, modified: clock += 1000 });
 // hier frisch aus Health Connect geholt (eigene Kennung, volle Länge) – dieselbe Aufzeichnung
 await tracks.putQuiet({ ...legacy, id: 'hc10', kind: 'health', source: { health: 'L1', app: 'com.zepp', type: 'rowing' } });
 folder._useBackend(be, 'Nextcloud');
@@ -128,7 +128,7 @@ out.tenFile = /<wmap:track/.test(files.get(fileOf('Aus alter App')).text);
 // ── 11. Neues Gerät ──
 for (const t of await tracks.all()) await tracks.removeQuiet(t.id);
 localStorage.removeItem('wmap.health.gone');
-files.set('WMap/Aufgezeichnete Touren/Neu.gpx', { text: trackGpx(mk('new2', 'Ganz neu', 2)), modified: clock += 1000 });
+files.set('Aufgezeichnete Touren/Neu.gpx', { text: trackGpx(mk('new2', 'Ganz neu', 2)), modified: clock += 1000 });
 folder._useBackend(be, 'Nextcloud');
 writes = [];
 out.eleven = await folder.sync();

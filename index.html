@@ -47,7 +47,12 @@
             waiting = pos;
             if (queued) return;
             queued = true;
-            setTimeout(() => { queued = false; last = waiting; subs.forEach((ok) => ok(last)); });
+            setTimeout(() => {
+              queued = false; last = waiting;
+              // Fürs Fahrt-Protokoll (js/car/carlog.js): wie lange die Meldung von der App bis hierher brauchte
+              if (last.sent) window.__carLag = Math.max(window.__carLag || 0, Date.now() - last.sent);
+              subs.forEach((ok) => ok(last));
+            });
           };
           const geo = {
             watchPosition(ok) { const id = ++n; subs.set(id, ok); if (last) setTimeout(() => ok(last)); return id; },

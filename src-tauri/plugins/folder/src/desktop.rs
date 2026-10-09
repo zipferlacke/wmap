@@ -30,6 +30,8 @@ pub struct Files {
 #[derive(Serialize)]
 pub struct Text {
   text: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  data: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -112,7 +114,8 @@ pub fn info<R: Runtime>(app: AppHandle<R>, slot: Option<String>) -> Info {
   info_of(root(&app, &slot))
 }
 
-fn walk(dir: &Path, prefix: &str, depth: usize, out: &mut Vec<Entry>) {
+/// `all`: jede Datei – sonst nur, was WMap liest (Touren, JSON, eigene Ebenen)
+fn walk(dir: &Path, prefix: &str, depth: usize, all: bool, out: &mut Vec<Entry>) {
   let Ok(entries) = fs::read_dir(dir) else { return };
   for e in entries.flatten() {
     let name = e.file_name().to_string_lossy().into_owned();
@@ -123,11 +126,11 @@ fn walk(dir: &Path, prefix: &str, depth: usize, out: &mut Vec<Entry>) {
     let rel = format!("{prefix}{name}");
     if path.is_dir() {
       if depth < MAX_DEPTH {
-        walk(&path, &format!("{rel}/"), depth + 1, out);
+        walk(&path, &format!("{rel}/"), depth + 1, all, out);
       }
     } else {
       let lower = name.to_lowercase();
-      if [".gpx", ".json", ".geojson", ".js", ".mjs"].iter().any(|e| lower.ends_with(e)) {
+      if all || [".gpx", ".fit", ".json", ".geojson", ".js", ".mjs"].iter().any(|e| lower.ends_with(e)) {
         out.push(Entry { path: rel, modified: modified(&path) });
       }
     }
@@ -135,11 +138,11 @@ fn walk(dir: &Path, prefix: &str, depth: usize, out: &mut Vec<Entry>) {
 }
 
 #[command]
-pub async fn list<R: Runtime>(app: AppHandle<R>, slot: Option<String>) -> Result<Files, String> {
+pub async fn list<R: Runtime>(app: AppHandle<R>, slot: Option<String>, all: Option<bool>) -> Result<Files, String> {
   let root = need_root(&app, &slot)?;
   tauri::async_runtime::spawn_blocking(move || {
     let mut files = Vec::new();
-    walk(&root, "", 0, &mut files);
+    walk(&root, "", 0, all.unwrap_or(false), &mut files);
     Files { files }
   })
   .await
@@ -147,9 +150,15 @@ pub async fn list<R: Runtime>(app: AppHandle<R>, slot: Option<String>) -> Result
 }
 
 #[command]
-pub fn read<R: Runtime>(app: AppHandle<R>, slot: Option<String>, path: String) -> Result<Text, String> {
+pub fn read<R: Runtime>(app: AppHandle<R>, slot: Option<String>, path: String, binary: Option<bool>) -> Result<Text, String> {
   let p = inside(&need_root(&app, &slot)?, &path)?;
-  fs::read_to_string(&p).map(|text| Text { text }).map_err(|e| e.to_string())
+  // FIT: der Inhalt in Base64 (`data`)
+  if binary.unwrap_or(false) {
+    use base64::Engine;
+    let bytes = fs::read(&p).map_err(|e| e.to_string())?;
+    return Ok(Text { text: String::new(), data: Some(base64::engine::general_purpose::STANDARD.encode(bytes)) });
+  }
+  fs::read_to_string(&p).map(|text| Text { text, data: None }).map_err(|e| e.to_string())
 }
 
 #[command]
@@ -164,11 +173,59 @@ pub fn write<R: Runtime>(app: AppHandle<R>, slot: Option<String>, path: String, 
 
 #[command]
 pub fn remove<R: Runtime>(app: AppHandle<R>, slot: Option<String>, path: String) -> Result<(), String> {
-  let p = inside(&need_root(&app, &slot)?, &path)?;
+  let root = need_root(&app, &slot)?;
+  let p = inside(&root, &path)?;
   match fs::remove_file(&p) {
     Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.to_string()),
-    _ => Ok(()),
+    _ => {
+      prune(&root, p.parent());
+      Ok(())
+    }
   }
+}
+
+/// Leer gewordene Ordner über einer Datei gehen mit – höchstens bis zum verbundenen Ordner
+fn prune(root: &Path, mut dir: Option<&Path>) {
+  while let Some(d) = dir {
+    if d == root || !d.starts_with(root) || fs::remove_dir(d).is_err() {
+      break;
+    }
+    dir = d.parent();
+  }
+}
+
+/// Datei im Ordner verschieben bzw. umbenennen (auch FIT, unverändert); das Ziel darf es noch nicht geben
+#[command]
+pub fn rename<R: Runtime>(app: AppHandle<R>, slot: Option<String>, path: String, to: String) -> Result<Written, String> {
+  let root = need_root(&app, &slot)?;
+  let (a, b) = (inside(&root, &path)?, inside(&root, &to)?);
+  if b.exists() {
+    return Err(format!("Gibt es schon: {to}"));
+  }
+  if let Some(dir) = b.parent() {
+    fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+  }
+  if fs::rename(&a, &b).is_err() {
+    fs::copy(&a, &b).map_err(|e| e.to_string())?;
+    fs::remove_file(&a).map_err(|e| e.to_string())?;
+  }
+  prune(&root, a.parent());
+  Ok(Written { modified: modified(&b) })
+}
+
+/// Den Ordner (bzw. einen Unterordner darin) im Dateimanager des Systems zeigen
+#[command]
+pub fn reveal<R: Runtime>(app: AppHandle<R>, slot: Option<String>, path: Option<String>) -> Result<(), String> {
+  let root = need_root(&app, &slot)?;
+  let mut dir = match path.as_deref() {
+    Some(p) if !p.is_empty() => inside(&root, p)?,
+    _ => root.clone(),
+  };
+  if !dir.is_dir() {
+    dir = root;
+  }
+  let tool = if cfg!(target_os = "windows") { "explorer" } else if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+  std::process::Command::new(tool).arg(&dir).spawn().map(|_| ()).map_err(|e| e.to_string())
 }
 
 #[command]
@@ -215,6 +272,9 @@ pub async fn save<R: Runtime>(app: AppHandle<R>, name: String, data: String) -> 
 pub struct OpenedFile {
   name: String,
   text: String,
+  /// FIT: der Inhalt in Base64 (`text` bleibt leer)
+  #[serde(skip_serializing_if = "Option::is_none")]
+  data: Option<String>,
 }
 
 #[derive(Default)]
@@ -256,7 +316,7 @@ pub fn open_page<R: Runtime>(app: &AppHandle<R>, page: String) {
 const MAX_OPEN: u64 = 50 * 1024 * 1024;
 
 /// Dateien, mit denen WMap gestartet bzw. geöffnet wurde (Doppelklick, „Öffnen
-/// mit“): nur GPX, höchstens 50 MB. → true, wenn etwas dazukam
+/// mit“): nur GPX und FIT, höchstens 50 MB. → true, wenn etwas dazukam
 pub fn open_paths<R: Runtime>(app: &AppHandle<R>, paths: impl IntoIterator<Item = PathBuf>) -> bool {
   if app.try_state::<Opened>().is_none() {
     app.manage(Opened::default());
@@ -265,15 +325,23 @@ pub fn open_paths<R: Runtime>(app: &AppHandle<R>, paths: impl IntoIterator<Item 
   let mut list = state.0.lock().unwrap_or_else(|e| e.into_inner());
   let before = list.len();
   for p in paths {
-    if !p.extension().is_some_and(|e| e.eq_ignore_ascii_case("gpx")) {
+    let fit = p.extension().is_some_and(|e| e.eq_ignore_ascii_case("fit"));
+    if !fit && !p.extension().is_some_and(|e| e.eq_ignore_ascii_case("gpx")) {
       continue;
     }
     if fs::metadata(&p).map(|m| m.len() > MAX_OPEN).unwrap_or(true) {
       continue;
     }
-    if let Ok(text) = fs::read_to_string(&p) {
-      let name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "Datei.gpx".into());
-      list.push(OpenedFile { name, text });
+    let name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "Datei.gpx".into());
+    if fit {
+      use base64::Engine;
+      // Nur mit FIT-Kopf – `.fit` heißen auch Bilder aus der Astronomie (FITS)
+      if let Some(bytes) = fs::read(&p).ok().filter(|b| b.get(8..12) == Some(&b".FIT"[..])) {
+        let data = Some(base64::engine::general_purpose::STANDARD.encode(bytes));
+        list.push(OpenedFile { name, text: String::new(), data });
+      }
+    } else if let Ok(text) = fs::read_to_string(&p) {
+      list.push(OpenedFile { name, text, data: None });
     }
   }
   list.len() > before

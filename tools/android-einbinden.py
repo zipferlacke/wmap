@@ -83,8 +83,9 @@ def signatur() -> None:
     text = text.replace('getByName("release") {\n', 'getByName("release") {\n' + nutzen, 1)
     datei.write_text(text, encoding="utf-8")
 
-# GPX öffnen und teilen. Dateimanager melden GPX oft als octet-stream oder XML –
-# das Plugin nimmt nur, was wirklich <gpx enthält.
+# GPX und FIT öffnen und teilen. Dateimanager melden beide oft als octet-stream
+# (GPX auch als XML) – das Plugin nimmt nur, was wirklich <gpx enthält oder mit
+# dem FIT-Kopf beginnt.
 GPX_MARKE = "<!-- wmap:gpx -->"
 GPX_FILTER = f"""            {GPX_MARKE}
             <intent-filter>
@@ -98,6 +99,8 @@ GPX_FILTER = f"""            {GPX_MARKE}
                 <data android:mimeType="application/octet-stream" />
                 <data android:mimeType="application/xml" />
                 <data android:mimeType="text/xml" />
+                <data android:mimeType="application/vnd.ant.fit" />
+                <data android:mimeType="application/fits" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
@@ -108,6 +111,8 @@ GPX_FILTER = f"""            {GPX_MARKE}
                 <data android:mimeType="application/octet-stream" />
                 <data android:mimeType="application/xml" />
                 <data android:mimeType="text/xml" />
+                <data android:mimeType="application/vnd.ant.fit" />
+                <data android:mimeType="application/fits" />
             </intent-filter>
 """
 
@@ -220,7 +225,11 @@ def main() -> int:
         text = text.replace("    <application", zeilen + "\n    <application", 1)
     if TTS_MARKE not in text:
         text = text.replace("    <application", TTS_QUERIES + "\n    <application", 1)
-    if GPX_MARKE not in text:
+    # Bestehenden Block ersetzen (die Liste der Typen kann sich ändern)
+    alt = re.search(r" *" + re.escape(GPX_MARKE) + r"\n(?: *<intent-filter>\n(?:.*\n)*? *</intent-filter>\n){2}", text)
+    if alt:
+        text = text[:alt.start()] + GPX_FILTER + text[alt.end():]
+    else:
         text = text.replace("        </activity>", GPX_FILTER + "        </activity>", 1)
     if CAR_MARKE not in text:
         text = text.replace("    </application>", CAR_DIENST + "    </application>", 1)

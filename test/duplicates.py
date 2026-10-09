@@ -62,6 +62,11 @@ with Browser() as b:
     print('GPX hin und zurück:', setup)
     # „Meine Touren“ sagt Bescheid
     b.open('wege.html', wait=3)
+    # Die Frage am Anfang (ui/duplicates-ask.js, eigener Test duplicates_ask.py): „Später“ – gilt für die Sitzung
+    asked = b.wait("return document.querySelector('dialog.confirm[open] .uD-title')?.innerText", 15)
+    print('Frage am Anfang:', asked)
+    b.js("[...document.querySelectorAll('dialog.confirm[open] .confirm-actions button')].find((x) => /Später/.test(x.innerText)).click()")
+    time.sleep(1)
     hint = b.wait("const h = document.querySelector('.wege-dup-hint'); return h && !h.hidden ? h.innerText.replace(/\\s+/g, ' ').trim() : null", 10)
     print('Hinweis auf Meine Touren:', hint)
     b.open('sync.html', wait=3)

@@ -66,6 +66,7 @@ const render = () => {
           <label><input type="checkbox" name="along" value="${m}" ${alongSetting.get(m) ? 'checked' : ''}> ${l}</label>`).join('')}</span>
       </div>
       ${toggle('saver', 'Datensparmodus', 'Keine 3D-Höhendaten und keine Offline-Karten.', dataSaver())}
+      ${window.WMapAndroid?.shareSet ? toggle('carlog', 'Android Auto: Fahrt protokollieren', 'Für die Fehlersuche, wenn die Karte im Auto hängt: schreibt je Fahrt eine Datei nach Download/WMap. Gilt ab dem nächsten Start von WMap im Auto.', window.WMapAndroid.shareGet('carlog') === '1') : ''}
       <button type="button" class="button settings-row" data-act="voice"><span class="msr">record_voice_over</span> Stimme für Ansagen</button>
       <button type="button" class="button settings-row" data-act="fuel"><span class="msr">local_gas_station</span> Spritpreise einrichten</button>
       <a class="button settings-row" href="./offline.html"><span class="msr">download_for_offline</span> Offline-Karten: Gebiete aufs Gerät laden</a>
@@ -148,6 +149,8 @@ root.addEventListener('change', (e) => {
   if (t.name === 'theme') theme.set(t.value);
   if (t.name === 'navzoom') navSettings.zoom = t.value;
   if (t.name === 'nav3d') navSettings.threeD = t.checked;
+  // Liegt im gemeinsamen Speicher von Android – das Auto liest es dort (tools/android/car/CarLog.kt)
+  if (t.name === 'carlog') window.WMapAndroid?.shareSet?.('carlog', t.checked ? '1' : '');
   if (t.name === 'along') alongSetting.set(t.value, t.checked);
   if (t.name === 'saver') {
     // Die Karte schaltet beim nächsten Öffnen (map/map.js liest dieselbe Einstellung)

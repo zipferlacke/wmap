@@ -44,14 +44,19 @@ with Browser(width=1300, height=900) as b:
     b.open('wege.html?id=act1', wait=5)
     actions = b.js("return [...document.querySelectorAll('.weg-actions .button')].map((x) => x.innerText.trim().replace(/^\\S+\\s+/, ''))")
     print('Knöpfe:', actions)
-    checks = {'1. Knöpfe: Navigieren, Als Planung öffnen, Teilen, GPX, Löschen': actions == ['Navigieren', 'Als Planung öffnen', 'Teilen', 'GPX', 'Löschen']}
+    checks = {'1. Knöpfe: Navigieren, Als Planung öffnen, Teilen, Herunterladen, Löschen': actions == ['Navigieren', 'Als Planung öffnen', 'Teilen', 'Herunterladen', 'Löschen']}
 
     # ── 2. Teilen ──
+    # Herunterladen: Auswahl GPX oder FIT
+    b.js("document.querySelector('[data-do=\"gpx\"]').click()"); time.sleep(.6)
+    dl = b.js(DLG)
+    press(b, 'no'); time.sleep(.4)
+    checks['1. Herunterladen fragt: GPX- oder FIT-Datei'] = [x.split('\n')[-1] for x in dl[0]['buttons']] == ['GPX-Datei', 'FIT-Datei', 'Abbrechen']
     first, second = link(b)
     b.shot('tour-teilen')
     print('Teilen:', first, '→', second[0]['title'], (second[0]['url'] or '')[:70], len(second[0]['url'] or ''))
     url = second[0]['url']
-    checks['2. Teilen fragt, was mit soll (Puls), und bietet Link oder GPX-Datei'] = first[0]['boxes'] == ['Puls'] and [x.split('\n')[-1] for x in first[0]['buttons']][:2] == ['Als Link teilen', 'Als GPX-Datei']
+    checks['2. Teilen fragt, was mit soll (Puls): Link, 30 Tage online, Herunterladen (am Rechner ohne „Datei senden“)'] = first[0]['boxes'] == ['Puls'] and [x.split('\n')[-1] for x in first[0]['buttons']] == ['Als Link teilen', '30 Tage online (kurzer Link)', 'Herunterladen …', 'Abbrechen']
     checks['2. der Link trägt die Aufzeichnung (wege.html#weg=…), kurz genug zum Verschicken'] = '/wege.html#weg=' in url and len(url) < 4000
     _, bare = link(b, uncheck='hr')
     call(b, "const { tracks } = await import('./js/data/tracks.js'); await tracks.removeQuiet('act1'); return 1;")     # beim Empfänger gibt es sie nicht
@@ -59,7 +64,7 @@ with Browser(width=1300, height=900) as b:
     got = b.js("return { note: document.querySelector('.weg-note')?.innerText.trim(), charts: [...document.querySelectorAll('.weg-chart-tabs .chip')].map((c) => c.innerText.trim().replace(/^\\S+\\s+/, '')), stats: [...document.querySelectorAll('.weg-stats div')].map((d) => d.innerText.replace(/\\s+/g, ' ')), buttons: [...document.querySelectorAll('.weg-actions .button')].map((x) => x.innerText.trim().replace(/^\\S+\\s+/, '')), look: document.querySelector('.weg-look').hidden, line: window.__wmap.map.getSource('weg-sel').serialize().data.geometry?.coordinates.length }")
     print('geöffnet:', json.dumps(got, ensure_ascii=False))
     b.shot('tour-geteilt')
-    checks['2. geöffnet: Aufzeichnung mit Tempo und Puls, noch nicht gespeichert'] = 'noch nicht gespeichert' in got['note'] and 'Tempo' in got['charts'] and 'Puls' in got['charts'] and any('Ø Puls' in s for s in got['stats']) and got['buttons'] == ['Bei mir speichern', 'GPX'] and got['look'] and got['line'] > 50
+    checks['2. geöffnet: Aufzeichnung mit Tempo und Puls, noch nicht gespeichert'] = 'noch nicht gespeichert' in got['note'] and 'Tempo' in got['charts'] and 'Puls' in got['charts'] and any('Ø Puls' in s for s in got['stats']) and got['buttons'] == ['Bei mir speichern', 'Herunterladen'] and got['look'] and got['line'] > 50
     # ── 3. Speichern ──
     b.js("document.querySelector('[data-do=\"keep\"]').click()"); time.sleep(2)
     kept = call(b, "const { tracks } = await import('./js/data/tracks.js'); return (await tracks.all()).map((t) => [t.name, t.kind, !!t.hr, t.length, /[?]id=/.test(location.search)]);")

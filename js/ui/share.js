@@ -1,5 +1,6 @@
 /**
- * Teilen per Link – ohne Server, alles steckt in der Adresse:
+ * Teilen per Link – ohne Server, alles steckt in der Adresse (nur der kurze
+ * Link auf Wunsch liegt 30 Tage auf dem Server, data/short-link.js):
  *
  *   ?ort=lon,lat&name=…&zeit=…    ein Ort oder „hier bin ich“ (mit Uhrzeit)
  *   ?route=…                       Route mit Profil und Wegpunkten (gepackt)
@@ -27,6 +28,8 @@ const base = () => {
   return `${PUBLIC_URL}index.html`;
 };
 const r5 = (v) => +v.toFixed(5);
+// Ab dieser Länge wird ein kurzer Link angeboten (manches Chatfeld schneidet lange ab)
+const SHORT_FROM = 400;
 /** Öffentliche Adresse einer Seite von WMap (z. B. „wege.html“) – auch aus der App */
 export const pageUrl = (page) => base().replace(/index\.html$/, page);
 
@@ -54,23 +57,31 @@ export const requestUrl = (name) => `${base()}?anfrage=${encodeURIComponent(name
 /**
  * Teilen-Dialog: Teilen-Menü des Geräts, Text mit Link kopieren oder nur den
  * Link kopieren. `url` darf eine Funktion sein (auch async) – Fehler dabei
- * landen als Hinweis. → 'shared' | 'copied' | null
+ * landen als Hinweis. `short` (async → Adresse): Ist der Link lang, gibt es dazu
+ * „Kurzen Link erstellen“ (data/short-link.js – der Inhalt liegt dann 30 Tage
+ * auf dem Server). → 'shared' | 'copied' | null
  */
-export async function share({ title, text = '', url: make }, toast) {
+export async function share({ title, text = '', url: make, short = null, note = '' }, toast) {
   let url;
   try { url = typeof make === 'function' ? await make() : make; } catch (err) { toast?.(err.message); return null; }
   const full = text ? `${text}\n${url}` : url;
   const system = androidApp || !!navigator.share;
   const choice = await ask({
     icon: 'share', title, className: 'stacked',
-    html: `<div class="share-preview">${text ? `<p>${esc(text)}</p>` : ''}<span class="share-url">${esc(url)}</span></div>`,
+    html: `<div class="share-preview">${text ? `<p>${esc(text)}</p>` : ''}<span class="share-url">${esc(url)}</span></div>${note ? `<p class="muted share-note">${esc(note)}</p>` : ''}`,
     buttons: [
       ...(system ? [{ value: 'share', label: 'Teilen …', icon: 'share', primary: true }] : []),
       ...(text ? [{ value: 'text', label: 'Text mit Link kopieren', icon: 'content_copy', primary: !system }] : []),
       { value: 'link', label: 'Nur Link kopieren', icon: 'link', primary: !system && !text },
+      ...(short && url.length > SHORT_FROM ? [{ value: 'short', label: 'Kurzen Link erstellen', icon: 'compress' }] : []),
       { value: 'no', label: 'Abbrechen' },
     ],
   });
+  if (choice === 'short') {
+    let small;
+    try { small = await short(); } catch (err) { toast?.(err.message || 'Der kurze Link ließ sich nicht anlegen'); return share({ title, text, url }, toast); }
+    return share({ title, text, url: small, note: 'Kurzer Link: Die Tour liegt dafür 30 Tage auf dem WMap-Server – danach geht der Link nicht mehr.' }, toast);
+  }
   if (choice === 'share') {
     try {
       if (androidApp) await core.invoke('plugin:browser|share', { title, text: full });
@@ -84,6 +95,26 @@ export async function share({ title, text = '', url: make }, toast) {
   if (choice === 'text') return copy(full, 'Text mit Link kopiert', title, toast);
   if (choice === 'link') return copy(url, 'Link kopiert', title, toast);
   return null;
+}
+
+/** Kann dieses Gerät Dateien über sein Teilen-Menü weitergeben? (Handy-Browser, Android-App) */
+export const canShareFiles = () => androidApp || !!navigator.canShare?.({ files: [new File(['x'], 'x.gpx', { type: 'application/gpx+xml' })] });
+
+/**
+ * Eine Datei über das Teilen-Menü des Systems weitergeben (Messenger, Mail …).
+ * `body`: Text oder Uint8Array. → true (Menü geöffnet bzw. dort abgebrochen) | false (geht hier nicht:
+ * dann herunterladen – auch in einer älteren App, die den Befehl noch nicht kennt)
+ */
+export async function shareFile(name, body, type, title = '') {
+  if (androidApp) {
+    const bytes = typeof body === 'string' ? new TextEncoder().encode(body) : body;
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    try { await core.invoke('plugin:browser|share_file', { title, name, data: btoa(bin), mime: type }); return true; } catch { return false; }
+  }
+  const file = new File([body], name, { type });
+  if (!navigator.canShare?.({ files: [file] })) return false;
+  try { await navigator.share({ files: [file], title }); return true; } catch (err) { return err.name === 'AbortError'; }
 }
 
 /** In die Zwischenablage – geht das nicht, zum Markieren und selbst Kopieren. */

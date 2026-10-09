@@ -22,7 +22,7 @@ localStorage.setItem('wmap.tracks.keep', '"all"');
   for (let k = 0; k < 60; k += 1) {
     const pts = []; for (let i = 0; i < 40; i += 1) pts.push([9.9 + k * 0.01 + i * 0.0005, 51.5 + i * 0.0003, Date.UTC(2026, 0, 1 + (k % 28), 8 + 3 * Math.floor(k / 28), 0, i * 10)]);
     const t = { ...buildTrack(pts, { kind: 'rec', profile: 'foot', name: `Test ${k}` }), id: `prog${k}` };
-    files.set(`WMap/Aufgezeichnete Touren/2026/01 Januar/Test ${k}.gpx`, { text: trackGpx(t), modified: 1000 + k });
+    files.set(`Aufgezeichnete Touren/2026/01 Januar/Test ${k}.gpx`, { text: trackGpx(t), modified: 1000 + k });
   }
   let reads = 0, fail = Infinity;
   const be = {
@@ -68,6 +68,10 @@ localStorage.setItem('wmap.tracks.keep', '"all"');
   const buttons = () => [...document.querySelectorAll('.sync-actions > .button')].map((x) => x.innerText.replace(/^\S+\s+/, '').trim());
   out.withFolder = buttons();
   out.backupSection = [...document.querySelectorAll('.sync h3')].some((h) => /Sicherung/.test(h.innerText));
+  // 3. Abgleich ohne Änderung (wie der stille beim Öffnen der Seite): danach steht „Letzter Abgleich“, nicht mehr „Gleiche ab …“
+  await folder.sync();
+  await new Promise((r) => setTimeout(r, 200));
+  out.idle = [!!document.querySelector('.folder-progress'), [...document.querySelectorAll('.sync-status')].some((x) => /Letzter Abgleich/.test(x.innerText))];
   await folder.disconnect();
   await new Promise((r) => setTimeout(r, 300));
   out.without = buttons();
@@ -193,7 +197,7 @@ with Browser(width=420, height=900) as b:
     print(json.dumps(r, ensure_ascii=False, indent=1))
     ok = isinstance(r, dict) and r['err'] == 'Seite gewechselt' and r['events'] > 5 and r['partial'] \
         and r['secondReads'] < 40 and r['count'] == 60 and r['done'] and r['pendingAfter'] is False \
-        and r['busyText'] and '%' in r['busyText'] and not r['backupSection'] \
+        and r['busyText'] and '%' in r['busyText'] and not r['backupSection'] and r['idle'] == [False, True] \
         and r['withFolder'] == ['Jetzt abgleichen', 'Ordner ändern', 'Exportieren (ZIP)', 'Trennen'] \
         and r['without'] == ['Ordner synchronisieren', 'Aus Ordner importieren', 'Exportieren (ZIP)']
     print('Abgleich stimmt:', ok)

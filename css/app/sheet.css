@@ -279,16 +279,29 @@
     }
     .dg_head { justify-content: flex-start; }
     .dg_tools {
+        flex: 1;
         justify-content: flex-start;
         margin-left: 0;
     }
     .dg_chip { padding: 2px 9px; }
     .dg_chip .msr { font-size: 1rem; }
+    .dg_fsbtn { margin-left: auto; }
     .elev-mountain {
         color: var(--elev);
         font-size: 1.5rem;
         margin-right: .1rem;
     }
+}
+
+/* Diagramm im Vollbild: der Dialog der Bibliothek in den Farben von WMap, frei von Notch und Leisten */
+.dg_fs {
+    --dg-bg: var(--surface);
+    --dg-text: var(--clr-neutral-900);
+    box-sizing: border-box;
+    padding: max(.5rem, env(safe-area-inset-top)) max(.5rem, env(safe-area-inset-right)) max(.5rem, env(safe-area-inset-bottom)) max(.5rem, env(safe-area-inset-left));
+
+    /* Umschalter aus „Meine Touren“ (Höhe, Tempo, Puls …) über dem Diagramm */
+    > .chip-row { flex-shrink: 0; margin: 0; padding: .25rem .5rem; }
 }
 
 .steps {

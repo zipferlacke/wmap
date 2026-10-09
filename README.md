@@ -359,11 +359,11 @@ als aus Fahrersicht, damit Häuser Straße und Abzweig nicht verdecken:
 
 | Umgebung | normal | kurz vor dem Abbiegen* |
 |---|---|---|
-| Stadt | Zoom 17,5 · 45° | 18,1 · 45° |
-| Land | 16,6 · 50° | 17,5 · 50° |
-| Autobahn/schnell (≥ 100 km/h) | 15,6 · 52° | 16,9 · 52° |
-| Zu Fuß | 18,1 · 40° | 18,7 · 45° |
-| verzwickte Stelle (Kreisel, ≥ 3 Spuren, zwei Manöver dicht) | – | 18,4 · 40° |
+| Stadt | Zoom 17,1 · 49° | 17,8 · 45° |
+| Land | 16,2 · 54° | 17,2 · 50° |
+| Autobahn/schnell (≥ 100 km/h) | 15,2 · 56° | 16,6 · 52° |
+| Zu Fuß | 17,7 · 44° | 18,4 · 45° |
+| verzwickte Stelle (Kreisel, ≥ 3 Spuren, zwei Manöver dicht) | – | 18,1 · 40° |
 
 \* „kurz vor dem Abbiegen“: weniger als 30 s oder 150 m (zu Fuß 40 m).
 Einstellung „Zoom in der Navigation“: Näher +0,7, Mehr Überblick −0,9. Der
@@ -585,11 +585,13 @@ Die ersten zwei:
 | Gruppen | Zu Fuß · Rad · Auto | Jahre, jede Tour in der Farbe ihrer Art |
 | Zahlen | Strecke, Anstieg | Strecke, Zeit in Bewegung, Tempo, Puls |
 
-- **Oben:** Tour planen bzw. Aufzeichnen und GPX importieren (doppelte Wege
-  werden erkannt), darunter die Suche (Name, Ort, Jahr, Monat, Profil …),
+- **Oben:** Tour planen bzw. Aufzeichnen und GPX/FIT importieren (mehrere
+  Dateien bzw. solche, die es als Tour schon gibt: mit der Rückfrage aus
+  [15](#mehrere-dateien-eine-frage-für-alle)), darunter die Suche (Name, Ort, Jahr, Monat, Profil …),
   dann je Gruppe eine Tabelle – Jahre bzw. Gruppen als Aufklapp-Zeile mit
   Pfeil. Überfahren einer Zeile hebt die Linie auf der Karte hervor.
-  **GPX-Dateien lassen sich auf die Seite ziehen** (Drag & Drop): unter
+  **GPX- und FIT-Dateien lassen sich auf die Seite ziehen** (Drag & Drop, eine
+  oder mehrere – dieselbe Rückfrage): unter
   „Geplant“ werden es Touren, sonst aufgezeichnete Touren.
 - **Aufgezeichnet – Art, Farbe, Alter** (`js/data/track-look.js`):
   - Jede Tour hat eine **Art** (Gehen, Wandern, Laufen, Rad, Auto, Rudern …):
@@ -621,11 +623,14 @@ Die ersten zwei:
   - Aufgezeichnet: Name änderbar, Datum und Uhrzeit, Strecke, Zeit in
     Bewegung, Ø und max. km/h, Anstieg, Ø/max. Puls, Ø Frequenz und
     Leistung (aus GPX oder Health Connect); die Linie ist nach Tempo
-    gefärbt (langsam orange → schnell grün).
+    gefärbt (langsam grün → schnell rot).
     **Diagramm** mit Umschalter: Höhe, Tempo, Puls, Schritt- bzw.
     Trittfrequenz, Leistung – nur, was gemessen wurde; Zeiger im Diagramm
-    und auf der Linie zeigen dieselbe Stelle.
-    **Runden** zu 1, 2 oder 5 km (gemerkt; Rudern und Paddeln 500 m, 1, 2 km):
+    und auf der Linie zeigen dieselbe Stelle. Der Knopf rechts im Kopf
+    öffnet es im **Vollbild** (auch in der Route und im Tourenplaner; die
+    Umschalter ziehen mit, zoomen geht nur dort – `js/ui/elevation.js`).
+    **Runden** – die der Uhr („Uhr“, wenn die Tour welche hat: aus der
+    FIT-Datei, `marks`) oder zu 1, 2 oder 5 km (gemerkt; Rudern und Paddeln 500 m, 1, 2 km):
     Zeit, Tempo (zu Fuß als min/km, Rudern je 500 m, Schwimmen je 100 m),
     Ø Puls, Anstieg; die schnellste grün, die langsamste rot, eine Runde
     antippen hebt sie auf der Karte hervor (`js/data/track-stats.js`).
@@ -633,7 +638,13 @@ Die ersten zwei:
     (Zepp liefert über Health Connect fürs Rudern nur Puls und Strecke:
     als Frequenz kommen ein paar Werte aus den letzten Sekunden, alle 0,
     und ein einziger Abschnitt mit „1 Wiederholung“ – am Handy
-    nachgemessen. Ein Schlagzahl-Diagramm gibt es dafür darum nicht.)
+    nachgemessen. Die Schlagfrequenz steht nur in der FIT-Datei, die Zepp
+    exportiert – im GPX von Zepp ist sie bei Bootstouren 0. Über „GPX
+    öffnen“ kommt sie in die vorhandene Tour; `tools/zepp/` exportiert
+    alle Trainings aus der Zepp-App.)
+    **Herunterladen** fragt nach GPX (alles, was WMap zur Tour weiß) oder
+    FIT (`js/data/fit.js` – Punkte, Puls, Frequenz, Leistung, Runden,
+    Sportart); **Teilen** gibt immer nur den Link, nie eine Datei.
     **Art, Farbe und Anzeige** – ein Block zum Auf- und Zuklappen (zu; der
     Kopf nennt Art, Farbe und ob die Tour ausgeblendet bzw. offline
     verfügbar ist; beim Ändern bleibt er offen): Art wählen, Farbe (die der
@@ -852,7 +863,9 @@ ansehen“) – GeoJSON auf heller Karte (z. B. aus QGIS).
 **Health Connect** (nur Android-App): Sicherung & Synchronisation → „Trainings
 holen“ übernimmt neue Trainings mit Route als Wege (Name aus dem Training
 oder „Rudern am …“, Profil aus der Art, sonst am Tempo erkannt), dazu Puls,
-Tempo, Frequenz und Leistung je Punkt. Jeder Weg behält Art und App: Symbol
+Frequenz und Leistung je Punkt (das Tempo rechnet WMap aus der Strecke – die
+Geschwindigkeit aus Health Connect wird nicht gelesen, die Berechtigung dafür
+gibt es seit 2.3.0 nicht mehr). Jeder Weg behält Art und App: Symbol
 und „Rudern · Zepp“ in Liste und Detail, auch in der Suche. Schon
 Übernommenes kommt nicht doppelt. Indoor-Trainings (Rudergerät, Workout,
 Laufband …) haben keine Strecke – hängt eine App trotzdem eine Route mit
@@ -926,20 +939,62 @@ gleicht mit ab: dieselben Daten auf allen Geräten, bewusst lokal, ohne Konto
 und ohne Server.
 
 ```
-WMap/
+(der gewählte Ordner)
 ├─ settings.json                     Einstellungen (hell/dunkel, Navigation, Stimme …)
 ├─ Geplante Touren/Harzer Hexenstieg.gpx
 ├─ Aufgezeichnete Touren/2026/09 September/2026-09-20 Radtour am Samstagnachmittag.gpx
+├─ Aufgezeichnete Touren/2026/09 September/2026-09-21 Rudern.fit   FIT der Uhr – bleibt, wie sie ist
 ├─ Bus & Bahn/2026-09-30 08.15 Göttingen → Kassel.json   je gemerkte Verbindung
 ├─ Lesezeichen.json                  Zuhause, Arbeit, Lesezeichen mit Listen
 ├─ Gelöscht.json                     auf einem Gerät Gelöschtes (IDs, ein Jahr)
 ├─ Kartenausschnitt.json             wo die Karte zuletzt stand
+├─ Unbekannte Dateien/                  was keine Tour ist oder sich nicht lesen ließ – 30 Tage
 └─ Inhalt.json                       Verzeichnis: je Datei ID, Art, Fingerabdruck, Stand
 ```
 
-- **Es gilt die Ordnung:** Abgeglichen wird nur, was unter `Geplante Touren/`,
-  `Aufgezeichnete Touren/` (mit beliebigen Unterordnern) und `Bus & Bahn/`
-  liegt. Was woanders im Ordner liegt, wird nicht gelesen.
+- **Direkt im gewählten Ordner** (seit 2.3.0). Bis 2.2 lag alles im
+  Unterordner `WMap/` – der Inhalt zieht beim ersten Abgleich eine Ebene hoch
+  (`liftOld`), die gemerkten Pfade ziehen mit. Darum `minVersion` 2.3.0: Eine
+  ältere Oberfläche fände ihre Dateien nicht mehr und hielte sie für gelöscht.
+- **Jede GPX- und FIT-Datei im Ordner zählt**, egal wo sie liegt (außer unter
+  `Unbekannte Dateien/`), dazu `Bus & Bahn/` und die Dateien von WMap selbst.
+  Was nicht an seinem Platz liegt (eigener Unterordner, falscher Ordner),
+  zieht dorthin; leer gewordene Ordner gehen.
+- **Andere Dateien** (Fotos, Dokumente – weder GPX/FIT noch von WMap,
+  `foreign` in `data/folder.js`) gehören nicht in den Ordner: Sie kommen nach
+  `Unbekannte Dateien/` – aber erst, wenn das einmal bestätigt ist. Beim
+  ersten Fund fragt die Seite (`offerOthers` in `js/ui/folder-inbox.js`):
+  „Nach ‚Unbekannte Dateien‘“ oder „Liegen lassen“. Die Antwort gilt für den
+  Ordner (`sweep`), auch für alles, was später dazukommt; wer sie liegen
+  lässt, sieht sie auf der Seite mit „Aufräumen …“. So räumt WMap keinen
+  Ordner ungefragt leer, der noch anderes enthält. Die Plugins listen dafür
+  alle Dateien (`list { all }`).
+- **Neue Dateien: erst fragen.** Eine Datei ohne WMap-Kennung, die kein Gerät
+  kennt (Export der Uhr, Garmin, Komoot …), fasst der Abgleich nicht an – sie
+  steht in `inbox`, und die Seite fragt beim Start (`js/ui/folder-inbox.js`)
+  mit derselben Rückfrage wie beim Wählen und Hineinziehen von Dateien
+  ([Mehrere Dateien](#mehrere-dateien-eine-frage-für-alle)): „Ja, überall die
+  genaueren Daten“, „Selbst einstellen“ oder „Später“. Der Abgleich bekommt
+  die Antwort als `folder.sync({ decide })` (`rest`: `'best'`, `'later'` oder
+  Haken für alle; `files`: je Pfad). Wartende Dateien werden nicht bei jedem Abgleich
+  neu gelesen.
+  - GPX ohne Zeiten → geplante Tour, als WMap-Datei unter `Geplante Touren/`
+  - neue Aufzeichnung → GPX wird zur WMap-Datei unter Jahr/Monat; **FIT bleibt
+    FIT** und zieht dorthin. Name, Art und Farbe einer FIT-Tour stehen im
+    Verzeichnis (`Inhalt.json`, `meta`), ebenso ihre Kennung – auf allen
+    Geräten dieselbe. Außerhalb der Aufbewahrungszeit liegt in der App nur die
+    Karteikarte, der ganze Weg kommt beim Öffnen aus der FIT-Datei
+  - gibt es die Tour schon → zusammenführen mit Haken je Angabe (Strecke,
+    Puls, Frequenz, Leistung, Runden; `data/duplicates.js` `choices`/`combine`,
+    Dialog `js/ui/merge-ask.js`). Das Ergebnis steht in der WMap-Datei der
+    Tour; die GPX geht, die FIT bleibt daneben und steht für die Tour. Hat die
+    Datei nichts anderes, ohne Frage
+- **Unbekannte Dateien:** GPX/FIT, lesbar, aber keine Tour darin → `Unbekannte Dateien/`
+  (ohne Frage), ebenso andere Dateien nach der Bestätigung oben.
+  Die Seite nennt sie mit dem Hinweis, selbst nachzusehen, und (in der App)
+  einem Knopf zum Dateimanager (`folder.reveal`); 30 Tage nach dem Fund löscht
+  WMap sie (Zeitpunkt in `Inhalt.json`, `broken`). Leere und gerade nicht
+  lesbare Dateien (Cloud-Ordner hakt) bleiben liegen.
 - **Schnell durch das Verzeichnis `Inhalt.json`:** Jede WMap trägt dort ein,
   was sie geschrieben oder gelesen hat. Ein Abgleich holt die Liste des
   Ordners (Namen, Änderungszeit) und das Verzeichnis – den Inhalt einer
@@ -1048,7 +1103,14 @@ WMap/
     Aufzeichnung stehen Herkunft, km, Dauer, Punkte und z. B. „Puls (Ø 120)“
     da); die Werte kommen nach der Uhrzeit an die Punkte der gewählten
     Strecke (`withValuesFrom`)
-  - schon vorhandene Doppelte: Abschnitt „Doppelte Touren“ mit
+  - schon vorhandene Doppelte: **Frage am Anfang** (einmal je Sitzung,
+    `js/ui/duplicates-ask.js` aus `data/auto-sync.js`) mit denselben Dialogen
+    wie beim Import – „Ja, überall die genaueren Daten“ (je Gruppe bleibt die
+    Aufzeichnung mit den meisten Angaben, von den anderen kommt, was fehlt,
+    und Abweichendes von der Seite mit mehr Punkten), „Selbst einstellen“
+    (Haken je doppelter Aufzeichnung) oder „Später“; geschrieben wird erst am
+    Ende (`resolveDuplicates`). Wer wählen will, welche Aufzeichnung bleibt:
+    Abschnitt „Doppelte Touren“ mit
     „Zusammenführen“ auf dieser Seite, nur wenn es welche gibt
     (`js/data/duplicates.js`) – je Gruppe bleibt die gewählte Aufzeichnung,
     ohne Wahl der Eintrag mit den meisten Angaben (Kennung aus Health
@@ -1099,27 +1161,73 @@ in Health Connect WMap → Trainingsrouten „Immer erlauben“). Dazu
 ### Export als ZIP
 
 Dieselbe Ordnung wie im Ordner (GPX, Bus & Bahn, `Lesezeichen.json`), dazu
-`WMap/wmap-sicherung.json` mit allem für die Wiederherstellung. „ZIP wählen“
+`WMap/wmap-sicherung.json` mit allem für die Wiederherstellung. Beim Export
+fragt ein Dialog, ob die aufgezeichneten Touren als GPX oder als FIT in die ZIP
+kommen (`zipBackup({ format })`); geplante Touren sind immer GPX. „ZIP wählen“
 nimmt das ZIP (oder eine alte `.json`); ein ZIP ohne JSON, etwa ein
 gezippter GPX-Ordner von woanders, wird als GPX eingelesen.
 
 ### GPX öffnen (`import.html`)
 
-Eine GPX-Datei antippen bzw. doppelklicken öffnet WMap – und dort je Datei:
+Eine GPX-Datei antippen bzw. doppelklicken öffnet WMap; über die Dateiauswahl
+geht auch **FIT** (Garmin, Zepp/Amazfit, Wahoo – `js/data/fit.js` liest Ort,
+Zeit, Puls, Frequenz, Leistung, Sportart und die Runden der Uhr). Je Datei:
 
 - **Als aufgezeichnete Tour speichern** (nur mit Zeiten in der Datei):
   vorher Prüfung auf Doppelte (WMap-ID im Stichwort `wmap:…` bzw. derselbe
   Weg – `sameTrack`); gibt es ihn schon: „Gibt es schon – ansehen“. Sonst
   speichern und gleich zeigen (`wege.html?id=…`), der Ordner gleicht ihn mit ab.
+- **Erst ansehen:** Eine einzelne geöffnete Datei („Öffnen mit“, „Teilen“,
+  Doppelklick) wird gleich gezeigt, gespeichert ist da noch nichts – mit
+  Zeiten als Aufzeichnung in Meine Touren (`wege.html#datei`, die Datei liegt
+  für die Sitzung in `sessionStorage`), sonst im Planer. Dort: **Als
+  aufgezeichnete Tour speichern** oder **Als geplante Tour öffnen**. Bei
+  mehreren Dateien hat jede Karte „Ansehen“.
+- **Zusammenführen mit Haken:** Gibt es die Tour schon, kommt ein Dialog mit
+  einem Haken je Angabe, die die Datei anders hat – Strecke („x Punkte in der
+  Datei, y hier“), Puls, Frequenz, Leistung, Runden der Uhr. Angehakt ist, wo
+  die genaueren Daten gewinnen; „Zusammenführen“ übernimmt, „Abbrechen“ ändert
+  nichts (`choices`/`combine`, `js/ui/merge-ask.js`).
+- **Mehrere Dateien:** oben die Übersicht (neu / zu einer Tour, die es schon
+  gibt / gibt es schon) und „Alle … übernehmen …“; die Frage für alle kommt
+  gleich nach dem Wählen von selbst (nächster Abschnitt).
 - **Als geplante Tour öffnen:** nur öffnen, wie eine geteilte Tour
   (`tour.html#t=…`, Speichern mit Ausrufezeichen) – gespeichert wird erst dort.
+
+#### Mehrere Dateien: eine Frage für alle
+
+Dieselbe Rückfrage auf allen drei Wegen (`js/ui/import-ask.js`; eingelesen und
+übernommen wird in `js/data/import-files.js`):
+
+| Weg | Wo |
+|---|---|
+| Dateien wählen | „GPX/FIT öffnen“ (`import.html`), „GPX/FIT importieren“ auf Meine Touren |
+| Hineinziehen | auf Meine Touren, eine oder mehrere GPX/FIT |
+| Ordner | von Hand in den verbundenen Ordner gelegt – gefragt wird beim Start |
+
+1. **Eine Frage für alle** (`askAll`): „Ja, überall die genaueren Daten“ ·
+   „Selbst einstellen“ · „Abbrechen“ (Ordner: „Später“). Sie kommt, sobald es
+   etwas zu entscheiden gibt – mehrere Dateien, von denen mindestens eine zu
+   einer vorhandenen Tour gehört (im Ordner immer: dort fasst WMap sonst
+   nichts an). Nur neue Touren: werden ohne Frage gespeichert. Eine einzelne
+   Datei, die es schon gibt: gleich die Haken.
+2. **Ja:** Neue werden gespeichert; gibt es die Tour schon, gilt der Vorschlag
+   (`choices`: was fehlt, kommt dazu; Abweichendes von der Seite mit mehr
+   Punkten). Name, Art und Farbe bleiben.
+3. **Selbst einstellen** (`askOne`): Neue kommen dazu; je Datei, die es schon
+   gibt, die Haken – vorbelegt mit dem Vorschlag. Darunter **Weiter** (bei der
+   letzten „Zusammenführen“), **Für alle so übernehmen** (die Haken gelten
+   für den Rest), **Für alle die genaueren Daten**, **Später weitermachen**
+   (diese und der Rest bleiben liegen – auf `import.html` in der Liste, im
+   Ordner als wartende Dateien) und **Abbrechen**: Dann passiert nichts, auch
+   nicht mit dem, was schon gewählt war.
 
 Wie die Datei ankommt:
 
 | Wo | Wie |
 |---|---|
-| Android-App | „Öffnen mit“ (`ACTION_VIEW`) und „Teilen“ (`ACTION_SEND`) – Intent-Filter aus `tools/android-einbinden.py`, das folder-Plugin liest die Datei (nur mit `<gpx`), `opened` gibt sie der Seite |
-| Rechner-Apps | Dateizuordnung `.gpx` (`bundle.fileAssociations`): Start mit Datei, zweiter Start (single-instance) bzw. macOS „Opened“ → `open_paths()` im folder-Plugin |
+| Android-App | „Öffnen mit“ (`ACTION_VIEW`) und „Teilen“ (`ACTION_SEND`) – Intent-Filter aus `tools/android-einbinden.py`, das folder-Plugin liest die Datei (nur mit `<gpx` oder FIT-Kopf; FIT kommt in Base64 als `data`), `opened` gibt sie der Seite |
+| Rechner-Apps | Dateizuordnung `.gpx` und `.fit` (`bundle.fileAssociations`): Start mit Datei, zweiter Start (single-instance) bzw. macOS „Opened“ → `open_paths()` im folder-Plugin |
 | installierte Web-App | Chrome/Edge am Rechner: `file_handlers` im Manifest (`launchQueue`); am Handy das Teilen-Menü: `share_target` → `sw.js` legt die Dateien in den Cache `wmap-share` → `import.html?shared` |
 | sonst | Dateiauswahl auf der Seite |
 
@@ -1128,6 +1236,15 @@ In der App schickt `js/core/theme.js` beim Start einer Seite zu
 
 ## 16. Teilen, Standort anfragen, Bild in Bild
 
+- **Kurzer Link** (`js/data/short-link.js`, `bEnd/api_share.php`): Der Link
+  einer Aufzeichnung oder Tour ist bei vielen Daten zu lang für manches
+  Chatfeld. Ab 400 Zeichen bietet der Teilen-Dialog „Kurzen Link erstellen“:
+  Der gepackte Inhalt liegt dann 30 Tage unverschlüsselt auf dem WMap-Server
+  (Tabelle `Shares`), der Link trägt nur die Kennung (`wege.html#k=…`,
+  `tour.html#k=…`). Beim Öffnen holt die Seite den Inhalt und setzt den langen
+  Link in die Adresse (`resolveShort`). Ohne Anmeldung, höchstens 40 Links je
+  Herkunft und Tag; Älteres löscht der Server bei jedem Aufruf. Der lange Link
+  ohne Server bleibt die Voreinstellung.
 - **Teilen per Link** – ohne Server, alles steckt in der Adresse: ein Ort,
   „Hier bin ich“ (mit Uhrzeit), eine Route mit Profil und Wegpunkten, eine
   Tour (`tour.html#t=…`), in der Navigation die Ankunftszeit. Die Links
@@ -1432,8 +1549,8 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 | `?reach=lon,lat` | Erreichbarkeit |
 | `?action=route\|record\|fly\|reach\|survey` | Ansicht öffnen |
 | `?ort=…`, `?route=…`, `?anfrage=…` | Geteiltes |
-| `?geo=geo:51.53,9.93?q=…` | Karten-Link einer anderen App (`geo:`) – Punkt, Punkt mit Namen oder Suche |
-| `?sim`, `?tempo=4` | Navigation simulieren |
+| `?geo=geo:51.53,9.93?q=…` | Karten-Link einer anderen App (`geo:`) – Punkt, Punkt mit Namen oder Suche. In der App: `open_link` (läuft schon) bzw. beim Start `pending_link` – die Seite holt den Link selbst ab (`js/core/theme.js`), am Handy kommt das Umschalten beim Start sonst nicht an |
+| `?sim`, `?tempo=4` | Navigation simulieren – auch am Handy im Browser oder in der App (Link `https://app.wuefl.de/wmap/index.html?from=…&to=…&profile=car&sim` öffnen); `sim=verfahren`, `sim=rauschen` |
 | `?car`, `&at=lon,lat` | Karte für den Autobildschirm (Android Auto, siehe [23](#23-android-auto)); `at`: dort beginnen |
 | `?tour=ID&start`, `?track=ID&start` | geplante bzw. aufgezeichnete Tour navigieren |
 | `wege.html?tab=geplant`, `?tour=ID`, `?id=ID`, `#weg=…` | Meine Touren; `#weg=` ist eine geteilte Aufzeichnung |
@@ -1580,6 +1697,26 @@ Weg zum Ziel. Gilt am Handy und im Auto; nach einem Neustart der App mitten in d
 - Ohne Standort-Freigabe fragt das Auto am Handy danach.
 - „Navigiere zu …“ aus anderen Apps oder per Sprache (`geo:`) öffnet die
   Routenwahl bzw. die Suche.
+
+**Fahrt-Protokoll (Fehlersuche bei Hängern im Auto):** Einstellungen → „Android Auto: Fahrt protokollieren“
+(nur in der Android-App; liegt im gemeinsamen Speicher `wmap_shared`, Schlüssel `carlog`). Ab dem nächsten Start
+von WMap im Auto schreibt die App je Fahrt eine Datei – erst nach `Android/data/<Paket>/files/car-log/`, am Ende
+der Fahrt (bzw. beim nächsten Start) nach **Download/WMap/**`wmap-auto-<Datum>.log`. Geht auch in der fertigen App
+aus dem Play Store – eine Debug-Fassung nimmt Google Play nicht an. Zeilen (`tools/android/car/CarLog.kt`,
+`js/car/carlog.js`):
+
+| Zeile | Inhalt |
+|---|---|
+| `start`, `js anfang` | Gerät, Android, App, Fläche des Autos; wer zeichnet (`grafik` – „SwiftShader“ hieße: ohne Grafikchip), Bildpunkte, Bildrate |
+| `fix` | Standort vom Handy: Alter der Messung, Abstand zur vorigen, Genauigkeit, Tempo |
+| `js` (je Sekunde) | `b` Kartenbilder · `pause` längste Zeit zwischen zwei Bildern · `lang` lange Aufgaben (Anzahl/Summe/längste) · `takt` größter Verzug eines 100-ms-Takts · `fix`, `weg` (App → Seite), `alter` (GPS-Zeit → Seite) · Messstellen `fahrt`, `strasse`, `hinweis` (Anzahl/Summe/längste) · `nav`, Zoom, Neigung, Kacheln geladen |
+| `call` | Anfrage der Vorlagen an die Seite über 300 ms |
+| `mainlag` | Haupt-Thread der App hing über 150 ms (er trägt das WebView, die Vorlagen und den Standort) |
+| `sys` (alle 10 s), `thermal` | Wärmestufe, Akku-Temperatur, Handy-Bildschirm an?, Zähler (Hinweise, Neuzeichnen) |
+| `surface`, `page` | Fläche des Autos kam/ging; Warnungen und Fehler der Seite |
+
+Die Zeilen der Seite kommen nur, wenn die Karte im Auto diesen Stand der Webversion lädt (fertige App:
+app.wuefl.de; Debug-Fassung: der Rechner über `adb reverse`, sonst ebenfalls app.wuefl.de).
 
 Technik: Die Vorlagen stehen in `tools/android/car/` (Kotlin, Car App
 Library), `tools/android-einbinden.py` setzt sie ins erzeugte Android-Projekt.
@@ -1790,7 +1927,7 @@ tools/android-auto.sh id3       # Android Auto am Rechner (Simulator), siehe Abs
       { "id": "wartung-okt", "title": "Wartung", "text": ["Absatz", "…"],
         "icon": "construction", "from": "2026-10-01", "until": "2026-10-05" }
     ],
-    "changelog": [{ "version": "1.0.0", "date": "2026-09-28", "changes": ["…"] }]
+    "changelog": [{ "version": "1.0.0", "date": "2026-09-28", "appVersion": "1.0.0", "changes": ["…"] }]
   }
   ```
 
@@ -1801,6 +1938,7 @@ tools/android-auto.sh id3       # Android Auto am Rechner (Simulator), siehe Abs
   | `messages` | Nachrichten als Dialog, jede einmal (gemerkt über `id`); `from`/`until` (Datum) optional, `text` HTML erlaubt |
   | `minVersion` | kleinste Version der **Oberfläche**. Ist die laufende älter (z. B. nach einer Änderung an der Server-API): „Update nötig“ – nur **Aktualisieren**, lädt den neuen Service Worker |
   | `minAppVersion` | kleinste Version der **App selbst** (Tauri-Teil: Rust, Kotlin, Plugins, Rechte). Ist die installierte App älter: gesperrt mit „WMap-App aktualisieren“ – sichern (in den Ordner bzw. als ZIP), dann Play Store bzw. wuefl.de. Im Browser gilt es nicht (`src-tauri/README.md`) |
+  | `changelog[].appVersion` | die **App** (Tauri-Teil), die zu dieser Version gehört – steht an jedem Eintrag, es gilt die des neuesten. Ist die installierte App älter: Hinweis „Neue Version der WMap-App“ mit Link zum Play Store bzw. zu wuefl.de („Später“ geht) – und die neue Oberfläche kommt so lange nicht: Der neue Service Worker fragt die offene Seite nach der App-Version und installiert sich in einer älteren App nicht (`sw.js` `appCurrent`). Die neue App muss deshalb vor der Web-App zu haben sein |
 
   **Neue Version:** oben im `changelog` eintragen, dann
   `python3 appdata/version.py` – trägt die Nummer in `js/core/config.js`,

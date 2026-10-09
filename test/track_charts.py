@@ -1,4 +1,4 @@
-"""Weg mit Puls und Frequenz: Diagramm-Umschalter, Runden (1/2/5 km), schnellste/langsamste, GPX mit Messwerten."""
+"""Weg mit Puls und Frequenz: Diagramm-Umschalter, Diagramm im Vollbild, Runden (1/2/5 km), schnellste/langsamste, GPX mit Messwerten."""
 import sys
 from common import Browser
 
@@ -12,16 +12,29 @@ while ((lon - 9.90) * 69500 < 6300) {
   pts.push([lon, 51.53, ms, 120 + Math.round(v * 10), 160 + Math.round(v * 5), 0]);
   lon += v * 10 / 69500; ms += 10000;
 }
-const t = { ...buildTrack(pts, { kind: 'gpx', profile: 'foot', name: 'Testlauf' }), id: 'wtest1' };
+// Runden der Uhr: zwei Marken (nach 10 und 25 Minuten) → drei Runden
+const t = { ...buildTrack(pts, { kind: 'gpx', profile: 'foot', name: 'Testlauf' }), id: 'wtest1', marks: [600, 1500] };
 await tracks.put(t);
 const back = parseGpx(trackGpx(t))[0];
-return { n: t.times.length, hr: !!t.hr, cad: !!t.cad, gpxHr: !!back.hr, gpxCad: !!back.cad };
+// Als FIT geschrieben und wieder gelesen: dieselben Punkte, Messwerte, Runden und die Art
+const { trackFit, parseFit } = await import('./js/data/fit.js');
+const mean = (a) => { const v = (a ?? []).filter((x) => x > 0); return v.length ? Math.round(v.reduce((x, y) => x + y, 0) / v.length) : 0; };
+const { encodeTrack, decodeTrack } = await import('./js/data/track-share.js');
+const linkMarks = (await decodeTrack(await encodeTrack(t))).marks;
+const bytes = trackFit({ ...t, sport: 'rowing' });
+const fit = parseFit(bytes.buffer, 'Testlauf.fit')[0];
+const fitBack = { size: bytes.length, start: fit.start === t.start, end: fit.end === t.end, km: Math.abs(fit.length - t.length) < t.length * 0.02, hr: [mean(t.hr), mean(fit.hr)], cad: [mean(t.cad), mean(fit.cad)], marks: fit.marks, sport: fit.sport };
+return { n: t.times.length, hr: !!t.hr, cad: !!t.cad, gpxHr: !!back.hr, gpxCad: !!back.cad, gpxMarks: back.marks, linkMarks, fit: fitBack };
 """
 
 with Browser(width=420, height=900) as b:
     b.open('wege.html', wait=3)
-    print('Weg angelegt:', b.d.execute_async_script(
-        'const done = arguments[0]; (async () => {' + MAKE + '})().then(done, (e) => done(String(e)))'))
+    made = b.d.execute_async_script(
+        'const done = arguments[0]; (async () => {' + MAKE + '})().then(done, (e) => done(String(e) + e.stack))')
+    print('Weg angelegt:', made)
+    f = made['fit'] if isinstance(made, dict) else {}
+    print('ok    ' if f and f['start'] and f['end'] and f['km'] and f['hr'][0] == f['hr'][1] and abs(f['cad'][0] - f['cad'][1]) <= 1 and f['marks'] == [600, 1500] and f['sport'] == 'rowing' else 'FALSCH', 'FIT schreiben und lesen: Start, Ende, Länge, Puls, Frequenz, Runden und Art stimmen')
+    print('ok    ' if isinstance(made, dict) and made['linkMarks'] == [600, 1500] and made['gpxMarks'] == [600, 1500] else 'FALSCH', 'Runden der Uhr gehen im geteilten Link und in der GPX-Datei mit')
     b.open('wege.html?id=wtest1', wait=5)
     tabs = b.js("return [...document.querySelectorAll('.weg-chart-tabs .chip')].map(c => c.innerText.trim() + (c.getAttribute('aria-pressed') === 'true' ? ' *' : ''))")
     print('Diagramme:', tabs)
@@ -30,6 +43,35 @@ with Browser(width=420, height=900) as b:
         b.wait("return document.querySelector('.elevation .dg_tools')")
         print(' ', kind, '→', b.js("return document.querySelector('.elevation .elev-mountain')?.textContent + ' | ' + [...document.querySelectorAll('.elevation .dg_chip, .elevation [class*=chip]')].map(x => x.innerText.replace(/\\s+/g, ' ')).slice(0, 3).join(' / ')"))
     b.shot('weg-diagramm')
+    # Vollbild: dasselbe Diagramm im Dialog, die Umschalter ziehen mit; zu per Knopf und per Esc, danach wieder zu öffnen
+    import time
+    state = "const d = document.querySelector('dialog.dg_fs'), bar = document.querySelector('.weg-chart-tabs'); return [!!d?.open, !!bar?.closest('dialog.dg_fs'), bar?.querySelector('[aria-pressed=true]')?.dataset.chart, document.querySelector('.dg_fsbtn')?.title, document.querySelector('.elev-mountain')?.title, document.querySelector('.elevation').offsetHeight > 400]"
+    b.js("document.querySelector('.elevation .dg_fsbtn').click()"); time.sleep(1)
+    full = b.js(state)
+    b.js("document.querySelector('dialog.dg_fs [data-chart=hr]').click()"); time.sleep(1)
+    switched = b.js(state)
+    b.shot('weg-diagramm-vollbild')
+    b.js("document.querySelector('dialog.dg_fs .dg_fsbtn').click()"); time.sleep(1)
+    closed = b.js(state)
+    b.js("document.querySelector('.elevation .dg_fsbtn').click()"); time.sleep(1)
+    again = b.js(state)
+    b.js("document.querySelector('dialog.dg_fs').close()"); time.sleep(1)
+    esc = b.js(state)
+    print('Vollbild:', full, switched, closed, again, esc)
+    for name, ok in {
+        'Vollbild: Diagramm füllt den Dialog, Umschalter sind dabei': full == [True, True, 'cad', 'Vollbild verlassen', 'Schrittfrequenz', True],
+        'Vollbild: umschalten auf Puls, Knopf bleibt „verlassen“': switched == [True, True, 'hr', 'Vollbild verlassen', 'Puls', True],
+        'Vollbild: zu per Knopf – Diagramm und Umschalter zurück im Blatt, Auswahl bleibt': closed == [False, False, 'hr', 'Vollbild', 'Puls', False],
+        'Vollbild: geht danach wieder auf, zu per Esc': again[:2] == [True, True] and esc == closed,
+    }.items():
+        print('ok    ' if ok else 'FALSCH', name)
+    b.js("document.querySelector('[data-lap-size=watch]').click()")
+    watch = b.js("return [[...document.querySelectorAll('[data-lap-size]')].map(c => c.innerText.trim()), [...document.querySelectorAll('.laps-table tbody tr')].map(r => r.innerText.replace(/\\s+/g, ' ').split(' ').slice(0, 4).join(' '))]")
+    print('Runden der Uhr:', watch)
+    for name, ok in {
+        'Runden der Uhr: Auswahl „Uhr“ steht vorn, drei Runden mit Strecke und Zeit (10:00, 15:00, Rest)': watch[0][0] == 'Uhr' and len(watch[1]) == 3 and '10:00' in watch[1][0] and '15:00' in watch[1][1] and 'km' in watch[1][0],
+    }.items():
+        print('ok    ' if ok else 'FALSCH', name)
     for size in [1000, 2000, 5000]:
         b.js(f"document.querySelector('[data-lap-size=\"{size}\"]').click()")
         rows = b.js("return [...document.querySelectorAll('.laps-table tbody tr')].map(r => r.className + ': ' + r.innerText.replace(/\\s+/g, ' '))")

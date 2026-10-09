@@ -121,6 +121,14 @@
         font: inherit;
         text-align: left;
     }
+    /* Zusammenführen (ui/merge-ask.js): je Angabe eine Zeile – links Name und Einzelheit, rechts der Haken */
+    .settings-toggle {
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        cursor: pointer;
+        span { display: grid; gap: .1rem; }
+        small { color: var(--muted); font-size: var(--fs-100); }
+        input { flex-shrink: 0; }
+    }
     /* Knöpfe untereinander, volle Breite – z. B. beim Teilen */
     &.stacked .confirm-actions {
         flex-direction: column;

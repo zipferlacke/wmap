@@ -139,7 +139,7 @@ async function healthItem(reason) {
   let st;
   try { st = await healthStatus(); } catch (err) { st = { available: false, reason: String(err?.message ?? err) }; }
   const text = 'Liest Trainings anderer Apps – Fitbit, Strava, Zepp, Samsung Health … – samt Route und Messwerten '
-    + '(Puls, Tempo, Schritt- und Trittfrequenz, Leistung), damit du sie unter Meine Touren als Wege mit Diagrammen '
+    + '(Puls, Schritt- und Trittfrequenz, Leistung), damit du sie unter Meine Touren als Wege mit Diagrammen '
     + 'und Runden siehst. WMap liest nur und schreibt nichts zurück.';
   if (!st.available) return item({ id: 'health', icon: 'favorite', title: 'Health Connect', state: 'none', status: st.reason, text, wanted: reason === 'health' });
   if (!st.read) {

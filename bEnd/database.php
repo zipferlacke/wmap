@@ -123,6 +123,19 @@ class DB_Helper{
                 detail              TEXT
             )",
             "CREATE INDEX IF NOT EXISTS StatisticsEvent ON Statistics (event, time)",
+
+            // ===================================
+            // Shares – kurzer Link beim Teilen (api_share.php): der gepackte Inhalt des Links, 30 Tage
+            // id (steht im Link) - kind (weg | tour) - code - created (Sekunden) - who (Fingerabdruck aus Adresse und Tag)
+            // ===================================
+            "CREATE TABLE IF NOT EXISTS Shares (
+                id                  TEXT        PRIMARY KEY,
+                kind                TEXT        NOT NULL,
+                code                TEXT        NOT NULL,
+                created             INTEGER     NOT NULL,
+                who                 TEXT
+            )",
+            "CREATE INDEX IF NOT EXISTS SharesCreated ON Shares (created)",
         ];
         foreach ($tables as $sql) {
             $result = $this->execSql($sql, [], "openDatabase");

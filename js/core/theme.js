@@ -95,3 +95,13 @@ if (window.__TAURI__?.core && !window.__wmapStarting && !/\/import\.html$/.test(
     })
     .catch(() => { /* ältere App ohne „opened“ */ });
 }
+// App: mit einem Link gestartet (geo:, geteilte Tour)? Am Handy kommt das Umschalten der App beim Start nicht
+// an (die erste Seite lädt da noch) – darum hier abholen (src-tauri/src/lib.rs pending_link, einmal je Start).
+if (window.__TAURI__?.core && !window.__wmapStarting) {
+  window.__TAURI__.core.invoke('pending_link')
+    .then((rel) => {
+      const to = rel ? new URL(rel, location.href) : null;
+      if (to && to.href !== location.href) location.replace(to);
+    })
+    .catch(() => { /* ältere App ohne „pending_link“ */ });
+}

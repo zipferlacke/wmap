@@ -701,11 +701,13 @@ export class Navigation {
     // Eher von schräg oben als aus Fahrersicht: flach geneigt verdecken Häuser
     // in der Stadt Straße und Abzweig. Dafür näher heran – man sieht die
     // nächste Kreuzung groß, nicht die halbe Stadt bis zum Horizont.
-    if (foot) [zoom, pitch] = near ? [18.7, 45] : [18.1, 40];
-    else if (ctx === 'fast') [zoom, pitch] = near ? [16.9, 52] : [15.6, 52];
-    else if (ctx === 'rural') [zoom, pitch] = near ? [17.5, 50] : [16.6, 50];
-    else [zoom, pitch] = near ? [18.1, 45] : [17.5, 45];
-    if (near && !foot && this.#complex(m)) [zoom, pitch] = [18.4, 40];
+    // Nah: die Neigung der Umgebung, nicht ganz so dicht heran. Mit Platz bis zum Abbiegen: weiter weg und
+    // etwas stärker geneigt – man sieht mehr voraus, ohne in die Vogelperspektive zu kippen
+    if (foot) [zoom, pitch] = near ? [18.4, 45] : [17.7, 44];
+    else if (ctx === 'fast') [zoom, pitch] = near ? [16.6, 52] : [15.2, 56];
+    else if (ctx === 'rural') [zoom, pitch] = near ? [17.2, 50] : [16.2, 54];
+    else [zoom, pitch] = near ? [17.8, 45] : [17.1, 49];
+    if (near && !foot && this.#complex(m)) [zoom, pitch] = [18.1, 40];
     zoom += { near: 0.7, far: -0.9 }[navSettings.zoom] ?? 0;
     if (!navSettings.threeD) pitch = 0;
     this.#target = { zoom, pitch };

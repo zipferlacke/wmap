@@ -21,9 +21,11 @@ Nachgestellt am Gerät: acht `watch_position`, danach bleibt `check_permissions`
 **Dazugekommen (2.2.0): Aufzeichnen bei ausgeschaltetem Bildschirm.**
 
 - `android/src/main/java/RecordService.kt` – Vordergrund-Dienst (Typ `location`) mit Benachrichtigung „WMap
-  zeichnet auf“. Holt den Standort selbst (alle 2 s, hohe Genauigkeit) und sammelt die Punkte, solange die App
-  nicht zu sehen ist (`hidden`, gesetzt in `onPause`/`onResume` des Plugins) – im Arbeitsspeicher, höchstens
-  30 000 Punkte.
+  zeichnet auf“. Holt den Standort selbst (alle 2 s, hohe Genauigkeit) und sammelt die Punkte im
+  Arbeitsspeicher, höchstens 30 000. **Ab 2.3.0 immer** (`always: true` in `take_recorded`), die Seite nimmt für
+  die Aufzeichnung nur noch diese Punkte. Bis 2.2.0 nur, solange die App nicht zu sehen war (`hidden`): Beim
+  Zurückkommen kam ein frischer Punkt der Seite vor den nachgereichten an, die dann als „zu alt“ wegfielen –
+  Luftlinie statt Strecke; und am Sperrbildschirm (Bildschirm an, App gilt als vorn) zählte niemand.
 - Die Benachrichtigung zeigt Zeit und Strecke und hat „Pause“/„Weiter“ und „Beenden“; den Stand gibt die Seite
   mit (`state` bei `start_recording` und `take_recorded`: Start, Pausen, Strecke, letzter Punkt), „Beenden“
   kommt als Vermerk am Start-Intent zurück (`onNewIntent`).

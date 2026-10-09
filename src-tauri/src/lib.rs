@@ -33,7 +33,8 @@ pub fn run() {
   // Weblinks über der App (js/core/links.js): Custom Tab bzw. eigenes Fenster
   let builder = builder.plugin(tauri_plugin_browser::init());
   builder
-    .invoke_handler(tauri::generate_handler![overpass])
+    .manage(Pending::default())
+    .invoke_handler(tauri::generate_handler![overpass, pending_link])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -53,11 +54,12 @@ pub fn run() {
       // Karten-Links „geo:…“ und (Handy) geteilte Links auf app.wuefl.de/wmap:
       // beim Start und während die App läuft
       if let Some(urls) = app.deep_link().get_current()? {
-        open_link(app.handle(), &urls);
+        // Für die Seite bereitlegen – sie holt es beim Laden ab (pending_link, js/core/theme.js)
+        *app.state::<Pending>().0.lock().unwrap_or_else(|e| e.into_inner()) = link_target(&urls);
       }
       let handle = app.handle().clone();
       app.deep_link().on_open_url(move |event| open_link(&handle, &event.urls()));
-      // Mit einer GPX-Datei gestartet (Doppelklick, „Öffnen mit“): die Seite
+      // Mit einer GPX- oder FIT-Datei gestartet (Doppelklick, „Öffnen mit“): die Seite
       // holt sie beim Plugin „folder“ ab (core/theme.js → import.html)
       #[cfg(desktop)]
       {
@@ -108,35 +110,61 @@ fn open_page(app: &tauri::AppHandle, page: &str) {
   let _ = win.set_focus();
 }
 
-/// Link in der App öffnen – neben der gerade offenen Seite, eingepackt oder
-/// die Webversion:
+/// Link, mit dem die App gestartet wurde – die Seite holt ihn ab (`pending_link`)
+#[derive(Default)]
+struct Pending(std::sync::Mutex<Option<String>>);
+
+/// Mit einem Link gestartet? → Ziel neben der offenen Seite (z. B. `index.html?geo=…`), einmal.
+/// Am Handy kommt das Umschalten beim Start (open_link aus `setup`) nicht an: Die erste Seite
+/// lädt da noch. Darum fragt jede Seite beim Laden hier nach (js/core/theme.js).
+#[tauri::command]
+fn pending_link(state: tauri::State<Pending>) -> Option<String> {
+  state.0.lock().unwrap_or_else(|e| e.into_inner()).take()
+}
+
+/// Link → Ziel neben der gerade offenen Seite, eingepackt oder die Webversion:
 ///   geo:…                      → `index.html?geo=…` (tauri-start.js reicht
 ///                                `?geo=` beim Wechsel weiter; js/app.js openGeo)
 ///   https://app.wuefl.de/wmap/… → dieselbe Seite samt `?…` und `#…` (geteilte
 ///                                Orte, Routen, Touren, Listen – ui/share.js)
+fn link_target(urls: &[Url]) -> Option<String> {
+  if let Some(link) = urls.iter().find(|u| u.scheme() == "geo") {
+    let mut page = Url::parse("http://x/index.html").ok()?;
+    page.query_pairs_mut().append_pair("geo", link.as_str());
+    return Some(format!("index.html?{}", page.query()?));
+  }
+  let link = urls.iter().find(|u| u.scheme() == "https" && u.host_str() == Some("app.wuefl.de"))?;
+  // Nur Seiten von WMap: „/wmap/tour.html“ → „tour.html“, „/wmap/“ → „index.html“
+  let rest = link.path().strip_prefix("/wmap/")?;
+  let name = if rest.is_empty() { "index.html" } else { rest };
+  if name.contains('/') || !name.ends_with(".html") {
+    return None;
+  }
+  let mut target = name.to_string();
+  if let Some(q) = link.query() {
+    target.push('?');
+    target.push_str(q);
+  }
+  if let Some(f) = link.fragment() {
+    target.push('#');
+    target.push_str(f);
+  }
+  Some(target)
+}
+
+/// Link in der App öffnen (link_target) – während sie läuft. Die Seite wechselt selbst (`eval`): Das kehrt
+/// sofort zurück. `win.url()` und `navigate` fragen am Handy den Haupt-Thread – auf dem dieser Aufruf schon
+/// läuft: Die App stand 10 s weiß da und stürzte dann ab (wry main_pipe, SendError). Das Ziel liegt zusätzlich
+/// für `pending_link` bereit, falls die Seite gerade erst lädt.
 fn open_link(app: &tauri::AppHandle, urls: &[Url]) {
+  let Some(target) = link_target(urls) else { return };
+  *app.state::<Pending>().0.lock().unwrap_or_else(|e| e.into_inner()) = Some(target.clone());
   let Some(win) = app.get_webview_window("main") else { return };
-  let Ok(here) = win.url() else { return };
-  let target = if let Some(link) = urls.iter().find(|u| u.scheme() == "geo") {
-    let Ok(mut page) = here.join("index.html") else { return };
-    page.query_pairs_mut().clear().append_pair("geo", link.as_str());
-    page.set_fragment(None);
-    page
-  } else if let Some(link) = urls.iter().find(|u| u.scheme() == "https" && u.host_str() == Some("app.wuefl.de")) {
-    // Nur Seiten von WMap: „/wmap/tour.html“ → „tour.html“, „/wmap/“ → „index.html“
-    let Some(rest) = link.path().strip_prefix("/wmap/") else { return };
-    let name = if rest.is_empty() { "index.html" } else { rest };
-    if name.contains('/') || !name.ends_with(".html") {
-      return;
-    }
-    let Ok(mut page) = here.join(name) else { return };
-    page.set_query(link.query());
-    page.set_fragment(link.fragment());
-    page
-  } else {
-    return;
-  };
-  let _ = win.navigate(target);
+  let Ok(rel) = serde_json::to_string(&target) else { return };
+  let _ = win.eval(format!(
+    "(() => {{ const to = new URL({rel}, location.href); window.__TAURI__?.core?.invoke('pending_link').catch(() => {{}}); if (to.href !== location.href) location.assign(to); }})()"
+  ));
+  #[cfg(desktop)]
   let _ = win.set_focus();
 }
 

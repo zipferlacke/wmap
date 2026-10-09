@@ -42,6 +42,7 @@ import { prefs as routePrefs, reloadPrefs, setPref } from '../ui/route-prefs.js'
 import { nav, navTour, startNav } from '../app/nav.js';
 import { closeSheet } from '../app/views.js';
 import { startDrive, pauseDrive, resumeDrive, hudInsets, recenterIcon } from './drive.js';
+import { timed } from './carlog.js';
 
 // Das Auto zeigt ein Video der Karte, meist mit 30 Bildern je Sekunde – mehr zu zeichnen kostet nur
 // Rechenzeit und Wärme (core/fps.js). 20 reichen für eine ruhige Fahrt.
@@ -480,7 +481,10 @@ addEventListener('wmap:guidance', async (e) => {
   if (g.arrived && arrivedTimer === null) {
     arrivedTimer = setTimeout(() => { arrivedTimer = null; if (nav.active) nav.stop(); }, window.__carArrivedMs ?? ARRIVED_MS);
   }
-  send('guidance', { ...g, icon: await icon(name, '#ffffff', 128) });
+  const png = await icon(name, '#ffffff', 128);
+  const done = timed('hinweis');
+  send('guidance', { ...g, icon: png });
+  done();
 });
 let wasNav = false;
 new MutationObserver(() => {

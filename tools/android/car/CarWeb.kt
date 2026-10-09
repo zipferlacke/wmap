@@ -113,14 +113,21 @@ class CarWeb(private val ctx: CarContext, private val onEvent: (String, Any?) ->
     }
   }
 
+  private var lastFix = 0L
   private fun push(l: Location) {
+    val now = System.currentTimeMillis()
+    if (CarLog.on) {
+      CarLog.line("fix", "alter=${now - l.time}ms abstand=${if (lastFix == 0L) 0 else now - lastFix}ms genau=${if (l.hasAccuracy()) l.accuracy.toInt() else -1}m kmh=${if (l.hasSpeed()) (l.speed * 3.6).toInt() else -1}")
+      lastFix = now
+    }
     val c = JSONObject()
       .put("latitude", l.latitude).put("longitude", l.longitude)
       .put("accuracy", if (l.hasAccuracy()) l.accuracy.toDouble() else 50.0)
       .put("speed", if (l.hasSpeed()) l.speed.toDouble() else JSONObject.NULL)
       .put("heading", if (l.hasBearing()) l.bearing.toDouble() else JSONObject.NULL)
       .put("altitude", if (l.hasAltitude()) l.altitude else JSONObject.NULL)
-    val pos = JSONObject().put("coords", c).put("timestamp", l.time)
+    // `sent`: wann die Meldung losging – die Seite misst daran, wie lange sie bis zu ihr braucht (js/car/carlog.js)
+    val pos = JSONObject().put("coords", c).put("timestamp", l.time).put("sent", now)
     web?.evaluateJavascript("window.__carFix&&__carFix($pos)", null)
   }
 
@@ -133,7 +140,15 @@ class CarWeb(private val ctx: CarContext, private val onEvent: (String, Any?) ->
    */
   fun call(method: String, vararg args: Any?, done: ((Any?, String?) -> Unit)? = null) {
     val id = ++nextId
-    if (done != null) pending[id] = done
+    if (done != null) pending[id] = if (!CarLog.on) done else {
+      val t0 = android.os.SystemClock.uptimeMillis()
+      val cb: (Any?, String?) -> Unit = { v, e ->
+        val ms = android.os.SystemClock.uptimeMillis() - t0
+        if (ms > 300) CarLog.line("call", "$method ${ms} ms${if (e != null) " Fehler: $e" else ""}")
+        done(v, e)
+      }
+      cb
+    }
     val a = JSONArray()
     args.forEach { a.put(JSONObject.wrap(it) ?: JSONObject.NULL) }
     val js = "window.wmapCar&&wmapCar.call($id,${JSONObject.quote(method)},$a)"
@@ -144,12 +159,14 @@ class CarWeb(private val ctx: CarContext, private val onEvent: (String, Any?) ->
 
   override fun onSurfaceAvailable(container: SurfaceContainer) {
     val surface = container.surface ?: return
+    CarLog.line("surface", "da ${container.width}x${container.height} ${container.dpi}dpi")
     width = container.width
     height = container.height
     density = container.dpi / 160f
     val d = display
     if (d == null) {
       val dm = ctx.getSystemService(DisplayManager::class.java)
+      CarLog.start(ctx, "Fläche ${width}x$height ${container.dpi}dpi · ${if (BuildConfig.DEBUG) LOCAL else REMOTE}")
       display = dm.createVirtualDisplay(
         "WMap im Auto", width, height, container.dpi, surface,
         DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY,
@@ -173,12 +190,14 @@ class CarWeb(private val ctx: CarContext, private val onEvent: (String, Any?) ->
    * Gezeichnet wird ohne Fläche ohnehin nicht.
    */
   override fun onSurfaceDestroyed(container: SurfaceContainer) {
+    CarLog.line("surface", "weg")
     display?.surface = null
   }
 
   /** Was die Vorlagen frei lassen – dorthin passt die Seite Route und Standort ein */
   override fun onVisibleAreaChanged(visibleArea: Rect) {
     visible = Rect(visibleArea)
+    CarLog.line("surface", "frei ${visibleArea.toShortString()}")
     sendInsets()
   }
 
@@ -239,6 +258,9 @@ class CarWeb(private val ctx: CarContext, private val onEvent: (String, Any?) ->
 
       override fun onConsoleMessage(m: ConsoleMessage): Boolean {
         Log.i(TAG, "${m.message()} (${m.sourceId()}:${m.lineNumber()})")
+        if (CarLog.on && (m.messageLevel() == ConsoleMessage.MessageLevel.WARNING || m.messageLevel() == ConsoleMessage.MessageLevel.ERROR)) {
+          CarLog.line("page", "${m.messageLevel()} ${m.message().take(300)} (${m.sourceId().substringAfterLast('/')}:${m.lineNumber()})")
+        }
         return true
       }
     }
@@ -247,6 +269,7 @@ class CarWeb(private val ctx: CarContext, private val onEvent: (String, Any?) ->
         // Rechner nicht erreichbar (Debug ohne adb reverse): dann die Webversion
         if (request.isForMainFrame && view.url?.startsWith(REMOTE) != true) {
           Log.i(TAG, "${request.url} ging nicht (${error.description}) – nehme $REMOTE")
+          CarLog.line("page", "${request.url} ging nicht (${error.description}) – nehme $REMOTE")
           ready = false
           view.loadUrl(REMOTE)
         }
@@ -282,6 +305,7 @@ class CarWeb(private val ctx: CarContext, private val onEvent: (String, Any?) ->
   }
 
   fun destroy() {
+    CarLog.stop()
     fused?.removeLocationUpdates(onLocation)
     fused = null
     pending.clear()
@@ -318,6 +342,14 @@ class CarWeb(private val ctx: CarContext, private val onEvent: (String, Any?) ->
   inner class Bridge {
     @JavascriptInterface fun post(type: String, json: String) {
       main.post { receive(type, json) }
+    }
+
+    /** Fahrt-Protokoll eingeschaltet? (CarLog.kt) – die Seite misst dann mit und meldet je Sekunde */
+    @JavascriptInterface fun logging(): Boolean = CarLog.on
+
+    @JavascriptInterface fun log(text: String) {
+      CarLog.line("js", text.take(600))
+      CarLog.flush()
     }
   }
 

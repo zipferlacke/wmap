@@ -4,13 +4,33 @@
         "Alles beruht auf offenen Daten von OpenStreetMap. Du brauchst kein Konto und hast volle Kontrolle über deine Daten.",
         "Tippe oben einen Ort, eine Adresse oder einfach „Bäckerei“ ein, um Bäckereien in der Nähe zu finden – oder auf <span class=\"msr\">directions</span>, um eine Route zu planen."
     ],
-    "minVersion": "2.1.0",
+    "minVersion": "2.3.0",
     "minAppVersion": "2.1.0",
     "messages": [],
     "changelog": [
         {
+            "version": "2.3.0",
+            "date": "2026-10-08",
+            "appVersion": "2.3.0",
+            "changes": [
+                "FIT-Dateien öffnen (Garmin, Zepp …): mit Puls, Frequenz und den Runden der Uhr. Mit der neuen App auch über „Öffnen mit“ und „Teilen“",
+                "Datei öffnen heißt erst ansehen: Danach speicherst du sie als aufgezeichnete oder geplante Tour. Gibt es die Tour schon, wählst du mit Haken, was aus der Datei kommt (Strecke, Puls, Frequenz, Runden)",
+                "Mehrere Dateien wählen oder auf „Meine Touren“ ziehen (GPX und FIT): eine Frage für alle – überall die genaueren Daten übernehmen oder selbst einstellen. Dieselbe Frage kommt beim Start, wenn es Touren doppelt gibt",
+                "Verbundener Ordner: Die Daten liegen jetzt direkt im gewählten Ordner, nicht mehr im Unterordner „WMap“ – der Umzug läuft beim ersten Abgleich von selbst",
+                "Verbundener Ordner: GPX- und FIT-Dateien legst du einfach hinein, egal wohin. WMap fragt, was damit geschehen soll, und sortiert sie nach Jahr und Monat; FIT bleibt FIT. Was keine Tour ist oder sich nicht lesen lässt, kommt nach „Unbekannte Dateien“ und wird nach 30 Tagen gelöscht – bei anderen Dateien fragt WMap vorher einmal",
+                "Tour teilen: als Link, 30 Tage online mit kurzem Link (liegt so lange auf dem WMap-Server), als Datei senden oder herunterladen (GPX oder FIT). Export als ZIP wahlweise mit Aufzeichnungen als GPX oder FIT",
+                "Meine Touren: Runden der Uhr werden angezeigt, Diagramme können im Vollbild geöffnet werden; Tempo auf der Karte jetzt langsam grün, schnell rot",
+                "Navigation: Die Karte zoomt nah nicht mehr ganz so stark heran und zeigt auf freier Strecke mehr",
+                "Health Connect: Die Berechtigung für Geschwindigkeit entfällt (neue App)",
+                "Android Auto: Hängt die Karte im Auto, lässt sich in den Einstellungen ein Fahrt-Protokoll einschalten (neue App) – die Datei liegt danach unter Download/WMap",
+                "Fix: Aufzeichnen bei ausgeschaltetem Bildschirm verlor die Strecke; geo:-Links öffneten am Handy nur die App (beides mit der neuen App)",
+                "Fix: „Gleiche ab …“ blieb nach dem Abgleich mit dem Ordner stehen; Einstellungen im Ordner überschreiben sich zwischen Geräten nicht mehr; Diagramm-Hinweis im dunklen Design lesbar"
+            ]
+        },
+        {
             "version": "2.2.0",
             "date": "2026-10-03",
+            "appVersion": "2.2.0",
             "changes": [
                 "Aufzeichnungen überarbeitet: Sie laufen in der Android-App weiter, wenn der Bildschirm aus ist – eine Benachrichtigung zeigt Zeit und Strecke, aufgeklappt mit Pause und Beenden (dafür braucht es die neue App aus dem Store)",
                 "Android Auto: In der Handy-App neue Option „Ans Auto senden“, wenn ein Auto verbunden ist – bei Routen, Orten und geplanten Touren fürs Auto",
@@ -21,6 +41,7 @@
         {
             "version": "2.1.1",
             "date": "2026-10-03",
+            "appVersion": "2.1.0",
             "changes": [
                 "App-Dialoge wurden an die neue Bibliothek angepasst, für einfacheren Code."
             ]
@@ -28,6 +49,7 @@
         {
             "version": "2.1.0",
             "date": "2026-10-02",
+            "appVersion": "2.1.0",
             "changes": [
                 "Android Auto Unterstützung: Karte mit Suche, Route, Meine Touren und Orten in der Nähe (Parkplätze, Tankstellen …), Orte antippen, Navigation mit Ansagen und kurzen Fragen zum Mitmachen",
                 "Mitmachen wurde neugestaltet: kurze Fragen kommen beim Navigieren bzw. am Ende einer beendeten Navigation, einzeln einstellbar in den Einstellungen unter „Unterwegs“.",
@@ -58,6 +80,7 @@
         {
             "version": "2.0.1",
             "date": "2026-09-29",
+            "appVersion": "2.0.1",
             "changes": [
                 "Sicherung & Synchronisation vereinfacht und bessere Performance.",
                 "Bessere Fortschrittsanzeige beim Synchronisieren – mit Prozent und Restzeit und läuft im Hintergrund ab jetzt",
@@ -73,6 +96,7 @@
         {
             "version": "2.0.0",
             "date": "2026-09-29",
+            "appVersion": "2.0.0",
             "changes": [
                 "Konto: Dein WMap-Konto ist jetzt dein OpenStreetMap-Konto – eine Anmeldung für Orte bearbeiten, Touren teilen und bewerten. Passkeys entfallen; wer noch angemeldet ist, behält sein Konto",
                 "Neue Seite „Sicherung & Synchronisation“: ein Ordner (Nextcloud, Drive, Syncthing …) für alle Geräte – Geplante und Aufgezeichnete Touren nach Jahr und Monat, Bus & Bahn, Lesezeichen und Einstellungen; automatisch beim Öffnen oder alle 30 Minuten, dazu die ZIP-Sicherung",
@@ -93,6 +117,7 @@
         {
             "version": "1.0.0",
             "date": "2026-09-28",
+            "appVersion": "1.0.0",
             "changes": [
                 "Erste Version von WMap – Karte, Navigation und Touren auf Basis offener Daten, ohne Konto und ohne Werbung",
                 "Karte in 3D mit Gelände und Gebäuden, hell oder dunkel, Luftbilder und Wanderwege im Ebenen-Menü",

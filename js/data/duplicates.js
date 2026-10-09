@@ -77,6 +77,122 @@ export function withValuesFrom(keep, src) {
   return out;
 }
 
+/* ── Import: Datei zu einem Weg, den es schon gibt (pages/import.js) ───────── */
+
+/** Punkte eines Wegs – die Karteikarte kennt die Zahl ihrer Datei */
+const pointCount = (t) => (t.stub ? t.n ?? 0 : t.times?.length ?? 0);
+const meanOf = (t, k) => { const v = (t[k] ?? []).filter((x) => x > 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
+
+/**
+ * Was die Datei `file` mehr oder anders hat als derselbe Weg `keep` hier →
+ *   add     Messwerte, die hier fehlen (kommen ohne Rückfrage dazu)
+ *   differ  Messwerte, die beide haben und die sich unterscheiden (Schnitt über 3 %) – Rückfrage
+ *   shape   die Datei hat die genauere Strecke (mindestens anderthalbmal so viele Punkte) – Rückfrage
+ *   marks   die Datei hat Runden der Uhr, die hier fehlen (kommen dazu)
+ *   points  [hier, Datei]
+ */
+export function gain(keep, file) {
+  const add = VALUES.filter((k) => hasValues(file, k) && !hasValues(keep, k));
+  const differ = keep.stub ? [] : VALUES.filter((k) => {
+    if (!hasValues(file, k) || !hasValues(keep, k)) return false;
+    const [a, b] = [meanOf(keep, k), meanOf(file, k)];
+    return Math.abs(a - b) > Math.max(a, b) * 0.03;
+  });
+  const points = [pointCount(keep), pointCount(file)];
+  const shape = points[1] >= points[0] * 1.5 && points[1] - points[0] >= 20;
+  // Runden der Uhr, die hier fehlen
+  const marks = !keep.marks?.length && file.marks?.length > 0;
+  return { add, differ, shape, marks, points, any: add.length > 0 || differ.length > 0 || shape || marks };
+}
+
+const MEASURED = ['start', 'end', 'length', 'moving', 'top', 'shape', 'times', 'bbox'];
+
+/**
+ * Den Weg `keep` (ganz, keine Karteikarte) um die Datei `file` ergänzen. Name, Art, Farbe, Kennung und
+ * Herkunft bleiben die von hier. Fehlende Messwerte kommen immer dazu;
+ *   shape   Strecke, Zeiten und Kilometer der Datei gelten
+ *   values  bei abweichenden Messwerten gelten die der Datei (sonst die von hier)
+ * → neuer Weg, oder `keep` selbst, wenn nichts dazukam
+ */
+export function enrich(keep, file, { shape = false, values = false } = {}) {
+  const g = gain(keep, file);
+  if (!shape || !g.shape) {
+    let out = merge(keep, file);
+    if (g.marks) out = { ...out, marks: file.marks };
+    return values && g.differ.length ? withValuesFrom(out, file) : out;
+  }
+  let out = { ...keep };
+  for (const k of VALUES) delete out[k];
+  for (const k of MEASURED) if (file[k] !== undefined) out[k] = file[k];
+  for (const k of VALUES) {
+    // Die eigenen Werte der Datei liegen schon auf ihren Punkten; die von hier werden nach der Uhrzeit übertragen
+    const own = hasValues(file, k) && (values || !g.differ.includes(k));
+    const v = own ? file[k] : hasValues(keep, k) ? valuesAt(keep, k, out) : hasValues(file, k) ? file[k] : null;
+    if (v) out[k] = v;
+  }
+  if (!out.description && file.description) out = { ...out, description: file.description };
+  // Runden der Datei gelten mit ihrer Zeit; hat sie keine, bleiben die von hier (gleicher Start)
+  if (file.marks?.length) out.marks = file.marks;
+  return out;
+}
+
+/**
+ * Zusammenführen mit Haken: was die Datei `file` anders hat als derselbe Weg `keep` (ganz, keine Karteikarte) →
+ * [{ key: 'shape' | 'hr' | 'cad' | 'pow' | 'marks', detail, on }] – `on`: vorgeschlagen. Es gewinnen erst einmal
+ * die genaueren Daten: was hier fehlt, kommt dazu; Abweichendes von der Seite mit mehr Punkten.
+ */
+export function choices(keep, file) {
+  const [here, there] = [pointCount(keep), pointCount(file)];
+  const out = [];
+  if (here !== there) out.push({ key: 'shape', detail: `${there} Punkte in der Datei, ${here} hier (${there > here ? 'mehr' : 'weniger'})`, on: there > here });
+  for (const k of VALUES) {
+    if (!hasValues(file, k)) continue;
+    const [a, b] = [meanOf(keep, k), meanOf(file, k)];
+    if (!hasValues(keep, k)) out.push({ key: k, detail: `fehlt hier – in der Datei Ø ${Math.round(b)}`, on: true });
+    else if (Math.abs(a - b) > Math.max(a, b) * 0.03) out.push({ key: k, detail: `Ø ${Math.round(b)} in der Datei, Ø ${Math.round(a)} hier`, on: there > here });
+  }
+  if (file.marks?.length) {
+    if (!keep.marks?.length) out.push({ key: 'marks', detail: `${file.marks.length + 1} Runden in der Datei, hier keine`, on: true });
+    else if (JSON.stringify(keep.marks) !== JSON.stringify(file.marks)) out.push({ key: 'marks', detail: `${file.marks.length + 1} Runden in der Datei, ${keep.marks.length + 1} hier`, on: false });
+  }
+  return out;
+}
+
+/** Was es zu fragen gibt: Hat die Datei nur die gröbere Strecke und sonst nichts anderes, nichts */
+export function offers(keep, file) {
+  const list = choices(keep, file);
+  return list.some((x) => x.on || x.key !== 'shape') ? list : [];
+}
+
+/** Haken für `list`: was `choice` (Haken aus einer Rückfrage) nennt, sonst der Vorschlag */
+export const picksFor = (list, choice = null) => Object.fromEntries(list.map((x) => [x.key, choice && typeof choice === 'object' && x.key in choice ? !!choice[x.key] : x.on]));
+
+/**
+ * `keep` mit dem aus `file`, was angehakt ist (`picks`: { shape, hr, cad, pow, marks }). Name, Art, Farbe,
+ * Kennung und Herkunft bleiben die von hier. → neuer Weg, oder `keep` selbst, wenn nichts angehakt ist
+ */
+export function combine(keep, file, picks) {
+  if (!['shape', ...VALUES, 'marks'].some((k) => picks[k])) return keep;
+  let out = { ...keep };
+  if (picks.shape) {
+    for (const k of VALUES) delete out[k];
+    for (const k of MEASURED) if (file[k] !== undefined) out[k] = file[k];
+    for (const k of VALUES) {
+      // Angehakt: die Werte der Datei (liegen schon auf ihren Punkten); sonst die von hier, nach der Uhrzeit übertragen
+      const v = picks[k] && hasValues(file, k) ? file[k] : hasValues(keep, k) ? valuesAt(keep, k, out) : null;
+      if (v) out[k] = v;
+    }
+  } else {
+    for (const k of VALUES) {
+      const v = picks[k] && hasValues(file, k) ? valuesAt(file, k, keep) : null;
+      if (v) out[k] = v;
+    }
+  }
+  if (picks.marks && file.marks?.length) out.marks = file.marks;
+  if (!out.description && file.description) out.description = file.description;
+  return out;
+}
+
 /** → { tracks: [[vorgeschlagen, …doppelt]], tours: [[behalten, …doppelt]], count } */
 export async function findDuplicates() {
   const list = (await tracks.all()).sort((a, b) => a.start - b.start);
@@ -131,6 +247,45 @@ export async function removeDuplicates(keepIds = [], valueIds = []) {
     const merged = rest.reduce(merge, withValuesFrom(keep, group.find((t) => values.has(t.id))));
     if (merged !== keep) await tracks.put({ ...merged, updated: Date.now() });
     for (const other of rest) { await tracks.remove(other.id); n += 1; }
+  }
+  for (const [, ...rest] of found.tours) {
+    for (const other of rest) { tours.remove(other.id); n += 1; }
+  }
+  return n;
+}
+
+/**
+ * Doppelte zusammenführen mit Haken – wie beim Import (ui/duplicates-ask.js). Je Gruppe bleibt die vorgeschlagene
+ * Aufzeichnung; `pick(keep, other, list)` sagt je doppelter, was von ihr kommt: Haken ({ shape, hr, … }), null
+ * (der Vorschlag), 'later' (das Paar bleibt doppelt) oder 'abort' (nichts geschieht – geschrieben wird erst am
+ * Ende). Doppelte geplante Touren sind gleich und gehen ohne Frage. → Anzahl entfernt, oder null (abgebrochen)
+ */
+export async function resolveDuplicates(pick = null) {
+  const found = await findDuplicates();
+  const plan = [];
+  for (const cards of found.tracks) {
+    const group = await Promise.all(cards.map((t) => tracks.full(t).catch(() => t)));
+    let keep = group[0];
+    const drop = [];
+    for (const other of group.slice(1)) {
+      // Karteikarte, deren Datei gerade nicht zu lesen ist: bleibt für später
+      if (keep.stub || other.stub) continue;
+      const list = choices(keep, other).map((x) => ({ ...x, detail: x.detail.replace('in der Datei', 'in der doppelten') }));
+      const p = pick && offers(keep, other).length ? await pick(keep, other, list) : null;
+      if (p === 'abort') return null;
+      if (p === 'later') continue;
+      let next = combine(keep, other, picksFor(list, p));
+      if (other.source && Object.keys(other.source).some((k) => next.source?.[k] === undefined)) next = { ...next, source: { ...other.source, ...next.source } };
+      if (!next.description && other.description) next = { ...next, description: other.description };
+      keep = next;
+      drop.push(other.id);
+    }
+    if (drop.length) plan.push({ keep: keep === group[0] ? null : keep, drop });
+  }
+  let n = 0;
+  for (const { keep, drop } of plan) {
+    if (keep) await tracks.put({ ...keep, updated: Date.now() });
+    for (const id of drop) { await tracks.remove(id); n += 1; }
   }
   for (const [, ...rest] of found.tours) {
     for (const other of rest) { tours.remove(other.id); n += 1; }

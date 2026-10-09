@@ -1,6 +1,6 @@
 ## Default Permission
 
-Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, löschen – nur im gewählten Ordner; eine Datei über den Speichern-Dialog ablegen; mit WMap geöffnete GPX-Dateien abholen
+Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, verschieben, löschen – nur im gewählten Ordner; eine Datei über den Speichern-Dialog ablegen; mit WMap geöffnete GPX-Dateien abholen
 
 #### This default permission set includes the following:
 
@@ -10,6 +10,8 @@ Ordner verbinden: auswählen, Dateien darin auflisten, lesen, schreiben, lösche
 - `allow-read`
 - `allow-write`
 - `allow-remove`
+- `allow-rename`
+- `allow-reveal`
 - `allow-disconnect`
 - `allow-save`
 - `allow-opened`
@@ -201,6 +203,58 @@ Enables the remove command without any pre-configured scope.
 <td>
 
 Denies the remove command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:allow-rename`
+
+</td>
+<td>
+
+Enables the rename command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:deny-rename`
+
+</td>
+<td>
+
+Denies the rename command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:allow-reveal`
+
+</td>
+<td>
+
+Enables the reveal command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`folder:deny-reveal`
+
+</td>
+<td>
+
+Denies the reveal command without any pre-configured scope.
 
 </td>
 </tr>

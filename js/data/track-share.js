@@ -38,6 +38,8 @@ export function encodeTrack(t, keep = {}) {
     v: 1, n: t.name || 'Tour', p: t.profile, k: sportOf(t) ?? undefined, c: t.color || undefined,
     a: t.start, e: t.end, l: t.length, m: t.moving, x: t.top,
     s: encodePolyline(pick(coords), 5), t: delta(pick(t.times ?? [])),
+    // Runden der Uhr (Sekunden ab Start)
+    r: t.marks?.length ? t.marks : undefined,
   };
   for (const k of VALUES) if (keep[k] !== false && has(t, k)) o[k] = delta(pick(t[k]));
   return packJson(o);
@@ -55,6 +57,7 @@ export async function decodeTrack(code) {
     shape: encodePolyline(coords, 5), times: times.length === coords.length ? times : coords.map(() => 0),
     bbox: bbox(coords).map((v) => +v.toFixed(5)),
     ...(o.k ? { sport: String(o.k) } : {}), ...(/^#[0-9a-f]{6}$/i.test(o.c ?? '') ? { color: o.c } : {}),
+    ...(Array.isArray(o.r) && o.r.every((x) => Number.isFinite(x) && x > 0) && o.r.length ? { marks: o.r.slice(0, 500) } : {}),
   };
   for (const k of VALUES) {
     if (!Array.isArray(o[k]) || o[k].length !== coords.length) continue;

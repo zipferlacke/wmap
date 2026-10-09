@@ -7,6 +7,10 @@
  *
  * Mit `showMetric` zeigt dasselbe Diagramm andere Werte über die Strecke:
  * Tempo, Puls, Frequenz, Leistung eines Wegs (pages/wege.js).
+ *
+ * Der Knopf rechts im Kopf öffnet das Diagramm im Vollbild (Diagramm der
+ * Bibliothek: derselbe Knoten wandert in einen <dialog>). Dort lässt es sich
+ * zoomen (Mausrad, zwei Finger), im Blatt nicht.
  */
 import * as echarts from '../../libs/echarts/echarts.esm.min.js';
 import { Diagramm, setIcons } from '../../libs/wuefl-libs/diagramm/diagramm.js';
@@ -47,6 +51,8 @@ export class ElevationProfile {
     this.#on('globalout', () => onHover?.(null));
     // Thema in WMap umgestellt (Einstellung, nicht das System): das Diagramm kennt nur feste Farben – neu zeichnen
     addEventListener('wmap:theme', () => { if (this.#points.length) this.#diagram.refresh(); });
+    // Zurück (Taste am Handy, Browser) schließt das Vollbild, statt es über der nächsten Ansicht stehen zu lassen
+    addEventListener('popstate', () => { if (this.#diagram.fullscreen) this.#diagram.toggleFullscreen(false); });
   }
 
   /**
@@ -55,6 +61,22 @@ export class ElevationProfile {
    */
   #chart() {
     return this.#diagram.instance ?? echarts.getInstanceByDom(this.#host.querySelector('.dg_canvas'));
+  }
+
+  /** Läuft das Diagramm gerade im Vollbild? */
+  get fullscreen() { return !!this.#diagram.fullscreen; }
+
+  /**
+   * Neue Reihe setzen – auch im Vollbild (pages/wege.js schaltet dort zwischen Höhe, Tempo, Puls … um).
+   * `mark`: Symbol der Reihe (Berg, Herz …) vor allen Chips. Der Kopf wird nur in setConfig() neu gebaut, die
+   * Chips danach an Ort und Stelle befüllt – ein vorangestelltes Element überlebt also jedes Nachladen.
+   */
+  #config(cfg, mark) {
+    // Zoomen nur im Vollbild – im Blatt nähme es dem Finger das Scrollen
+    this.#diagram.setConfig({ ...cfg, zoom: 'fullscreen' });
+    const el = Object.assign(document.createElement('span'), { className: 'msr elev-mountain', textContent: mark.icon, title: mark.title });
+    if (mark.color) el.style.color = mark.color;
+    this.#host.querySelector('.dg_tools')?.prepend(el);
   }
 
   #on(name, cb) {
@@ -73,10 +95,8 @@ export class ElevationProfile {
       label: `<span class="msr" title="${title}">${icon}</span>`,
     });
 
-    this.#diagram.setConfig({
+    this.#config({
       card: false,
-      fullscreen: false,
-      zoom: false,
       legend: { hidden: true },
       x_axis: { type: 'value', unit: 'km', decimals: route.length < 5000 ? 1 : 0 },
       y_axes: [{ unit: 'm', min, max, split_number: 3 }],
@@ -90,14 +110,7 @@ export class ElevationProfile {
         key: 'hoehe', name: 'Höhe', data: this.#points,
         color: GREEN, fill: 'gradient', smooth: false, decimals: 0, unit: 'm',
       }],
-    });
-    // Das Berg-Icon steht vor allen Chips. Der Kopf wird nur in setConfig()
-    // neu gebaut, die Chips danach an Ort und Stelle befüllt – ein
-    // vorangestelltes Element überlebt also jedes Nachladen.
-    const tools = this.#host.querySelector('.dg_tools');
-    tools?.prepend(Object.assign(document.createElement('span'), {
-      className: 'msr elev-mountain', textContent: 'landscape', title: 'Höhenmeter',
-    }));
+    }, { icon: 'landscape', title: 'Höhenmeter' });
   }
 
   /**
@@ -110,10 +123,8 @@ export class ElevationProfile {
     this.#points = thin(points);
     const vals = this.#points.map(([, v]) => v);
     const lo = Math.min(...vals), hi = Math.max(...vals), pad = Math.max(1, (hi - lo) * 0.1);
-    this.#diagram.setConfig({
+    this.#config({
       card: false,
-      fullscreen: false,
-      zoom: false,
       legend: { hidden: true },
       x_axis: { type: 'value', unit: 'km', decimals: length < 5000 ? 1 : 0 },
       y_axes: [{ unit, min: Math.max(0, Math.floor(lo - pad)), max: Math.ceil(hi + pad), split_number: 3 }],
@@ -121,10 +132,7 @@ export class ElevationProfile {
         value, unit, decimals, color, label: `<span class="msr" title="${title}">${ic}</span>`,
       })),
       series: [{ key: name, name, data: this.#points, color, fill: 'gradient', smooth: true, decimals, unit }],
-    });
-    const mark = Object.assign(document.createElement('span'), { className: 'msr elev-mountain', textContent: icon, title: name });
-    mark.style.color = color;
-    this.#host.querySelector('.dg_tools')?.prepend(mark);
+    }, { icon, title: name, color });
   }
 
   /** Stelle von außen zeigen, z. B. wenn die Maus über der Route auf der Karte steht. */

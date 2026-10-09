@@ -31,7 +31,7 @@ Touren
 • Wege aufzeichnen mit Zeit, Strecke, Tempo und Höhenmetern, dazu Jahresübersicht – auch bei ausgeschaltetem Bildschirm
 • Auswerten: Diagramme für Höhe, Tempo, Puls, Frequenz und Leistung, Runden mit schnellster und langsamster
 • Trainings mit Route aus Health Connect übernehmen, etwa von der Uhr
-• GPX öffnen und speichern, Touren per Link teilen oder veröffentlichen
+• GPX- und FIT-Dateien öffnen, als GPX oder FIT speichern, Touren per Link teilen oder veröffentlichen
 
 Entdecken
 Markierte Wanderwege, Radfernwege und MTB-Strecken in der Nähe oder nach Namen: Verlauf, Etappen, Länge, Wegzeichen und Beschreibung. Ein Tipp öffnet den Weg im Planer.

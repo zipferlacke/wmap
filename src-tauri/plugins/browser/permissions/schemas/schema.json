@@ -331,10 +331,22 @@
           "markdownDescription": "Denies the share command without any pre-configured scope."
         },
         {
-          "description": "Weblinks öffnen (Ansicht mit Leiste oder Standardbrowser), Android: teilen und in die Zwischenablage\n#### This default permission set includes:\n\n- `allow-open`\n- `allow-share`\n- `allow-copy`",
+          "description": "Enables the share_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-share-file",
+          "markdownDescription": "Enables the share_file command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the share_file command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-share-file",
+          "markdownDescription": "Denies the share_file command without any pre-configured scope."
+        },
+        {
+          "description": "Weblinks öffnen (Ansicht mit Leiste oder Standardbrowser), Android: teilen und in die Zwischenablage\n#### This default permission set includes:\n\n- `allow-open`\n- `allow-share`\n- `allow-share-file`\n- `allow-copy`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Weblinks öffnen (Ansicht mit Leiste oder Standardbrowser), Android: teilen und in die Zwischenablage\n#### This default permission set includes:\n\n- `allow-open`\n- `allow-share`\n- `allow-copy`"
+          "markdownDescription": "Weblinks öffnen (Ansicht mit Leiste oder Standardbrowser), Android: teilen und in die Zwischenablage\n#### This default permission set includes:\n\n- `allow-open`\n- `allow-share`\n- `allow-share-file`\n- `allow-copy`"
         }
       ]
     }
