@@ -1,0 +1,5 @@
+• Open FIT files, take over several files at once
+• Linked folder: just put files in
+• Share a tour by link or as a file
+• Health Connect without speed
+• Fixed: recording with the screen off, geo: links

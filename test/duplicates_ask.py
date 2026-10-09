@@ -66,12 +66,12 @@ with Browser() as b:
     time.sleep(1.2)
     one = b.js(DLG)
     print('erste:', one and one[:3], one and one[3][:160])
-    checks['3. Haken je doppelter Aufzeichnung: 1 von 2, Strecke vorgeschlagen (mehr Punkte), Text nennt die doppelte'] = bool(one) and one[0] == 'Zusammenführen (1 von 2)' and one[2] == [['shape', True]] and 'Von der doppelten Aufzeichnung „Handy' in one[3] and 'in der doppelten' in one[3] and one[1][0] == 'Weiter'
+    checks['3. Haken je doppelter Aufzeichnung: 1 von 2, Strecke vorgeschlagen (mehr Punkte), Text nennt die doppelte'] = bool(one) and one[0] == 'Zusammenführen (1 von 2)' and one[2] == [['shape', True]] and 'gibt es doppelt. Was willst du von der doppelten Aufzeichnung „Handy' in one[3] and 'Punkte mehr in der doppelten' in one[3] and one[1][0] == 'Weiter'
     b.js("document.querySelector('dialog.confirm[open] [data-pick=shape]').checked = false")
     b.js(PRESS, 'Weiter')
     time.sleep(1.2)
     two = b.js(DLG)
-    checks['3. zweite: 2 von 2 mit „Zusammenführen“'] = bool(two) and two[0] == 'Zusammenführen (2 von 2)' and two[1] == ['Zusammenführen', 'Später', 'Abbrechen']
+    checks['3. zweite: 2 von 2 mit „Zusammenführen“'] = bool(two) and two[0] == 'Zusammenführen (2 von 2)' and two[1] == ['Zusammenführen', 'Später weitermachen']
     b.js(PRESS, 'Zusammenführen')
     time.sleep(2.5)
     after = b.d.execute_async_script(STATE)

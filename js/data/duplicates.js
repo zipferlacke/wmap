@@ -144,7 +144,7 @@ export function enrich(keep, file, { shape = false, values = false } = {}) {
 export function choices(keep, file) {
   const [here, there] = [pointCount(keep), pointCount(file)];
   const out = [];
-  if (here !== there) out.push({ key: 'shape', detail: `${there} Punkte in der Datei, ${here} hier (${there > here ? 'mehr' : 'weniger'})`, on: there > here });
+  if (here !== there) out.push({ key: 'shape', detail: `${Math.abs(there - here)} Punkte ${there > here ? 'mehr' : 'weniger'} in der Datei (${there} statt ${here})`, on: there > here });
   for (const k of VALUES) {
     if (!hasValues(file, k)) continue;
     const [a, b] = [meanOf(keep, k), meanOf(file, k)];

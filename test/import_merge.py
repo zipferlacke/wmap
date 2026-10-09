@@ -8,9 +8,9 @@
 5. Eine Datei: gleich der Dialog mit Haken; Strecke abgewählt: nur die Frequenz kommt dazu.
 6. FIT-Datei (js/data/fit.js): ergänzt eine vorhandene Tour um die Schlagfrequenz; eine neue wird mit Art gespeichert.
 8. Mehrere Dateien gewählt: Die Frage kommt von selbst. „Selbst einstellen“: je Datei die Haken – „Weiter“,
-   dann „Für alle so übernehmen“ (die Haken der zweiten gelten auch für die dritte).
-9. „Später weitermachen“: nichts geändert, die Dateien stehen weiter da. „Abbrechen“ bei der zweiten: auch die
-   erste bleibt, wie sie war."""
+   dann „Für alle Dateien so übernehmen“ (die Haken der zweiten gelten auch für die dritte).
+9. „Später weitermachen“: nichts geändert, die Dateien stehen weiter da. ✕ bei der zweiten heißt dasselbe: Die
+   erste (schon mit „Weiter“ bestätigt) ist zusammengeführt, die zweite bleibt."""
 import json
 import sys
 from common import Browser
@@ -115,11 +115,12 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   out.autoAsk = [title(), labels()];
   await press(/Selbst einstellen/);
   out.one = [title(), labels(), ask().innerText.includes('h1.gpx')];
+  out.oneText = [ask().innerText.includes('Die Tour „Tour H1“ gibt es schon. Was willst du aus der Datei „h1.gpx“ übernehmen?'), ask().innerText.includes('47 Punkte mehr in der Datei (88 statt 41)')];
   untick('shape');
   await press(/Weiter/);
   out.two = [title(), ask().innerText.includes('h2.gpx')];
   untick('cad');
-  await press(/Für alle so/, 2500);
+  await press(/Für alle Dateien so/, 2500);
   out.H = [await info('mH1'), await info('mH2'), await info('mH3')];
   // 9. Später weitermachen / Abbrechen mittendrin
   addFiles([14, 15].map((day, i) => ({ name: `j${i + 1}.gpx`, text: asFile(mk(day, N, 1, () => [120, 27, 0]), 'Zepp J' + (i + 1)) })));
@@ -132,7 +133,8 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   await press(/Selbst einstellen/);
   await press(/Weiter/);
   out.lastLabels = labels();
-  await press(/Abbrechen/, 1500);
+  // Schließen mit ✕ heißt „Später weitermachen“: Die erste gilt, die zweite bleibt
+  ask().querySelector('.uD-bar-right').click(); await wait(2000);
   out.aborted = [await info('mJ1'), await info('mJ2')];
   // Abbrechen: nichts passiert
   await tracks.putQuiet({ ...buildTrack(mk(10, N, 10, () => [120, 0, 0]), { kind: 'health', profile: 'foot', name: 'Bleibt so', keepAll: true }), id: 'mG' });
@@ -140,7 +142,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   await wait(300);
   [...document.querySelectorAll('button[data-act=merge]')].at(-1).click();
   await wait(600);
-  [...dlg().querySelectorAll('.confirm-actions button')].find((x) => /Abbrechen/.test(x.innerText)).click();
+  [...dlg().querySelectorAll('.confirm-actions button')].find((x) => /Später weitermachen/.test(x.innerText)).click();
   await wait(600);
   out.G = await info('mG');
   for (const t of await tracks.all()) if (/^m([ABDEFG]|[HJ]\d)$/.test(t.id) || t.name === 'Ganz neu' || t.name === 'neu') await tracks.remove(t.id);
@@ -169,11 +171,11 @@ with Browser(width=420, height=900) as b:
         '6. FIT-Datei: Schlagfrequenz kommt in die vorhandene Tour (Strecke im Dialog abgewählt)': 'Schlagfrequenz (fehlt hier)' in r['fitCards'][0] and 'Runden der Uhr (fehlen hier)' in r['fitCards'][0] and r['F']['cad'] == 28 and r['F']['pts'] == 41 and r['F']['sport'] == 'rowing' and r['F'].get('marks') == [1000],
         '6. neue FIT-Datei: gespeichert als Rudern mit Puls und Frequenz': 'Als aufgezeichnete Tour speichern' in r['fitCards'][1] and r['fitNew'] == {'sport': 'rowing', 'cad': 30, 'hr': 130},
         '5. Dialog mit Haken: Strecke und Frequenz vorgeschlagen': ['shape', True] in r['picksE'] and ['cad', True] in r['picksE'],
-        '7. Abbrechen im Dialog: nichts passiert; „Ansehen“ steht an Dateien mit Zeiten': r['G']['cad'] == 0 and r['G']['pts'] == 41 and r['view'] >= 1,
-        '8. mehrere gewählt: Frage kommt von selbst; selbst einstellen → Haken je Datei mit Weiter / für alle so / für alle die genaueren / später': r['autoAsk'] == ['3 Dateien', ['Ja, überall die genaueren Daten', 'Selbst einstellen', 'Abbrechen']] and r['one'] == ['Zusammenführen (1 von 3)', ['Weiter', 'Für alle so übernehmen', 'Für alle die genaueren Daten', 'Später weitermachen', 'Abbrechen'], True] and r['two'] == ['Zusammenführen (2 von 3)', True],
+        '7. „Später weitermachen“ bei einer Datei: nichts passiert; „Ansehen“ steht an Dateien mit Zeiten': r['G']['cad'] == 0 and r['G']['pts'] == 41 and r['view'] >= 1,
+        '8. mehrere gewählt: Frage kommt von selbst; selbst einstellen → Haken je Datei mit Weiter / für alle so / für alle die genaueren / später': r['autoAsk'] == ['3 Dateien', ['Ja, überall die genaueren Daten', 'Selbst einstellen', 'Abbrechen']] and r['one'] == ['Zusammenführen (1 von 3)', ['Weiter', 'Für alle Dateien so übernehmen', 'Für alle die genaueren Daten', 'Später weitermachen'], True] and r['oneText'][0] and r['oneText'][1] and r['two'] == ['Zusammenführen (2 von 3)', True],
         '8. erste: nur Frequenz (Strecke abgewählt); zweite und dritte: nur die Strecke („für alle so“)': [(h['pts'], h['cad']) for h in r['H']] == [(41, 27), (88, 0), (88, 0)] and [h['name'] for h in r['H']] == ['Tour H1', 'Tour H2', 'Tour H3'],
         '9. später weitermachen: nichts geändert, beide stehen weiter zum Übernehmen da': [(h['pts'], h['cad']) for h in r['later'][:2]] == [(41, 0), (41, 0)] and (r['later'][2] or '').endswith('Alle 2 übernehmen …'),
-        '9. letzte Datei: Zusammenführen / Später / Abbrechen; Abbrechen dort: auch die erste bleibt': r['lastLabels'] == ['Zusammenführen', 'Später', 'Abbrechen'] and [(h['pts'], h['cad']) for h in r['aborted']] == [(41, 0), (41, 0)],
+        '9. letzte Datei: Zusammenführen / Später weitermachen (kein Abbrechen); ✕ dort: die erste ist zusammengeführt, die zweite bleibt': r['lastLabels'] == ['Zusammenführen', 'Später weitermachen'] and [(h['pts'], h['cad']) for h in r['aborted']] == [(88, 27), (41, 0)],
         '5. Strecke nein: Frequenz kommt dazu, Punkte und Kilometer bleiben': E1['cad'] == 26 and E1['pts'] == E0['pts'] == 41 and E1['km'] == E0['km'],
     }
     for name, ok in checks.items():

@@ -4,14 +4,14 @@
         "Alles beruht auf offenen Daten von OpenStreetMap. Du brauchst kein Konto und hast volle Kontrolle über deine Daten.",
         "Tippe oben einen Ort, eine Adresse oder einfach „Bäckerei“ ein, um Bäckereien in der Nähe zu finden – oder auf <span class=\"msr\">directions</span>, um eine Route zu planen."
     ],
-    "minVersion": "2.3.0",
+    "minVersion": "2.3.1",
     "minAppVersion": "2.1.0",
     "messages": [],
     "changelog": [
         {
-            "version": "2.3.0",
-            "date": "2026-10-08",
-            "appVersion": "2.3.0",
+            "version": "2.3.1",
+            "date": "2026-10-09",
+            "appVersion": "2.3.1",
             "changes": [
                 "FIT-Dateien öffnen (Garmin, Zepp …): mit Puls, Frequenz und den Runden der Uhr. Mit der neuen App auch über „Öffnen mit“ und „Teilen“",
                 "Datei öffnen heißt erst ansehen: Danach speicherst du sie als aufgezeichnete oder geplante Tour. Gibt es die Tour schon, wählst du mit Haken, was aus der Datei kommt (Strecke, Puls, Frequenz, Runden)",

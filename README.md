@@ -1184,7 +1184,7 @@ Zeit, Puls, Frequenz, Leistung, Sportart und die Runden der Uhr). Je Datei:
   aufgezeichnete Tour speichern** oder **Als geplante Tour öffnen**. Bei
   mehreren Dateien hat jede Karte „Ansehen“.
 - **Zusammenführen mit Haken:** Gibt es die Tour schon, kommt ein Dialog mit
-  einem Haken je Angabe, die die Datei anders hat – Strecke („x Punkte in der
+  einem Haken je Angabe, die die Datei anders hat – Strecke („x Punkte mehr/weniger in der
   Datei, y hier“), Puls, Frequenz, Leistung, Runden der Uhr. Angehakt ist, wo
   die genaueren Daten gewinnen; „Zusammenführen“ übernimmt, „Abbrechen“ ändert
   nichts (`choices`/`combine`, `js/ui/merge-ask.js`).
@@ -1215,12 +1215,14 @@ Dieselbe Rückfrage auf allen drei Wegen (`js/ui/import-ask.js`; eingelesen und
    (`choices`: was fehlt, kommt dazu; Abweichendes von der Seite mit mehr
    Punkten). Name, Art und Farbe bleiben.
 3. **Selbst einstellen** (`askOne`): Neue kommen dazu; je Datei, die es schon
-   gibt, die Haken – vorbelegt mit dem Vorschlag. Darunter **Weiter** (bei der
-   letzten „Zusammenführen“), **Für alle so übernehmen** (die Haken gelten
-   für den Rest), **Für alle die genaueren Daten**, **Später weitermachen**
-   (diese und der Rest bleiben liegen – auf `import.html` in der Liste, im
-   Ordner als wartende Dateien) und **Abbrechen**: Dann passiert nichts, auch
-   nicht mit dem, was schon gewählt war.
+   gibt, die Schalter – vorbelegt mit dem Vorschlag, oben die Frage „Die Tour
+   … gibt es schon. Was willst du aus der Datei … übernehmen?“. Darunter
+   **Weiter** (bei der letzten „Zusammenführen“), **Für alle Dateien so
+   übernehmen** (die Schalter gelten für den Rest), **Für alle die genaueren
+   Daten** und **Später weitermachen**: Was bis dahin gewählt ist, gilt; diese
+   und der Rest bleiben liegen – auf `import.html` in der Liste, im Ordner als
+   wartende Dateien. Ein „Abbrechen“ gibt es hier nicht; das ✕ heißt
+   ebenfalls „Später weitermachen“.
 
 Wie die Datei ankommt:
 
