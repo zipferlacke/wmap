@@ -1,0 +1,14 @@
+<de-DE>
+• FIT-Dateien öffnen, mehrere Dateien auf einmal übernehmen
+• Verbundener Ordner: Dateien einfach hineinlegen
+• Tour teilen per Link oder als Datei
+• Health Connect ohne Geschwindigkeit
+• Fehler behoben: Aufzeichnen bei ausgeschaltetem Bildschirm, geo:-Links
+</de-DE>
+<en-US>
+• Open FIT files, take over several files at once
+• Linked folder: just put files in
+• Share a tour by link or as a file
+• Health Connect without speed
+• Fixed: recording with the screen off, geo: links
+</en-US>
