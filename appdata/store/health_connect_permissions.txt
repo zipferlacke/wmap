@@ -1,5 +1,6 @@
 Health Connect – Texte für die Erklärung in der Play Console
-(App-Inhalte → Health Connect; je Datentyp ein Feld. Englisch, weil die Prüfung englisch läuft.
+(App-Inhalte → Health Connect; je Datentyp ein Feld. Erst alle Texte auf Englisch – die Prüfung läuft
+englisch –, darunter dieselben auf Deutsch.
 Stand: WMap 2.3.0. Geschwindigkeit/Speed wird nicht mehr angefordert – in der Console abwählen.)
 
 Was die App anfordert (src-tauri/plugins/health/android/src/main/AndroidManifest.xml):
@@ -60,3 +61,64 @@ Read only for the time span of an imported workout.
 == Hinweis an die Prüfung (falls ein Freitextfeld da ist) ==
 
 All charts are under "Meine Touren" > "Aufgezeichnet" > open an imported workout. A chart is only offered when the workout contains that kind of data, so the test device needs a workout with a GPS route plus heart rate, cadence and power samples in Health Connect. Speed is no longer requested as of version 2.3.0.
+
+
+======================================================================
+DEUTSCH – dieselben Texte
+======================================================================
+
+
+== Allgemein (App-Funktion) ==
+
+WMap ist eine Karten- und Navigations-App, die auch die eigenen Touren des Nutzers verwaltet. Ist Health Connect eingeschaltet (freiwillig, ab Werk aus, unter „Übersicht“ > „Sicherung & Synchronisation“ > „Health Connect“), übernimmt WMap Trainings, die mit einer Uhr oder einer anderen App aufgezeichnet wurden, und zeigt sie unter „Meine Touren“ > „Aufgezeichnet“: die Strecke auf der Karte und Diagramme entlang der Strecke. WMap liest nur. Es wird nichts in Health Connect geschrieben und nichts hochgeladen; die Daten bleiben auf dem Gerät (oder in einem Ordner, den der Nutzer selbst gewählt hat). Kein Konto, keine Werbung, keine Analyse.
+
+
+== Trainings (READ_EXERCISE) ==
+
+Zweck: die aufgezeichneten Trainings des Nutzers finden (Gehen, Laufen, Wandern, Radfahren, Rudern …), damit sie als aufgezeichnete Touren übernommen werden können. WMap liest Beginn, Ende, Art und Titel jedes Trainings und die Trittfrequenz von Radfahrten.
+Wo in der App: „Meine Touren“ > „Aufgezeichnet“ – jedes übernommene Training ist ein Eintrag mit Datum, Art, Strecke und Dauer.
+Nutzen: Mit der Uhr aufgezeichnete Trainings stehen auf der Karte neben den Touren, die mit WMap selbst aufgezeichnet wurden – ohne Dateien von Hand zu exportieren.
+
+
+== Trainingsrouten (READ_EXERCISE_ROUTES) ==
+
+Zweck: die GPS-Strecke eines übernommenen Trainings lesen.
+Wo in der App: Die Strecke liegt auf der Karte unter „Meine Touren“ > „Aufgezeichnet“, mit Kilometern, Tempo entlang der Strecke, Runden und Höhenprofil. Eine aufgezeichnete Tour lässt sich erneut navigieren („Erneut navigieren“).
+Nutzen: Ohne die Strecke lässt sich ein Training gar nicht auf einer Karte zeigen – sie ist der Kern der Funktion.
+
+
+== Verlauf der Gesundheitsdaten (READ_HEALTH_DATA_HISTORY) ==
+
+Zweck: auch Trainings übernehmen, die mehr als 30 Tage vor der Freigabe aufgezeichnet wurden.
+Wo in der App: „Sicherung & Synchronisation“ > „Health Connect“ > übernehmen; die älteren Trainings stehen danach unter „Meine Touren“ > „Aufgezeichnet“, nach Jahren gruppiert.
+Nutzen: Nutzer bekommen ihre ganze Tourengeschichte der letzten Jahre, nicht nur die letzten 30 Tage.
+
+
+== Herzfrequenz (READ_HEART_RATE) ==
+
+Zweck: den Puls während eines übernommenen Trainings zeigen.
+Wo in der App: „Meine Touren“ > „Aufgezeichnet“ > ein Training öffnen: Diagramm „Puls“ entlang der Strecke (Schnitt und Höchstwert) und der Durchschnittspuls je Runde.
+Nutzen: Der Nutzer sieht, wo auf der Strecke die Belastung hoch oder niedrig war.
+Gelesen wird nur für die Zeit eines übernommenen Trainings.
+
+
+== Schrittfrequenz (READ_STEPS – Datentyp StepsCadence) ==
+
+Zweck: die Schrittfrequenz (Schritte je Minute) während eines übernommenen Gehens, Laufs oder einer Wanderung zeigen.
+Wo in der App: „Meine Touren“ > „Aufgezeichnet“ > ein Training öffnen: Diagramm „Schrittfrequenz“ entlang der Strecke (beim Rudern heißt dasselbe Diagramm „Schlagfrequenz“).
+Nutzen: Der Nutzer sieht, wie sich die Frequenz über die Strecke verändert hat, etwa bergauf oder gegen Ende eines Laufs.
+WMap liest die Frequenzwerte nur für die Zeit eines übernommenen Trainings. Tägliche Schrittzahlen werden weder gelesen noch angezeigt.
+
+
+== Leistung (READ_POWER) ==
+
+Zweck: die Leistung in Watt während eines übernommenen Trainings zeigen, das mit einem Leistungsmesser aufgezeichnet wurde (Rad mit Leistungsmesser, Rudergerät, Laufleistung).
+Wo in der App: „Meine Touren“ > „Aufgezeichnet“ > ein solches Training öffnen: die Kennzahl „Ø Leistung“ (Watt im Schnitt) und das Diagramm „Leistung“ entlang der Strecke, mit Schnitt und Höchstwert.
+Nutzen: Radfahrer und Ruderer sehen, wo auf der Strecke sie wie viel Leistung gebracht haben.
+Hinweis für die Prüfung: Kennzahl und Diagramm erscheinen nur, wenn das Training in Health Connect Leistungswerte enthält. Ein Training ohne Leistungsdaten zeigt beides nicht – das Testgerät braucht ein Training mit Strecke und Leistungswerten (z. B. eine Radfahrt mit Leistungsmesser).
+Gelesen wird nur für die Zeit eines übernommenen Trainings.
+
+
+== Hinweis an die Prüfung (falls ein Freitextfeld da ist) ==
+
+Alle Diagramme stehen unter „Meine Touren“ > „Aufgezeichnet“ > ein übernommenes Training öffnen. Ein Diagramm wird nur angeboten, wenn das Training diese Art von Daten enthält – das Testgerät braucht also in Health Connect ein Training mit GPS-Strecke sowie Puls-, Frequenz- und Leistungswerten. Geschwindigkeit wird ab Version 2.3.0 nicht mehr angefordert.

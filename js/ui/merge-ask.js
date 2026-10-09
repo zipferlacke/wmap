@@ -21,7 +21,7 @@ export async function askMerge(keep, list, { fileName = '', extra = [], auto = f
     auto, icon: 'merge', title, className: 'merge-ask stacked',
     html: `<p>Diese Tour gibt es schon: „${esc(keep.name ?? 'Tour')}“. ${esc(from ?? (fileName ? `Aus der Datei „${fileName}“ übernehmen:` : 'Aus der Datei übernehmen:'))}</p>
       ${list.map((c) => `<label class="settings-toggle"><span><strong>${esc(label(keep, c.key))}</strong><small>${esc(c.detail)}</small></span>
-        <input type="checkbox" data-pick="${c.key}" ${c.on ? 'checked' : ''}></label>`).join('')}
+        <input type="checkbox" data-pick="${c.key}" data-shape="toggle" ${c.on ? 'checked' : ''}></label>`).join('')}
       <p class="muted">Name, Art und Farbe der Tour bleiben. Ohne Haken bleibt, was hier steht.</p>`,
     buttons: [
       { value: 'merge', label: go, icon: 'merge', primary: true, run: (dlg, done) => done(read(dlg)) },
