@@ -23,6 +23,7 @@ WMAP_URL=https://app.wuefl.de/wmap/ .venv/bin/python smoke.py   # gegen den Serv
 | `offline_areas.py` | Offline-Karten: Größe, freie Form laden, Kachel ohne Kartenversion, löschen |
 | `freeform.py` | freie Form: an der Kante einfügen, markieren + Entf, Doppeltipp |
 | `track_charts.py` | Weg mit Puls und Frequenz: Diagramm-Umschalter, Runden (1/2/5 km), schnellste/langsamste, GPX mit Messwerten |
+| `health_power.py` | Leistung (Watt) aus Health Connect mit nachgebildetem Plugin: Werte hängen am Training, „Meine Touren“ zeigt „Ø Leistung“ und das Diagramm „Leistung“; ohne Werte weder Kennzahl noch Umschalter |
 | `hours.py` | Öffnungszeiten je Tag: lesen, ändern, 24/7, dauerhaft geschlossen, Feiertage, zu Verschachteltes als Text |
 | `edit_tags.py` | Ort bearbeiten: Beschreibung, Merkmale, alle Tags (Tag entfernen), was hochgeladen würde (OSM im Browser nachgestellt); Ortskarte mit Merkmalen; Ladesäule: Angaben je Art (Stecker mit Anzahl und Leistung, Ladepunkte, Gebühr, Bezahlung), am Feld geöffnet, `contact:website` bleibt; Ortskarte mit antippbaren Angaben |
 | `folder_sync.py` | Ordner-Abgleich: neue Ordnung, Umzug aus der alten, fremde GPX bleiben, Bus & Bahn je Datei, Lesezeichen.json, settings.json von einem anderen Gerät, Löschen |
