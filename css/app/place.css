@@ -155,6 +155,7 @@
     font-size: var(--fs-200);
     p { color: inherit; white-space: pre-line; }
     .share-url { color: var(--route); overflow-wrap: anywhere; }
+    .share-url.share-wmap { color: var(--muted); }
 }
 textarea.share-link {
     width: 100%;

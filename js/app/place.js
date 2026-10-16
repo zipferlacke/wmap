@@ -182,7 +182,9 @@ export function paintPlaceActions() {
   const f = state.place;
   if (!f) return;
   const point = f.geometry.coordinates;
-  const label = f.properties._point ? 'Punkt auf der Karte' : geocode.describe(f).title;
+  // Freier Punkt: „Punkt auf der Karte“ (als Wegpunkt später nach der Adresse benannt) – ein geteilter Ort oder
+  // geo:-Link behält seinen Namen
+  const label = f.properties._point ? (f.properties.name || 'Punkt auf der Karte') : geocode.describe(f).title;
   const wp = { label, point, me: false, ...(isPoi(f) ? { poi: true } : {}) };
   const toRoute = (fn) => () => { if (stack.at(-1)?.view === 'place') back(); fn(); };
   let list;
@@ -200,7 +202,7 @@ export function paintPlaceActions() {
       ['directions', 'Route', true, () => enterRoute({ to: wp })],
       // Mit Android Auto verbunden: der Ort geht ans Auto – dort Route, Parkplatz davor und „Los“
       carLink.connected && ['directions_car', 'Ans Auto', false, () => sendToCar({ type: 'place', point, label, poi: !!wp.poi }, toast)],
-      ['share', 'Teilen', false, () => share({ title: label, text: label, url: () => placeUrl(point, label) }, toast)],
+      ['share', 'Teilen', false, () => share({ title: label, text: label, url: () => placeUrl(point, label), geo: { point, name: label } }, toast)],
       ['radar', 'Erreichbar', false, () => openReach({ origin: point, label })],
       [places.find(point) ? 'bookmark_added' : 'bookmark_add', places.find(point) ? 'Gemerkt' : 'Merken', false,
         () => togglePlace(f, point, label, f.properties._point ? '' : geocode.describe(f).subtitle)],

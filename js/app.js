@@ -106,7 +106,7 @@ appNav.addItem('radio_button_checked', 'Aufzeichnen', () => recording.choose());
 appNav.addItem('share_location', 'Standort teilen', async () => {
   try {
     const p = await myPosition();
-    share({ title: 'Mein Standort', text: `Hier bin ich gerade (${clock(Date.now())} Uhr):`, url: () => placeUrl(p, 'Mein Standort', { at: Date.now() }) }, toast);
+    share({ title: 'Mein Standort', text: `Hier bin ich gerade (${clock(Date.now())} Uhr):`, url: () => placeUrl(p, 'Mein Standort', { at: Date.now() }), geo: { point: p, name: 'Mein Standort' } }, toast);
   } catch (err) { toast(err.message); }
 });
 appNav.addItem('person_pin_circle', 'Standort anfragen', async () => {
@@ -292,7 +292,7 @@ async function answerRequest(from) {
   try {
     const p = await myPosition();
     const me = local.get('wmap.myname');
-    share({ title: 'Mein Standort', text: `Hier bin ich gerade (${clock(Date.now())} Uhr):`, url: () => placeUrl(p, me ? `${me}s Standort` : 'Standort', { at: Date.now() }) }, toast);
+    share({ title: 'Mein Standort', text: `Hier bin ich gerade (${clock(Date.now())} Uhr):`, url: () => placeUrl(p, me ? `${me}s Standort` : 'Standort', { at: Date.now() }), geo: { point: p, name: me ? `${me}s Standort` : 'Standort' } }, toast);
   } catch (err) { toast(err.message); }
 }
 

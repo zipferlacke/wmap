@@ -1274,6 +1274,10 @@ In der App schickt `js/core/theme.js` beim Start einer Seite zu
   Tour (`tour.html#t=…`), in der Navigation die Ankunftszeit. Die Links
   zeigen immer auf `app.wuefl.de/wmap/` – auch aus den Apps; die
   Android-App öffnet sie selbst (src-tauri/README.md, „Geteilte Links“).
+  Ein Ort („Teilen“ am Ort, „Hier bin ich“, Ankunft in der Navigation) geht
+  als Karten-Link `geo:Breite,Länge?q=Breite,Länge(Name)` – den öffnet jede
+  Karten-App –, der WMap-Link steht in Klammern darunter (`geoUri` und
+  `share({ geo })` in `js/ui/share.js`).
 - **Standort anfragen:** Link schicken; wer ihn öffnet, schickt seinen
   Standort zurück.
 - **Teilen-Dialog:** Teilen-Menü des Geräts, Text mit Link kopieren oder nur

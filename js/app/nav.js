@@ -74,6 +74,7 @@ export const nav = new Navigation(map, $('#nav'), {
       title: 'Ich bin unterwegs',
       text: `Ich bin unterwegs nach ${where} – Ankunft ca. ${clock(eta)} Uhr. Hier bin ich gerade:`,
       url: () => placeUrl(point ?? to, 'Unterwegs', { at: Date.now() }),
+      geo: { point: point ?? to, name: 'Unterwegs' },
     }, toast);
   },
   // Abgewichen: „Gesperrt?“ erst, wenn man wirklich ≥ 100 m neben der alten Route ist (ask-along.js)

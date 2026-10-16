@@ -9,6 +9,16 @@
     "messages": [],
     "changelog": [
         {
+            "version": "2.3.2",
+            "date": "2026-10-16",
+            "appVersion": "2.3.1",
+            "changes": [
+                "Verbundener Ordner: Für neue Dateien gibt es jetzt eine eigene Frage – alle übernehmen, auswählen, was mitkommt (z. B. nur Strecke und Puls), oder nicht importieren. Danach kommen die Dateien zu Touren, die es schon gibt. Die Frage kommt nicht mehr mehrfach",
+                "Standort: Die App fragt beim Start danach, und ein Tipp auf den Standort-Knopf holt ihn immer frisch – auch wenn er unterwegs (Zug, Tunnel) hängen geblieben war",
+                "Orte teilen als Karten-Link (geo:), den jede Karten-App öffnet – der WMap-Link steht darunter"
+            ]
+        },
+        {
             "version": "2.3.1",
             "date": "2026-10-09",
             "appVersion": "2.3.1",
