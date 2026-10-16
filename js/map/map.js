@@ -1213,6 +1213,6 @@ function guardGeolocate(map, geolocate) {
     e.preventDefault();
     import('../ui/permissions.js')
       .then(({ locationAccess }) => locationAccess())
-      .then((yes) => { if (yes) { ok = true; geolocate.trigger(); } });
+      .then((yes) => { if (yes) { ok = true; geolocate.trigger(); dispatchEvent(new Event('wmap:locate')); } });
   }, true);
 }

@@ -882,16 +882,23 @@ Einstellungen von Android oder Health Connect zum Ändern und Widerrufen).
 Derselbe Dialog kommt, wenn etwas den Standort oder Health Connect braucht,
 das noch nicht erlaubt ist (Standort-Knopf, Navigation, Aufzeichnen, Route
 ab „Mein Standort“), und unter Einstellungen → Berechtigungen. Beim Start
-der Karte wird nicht gefragt – ohne Freigabe bleibt die letzte Ansicht.
+der Karte fragt in der App gleich Android selbst (ohne den Dialog davor,
+einmal je Sitzung, `locationAtStart`) – die Karte springt dabei nicht hin, der
+Punkt folgt nur. Im Browser wird beim Start nicht gefragt.
 
 **Standort in der App** (`js/core/native.js`): eine gemeinsame Abfrage über
 das Plugin „geolocation“ für alle – so oft, wie der Eifrigste es braucht:
 Navigation und Aufzeichnen jede Sekunde, der Punkt auf der Karte (MapLibres
 Standort-Knopf, über `geolocationApi` statt `navigator.geolocation`) je nach
 Bewegung: in Bewegung jede Sekunde, wer steht, nach 15 s alle 5 s, nach einer
-Minute alle 30 s (`geo.retime`). Beim Losgehen meldet der
+Minute alle 10 s (`geo.retime`). Beim Losgehen meldet der
 Beschleunigungssensor (`devicemotion`) Schritte bzw. Fahrt gleich – dann
-sofort wieder jede Sekunde. Fehlt das Recht aufs Plugin, geht es über den
+sofort wieder jede Sekunde; sonst fällt das Losfahren nach höchstens 10 s auf.
+Ein Tipp auf den Standort-Knopf holt den Standort immer frisch (`locateNow` in
+`js/app/core.js`): die Abfrage wieder jede Sekunde und neu gestartet
+(`geo.wake` – auch wenn sie nach einem Fehler weg war), dazu eine eigene
+Anfrage. Kommt nach 12 s nichts, steht unten „Noch kein Standort – WMap sucht
+weiter“; ist der Standort am Handy aus, steht das da. Fehlt das Recht aufs Plugin, geht es über den
 Standort des WebViews (dort bestimmt der Browser den Abstand).
 
 **Ruhiger Punkt auf der Karte** (`js/core/smooth.js`, auch im Browser): Nah
@@ -973,10 +980,25 @@ und ohne Server.
   kennt (Export der Uhr, Garmin, Komoot …), fasst der Abgleich nicht an – sie
   steht in `inbox`, und die Seite fragt beim Start (`js/ui/folder-inbox.js`)
   mit derselben Rückfrage wie beim Wählen und Hineinziehen von Dateien
-  ([Mehrere Dateien](#mehrere-dateien-eine-frage-für-alle)): „Ja, überall die
-  genaueren Daten“, „Selbst einstellen“ oder „Später“. Der Abgleich bekommt
-  die Antwort als `folder.sync({ decide })` (`rest`: `'best'`, `'later'` oder
-  Haken für alle; `files`: je Pfad). Wartende Dateien werden nicht bei jedem Abgleich
+  in drei Schritten:
+  1. **Die neuen** (`askNewFiles`): „Alle übernehmen“, „Auswählen“ (je Datei
+     Schalter für Puls, Frequenz, Leistung und Runden – die Strecke kommt immer;
+     dazu „Für alle Dateien so übernehmen“, „Nicht importieren“ für diese eine
+     und „Später weitermachen“), „Nicht importieren“ (alle nach
+     `Unbekannte Dateien/`, nach 30 Tagen gelöscht) oder „Später“. Dann werden
+     sie übernommen.
+  2. **Die zu Touren, die es schon gibt** – auch zwei Dateien derselben Tour,
+     die eben zusammen kamen: dieselbe Rückfrage wie beim Wählen und
+     Hineinziehen ([Mehrere Dateien](#mehrere-dateien-eine-frage-für-alle)),
+     dazu „Nicht importieren“.
+  3. **Doppelte Touren** in der App (`js/ui/duplicates-ask.js`).
+
+  Der Abgleich bekommt die Antwort als `folder.sync({ decide })` (`fresh`/`news`
+  für die neuen, `merge`/`merges` für die anderen: `'take'` bzw. `'best'`,
+  `'skip'`, `'later'` oder Haken – für alle bzw. je Pfad; bis 2.3.1 `rest`/`files`
+  für beide). Die Antwort merkt sich der Ordner (`c.decide`), bis ein Abgleich
+  durch ist: Bricht er ab (Seite gewechselt), macht der nächste damit weiter,
+  statt noch einmal zu fragen. Wartende Dateien werden nicht bei jedem Abgleich
   neu gelesen.
   - GPX ohne Zeiten → geplante Tour, als WMap-Datei unter `Geplante Touren/`
   - neue Aufzeichnung → GPX wird zur WMap-Datei unter Jahr/Monat; **FIT bleibt
@@ -1206,10 +1228,10 @@ Dieselbe Rückfrage auf allen drei Wegen (`js/ui/import-ask.js`; eingelesen und
 | Ordner | von Hand in den verbundenen Ordner gelegt – gefragt wird beim Start |
 
 1. **Eine Frage für alle** (`askAll`): „Ja, überall die genaueren Daten“ ·
-   „Selbst einstellen“ · „Abbrechen“ (Ordner: „Später“). Sie kommt, sobald es
-   etwas zu entscheiden gibt – mehrere Dateien, von denen mindestens eine zu
-   einer vorhandenen Tour gehört (im Ordner immer: dort fasst WMap sonst
-   nichts an). Nur neue Touren: werden ohne Frage gespeichert. Eine einzelne
+   „Selbst einstellen“ · „Abbrechen“ (Ordner: „Nicht importieren“ und
+   „Später“). Sie kommt, sobald es etwas zu entscheiden gibt – mehrere Dateien,
+   von denen mindestens eine zu einer vorhandenen Tour gehört. Im Ordner kommt
+   vorher eine eigene Frage für die neuen (siehe Ordner, „Neue Dateien“). Nur neue Touren: werden ohne Frage gespeichert. Eine einzelne
    Datei, die es schon gibt: gleich die Haken.
 2. **Ja:** Neue werden gespeichert; gibt es die Tour schon, gilt der Vorschlag
    (`choices`: was fehlt, kommt dazu; Abweichendes von der Seite mit mehr

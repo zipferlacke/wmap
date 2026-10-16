@@ -158,6 +158,21 @@ export function choices(keep, file) {
   return out;
 }
 
+/** Neue Datei: welche Messwerte sie hat → [{ key: 'hr' | 'cad' | 'pow' | 'marks', detail, on: true }] (Rückfrage „Auswählen“) */
+export function dataOf(t) {
+  const out = VALUES.filter((k) => hasValues(t, k)).map((k) => ({ key: k, detail: `Ø ${Math.round(meanOf(t, k))}${k === 'pow' ? ' W' : ''} in der Datei`, on: true }));
+  if (t.marks?.length) out.push({ key: 'marks', detail: `${t.marks.length + 1} Runden in der Datei`, on: true });
+  return out;
+}
+
+/** Ohne das, was abgewählt ist (`picks`: { hr, cad, pow, marks } – false bleibt weg) */
+export function withoutData(t, picks) {
+  if (!picks || typeof picks !== 'object') return t;
+  const out = { ...t };
+  for (const k of [...VALUES, 'marks']) if (picks[k] === false) delete out[k];
+  return out;
+}
+
 /** Was es zu fragen gibt: Hat die Datei nur die gröbere Strecke und sonst nichts anderes, nichts */
 export function offers(keep, file) {
   const list = choices(keep, file);

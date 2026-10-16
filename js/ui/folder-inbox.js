@@ -2,18 +2,24 @@
  * Neue Dateien im verbundenen Ordner (von Hand hineingelegt: Export der Uhr,
  * Garmin, Komoot …). Der Abgleich fasst sie nicht an, bevor entschieden ist
  * (data/folder.js take) – er meldet sie mit „wmap:folder-inbox“, hier wird
- * gefragt:
+ * gefragt, in dieser Reihenfolge:
  *
- *   Ja, überall die genaueren    alle übernehmen; gibt es die Tour schon, gilt
- *   Daten                        der Vorschlag (was fehlt, kommt dazu; Abweichendes
- *                                von der Seite mit mehr Punkten)
- *   Selbst einstellen            neue Touren kommen dazu; je Datei, die es als
- *                                Tour schon gibt, die Haken – dieselben Dialoge
- *                                wie beim Wählen und Hineinziehen von Dateien
- *                                (ui/import-ask.js)
+ * 1. Die neuen (askNewFiles, ui/import-ask.js):
+ *   Alle übernehmen              mit allem, was in der Datei steht
+ *   Auswählen                    je Datei, was mitkommt (Puls, Frequenz, Leistung,
+ *                                Runden), „Für alle Dateien so übernehmen“ oder
+ *                                „Nicht importieren“ für diese eine
+ *   Nicht importieren            alle nach „Unbekannte Dateien/“ (30 Tage)
  *   Später                       bleibt liegen – gefragt wird beim nächsten Start
  *                                wieder (und jederzeit über „Sicherung &
  *                                Synchronisation“)
+ *   Dann werden sie übernommen. Die Antwort merkt sich der Ordner, bis alles
+ *   durch ist – bricht der Abgleich ab (Seite gewechselt), macht der nächste
+ *   damit weiter, ohne noch einmal zu fragen.
+ * 2. Die zu Touren, die es schon gibt – auch zwei Dateien derselben Tour, die
+ *   eben erst zusammen kamen: dieselben Dialoge wie beim Zusammenführen
+ *   (überall die genaueren / selbst einstellen / nicht importieren / später).
+ * 3. Doppelte Touren in der App (ui/duplicates-ask.js).
  *
  * Andere Dateien (Bilder, PDFs … – keine Touren, „wmap:folder-others“): Einmal
  * je Ordner wird gefragt, ob WMap sie nach „Unbekannte Dateien“ räumen darf
@@ -22,27 +28,50 @@
  * Von selbst kommt die Frage einmal je Sitzung; `offerInbox(list, true)` fragt immer.
  */
 import { ask, toast } from './dialogs.js';
-import { askFiles } from './import-ask.js';
+import { askFiles, askNewFiles } from './import-ask.js';
+import { offerDuplicates } from './duplicates-ask.js';
 import { folder, syncSummary } from '../data/folder.js';
 
 const LATER = 'wmap.folder.inbox.later';
 let asking = false;
+
+const byPath = (files) => Object.fromEntries([...files].map(([x, v]) => [x.path, v]));
 
 export async function offerInbox(list, force = false) {
   if (asking || !list?.length) return;
   if (!force && sessionStorage.getItem(LATER)) return;
   asking = true;
   try {
-    const merge = list.filter((x) => x.kind === 'merge').length, fresh = list.length - merge;
-    const decided = await askFiles(list, {
-      always: true, auto: !force, icon: 'drive_folder_upload', later: 'Später',
-      title: list.length === 1 ? 'Neue Datei im Ordner' : `${list.length} neue Dateien im Ordner`,
-      text: `Im verbundenen Ordner ${list.length === 1 ? 'liegt eine Datei' : 'liegen Dateien'}, die WMap noch nicht kennt: ${[fresh && `${fresh} neu`, merge && `${merge} zu einer Tour, die es schon gibt`].filter(Boolean).join(', ')}.`,
-    });
-    if (!decided) { sessionStorage.setItem(LATER, '1'); return; }
-    const decide = { rest: decided.rest, files: Object.fromEntries([...decided.files].map(([x, v]) => [x.path, v])) };
-    const out = await folder.sync({ interactive: true, decide });
-    if (out && !out.needsPermission) toast(`Ordner: ${syncSummary(out)}`);
+    let merges = list.filter((x) => x.kind === 'merge');
+    const fresh = list.filter((x) => x.kind !== 'merge');
+    const done = [];
+    if (fresh.length) {
+      const decided = await askNewFiles(fresh, {
+        auto: !force,
+        title: fresh.length === 1 ? 'Neue Datei im Ordner' : `${fresh.length} neue Dateien im Ordner`,
+        text: `Im verbundenen Ordner ${fresh.length === 1 ? 'liegt eine Datei' : 'liegen Dateien'}, die WMap noch nicht kennt${merges.length ? ` – dazu ${merges.length === 1 ? 'eine' : merges.length} zu einer Tour, die es schon gibt (danach)` : ''}.`,
+      });
+      if (!decided) { sessionStorage.setItem(LATER, '1'); return; }
+      const out = await folder.sync({ interactive: true, decide: { fresh: decided.rest, news: byPath(decided.files) } });
+      if (!out || out.needsPermission) return;
+      done.push(syncSummary(out));
+      if (decided.rest === 'later') { sessionStorage.setItem(LATER, '1'); toast(`Ordner: ${done.join(' · ')}`); return; }
+      // Was jetzt noch wartet: die zu vorhandenen Touren – auch die, deren Tour eben erst dazukam
+      merges = out.inbox.filter((x) => x.kind === 'merge');
+    }
+    if (merges.length) {
+      const decided = await askFiles(merges, {
+        always: true, auto: !force && !done.length, icon: 'merge', later: 'Später', skip: 'Nicht importieren',
+        title: merges.length === 1 ? 'Datei zu einer Tour, die es schon gibt' : `${merges.length} Dateien zu Touren, die es schon gibt`,
+        text: `Im verbundenen Ordner ${merges.length === 1 ? 'liegt eine Datei zu einer Tour' : 'liegen Dateien zu Touren'}, die es in WMap schon gibt.`,
+      });
+      if (!decided) { sessionStorage.setItem(LATER, '1'); if (done.length) toast(`Ordner: ${done.join(' · ')}`); return; }
+      const out = await folder.sync({ interactive: true, decide: { merge: decided.rest, merges: byPath(decided.files) } });
+      if (out && !out.needsPermission) done.push(syncSummary(out));
+    }
+    if (done.length) toast(`Ordner: ${done.join(' · ')}`);
+    // Zuletzt: doppelte Touren in der App (etwa dieselbe Tour aus zwei Dateien, die eben zusammen kamen)
+    await offerDuplicates();
   } catch (err) {
     toast(err.message || 'Der Abgleich ging nicht');
   } finally { asking = false; }

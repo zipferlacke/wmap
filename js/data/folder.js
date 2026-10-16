@@ -39,6 +39,9 @@
  *                        choices/combine): Die WMap-Datei des Wegs trägt das
  *                        Ergebnis, GPX geht, FIT bleibt und steht für den Weg.
  *                        Hat die Datei nichts anderes, ohne Frage
+ *   nicht importieren    nach „Unbekannte Dateien/“
+ * Gefragt wird erst nach den neuen, danach nach denen zu vorhandenen Touren;
+ * die Antwort gilt, bis ein Abgleich durch ist (c.decide).
  * Lesbar, aber keine Tour darin: nach „Unbekannte Dateien/“ – nach 30 Tagen
  * gelöscht, bis dahin auf „Sicherung & Synchronisation“ genannt. Leere und
  * gerade nicht lesbare Dateien (Cloud-Ordner hakt) bleiben liegen.
@@ -100,7 +103,7 @@
  */
 import { store } from './db.js';
 import { tracks, trackGpx, parseGpx, sameTrack, backup, restore, bulk, stubOf, fromFile, unstub, hasValues } from './tracks.js';
-import { merge, offers, picksFor, combine } from './duplicates.js';
+import { merge, offers, picksFor, combine, dataOf, withoutData } from './duplicates.js';
 import { parseFit, trackFit } from './fit.js';
 import { makeZip, readZip } from './zip.js';
 import { tours, toGpx, coordsOf, shapeOf, local } from './store.js';
@@ -329,8 +332,11 @@ export const folder = {
    * → { imported, written, removed, moved, inbox } oder null (nicht verbunden)
    *
    * `decide`: was mit neu entdeckten Dateien geschieht (siehe Kopf, „Neue Dateien“) –
-   * { rest: 'best' | 'later', files: { Pfad: 'take' | 'later' | { shape, hr, cad, pow, marks } } }.
-   * Ohne das bleiben sie liegen und stehen in `inbox`.
+   *   neue        { fresh: 'take' | 'skip' | 'later' | { hr, cad, pow, marks }, news: { Pfad: dasselbe } }
+   *   zu Touren, die es schon gibt   { merge: 'best' | 'skip' | 'later' | { shape, hr, … }, merges: { Pfad: … } }
+   *   beide (bis 2.3.1)              { rest, files }
+   * 'skip': nach „Unbekannte Dateien/“; Haken mit false: bleibt weg. Gemerkt (c.decide), bis ein Abgleich
+   * durch ist. Ohne Entscheidung bleiben sie liegen und stehen in `inbox`. `others`: siehe folder-inbox.js.
    */
   async sync({ interactive = false, decide = null } = {}) {
     // Mit Entscheidung: einen laufenden Abgleich erst zu Ende, dann eigens noch einmal
@@ -421,9 +427,18 @@ async function run(interactive, decide = null) {
   try {
     // Bis zum Ende „angefangen“: bricht er ab, macht die nächste Seite weiter
     if (!c.pending && !testBackend) { c.pending = true; await persist(); }
+    // Über neue Dateien entschieden: gilt, bis ein Abgleich durch ist – auch wenn dieser abbricht (Seite gewechselt),
+    // macht der nächste damit weiter, statt noch einmal zu fragen
+    const { others: _o, ...choice } = decide ?? {};
+    if (Object.keys(choice).length) {
+      c.decide = choice;
+      c.inbox = (c.inbox ?? []).filter((x) => (x.kind === 'merge' ? !(choice.merge || choice.merges?.[x.path] || choice.rest || choice.files?.[x.path]) : !(choice.fresh || choice.news?.[x.path] || choice.rest || choice.files?.[x.path])));
+      await persist();
+    }
     const watch = clocked(be);
     devLog('Abgleich beginnt');
     const out = await syncAll(c, watch.be, decide);
+    c.decide = null;
     out.times = watch.done();
     devLog('Abgleich fertig:', syncSummary(out), '·', syncTimes(out));
     c.last = Date.now();
@@ -514,9 +529,14 @@ async function syncAll(c, be, decide = null) {
   const next = {};
   const seen = new Set();
   const used = new Set([...files, ...listed.filter((f) => f.path.startsWith(BROKEN_DIR))].map((f) => f.path.toLowerCase()));
-  const out = { imported: 0, written: 0, removed: 0, moved: 0, merged: 0, inbox: [], broken, others: [] };
+  const out = { imported: 0, written: 0, removed: 0, moved: 0, merged: 0, skipped: 0, inbox: [], broken, others: [] };
   const waiting = {};         // neu entdeckt, noch nicht entschieden: Pfad → { at, item }
-  const choiceFor = (path) => decide?.files?.[path] ?? decide?.rest ?? null;
+  // Entscheidung: neue Dateien (fresh, je Datei news) und Dateien zu vorhandenen Touren (merge, je Datei merges) –
+  // `files`/`rest` gelten für beide (so fragte WMap bis 2.3.1). Gemerkt in c.decide, bis ein Abgleich durch ist
+  const chosen = c.decide ?? null;
+  const choiceFor = (path, kind = 'new') => (kind === 'merge'
+    ? chosen?.merges?.[path] ?? chosen?.files?.[path] ?? chosen?.merge ?? chosen?.rest
+    : chosen?.news?.[path] ?? chosen?.files?.[path] ?? chosen?.fresh ?? chosen?.rest) ?? null;
   const first = new Map();    // ID → erste Datei dazu { path, ours }
   const blocked = new Set();  // nicht lesbare, unbekannte Dateien (Pfad ohne „ (2)“)
   syncTracks = [...locals.values()].filter((e) => e.kind === 'track').map((e) => e.item);
@@ -602,7 +622,7 @@ async function syncAll(c, be, decide = null) {
     return reading.get(path);
   };
   // Wartet auf eine Entscheidung und ist unverändert: nicht noch einmal lesen
-  const parked = (f) => { const w = c.waiting?.[f.path]; return w && !index[f.path] && f.lastModified && w.at === f.lastModified && !choiceFor(f.path) ? w : null; };
+  const parked = (f) => { const w = c.waiting?.[f.path]; return w && !index[f.path] && f.lastModified && w.at === f.lastModified && !choiceFor(f.path, w.item?.kind) ? w : null; };
   const toRead = files.filter((f) => !unread(f) && !parked(f)).map((f) => f.path);
   let ahead = 0;
   const textOf = async (path) => {
@@ -672,13 +692,16 @@ async function syncAll(c, be, decide = null) {
    */
   const take = async (f, text, what) => {
     const fit = isFit(f.path), name = f.path.slice(f.path.lastIndexOf('/') + 1);
-    const choice = choiceFor(f.path);
+    let choice = choiceFor(f.path);
     const park = (item) => { out.inbox.push(item); waiting[f.path] = { at: f.lastModified, item }; };
-    const go = choice && choice !== 'later';
+    let go = choice && choice !== 'later' && choice !== 'skip';
+    // „Nicht importieren“: nach „Unbekannte Dateien/“ – dort löscht WMap sie nach 30 Tagen
+    const skip = async () => { await toBroken(f); out.skipped += 1; };
     if (what === 'tour') {
       const t = tourFromGpx(text, name);
       if (tours.all().some((x) => x.shape === t.shape && x.name === t.name)) { await be.remove(f.path); out.moved += 1; return; }
-      if (!go) { park({ path: f.path, file: name, name: t.name, length: t.stats?.length ?? 0, kind: 'tour' }); return; }
+      if (choice === 'skip') { await skip(); return; }
+      if (!go) { park({ path: f.path, file: name, name: t.name, length: t.stats?.length ?? 0, kind: 'tour', has: [] }); return; }
       const got = await importFile({ ...f, text, path: `Geplante Touren/${name}` }, null, null);
       const entry = got && await entryOf(got.id);
       if (!entry) return;
@@ -692,13 +715,21 @@ async function syncAll(c, be, decide = null) {
     const [t] = parseGpx(text);
     const twin = (syncTracks ?? []).find((x) => sameTrack(x, t));
     if (!twin) {
-      if (!go) { park({ path: f.path, file: name, name: t.name, start: t.start, length: t.length, kind: 'new' }); return; }
-      const got = await importFile({ ...f, text, path: `Aufgezeichnete Touren/${name}` }, null, null);
+      if (choice === 'skip') { await skip(); return; }
+      if (!go) { park({ path: f.path, file: name, name: t.name, start: t.start, length: t.length, kind: 'new', has: dataOf(t), look: { sport: t.sport ?? null, profile: t.profile ?? null } }); return; }
+      // Abgewählte Messwerte (Haken aus „Auswählen“) kommen nicht mit
+      const less = typeof choice === 'object' && Object.values(choice).includes(false) ? choice : null;
+      const got = await importFile({ ...f, text, path: `Aufgezeichnete Touren/${name}` }, null, null, less);
       const entry = got && await entryOf(got.id);
       if (!entry) return;
       seen.add(got.id);
       out.imported += 1;
-      if (fit) first.set(got.id, { path: await stand(f, entry.item, text, null, dataKey(entry.item)), ours: false });
+      // FIT mit weniger als in der Datei: Den Weg trägt eine WMap-Datei – die FIT-Datei bleibt daneben, ohne dass
+      // aus ihr später wieder geholt wird, was abgewählt war
+      if (fit && less) {
+        first.set(got.id, { path: await put(null, entry, null), ours: true });
+        await stand(f, entry.item, text);
+      } else if (fit) first.set(got.id, { path: await stand(f, entry.item, text, null, dataKey(entry.item)), ours: false });
       else {
         first.set(got.id, { path: await put(null, entry, null), ours: true });
         await be.remove(f.path);
@@ -706,7 +737,11 @@ async function syncAll(c, be, decide = null) {
       }
       return;
     }
-    // Gibt es schon. Karteikarte: erst ganz holen – geht das gerade nicht, nächstes Mal
+    // Gibt es schon – darüber wird für sich entschieden (nach den neuen, ui/folder-inbox.js)
+    choice = choiceFor(f.path, 'merge');
+    go = choice && choice !== 'later' && choice !== 'skip';
+    if (choice === 'skip') { await skip(); return; }
+    // Karteikarte: erst ganz holen – geht das gerade nicht, nächstes Mal
     const keep = twin.stub ? await fullFrom(twin, null) : twin;
     if (!keep) return;
     // Hat die Datei nur die gröbere Strecke und sonst nichts anderes, gibt es nichts zu fragen
@@ -1309,7 +1344,7 @@ function serialize({ kind, item }) {
  * Weg, unter „Geplante Touren/“ eine Tour, unter „Bus & Bahn/“ eine
  * Verbindung, sonst: mit Zeitstempeln ein Weg. → { id, kind, rev } oder null
  */
-async function importFile(f, id, before = null) {
+async function importFile(f, id, before = null, less = null) {
   try {
     if (CONN_DIR.test(f.path)) {
       const c = JSON.parse(f.text);
@@ -1331,8 +1366,9 @@ async function importFile(f, id, before = null) {
       tours.put(tour);
       return { id: tour.id, kind: 'tour', rev: tour.updated };
     }
-    const [t] = parseGpx(f.text);
-    if (!t) return null;
+    const [read] = parseGpx(f.text);
+    if (!read) return null;
+    const t = withoutData(read, less);
     // Fremde Datei (ohne Kennung) zu einem Weg, den es schon gibt: bleibt der Weg.
     // Eine Datei mit Kennung wird immer ihr eigener Eintrag – dieselbe Aufzeichnung
     // unter zwei Kennungen legt der Abgleich danach zusammen (sameRecordings)
@@ -1514,7 +1550,7 @@ export function syncSummary(r) {
   if (!r) return '';
   // (Wie viele nur noch als Karteikarte in der App liegen, steht auf der Seite – nicht in jeder Meldung)
   const parts = [r.imported && `${r.imported} übernommen`, r.written && `${r.written} gespeichert`, r.removed && `${r.removed} gelöscht`,
-    r.moved && `${r.moved} umgezogen`, r.merged && `${r.merged} doppelte zusammengelegt`, r.settings === 'imported' && 'Einstellungen übernommen'].filter(Boolean);
+    r.moved && `${r.moved} umgezogen`, r.merged && `${r.merged} doppelte zusammengelegt`, r.skipped && `${r.skipped} nicht importiert`, r.settings === 'imported' && 'Einstellungen übernommen'].filter(Boolean);
   return parts.length ? parts.join(', ') : 'alles aktuell';
 }
 
