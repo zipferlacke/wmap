@@ -42,7 +42,7 @@ const VERSION = '2.3.2';            // von appdata/version.py – neue Nummer = 
 // Stand der Dateien (Prüfsumme über alles in sw-files.json, von version.py):
 // dieselbe Nummer noch einmal hochgeladen ist trotzdem ein neuer Service Worker
 // mit eigenem Speicher – Alt und Neu mischen sich nie
-const BUILD = '27573c0a7b';
+const BUILD = 'e8b0ca9574';
 const APP = `wmap-app-${VERSION}-${BUILD}`;
 const APP_PREFIX = 'wmap-app-';
 const SHARE = 'wmap-share';
@@ -54,6 +54,9 @@ const NAV_MAX_AGE = 10 * 24 * 3600 * 1000;
 const AREA = 'wmap-area-';
 // Grob je Kachel samt Cache-Verwaltung – nur um vorher Platz zu schaffen
 const TILE_BYTES = 60 * 1024;
+// Kacheln am Browser-Cache vorbei holen: Sie liegen hier in eigenen Caches – über den HTTP-Cache lagen sie sonst
+// ein zweites Mal auf dem Gerät (am Rechner gemessen: 263 MB zusätzlich)
+const NO_STORE = { cache: 'no-store' };
 
 const TILE_HOSTS = ['tiles.openfreemap.org', 'tiles.mapterhorn.com'];
 
@@ -192,7 +195,7 @@ async function networkFirst(req, name) {
     // Eigene Dateien immer beim Server nachprüfen: Sonst liefert der HTTP-Cache
     // des Browsers eine alte app.js zur neuen index.html – und nichts passt
     const own = new URL(req.url).origin === self.location.origin;
-    const res = await fetch(req, own ? { cache: 'no-cache' } : undefined);
+    const res = await fetch(req, own ? { cache: 'no-cache' } : name === TILES ? NO_STORE : undefined);
     if (res.ok || res.type === 'opaque') cache.put(req, res.clone()).catch(() => {});
     return res;
   } catch (err) {
@@ -216,7 +219,7 @@ async function cacheFirst(req) {
   if (hit) return hit;
   let res;
   try {
-    res = await fetch(req);
+    res = await fetch(req, NO_STORE);
   } catch {
     // Netz weg oder Aussetzer: sauber als fehlende Kachel melden
     return new Response(null, { status: 504, statusText: 'Offline' });
@@ -254,7 +257,7 @@ async function storeApp(urls) {
     const cache = TILE_HOSTS.includes(url.hostname) ? tiles : app;
     if (await cache.match(u, { ignoreVary: true })) return;
     // Skripte ohne crossorigin kommen „opaque“ – so bleibt es gleich
-    const opts = url.origin === self.location.origin || TILE_HOSTS.includes(url.hostname) ? {} : { mode: 'no-cors' };
+    const opts = url.origin === self.location.origin ? {} : TILE_HOSTS.includes(url.hostname) ? NO_STORE : { mode: 'no-cors' };
     try {
       const res = await fetch(u, opts);
       if (res.ok || res.type === 'opaque') await cache.put(u, res);
@@ -322,7 +325,7 @@ async function prefetch(urls, port) {
         const known = await caches.match(u, { ignoreVary: true });
         if (known) await putRoom(cache, u, known, name);
         else {
-          const res = await fetch(u);
+          const res = await fetch(u, NO_STORE);
           if (res.ok) { await putRoom(cache, u, res, name); loaded += 1; } else if (res.status !== 404) failed += 1;
         }
       } catch { failed += 1; }
@@ -357,7 +360,7 @@ async function areaBatch(name, urls, port) {
         if (own) { bytes += await size(own); continue; }
         let res = await caches.match(u, { ignoreVary: true });
         if (!res) {
-          res = await fetch(u);
+          res = await fetch(u, NO_STORE);
           // Leere Kacheln (Meer, 204) und fehlende (404) gibt es – kein Fehler
           if (res.status === 204 || res.status === 404) continue;
           if (!res.ok) { failed += 1; continue; }

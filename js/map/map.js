@@ -14,6 +14,7 @@ import { theme } from '../core/theme.js';
 import { geo, geolocationApi } from '../core/native.js';
 import { smoothGeolocation } from '../core/smooth.js';
 import { enhanceDot } from './location-dot.js';
+import { mountBuildings } from './buildings.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const fc = (features) => ({ type: 'FeatureCollection', features });
@@ -77,11 +78,11 @@ export function createMap(container, {
     // ohnehin aus seinem Cache
     maxTileCacheZoomLevels: 2,
     attributionControl: false,
-    // Handys mit 3-facher Pixeldichte zeichnen sonst 2,25-mal so viele Pixel wie
-    // bei 2 – kaum schärfer, aber spürbar langsamer und stromhungriger. Aus
-    // demselben Grund Kantenglättung nur auf Bildschirmen mit niedriger Dichte.
-    pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
-    canvasContextAttributes: { antialias: (window.devicePixelRatio || 1) < 2, preserveDrawingBuffer: snapshot },
+    // Pixeldichte nach der Einstellung „Schärfe der Karte“ (sharpness unten) – ab Werk höchstens 2: Handys mit
+    // 3-facher Dichte zeichnen sonst 2,25-mal so viele Pixel – kaum schärfer, aber spürbar langsamer und
+    // stromhungriger. Aus demselben Grund Kantenglättung nur bei niedriger Dichte.
+    pixelRatio: mapPixelRatio(),
+    canvasContextAttributes: { antialias: mapPixelRatio() < 2, preserveDrawingBuffer: snapshot },
   });
   // Stil erst hier: so lässt er sich vor dem ersten Kachel-Zeichnen anpassen
   map.setStyle(style, { transformStyle: (prev, next) => fixStyle(next) });
@@ -144,11 +145,10 @@ export function createMap(container, {
     // Mapterhorn liefert in Deutschland bis Zoom 16, darüber gibt es nur 404 –
     // ohne Obergrenze fragt MapLibre bis Zoom 18 nach (Fehler, Daten, Strom).
     // Die Kacheladresse direkt statt TileJSON spart außerdem eine Anfrage beim Start.
-    // Gelände höchstens so fein wie die Kacheln mit den Häusern (OpenMapTiles:
-    // Zoom 14) – feiner rechnet MapLibre die Höhe der 3D-Häuser falsch, sie
-    // schweben dann neben ihrem Grundriss („elevation maxzoom > source.maxzoom“).
-    // Die Schummerung darunter bleibt bei Zoom 16.
-    map.addSource('terrain', { ...DEM_SOURCE, maxzoom: 14 });
+    // Gelände in voller Auflösung (Zoom 16, ≈ 0,75 m). Bis 2.3.2 nur Zoom 14 wie die Kacheln mit den Häusern:
+    // Mit älterem MapLibre schwebten die 3D-Häuser sonst neben ihrem Grundriss („elevation maxzoom >
+    // source.maxzoom“) – mit 5.24 nachgesehen (St. Andreasberg am Hang, Zoom 15–17,5): sie stehen.
+    map.addSource('terrain', { ...DEM_SOURCE });
     // In der Navigation reicht gröberes Gelände (Zoom 13, ≈ 6 m): weniger Daten,
     // und die Straße liegt ruhiger – feine Höhenfehler lassen sie sonst wellen
     map.addSource('terrain-lo', { ...DEM_SOURCE, maxzoom: 13 });
@@ -161,7 +161,7 @@ export function createMap(container, {
         // Nah heran schwächer: Mapterhorn nutzt in Städten teils Oberflächen-
         // modelle, dort erscheinen Häuser als Hügel – „Berge“ um die Gebäude
         // Kräftig genug, dass man Berge und Täler auch flach von oben sieht
-        'hillshade-exaggeration': ['interpolate', ['linear'], ['zoom'], 5, 0.6, 12, 0.55, 14.5, 0.4, 16, 0.25, 17.5, 0.1],
+        'hillshade-exaggeration': RELIEF,
         ...HILLSHADE.light,
       },
     }, firstRoadLayer(map));
@@ -170,6 +170,11 @@ export function createMap(container, {
     map.setLight({ anchor: 'viewport', color: '#ffffff', intensity: 0.32, position: [1.4, 200, 35] });
     map.addControl(new maplibregl.TerrainControl({ source: 'terrain', exaggeration: TERRAIN_EXAGGERATION }), 'top-right');
     addLayers(map);
+    // 3D-Häuser selbst gezeichnet – jedes Haus auf seiner eigenen Bodenhöhe (map/buildings.js)
+    if (map.getLayer('building-3d')) {
+      map.wmapBuildings = mountBuildings(map, { darkMode: () => theme.dark });
+      addEventListener('wmap:theme', () => map.wmapBuildings.rebuild());
+    }
     // Eigene Beschriftungen (Treffer, Punkte) haben weiße Ränder – im Dunkeln mit
     rememberColors(map, (l) => l.type === 'symbol');
     paintTheme(map);
@@ -187,10 +192,17 @@ export function createMap(container, {
 
 const TERRAIN_EXAGGERATION = 1.5;
 /*
+ * Stärke der Schummerung nach Zoom. Bis 2.3.2 fiel sie nah heran fast auf null (0,25 bei Zoom 16, 0,1 bei 17,5) –
+ * dort, wo man meistens ist, tat der Schalter „Relief“ dann sichtbar nichts. Jetzt bleibt sie deutlich; die Häuser
+ * liegen ohnehin darüber, Häuser als „Hügel“ (Oberflächenmodelle in manchen Städten) verdecken sie also.
+ * `RELIEF_FOCUS`: „Wandern & Rad“ (ui/layer-menu.js)
+ */
+export const RELIEF = ['interpolate', ['linear'], ['zoom'], 5, 0.6, 12, 0.55, 14.5, 0.5, 16, 0.45, 17.5, 0.35];
+export const RELIEF_FOCUS = ['interpolate', ['linear'], ['zoom'], 5, 0.8, 14, 0.7, 16, 0.6, 17.5, 0.5];
+/*
  * Höhen: Mapterhorn liefert in Deutschland bis Zoom 16 – bei 512er Kacheln
- * ≈ 0,75 m je Pixel, aus den amtlichen 1-m-Geländemodellen der Länder. Die
- * Schummerung nutzt das volle Maß, das Gelände Zoom 14 (wegen der 3D-Häuser),
- * die Navigation 'terrain-lo'.
+ * ≈ 0,75 m je Pixel, aus den amtlichen 1-m-Geländemodellen der Länder. Gelände
+ * und Schummerung nutzen das volle Maß, die Navigation 'terrain-lo' (Zoom 13).
  */
 const DEM_SOURCE = {
   type: 'raster-dem', tiles: [TERRAIN_TILES], tileSize: 512, maxzoom: 16, encoding: 'terrarium',
@@ -207,6 +219,29 @@ const DEM_SOURCE = {
  */
 
 const conn = () => navigator.connection ?? navigator.mozConnection ?? navigator.webkitConnection;
+
+/**
+ * „Schärfe der Karte“ (Einstellungen, ganz unten): Pixeldichte, mit der die Karte zeichnet. 'auto': wie der
+ * Bildschirm, höchstens 2; 'max': wie der Bildschirm; sonst die Zahl (nicht über dem Bildschirm).
+ */
+export const SHARPNESS = [
+  ['auto', 'Automatisch (höchstens 2)'],
+  ['1', 'Sparsam (1)'],
+  ['1.5', 'Mittel (1,5)'],
+  ['2', 'Scharf (2)'],
+  ['max', 'Volle Auflösung des Bildschirms'],
+];
+export const sharpness = {
+  get: () => { const v = local.get('wmap.sharpness', 'auto'); return SHARPNESS.some(([k]) => k === v) ? v : 'auto'; },
+  set: (v) => local.set('wmap.sharpness', v),
+};
+export function mapPixelRatio() {
+  const screen = window.devicePixelRatio || 1;
+  const v = sharpness.get();
+  if (v === 'max') return screen;
+  if (v === 'auto') return Math.min(screen, 2);
+  return Math.min(screen, Number(v));
+}
 
 export function dataSaver() {
   const c = conn();
@@ -384,6 +419,13 @@ function fixStyle(style) {
     if (Array.isArray(l.filter)) l.filter = guardCompare(l.filter);
   }
   const b = style.layers?.find((l) => l.id === 'building-3d');
+  // Häuser aus mehreren Teilen (building:part): Der Umriss des ganzen Hauses steht mit `hide_3d` in den Kacheln
+  // – nur für den Grundriss. Hochgezogen stand er als eigener Block mit eigenem Dach mitten in den Teilen:
+  // Zwischendächer, die flackern. Schatten und Dächer übernehmen den Filter (addShadows, addRoofs)
+  if (b) {
+    const solid = ['!=', ['get', 'hide_3d'], true];
+    b.filter = b.filter ? ['all', b.filter, solid] : solid;
+  }
   if (b?.paint) {
     b.paint['fill-extrusion-height'] = ['coalesce', ['get', 'render_height'], 0];
     b.paint['fill-extrusion-base'] = ['coalesce', ['get', 'render_min_height'], 0];

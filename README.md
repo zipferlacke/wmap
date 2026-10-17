@@ -446,10 +446,9 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
     springen die gröberen Übersichten desselben Dienstes (3,2 m, 50 m) ein.
     Hessen, Rheinland-Pfalz und das Saarland liefern JPEG statt PNG (ein
     Drittel bis ein Zehntel der Daten). Straßen (etwas zurückgenommen), Flüsse und Namen liegen obenauf.
-    **Gebäude** (ab Zoom 14,5): graue, deckende Wände, auf dem Dach das
-    Luftbild – eine eigene WebGL-Ebene (map/sat-buildings.js), weil MapLibre
-    einer 3D-Fläche nur eine Farbe gibt. Sie baut sich neu, sobald Gebäude-
-    oder Geländekacheln nachgeladen sind; weiter hinten bleiben Dächer grau.
+    **Gebäude**: graue, deckende Wände, auf dem Dach das Luftbild – dieselbe
+    eigene Gebäude-Ebene wie auf der Karte (map/buildings.js, siehe 3D-Häuser);
+    weiter hinten bleiben Dächer grau.
 - **Wandern & Rad** (Schwerpunkt): große Straßen (Autobahn bis Kreisstraße)
   treten auf 40 % zurück, die Wanderwege von Waymarked Trails liegen darüber,
   das Relief wird kräftiger.
@@ -481,10 +480,11 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
   neigt oder das Gelände schaltet, behält seine Wahl.
 - **Höhendaten:** Mapterhorn, in Deutschland bis Zoom 16 – das sind
   **≈ 0,75 m je Pixel**, gerechnet aus den amtlichen 1-m-Geländemodellen der
-  Länder. Die **Schummerung nutzt diese volle Auflösung**, das **Gelände**
-  Zoom 14 (≈ 3 m): Die Kacheln mit den Häusern gehen nur bis Zoom 14, und mit
-  feinerem Gelände rechnet MapLibre die Höhe der 3D-Häuser falsch – sie
-  schweben dann neben ihrem Grundriss. In der **Navigation** reicht Zoom 13
+  Länder. **Schummerung und Gelände nutzen diese volle Auflösung.** Bis 2.3.2
+  ging das Gelände nur bis Zoom 14 (≈ 3 m), weil ältere MapLibre-Versionen
+  die 3D-Häuser bei feinerem Gelände neben ihren Grundriss in die Luft
+  setzten; mit 5.24 an einem Hang (St. Andreasberg, Zoom 15–17,5)
+  nachgesehen – sie stehen. In der **Navigation** reicht Zoom 13
   (≈ 6 m): weniger Daten, und die Straße liegt ruhiger, weil kleine
   Höhenfehler sie sonst wellen.
 - **Warnungen:** Der Grundstil wird vor dem ersten Zeichnen gerichtet –
@@ -494,9 +494,37 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
 - **Eigener Standort:** ein ruhiger Punkt – das Pulsieren von MapLibre ist aus.
 - **Überhöhung:** weit draußen 1,5-fach, ab Zoom 12 1,25, ab Zoom 14 1-fach.
 - **Relief (Schummerung):** Schatten an Hängen, damit Berge und Täler auch
-  flach von oben sichtbar sind – kräftig bis Zoom 12, nah heran schwächer
-  (in Städten nutzt Mapterhorn teils Oberflächenmodelle, dort würden Häuser
-  als Hügel erscheinen). Im Schwerpunkt „Wandern & Rad“ stärker.
+  flach von oben sichtbar sind – kräftig bis Zoom 12, nah heran etwas
+  schwächer, aber deutlich (Zoom 16: 0,45, Zoom 17,5: 0,35; `RELIEF` in
+  `js/map/map.js`). Bis 2.3.2 fiel es nah heran fast auf null – dort tat der
+  Schalter „Relief“ sichtbar nichts. Im Schwerpunkt „Wandern & Rad“ stärker.
+- **3D-Häuser zeichnet WMap selbst** (`js/map/buildings.js`, eine eigene
+  WebGL-Ebene; MapLibres `building-3d` ist aus). MapLibre stellt jedes Objekt
+  der Kacheln auf die Bodenhöhe an seiner Mitte – die Kacheln fassen aber
+  kleine Häuser gleicher Höhe zu einem Objekt zusammen (am Birkenweg in
+  Rittmarshausen fast 1800 Häuser mit 5 m): Alle standen auf der Höhe eines
+  Punkts, mit feinem Gelände in der Luft oder im Boden, und wo zwei Körper
+  ineinander stecken (dasselbe Haus mit 12 m und als 5-m-Stück), flackerten
+  die Wände. Jetzt steht jedes Haus für sich, mit einer Bodenhöhe für alles,
+  was dazugehört:
+  - Teile eines Hauses (`building:part`): die Höhe seines Umrisses (`hide_3d`
+    – selbst nicht gezeichnet, auch kein Schatten)
+  - Stücke über einer Kachelgrenze (gleiche Kennung): eine Höhe
+  - ein Körper in einem größeren: dessen Höhe; der niedrigere rückt 10 cm je
+    Rang ein, sonst kämpfen Wände in derselben Ebene ums Pixel
+
+  Die Wände reichen 10 m in den Boden (am Hang keine Lücke). Farben wie
+  vorher: warme Wände, hohe Häuser kühler, rote, braune oder graue Dächer mit
+  Dachkante – je Haus nach seiner Lage (zusammengefasste Häuser teilen sich die
+  Kennung), Licht aus Südwest, im Dunkeln fast grau; auf dem Luftbild graue
+  Wände und das Luftbild auf dem Dach. Gebaut wird neu, wenn Ort oder Zoom sich
+  merklich ändern, Kacheln nachkommen, das Gelände wechselt oder das Design –
+  nicht beim Drehen und Neigen.
+- **Schärfe der Karte** (Einstellungen, ganz unten): Pixeldichte, mit der die
+  Karte zeichnet – Automatisch (wie der Bildschirm, höchstens 2), Sparsam (1),
+  Mittel (1,5), Scharf (2), Volle Auflösung. Höher: schärfer, aber mehr
+  Arbeits- und Grafikspeicher, Akku, weniger flüssig. Gilt beim nächsten
+  Öffnen der Karte (`sharpness`, `mapPixelRatio` in `js/map/map.js`).
 - **Mobilfunk:** Einmal je Sitzung wird gefragt, ob 3D Daten laden darf. Im
   Datensparmodus bleibt alles flach.
 - **Funkloch:** Scheitern Höhenkacheln dreimal, geht das Gelände aus und wird
@@ -1511,7 +1539,9 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
   Änderungen sind beim Entwickeln sofort zu sehen. Cache first ausprobieren:
   über `127.0.0.1` statt `localhost` öffnen (so auch `test/update.py`).
 - Kacheln, Schriften und Symbole angesehener Gegenden bleiben im Cache
-  `wmap-tiles-v1` (bis 8000 Kacheln, älteste zuerst raus).
+  `wmap-tiles-v1` (bis 8000 Kacheln, älteste zuerst raus). Geholt werden
+  Kacheln mit `cache: 'no-store'`: am HTTP-Cache des Browsers vorbei, sonst
+  lagen sie ein zweites Mal auf dem Gerät (Desktop-App: 263 MB zusätzlich).
 - Vor der Navigation werden bis zu 2500 Kacheln entlang der Route geladen –
   jede Navigation in einen eigenen Cache `wmap-nav-<Zeit>`. Nach **10 Tagen**
   wird er gelöscht; reicht der Platz vorher nicht, weicht zuerst die

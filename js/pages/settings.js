@@ -16,7 +16,7 @@ import { historySetting } from '../data/tracks.js';
 import { trackShow, SHOW_OPTIONS } from '../data/track-look.js';
 import { theme } from '../core/theme.js';
 import { mountAppBar } from '../ui/appbar.js';
-import { dataSaver } from '../map/map.js';
+import { dataSaver, sharpness, SHARPNESS } from '../map/map.js';
 import { openVoiceDialog } from '../nav/navigation.js';
 import { fuelKey } from '../services/media.js';
 import { local, recent } from '../data/store.js';
@@ -129,6 +129,16 @@ const render = () => {
       <a class="button settings-row" href="./sync.html"><span class="msr">sync</span> Sicherung &amp; Synchronisation – Ordner, Health Connect, ZIP</a>
       <a class="button settings-row" href="./wege.html"><span class="msr">timeline</span> Aufgezeichnete Wege ansehen</a>
       <button type="button" class="button settings-row" data-act="history"><span class="msr">history</span> Suchverlauf löschen</button>
+    </section>
+
+    <section>
+      <h3>Darstellung der Karte</h3>
+      <label class="settings-select">
+        <span><strong>Schärfe der Karte</strong><small>Wie fein die Karte gezeichnet wird (Pixeldichte). Höher: Schrift, Linien und Häuser schärfer – braucht aber mehr Arbeitsspeicher und Akku, und die Karte läuft weniger flüssig. Niedriger: sparsamer und flüssiger, dafür etwas unscharf. Dieser Bildschirm hat ${String(Math.round((window.devicePixelRatio || 1) * 100) / 100).replace('.', ',')}. Gilt ab dem nächsten Öffnen der Karte.</small></span>
+        <select name="sharpness">
+          ${SHARPNESS.map(([v, l]) => `<option value="${v}" ${sharpness.get() === v ? 'selected' : ''}>${l}</option>`).join('')}
+        </select>
+      </label>
     </section>`;
   // Aus „Ort eintragen/bearbeiten“ ohne Konto: gleich zum OSM-Konto
   if (location.hash === '#osm' && !jumped) {
@@ -161,6 +171,7 @@ root.addEventListener('change', (e) => {
   if (t.name === 'anon') anonNotes.set(t.checked);
   if (t.name === 'history') historySetting.set(t.checked);
   // Neuer Zeitraum: von Hand ein- und ausgeblendete Jahre gelten nicht weiter
+  if (t.name === 'sharpness') { sharpness.set(t.value); toast('Gilt ab dem nächsten Öffnen der Karte'); }
   if (t.name === 'trackshow') { trackShow.set(t.value); local.set('wmap.tracks.years', {}); }
   if (t.dataset.act === 'server') { account.setServer(t.value); render(); }
   if (t.dataset.act === 'client') { account.setClientId(t.value); loginError = ''; render(); }

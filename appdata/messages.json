@@ -15,7 +15,9 @@
             "changes": [
                 "Verbundener Ordner: Für neue Dateien gibt es jetzt eine eigene Frage – alle übernehmen, auswählen, was mitkommt (z. B. nur Strecke und Puls), oder nicht importieren. Danach kommen die Dateien zu Touren, die es schon gibt. Die Frage kommt nicht mehr mehrfach",
                 "Standort: Die App fragt beim Start danach, und ein Tipp auf den Standort-Knopf holt ihn immer frisch – auch wenn er unterwegs (Zug, Tunnel) hängen geblieben war",
-                "Orte teilen als Karten-Link (geo:), den jede Karten-App öffnet – der WMap-Link steht darunter"
+                "Orte teilen als Karten-Link (geo:), den jede Karten-App öffnet – der WMap-Link steht darunter",
+                "Karte: genaueres Gelände in 3D, Relief auch nah heran sichtbar, keine flackernden Zwischendächer mehr bei Häusern aus mehreren Teilen. Neu in den Einstellungen ganz unten: „Schärfe der Karte“",
+                "Weniger Speicher: Kartenkacheln liegen nur noch einmal auf dem Gerät"
             ]
         },
         {
