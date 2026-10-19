@@ -912,3 +912,38 @@ body.stage-mode #map canvas { cursor: crosshair; }
 .weg-tags { align-items: center; > span:first-child { color: var(--muted); font-size: var(--fs-200); margin-right: .2rem; }
     .chip .msr { font-size: 1rem; } }
 
+/* Gemeinsam planen: Hinweis im Planer */
+.tour-collab { display: flex; align-items: center; gap: .4rem; margin: 0; padding: .4rem .6rem; border-radius: .7rem;
+    background: color-mix(in srgb, var(--route) 10%, var(--surface-2)); font-size: var(--fs-200);
+    &[hidden] { display: none; } > .msr { color: var(--route); } }
+/* Chip „Geteilt / Eingeladen · noch 28 Tage“ (data/short-link.js collabState) – im Planer und in der Liste */
+.collab-chip { display: inline-flex; align-items: center; gap: .2rem; padding: .05rem .5rem; border-radius: 1rem; white-space: nowrap;
+    background: color-mix(in srgb, var(--route) 14%, transparent); color: var(--route); font-size: var(--fs-100, .78rem); font-weight: 600;
+    .msr { font-size: 1em; }
+    &.gone { background: var(--surface-2); color: var(--muted); } }
+.tour-collab > span:last-child { display: flex; flex-wrap: wrap; align-items: center; gap: .1rem .4rem;
+    small { flex-basis: 100%; color: var(--muted); } }
+.wege-table .collab-chip { justify-self: start; width: max-content; max-width: 100%; margin: .15rem 0; }
+.collab-into { display: grid; gap: .3rem; margin: .2rem 0 .6rem;
+    span { color: var(--muted); font-size: var(--fs-200); }
+    select { font: inherit; padding: .45rem .5rem; border-radius: .6rem; border: 1px solid var(--line); background: var(--surface); color: inherit; } }
+/* Zusammenführen (pages/tour.js askConflict): Karte dahinter nicht abdunkeln – dort stehen beide Fassungen */
+dialog.collab-pick .confirm-actions button:first-child .msr { color: #1a73e8; }
+dialog.collab-pick .confirm-actions button:nth-child(2) .msr { color: #e8590c; }
+/* Dieselben Punkte geändert: Leiste unten, die Karte bleibt frei zum Antippen (pages/tour.js pickOnMap) */
+.collab-pickbar { position: fixed; z-index: 60; left: 50%; bottom: calc(.75rem + var(--safe-bottom, 0px)); transform: translateX(-50%);
+    width: min(30rem, calc(100vw - 1.5rem)); box-sizing: border-box; padding: .8rem .9rem; border-radius: 1rem;
+    background: var(--surface); color: inherit; border: 1px solid var(--line); box-shadow: var(--shadow); display: grid; gap: .6rem;
+    p { margin: 0; font-size: var(--fs-200); } b { display: block; margin-bottom: .15rem; }
+    .pick-sides { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .pick-side { display: flex; align-items: center; gap: .45rem; padding: .55rem .6rem; border-radius: .7rem; font: inherit; cursor: pointer;
+        border: 2px solid var(--line); background: var(--surface-2); color: inherit; text-align: left;
+        i { flex: none; width: 1.4rem; height: .35rem; border-radius: 1rem; }
+        &[aria-pressed="true"] { border-color: currentColor; font-weight: 600; } }
+    .pick-side[data-side="mine"][aria-pressed="true"] { color: #1a73e8; }
+    .pick-side[data-side="theirs"][aria-pressed="true"] { color: #e8590c; }
+    .pick-go { display: flex; justify-content: flex-end; gap: .5rem; }
+    .pick-go .primary:disabled { opacity: .45; } }
+/* „Link öffnen“ (ui/open-link.js) */
+.open-link-input { width: 100%; box-sizing: border-box; font: inherit; padding: .55rem .6rem; border-radius: .6rem;
+    border: 1px solid var(--line); background: var(--surface); color: inherit; }

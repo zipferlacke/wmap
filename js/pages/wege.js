@@ -86,6 +86,9 @@ const tabOf = (p) => (p.get('tab') === 'bahn' || p.has('conn') ? 'bahn' : p.get(
   : p.get('tab') === 'orte' || p.has('liste') ? 'orte' : 'wege');
 let tab = tabOf(params);
 let all = [];                      // aufgezeichnete Wege
+const COLLAB_BLUE = '#1a73e8';
+/** Chip „Geteilt / Eingeladen von … · noch 28 Tage“ an gemeinsam geplanten Touren */
+const collabChip = (c) => { const st = collabState(c); return `<span class="collab-chip${st.gone ? ' gone' : ''}"><span class="msr">${st.icon}</span>${esc(st.text)}</span>`; };
 let planned = [];                  // geplante Touren
 let conns = [];                    // gemerkte Verbindungen mit Bus & Bahn
 const query = { wege: '', geplant: '', bahn: '', orte: '' };
@@ -257,6 +260,7 @@ function showList({ push = false } = {}) {
       <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>` : `
       <a class="button" href="./index.html?action=record"><span class="msr">radio_button_checked</span> Aufzeichnen</a>
       <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx"></label>
+      <button type="button" class="button" data-list="open-link"><span class="msr">link</span> Link öffnen</button>
       ${all.length > 1 ? `<button type="button" class="button" data-list="compare" aria-pressed="${!!picking}"><span class="msr">compare_arrows</span> Vergleichen</button>` : ''}`}
     </div>`}
     ${tab === 'wege' && picking ? `<div class="compare-bar" role="region" aria-label="Vergleichen">
@@ -427,8 +431,8 @@ function paintGroups() {
           <small>${ts.length} ${ts.length === 1 ? 'Tour' : 'Touren'} · ${km(sum)}</small></summary>
         <table class="wege-table"><tbody>${ts.map((t) => `
           <tr data-tour="${esc(t.id)}" tabindex="0">
-            <td class="w-icon"><span class="msr" style="color:${g.color}">${PROFILES[t.profile]?.icon ?? g.icon}</span></td>
-            <td class="w-name"><strong>${esc(t.name || 'Tour')}</strong><small>${esc([PROFILES[t.profile]?.label, t.fixed ? 'fester Verlauf' : '', t.updated ? SHORT.format(t.updated) : ''].filter(Boolean).join(' · '))}</small></td>
+            <td class="w-icon"><span class="msr" style="color:${t.collab ? COLLAB_BLUE : g.color}">${PROFILES[t.profile]?.icon ?? g.icon}</span></td>
+            <td class="w-name"><strong>${esc(t.name || 'Tour')}</strong>${t.collab ? collabChip(t.collab) : ''}<small>${esc([PROFILES[t.profile]?.label, t.fixed ? 'fester Verlauf' : '', t.updated ? SHORT.format(t.updated) : ''].filter(Boolean).join(' · '))}</small></td>
             <td class="w-num">${t.stats?.length ? fmtDistance(t.stats.length) : '–'}<small>${t.stats?.ascent ? `↗ ${t.stats.ascent} m` : ''}</small></td>
           </tr>`).join('')}</tbody></table>
       </details>`;

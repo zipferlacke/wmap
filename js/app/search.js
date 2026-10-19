@@ -1,6 +1,8 @@
 /**
  * Suche oben: Vorschläge, Zuletzt genutzt, Lesezeichen (Zuhause, Arbeit, eigene
- * Namen) – die stehen immer ganz oben, beim Tippen die passenden.
+ * Namen) – die stehen immer ganz oben, beim Tippen die passenden. Koordinaten
+ * (auch MGRS, UTM, Plus Code) und Links aus anderen Karten oder von WMap gehen
+ * ohne Suchdienst (search-direct.js).
  */
 import { PROFILES } from '../core/config.js';
 import * as geocode from '../services/geocode.js';
@@ -12,6 +14,7 @@ import { ask, toast } from '../ui/dialogs.js';
 import { distance, esc, fmtDistance } from '../core/geo.js';
 import { fmtAbout, roadDistances, ROAD_FIRST } from '../services/routing.js';
 import { runCategory } from './category.js';
+import { directItems } from './search-direct.js';
 import { $, $$, debounce, map, q, state } from './core.js';
 import { isPoi } from './drive-target.js';
 import { paintPlaceActions, placeWaypoint, showPlace } from './place.js';
@@ -121,10 +124,15 @@ function searchCenter() {
 
 export async function placeSuggestions(text, onPick, { withCategory = true, extra = [] } = {}) {
   const seq = ++searchSeq;
-  const query = text.trim();
+  let query = text.trim();
   if (query.length < 2) return extra;
   searchCtl?.abort();
   searchCtl = new AbortController();
+  // Koordinaten und Karten-Links brauchen keinen Suchdienst (app/search-direct.js)
+  const direct = await directItems(query, onPick, { main: withCategory, signal: searchCtl.signal }).catch(() => null);
+  if (seq !== searchSeq) return null;
+  if (Array.isArray(direct)) return [...extra, ...direct];
+  if (direct?.query) query = direct.query;
   let results = [];
   try {
     results = await geocode.search(query, { center: searchCenter(), zoom: map.getZoom(), signal: searchCtl.signal });

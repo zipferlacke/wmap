@@ -15,6 +15,7 @@
  * dem Routing. „So übernehmen“ nimmt den ganzen Verlauf. Hintergründe werden
  * mit der Tour gespeichert; entfernt man einen, ist er weg.
  */
+import { fmtLatLon, fmtMgrs } from '../core/coords.js';
 import { PROFILES } from '../core/config.js';
 import { createMap, showRoutes, showHover } from '../map/map.js';
 import { segment, joinSegments, wayInfo, heightsAlong, hikingTime } from '../services/routing.js';
@@ -260,6 +261,15 @@ function pointPopup(i) {
   const el = document.createElement('div');
   el.className = 'popup context';
   const n = tour.points.length, round = isRound();
+  // Wo der Punkt liegt: Breite/Länge und MGRS (NATO-Gitter) – antippen kopiert
+  const where = [fmtLatLon(tour.points[i]), fmtMgrs(tour.points[i])].filter(Boolean).join(' · ');
+  const at = document.createElement('button');
+  at.type = 'button';
+  at.className = 'popup-coords';
+  at.title = 'Kopieren';
+  at.innerHTML = `<span class="msr">content_copy</span> ${esc(where)}`;
+  at.addEventListener('click', () => navigator.clipboard?.writeText(where).then(() => toast(`Kopiert: ${where}`), () => {}));
+  el.append(at);
   const entries = [['delete', 'Punkt entfernen', () => change(() => tour.points.splice(i, 1))]];
   if (i === 0 && n > 1 && !round) entries.push(['sports_score', 'Auch als Ziel – Rundweg', () => change(() => tour.points.push(tour.points[0].slice()))]);
   if (i > 0 && !(round && i === n - 1)) entries.push(['trip_origin', round ? 'Hier starten und enden' : 'Zum Start machen', () => change(() => makeStart(i))]);

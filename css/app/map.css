@@ -87,6 +87,14 @@
             &:hover { background: var(--surface-2); }
             .msr { color: var(--route); font-size: 1.15rem; }
         }
+        /* Breite/Länge und MGRS des Punkts – klein, antippen kopiert */
+        .popup-coords {
+            color: var(--muted);
+            font-size: var(--fs-100);
+            font-variant-numeric: tabular-nums;
+            padding-block: .1rem .35rem;
+            .msr { color: var(--muted); font-size: .9rem; }
+        }
     }
 }
 
