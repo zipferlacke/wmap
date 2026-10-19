@@ -334,6 +334,9 @@ zur zuvor besuchten Seite zu gehen.
   setzt den Feature-State `access`: privat (private, no, Anwohner,
   Genehmigung) mit Deckkraft 0,4, nur für Kunden/Anlieger 0,7 – wie die grauen
   Treffer in der Liste „in der Nähe“.
+- **Ort ohne Namen** (Parkplatz, Bank, Toilette …): groß steht, was es ist
+  („Parkplatz“), klein darunter die Art – nicht mehr „Ort“. Mit Namen wie
+  bisher: groß der Name („Rewe“), klein die Art („Supermarkt“).
 - **Zuhause und Arbeit auf der Karte** (`js/map/my-places.js`): rundes
   Abzeichen mit Haus (blau) bzw. Koffer (braun), der eigene Name darunter
   („Zuhause“, „Bei Oma“). Kommt aus den Lesezeichen und zieht beim Ändern
@@ -941,15 +944,18 @@ Die ersten zwei:
     **Name als Feld** (antippen und ändern, Enter oder Verlassen speichert;
     geteilte und geöffnete nur lesen – `header()` in `js/ui/map-page.js`),
     Datum und Uhrzeit, Zeit in Bewegung, Strecke, Ø und max. km/h, Anstieg, Ø/max. Puls, Ø Frequenz und
-    Leistung (aus GPX oder Health Connect); die Linie ist nach Tempo
+    Leistung (aus GPX oder Health Connect) – Zeit, Strecke und Tempo groß
+    in einer Zeile, der Rest kompakt in zwei Spalten; die Linie ist nach Tempo
     gefärbt (langsam grün → schnell rot).
-    **Diagramm**, frei kombinierbar: Höhe, Tempo, Puls, Schritt- bzw.
-    Trittfrequenz, Leistung – nur, was gemessen wurde; jeder Chip schaltet
+    **Diagramm**: von Anfang an alles in einem – Höhe, Tempo, Puls, Schritt- bzw.
+    Trittfrequenz, Leistung, nur, was gemessen wurde; jeder Chip schaltet
     seine Reihe dazu oder weg (eine bleibt, gemerkt in `wmap.chart`). Mehrere
     liegen übereinander, jede mit eigener Skala: die erste links, die zweite
     rechts in ihrer Farbe, ab der dritten nur im Tooltip; oben je Reihe ihr
     Durchschnitt (`showMany` in `js/ui/elevation.js`). Zeiger im Diagramm
-    und auf der Linie zeigen dieselbe Stelle. Der Knopf rechts im Kopf
+    und auf der Linie zeigen dieselbe Stelle. Der **Tooltip** steht außerhalb
+    – über oder unter dem Diagramm, wo mehr Platz ist, sonst daneben (alle
+    Diagramme; `tooltip_outside` der Diagramm-Bibliothek ab 1.8.0). Der Knopf rechts im Kopf
     öffnet es im **Vollbild** (auch in der Route und im Tourenplaner; die
     Umschalter ziehen mit, zoomen geht nur dort – `js/ui/elevation.js`).
     **Runden** – die der Uhr („Uhr“, wenn die Tour welche hat: aus der
@@ -1004,13 +1010,13 @@ Die ersten zwei:
     einem anderen (Liste oder Linie) hebt ihn überall hervor, **Doppelklick**
     macht ihn zum aktuellen (am Handy: erster Tipp hebt hervor, zweiter
     wechselt) – als neuer Eintrag im Verlauf, Zurück führt zum vorigen.
-    **Kacheln** „Dieser Lauf im Vergleich“: zum vorigen Mal, zu den letzten 5,
-    zum Durchschnitt, zum besten bzw. schlechtesten (umschaltbar, gemerkt) –
-    je Kennzahl der Wert, ± und Prozent, grün besser, rot schlechter. Die
-    Tabelle aller Läufe ist dann zugeklappt; die **Entwicklung** zeigt die
-    Gesamtzeit (oder Ø Tempo, Puls …) über die Tage, der aktuelle als großer
-    Punkt. Im Verlauf über die Strecke lassen sich mehrere Größen zugleich
-    zeigen (je Größe ein Diagramm).
+    **Kacheln** „Dieser Lauf im Vergleich“ (ohne gleiche Strecke: der neueste):
+    zum vorigen Mal, zu den letzten 5, zum Durchschnitt, zum besten bzw.
+    schlechtesten (umschaltbar, gemerkt) – groß der Wert, darunter in einer
+    Zeile ± absolut und Prozent, grün besser, rot schlechter (weniger Zeit,
+    Puls und Herzschläge je km sind besser). Die Tabelle aller Läufe ist
+    zugeklappt; die **Entwicklung** zeigt die Gesamtzeit (oder Ø Tempo, Puls …)
+    über die Tage, der aktuelle als großer Punkt.
     **Vergleichen** (`js/pages/wege-compare.js`, `wege.html?compare=id,id,…`):
     in Aufgezeichnet „Vergleichen“, dann Zeilen (oder Linien auf der Karte)
     ankreuzen – oben eine Leiste mit der Anzahl, ab zwei geht es los. Jedes
@@ -1019,10 +1025,12 @@ Die ersten zwei:
     Strecke, Ø Tempo, Ø/max. Puls, Herzschläge je km (Ø Puls × Zeit ÷
     Strecke – gleich schnell mit weniger Schlägen heißt fitter), Ø Frequenz,
     Ø Leistung; rechts die **Veränderung** vom ältesten zum neuesten, mit
-    Prozent: grün besser, rot schlechter (Tempo, Strecke, Leistung mehr,
-    Herzschläge je km weniger; Puls und Zeit ohne Wertung; unter 0,5 %
-    zählt nicht). Darunter der **Verlauf über die Strecke** – Tempo, Puls,
-    Frequenz oder Leistung aller Trainings übereinander auf einer Skala –
+    Prozent: grün besser, rot schlechter (Tempo, Strecke, Leistung, Frequenz
+    mehr; Zeit, Puls, Herzschläge je km weniger; unter 0,5 % zählt nicht). Darunter der **Verlauf über die Strecke** – Tempo, Puls,
+    Frequenz und Leistung aller Trainings in **einem** Diagramm: die Farbe
+    gehört der Größe (alle Pulse rot, Tempo blau …), jede Größe ihre Skala,
+    das aktuelle Training kräftig, die anderen blass (`showCompare` in
+    `js/ui/elevation.js`) –
     und ab drei Trainings die **Entwicklung**: der Durchschnitt des
     gewählten Maßes je Training, am Datum.
     Puls, Frequenz und Leistung stehen je Punkt am Weg und gehen als

@@ -98,6 +98,8 @@ body.navigating .quick-ask { bottom: calc(var(--nav-bar-h, 4.65rem + var(--safe-
     }
     .rec-buttons { display: flex; gap: .5rem; }
     .rec-buttons .button { width: 3.1rem; height: 3.1rem; .msr { font-size: 1.7rem; } }
+    /* Mitführen (nur nach eigenem Schieben) und Route zum Start – eine Zeile darunter */
+    .rec-extra { grid-column: 1 / -1; display: flex; gap: .5rem; .button { flex: 1; min-height: 2.4rem; } .msr { font-size: 1.25rem; } }
     .rec-stop { background: var(--clr-danger-500); .msr { color: #fff; font-variation-settings: 'FILL' 1; } }
     &.paused .rec-time { animation: rec-blink 1.2s steps(2) infinite; }
 }

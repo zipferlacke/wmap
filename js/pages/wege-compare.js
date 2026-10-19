@@ -2,17 +2,16 @@
  * Trainings vergleichen (Meine Touren → Aufgezeichnet → „Vergleichen“, wege.html?compare=id,id,…; gleiche Strecke
  * vom aktuellen Weg aus: …&focus=id).
  *
- *   Kacheln     nur vom aktuellen aus: dieser Lauf zum vorigen, zu den letzten 5, zum Durchschnitt, zum besten
- *               bzw. schlechtesten der anderen (umschaltbar, gemerkt) – je Kachel der Wert und ± dazu: grün besser,
- *               rot schlechter (schneller, mehr Leistung, weniger Herzschläge je km; Puls und Zeit ohne Wertung –
- *               die Zeit nur auf gleicher Strecke)
+ *   Kacheln     vom aktuellen aus (gleiche Strecke: der gewählte, sonst der neueste): zum vorigen, zu den letzten 5,
+ *               zum Durchschnitt, zum besten bzw. schlechtesten der anderen (umschaltbar, gemerkt) – groß der Wert,
+ *               darunter in einer Zeile ± absolut und in Prozent, immer grün (besser) oder rot (schlechter)
  *   Tabelle     je Training Zeit, Strecke, Ø Tempo, max. Geschwindigkeit, Puls, Herzschläge je km, Frequenz,
  *               Leistung und die Veränderung (ohne aktuellen: vom ältesten zum neuesten; mit: zum vorigen Mal)
- *   Verlauf     Tempo, Puls, Frequenz, Leistung über die Strecke – alle Trainings übereinander, je Größe ein
- *               Diagramm; mehrere Größen zugleich wählbar
+ *   Verlauf     Tempo, Puls, Frequenz, Leistung über die Strecke in einem Diagramm: die Farbe gehört der Größe
+ *               (alle Pulse rot …), das aktuelle Training kräftig, die anderen blass; jede Größe ihre Skala
  *   Entwicklung Gesamtzeit (bzw. Ø Tempo, Puls …) je Training über die Tage, der aktuelle als großer Punkt
  *
- * Jedes Training hat seine Farbe (in der Liste, den Diagrammen und auf der Karte, pages/wege.js).
+ * Jedes Training hat seine Farbe in der Liste und auf der Karte (pages/wege.js) – im Verlauf zählt die Größe.
  *
  *   paintCompare(box, list, { focus, onHover, onSwitch })  list: Wege (ganz, nicht nur die Karteikarte), beliebig
  *                            sortiert; `focus`: gleiche Strecke vom aktuellen Weg aus (er kräftig, die anderen blass)
@@ -63,17 +62,17 @@ function rows(ref) {
   const speed = (v) => (pace ? `${clock(pace.per / v)} ${pace.unit}` : `${num(v * 3.6, 1)} km/h`);
   const sign = (v) => (v > 0 ? '+' : v < 0 ? '−' : '±');
   return [
-    ['time', 'Zeit in Bewegung', fmtDuration, (a, b) => `${sign(b - a)}${clock(b - a)}`, 0],
+    ['time', 'Zeit in Bewegung', fmtDuration, (a, b) => `${sign(b - a)}${clock(b - a)}`, -1],
     ['dist', 'Strecke', fmtDistance, (a, b) => (Math.abs(b - a) < 5 ? '±0 m' : `${sign(b - a)}${fmtDistance(Math.abs(b - a))}`), 1],
     ['speed', pace ? `Ø Tempo` : 'Ø Geschwindigkeit', speed,
       (a, b) => (pace ? `${sign(pace.per / b - pace.per / a)}${clock(pace.per / b - pace.per / a)} ${pace.unit}` : `${sign(b - a)}${num(Math.abs(b - a) * 3.6, 1)} km/h`), 1,
       // Zeit je km: die Prozente auf die Zeit, nicht auf die Geschwindigkeit (schneller = weniger Minuten)
       pace ? (a, b) => a / b - 1 : null],
     ['top', 'max. Geschwindigkeit', (v) => `${num(v * 3.6, 1)} km/h`, (a, b) => `${sign(b - a)}${num(Math.abs(b - a) * 3.6, 1)} km/h`, 1],
-    ['hr', 'Ø Puls', (v) => `${Math.round(v)}`, (a, b) => `${sign(Math.round(b) - Math.round(a))}${Math.abs(Math.round(b) - Math.round(a))}`, 0],
-    ['hrMax', 'max. Puls', (v) => `${Math.round(v)}`, (a, b) => `${sign(b - a)}${Math.abs(Math.round(b - a))}`, 0],
+    ['hr', 'Ø Puls', (v) => `${Math.round(v)}`, (a, b) => `${sign(Math.round(b) - Math.round(a))}${Math.abs(Math.round(b) - Math.round(a))}`, -1],
+    ['hrMax', 'max. Puls', (v) => `${Math.round(v)}`, (a, b) => `${sign(b - a)}${Math.abs(Math.round(b - a))}`, -1],
     ['beats', 'Herzschläge je km', (v) => num(Math.round(v)), (a, b) => `${sign(Math.round(b - a))}${num(Math.abs(Math.round(b - a)))}`, -1],
-    ['cad', `Ø ${cadName(ref)}`, (v) => `${Math.round(v)}`, (a, b) => `${sign(Math.round(b - a))}${Math.abs(Math.round(b - a))}`, 0],
+    ['cad', `Ø ${cadName(ref)}`, (v) => `${Math.round(v)}`, (a, b) => `${sign(Math.round(b - a))}${Math.abs(Math.round(b - a))}`, 1],
     ['pow', 'Ø Leistung', (v) => `${Math.round(v)} W`, (a, b) => `${sign(Math.round(b - a))}${Math.abs(Math.round(b - a))} W`, 1],
   ];
 }
@@ -108,10 +107,10 @@ const REF_KEY = 'wmap.compareRef';
 
 /** Was die Diagramme zeigen können */
 const KINDS = {
-  speed: { name: 'Tempo', unit: 'km/h', icon: 'speed', decimals: 1 },
-  hr: { name: 'Puls', unit: 'bpm', icon: 'favorite' },
-  cad: { name: 'Frequenz', unit: '/min', icon: 'autorenew' },
-  pow: { name: 'Leistung', unit: 'W', icon: 'bolt' },
+  speed: { name: 'Tempo', unit: 'km/h', icon: 'speed', decimals: 1, color: 'light-dark(#1a73e8, #74a7f5)' },
+  hr: { name: 'Puls', unit: 'bpm', icon: 'favorite', color: 'light-dark(#e03131, #ff8787)' },
+  cad: { name: 'Frequenz', unit: '/min', icon: 'autorenew', color: 'light-dark(#ae3ec9, #e599f7)' },
+  pow: { name: 'Leistung', unit: 'W', icon: 'bolt', color: 'light-dark(#e8590c, #ffa94d)' },
 };
 const KEY = 'wmap.compareChart';      // Verlauf: Liste der gezeigten Größen
 const TREND_KEY = 'wmap.compareTrend'; // Entwicklung: eine Größe
@@ -146,15 +145,16 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
     return `<tr><th scope="row">${esc(name)}</th>${figs.map((f, i) => `<td${cls(i)}>${f[k] == null ? '–' : esc(show(f[k]))}</td>`).join('')}${cell}</tr>`;
   }).join('');
 
-  // Kacheln: womit verglichen werden kann
-  const cur = fi >= 0 ? { t: items[fi].t, f: figs[fi] } : null;
-  const others = items.map(({ t }, i) => ({ t, f: figs[i] })).filter((x, i) => i !== fi);
+  // Kacheln: der aktuelle (gleiche Strecke) bzw. der neueste – womit er verglichen werden kann
+  const ci = fi >= 0 ? fi : items.length - 1;
+  const cur = items.length > 1 ? { t: items[ci].t, f: figs[ci] } : null;
+  const others = items.map(({ t }, i) => ({ t, f: figs[i] })).filter((x, i) => i !== ci);
   const refs = cur ? Object.entries(REFS).map(([k, [name, pick]]) => [k, name, pick(cur, others)]).filter(([, , r]) => r) : [];
   const m = items.map(({ t }) => metrics(t));
   const kinds = Object.keys(KINDS).filter((k) => m.some((x) => x[k]?.length));
   const wanted = local.get(KEY);
   let shown = (Array.isArray(wanted) ? wanted : [wanted]).filter((k) => kinds.includes(k));
-  if (!shown.length && kinds.length) shown = [kinds.includes('hr') ? 'hr' : kinds[0]];
+  if (!shown.length) shown = kinds;            // ohne eigene Wahl alles in einem Diagramm
   // Entwicklung: Gesamtzeit nur auf gleicher Strecke sinnvoll – sonst das Tempo zuerst
   const trends = [...(fi >= 0 ? ['time'] : []), 'speed', ...['hr', 'cad', 'pow'].filter((k) => figs.some((f) => f[k] != null))];
   const trendKind = trends.includes(local.get(TREND_KEY)) ? local.get(TREND_KEY) : trends[0];
@@ -168,11 +168,11 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
       <li style="--c:${color}" data-cmp-id="${esc(t.id)}"${cls(i)} tabindex="0"><span class="msr">${sportIcon(sportOf(t))}</span>
         <span><strong>${esc(t.name || 'Weg')}${i === fi ? ' <em>aktuell</em>' : ''}</strong><small>${LONG.format(t.start)} · ${fmtDistance(t.length)} · ${fmtDuration(moving(t))}</small></span></li>`).join('')}</ol>
     ${refs.length ? `
-      <h3 class="cmp-h"><span class="msr">leaderboard</span> Dieser Lauf im Vergleich</h3>
+      <h3 class="cmp-h"><span class="msr">leaderboard</span> ${fi >= 0 ? 'Dieser Lauf' : `Der neueste (${esc(SHORT.format(cur.t.start))})`} im Vergleich</h3>
       <div class="chip-row cmp-refs" role="group" aria-label="Vergleichen mit">${refs.map(([k, name]) => `
         <button type="button" class="chip" data-ref="${k}">${esc(name)}</button>`).join('')}</div>
       <div class="cmp-tiles"></div>` : ''}
-    <details class="cmp-all" ${fi < 0 ? 'open' : ''}><summary><span class="msr">table</span> ${fi < 0 ? 'Zahlen' : 'Alle Läufe als Tabelle'}</summary>
+    <details class="cmp-all" ${items.length < 2 ? 'open' : ''}><summary><span class="msr">table</span> Alle als Tabelle</summary>
     <div class="cmp-scroll"><table class="cmp-table">
       <thead><tr><th></th>${head}<th scope="col">${label}</th></tr></thead>
       <tbody>${table}</tbody>
@@ -198,8 +198,9 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
       const [key, name, show] = row;
       const a = r.f[key], b = cur.f[key];
       const c = a != null ? change(row, a, b) : null;
-      return `<div class="cmp-tile ${c?.mood ?? ''}"><small>${esc(name)}</small><strong>${esc(show(b))}</strong>
-        <span>${c ? `${esc(c.text)}<small class="cmp-pct">${c.pct}</small>` : '–'}</span><small class="muted">${a != null ? `${esc(show(a))} · ${esc(r.note)}` : 'keine Angabe'}</small></div>`;
+      // Groß der Wert, darunter in einer Zeile ± absolut und in Prozent (grün besser, rot schlechter)
+      return `<div class="cmp-tile ${c?.mood ?? ''}" title="${a != null ? esc(`${show(a)} · ${r.note}`) : 'keine Angabe'}"><small>${esc(name)}</small><strong>${esc(show(b))}</strong>
+        <span>${c ? `${esc(c.text)} <span class="cmp-pct">${c.pct}</span>` : '–'}</span></div>`;
     }).join('');
   };
   if (refs.length) {
@@ -221,25 +222,25 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
     if (id === hovered) return;
     hovered = id;
     box.querySelectorAll('.cmp-list li').forEach((li) => li.classList.toggle('hover', li.dataset.cmpId === id));
-    if (fi >= 0) for (const c of charts) c.emphasize(fi, id ? index(id) : null);
+    for (const c of charts) c.emphasize(ci, id ? index(id) : null);
   };
-  // Verlauf: je gewählte Größe ein Diagramm, alle Trainings übereinander
+  // Verlauf: ein Diagramm mit allen gewählten Größen aller Trainings – Farbe je Größe, das aktuelle kräftig
   const paintCharts = () => {
     const host = box.querySelector('.cmp-charts');
     if (!host) return;
     host.replaceChildren();
-    charts = shown.map((k) => {
-      const el = Object.assign(document.createElement('div'), { className: 'elevation cmp-along' });
-      el.dataset.kind = k;
-      host.append(el);
-      const c = KINDS[k], chart = new ElevationProfile(el);
-      chart.showSeries({
-        unit: c.unit, decimals: c.decimals, icon: c.icon, title: k === 'cad' ? cadName(ref) : c.name,
-        series: items.map(({ t, color }, i) => ({ name: `${i + 1} · ${DAY.format(t.start)}`, color, points: m[i][k] ?? [] })),
-      });
-      if (fi >= 0) chart.emphasize(fi, hovered ? index(hovered) : null);
-      return chart;
+    const el = Object.assign(document.createElement('div'), { className: 'elevation cmp-along' });
+    el.dataset.kind = shown.join('+');
+    host.append(el);
+    const chart = new ElevationProfile(el);
+    const kindList = shown.map((k) => ({ ...KINDS[k], name: k === 'cad' ? cadName(ref) : KINDS[k].name }));
+    chart.showCompare({
+      kinds: kindList, length: Math.max(...items.map(({ t }) => t.length)), icon: 'stacked_line_chart',
+      title: kindList.map((k) => k.name).join(' + '),
+      series: shown.flatMap((k, ki) => items.map(({ t }, i) => ({ name: `${kindList[ki].name} · ${i + 1} · ${DAY.format(t.start)}`, kind: ki, group: i, points: m[i][k] ?? [] }))),
     });
+    chart.emphasize(ci, hovered ? index(hovered) : null);
+    charts = [chart];
   };
   paintCharts();
   box.querySelector('.cmp-kinds')?.addEventListener('click', (e) => {

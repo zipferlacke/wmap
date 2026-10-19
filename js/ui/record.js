@@ -8,6 +8,10 @@
  *
  * Android-App (ab 2.2.0): Der Recorder lässt einen Dienst mitlaufen, der bei ausgeschaltetem Bildschirm
  * weiter sammelt (data/tracks.js) – dann muss der Bildschirm nicht an bleiben.
+ *
+ * Karte: Sie folgt dem Standort – er steht im unteren Drittel, vorn ist mehr zu sehen. Wer die Karte selbst
+ * schiebt oder zoomt, schaut frei herum: Dann wandert nur der Punkt, „Mitführen“ holt ihn zurück. Suchen und
+ * Navigieren gehen nebenher; „Zurück zum Start“ plant die Route zum Anfang der Aufzeichnung (`onRouteTo`).
  */
 import { recorder, defaultName } from '../data/tracks.js';
 import { geo } from '../core/native.js';
@@ -25,6 +29,7 @@ let ui = null;
  * @param ctx.toast  (text, { action }) → Hinweis
  */
 export function setupRecording(ctx) {
+  // ctx.onRouteTo([lon, lat], Name): Route dorthin planen (app.js)
   ui ??= new RecordUi(ctx);
   // Nach Neuladen weiter aufzeichnen
   if (recorder.active && recorder.kind === 'rec') ui.show();
@@ -32,11 +37,16 @@ export function setupRecording(ctx) {
 }
 
 class RecordUi {
-  #map; #toast; #el; #watch = null; #lock = null; #timer = null; #me = null;
+  #map; #toast; #el; #watch = null; #lock = null; #timer = null; #me = null; #follow = true; #onRouteTo;
 
-  constructor({ map, toast }) {
+  constructor({ map, toast, onRouteTo = null }) {
     this.#map = map;
     this.#toast = toast;
+    this.#onRouteTo = onRouteTo;
+    // Selbst geschoben, gezoomt oder gedreht (nicht die Karte, die nachzieht): frei herumschauen
+    for (const ev of ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart']) {
+      map.on(ev, (e) => { if (e.originalEvent && this.#follow && recorder.active && recorder.kind === 'rec') this.#setFollow(false); });
+    }
     this.#el = document.createElement('section');
     this.#el.className = 'rec';
     this.#el.hidden = true;
@@ -75,7 +85,12 @@ class RecordUi {
       <div class="rec-buttons">
         <button type="button" class="button rec-pause" data-shape="round" data-act="pause" title="Pause"><span class="msr">pause</span></button>
         <button type="button" class="button rec-stop" data-shape="round" data-act="stop" title="Beenden"><span class="msr">stop</span></button>
+      </div>
+      <div class="rec-extra">
+        <button type="button" class="button rec-follow" data-act="follow" hidden title="Karte wieder mit dem Standort mitführen"><span class="msr">my_location</span> Mitführen</button>
+        <button type="button" class="button rec-home" data-act="home" title="Route zurück zum Start der Aufzeichnung"><span class="msr">u_turn_left</span> Zum Start</button>
       </div>`;
+    this.#follow = true;
     document.body.classList.add('recording');
     this.#startGps();
     this.#keepAwake();
@@ -103,6 +118,28 @@ class RecordUi {
       return;
     }
     if (b.dataset.act === 'stop') this.#finish();
+    if (b.dataset.act === 'follow') { this.#setFollow(true); this.#center(true); }
+    if (b.dataset.act === 'home') {
+      const start = recorder.points[0];
+      if (!start) { this.#toast('Noch kein Punkt aufgezeichnet'); return; }
+      this.#onRouteTo?.([start[0], start[1]], 'Start der Aufzeichnung');
+    }
+  }
+
+  #setFollow(on) {
+    this.#follow = on;
+    const b = this.#el.querySelector('.rec-follow');
+    if (b) b.hidden = on;
+  }
+
+  /** Standort ins untere Drittel (über der Leiste unten) – `now`: sofort hin, sonst weich nachziehen */
+  #center(now = false) {
+    const last = recorder.points.at(-1);
+    if (!last) return;
+    const h = this.#map.getContainer().clientHeight;
+    const panel = this.#el.hidden ? 0 : this.#el.offsetHeight;
+    this.#map.easeTo({ center: [last[0], last[1]], padding: { top: Math.round(h * 0.35), bottom: panel, left: 0, right: 0 },
+      ...(now ? { zoom: Math.max(this.#map.getZoom(), 15) } : {}), duration: now ? 600 : 900 });
   }
 
   async #finish() {
@@ -112,6 +149,7 @@ class RecordUi {
     this.#stopGps();
     this.#el.hidden = true;
     document.body.classList.remove('recording');
+    this.#map.easeTo({ padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: 0 });
     clearInterval(this.#timer);
     this.#line([]);
     if (name === null) { recorder.discard(); this.#toast('Aufzeichnung verworfen'); return; }
@@ -151,11 +189,13 @@ class RecordUi {
   #line(pts) {
     const map = this.#map;
     const data = { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts.map(([x, y]) => [x, y]) } };
+    // Linie erst, wenn der Stil steht – Punkt und Karte ziehen trotzdem nach
     if (!map.getSource('rec-line')) {
-      if (!pts.length || !map.isStyleLoaded()) return;
+      if (pts.length && map.isStyleLoaded()) {
       map.addSource('rec-line', { type: 'geojson', data });
       map.addLayer({ id: 'rec-casing', type: 'line', source: 'rec-line', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#fff', 'line-width': 8 } });
       map.addLayer({ id: 'rec-main', type: 'line', source: 'rec-line', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#e8590c', 'line-width': 4.5 } });
+      }
     } else {
       map.getSource('rec-line').setData(data);
     }
@@ -165,12 +205,12 @@ class RecordUi {
         const el = document.createElement('div');
         el.className = 'rec-me';
         this.#me = new maplibregl.Marker({ element: el }).setLngLat(last).addTo(map);
-        map.easeTo({ center: last, zoom: Math.max(map.getZoom(), 15) });
+        if (this.#follow) this.#center(true);
       } else {
+        const moved = this.#me.getLngLat().toArray().join() !== [last[0], last[1]].join();
         this.#me.setLngLat(last);
-        // Aus dem Bild gelaufen? Karte nachziehen (nur dann – sonst stört es beim Umschauen)
-        const px = map.project(last), { clientWidth: w, clientHeight: h } = map.getContainer();
-        if (px.x < 40 || px.y < 80 || px.x > w - 40 || px.y > h - 140) map.easeTo({ center: last, duration: 500 });
+        // Mitführen: nur bei einem neuen Punkt nachziehen, ohne Zoom – frei herumschauen: nur der Punkt wandert
+        if (moved && this.#follow && !map.isMoving()) this.#center();
       }
     } else { this.#me?.remove(); this.#me = null; }
   }

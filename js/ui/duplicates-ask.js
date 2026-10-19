@@ -17,6 +17,11 @@ import { askAll, askOne } from './import-ask.js';
 import { findDuplicates, resolveDuplicates } from '../data/duplicates.js';
 
 const LATER = 'wmap.duplicates.later';
+// Woher eine Aufzeichnung kommt – „ (Health Connect · Zepp)“, „ (Datei)“, „ (mit WMap aufgezeichnet)“
+const sourceOf = (t) => {
+  const s = t.kind === 'health' ? ['Health Connect', t.source?.app].filter(Boolean).join(' · ') : t.kind === 'gpx' ? 'Datei' : t.kind === 'rec' || t.kind === 'nav' ? 'mit WMap aufgezeichnet' : '';
+  return s ? ` (${s})` : '';
+};
 let asking = false;
 
 /** → Anzahl entfernt, oder null (nichts zu tun, später, abgebrochen). `force`: auch nach „Später“ fragen */
@@ -37,7 +42,10 @@ export async function offerDuplicates(force = false) {
     const n = await resolveDuplicates(async (keep, other, list) => {
       if (rest === 'best') return null;
       if (rest) return rest;
-      const r = await askOne(keep, list, { from: `Die Tour „${keep.name ?? 'Tour'}“ gibt es doppelt. Was willst du von der doppelten Aufzeichnung${other.name && other.name !== keep.name ? ` „${other.name}“` : ''} übernehmen?`, i: i++, n: pairs });
+      const r = await askOne(keep, list, {
+        from: `Die Tour „${keep.name ?? 'Tour'}“ gibt es doppelt. Eine Aufzeichnung bleibt – wähle je Zeile, wessen Daten sie behält.`,
+        newName: `die doppelte Aufzeichnung${other.name && other.name !== keep.name ? ` „${other.name}“` : ''}${sourceOf(other)} – sie wird danach gelöscht`,
+        oldName: `die Aufzeichnung, die bleibt${sourceOf(keep)}`, i: i++, n: pairs });
       if (r === 'best') { rest = 'best'; return null; }
       if (r === 'later') { rest = 'later'; return 'later'; }
       if (r.same) { rest = r.same; return r.same; }

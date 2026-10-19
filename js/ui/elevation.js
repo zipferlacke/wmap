@@ -44,6 +44,7 @@ export class ElevationProfile {
   #xLabels = null;                 // showSeries mit x.labels: Beschriftung je ganzer Zahl (1, 2, 3 …)
   #emph = null;                    // emphasize: { focus, hover } – Reihe kräftig bzw. hervorgehoben, der Rest blass
   #mark = null;                    // showSeries mit x.mark: { x, color } – dieser Punkt der ersten Reihe groß
+  #groups = null;                  // showCompare: je Reihe ihr Training – Hervorheben gilt dem ganzen Training
 
   constructor(host, { onHover } = {}) {
     this.#host = host;
@@ -56,7 +57,8 @@ export class ElevationProfile {
       if (Array.isArray(option?.yAxis) && option.yAxis.length > 1) {
         option.yAxis = option.yAxis.map((ax, i) => {
           const color = option.series?.find((x) => x.yAxisIndex === i)?.itemStyle?.color;
-          return i > 1 ? { ...ax, show: false, splitLine: { show: false } }
+          // Unsichtbar ganz ohne Beschriftung und Namen – sonst hält ECharts (containLabel) links Platz dafür frei
+          return i > 1 ? { ...ax, show: false, name: '', axisLabel: { show: false }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } }
             : { ...ax, axisLabel: { ...ax.axisLabel, color }, nameTextStyle: { ...ax.nameTextStyle, color } };
         });
       }
@@ -110,7 +112,8 @@ export class ElevationProfile {
    */
   #config(cfg, mark) {
     // Zoomen nur im Vollbild – im Blatt nähme es dem Finger das Scrollen
-    this.#diagram.setConfig({ ...cfg, zoom: 'fullscreen' });
+    // Tooltip außerhalb (über/unter dem Diagramm, sonst daneben) – Kurve und Werte zugleich sichtbar
+    this.#diagram.setConfig({ ...cfg, zoom: 'fullscreen', tooltip_outside: true });
     const el = Object.assign(document.createElement('span'), { className: 'msr elev-mountain', textContent: mark.icon, title: mark.title });
     if (mark.color) el.style.color = mark.color;
     this.#host.querySelector('.dg_tools')?.prepend(el);
@@ -126,6 +129,7 @@ export class ElevationProfile {
     this.#xLabels = null;
     this.#mark = null;
     this.#emph = null;
+    this.#groups = null;
     this.#host.hidden = !route?.elevation?.length;
     if (this.#host.hidden) return;
     this.#points = thin(route.elevation);
@@ -161,6 +165,7 @@ export class ElevationProfile {
     this.#xLabels = null;
     this.#mark = null;
     this.#emph = null;
+    this.#groups = null;
     this.#host.hidden = !points?.length;
     if (this.#host.hidden) return;
     this.#points = thin(points);
@@ -187,6 +192,7 @@ export class ElevationProfile {
     this.#xLabels = null;
     this.#mark = null;
     this.#emph = null;
+    this.#groups = null;
     list = list.filter((m) => m.points?.length);
     if (list.length < 2) { if (list[0]) this.showMetric({ ...list[0], length }); else this.#host.hidden = true; return; }
     this.#host.hidden = false;
@@ -225,6 +231,7 @@ export class ElevationProfile {
     this.#xLabels = x.labels ?? null;
     this.#mark = x.mark ?? null;
     this.#emph = null;
+    this.#groups = null;
     const list = series.filter((m) => m.points?.length);
     this.#host.hidden = !list.length;
     if (!list.length) return;
@@ -243,6 +250,41 @@ export class ElevationProfile {
   }
 
   /**
+   * Vergleich in einem Diagramm: mehrere Größen (Tempo, Puls …) mehrerer Trainings. Die Farbe gehört der Größe
+   * (alle Pulse rot …), jede Größe hat ihre Skala; welches Training kräftig ist, sagt emphasize() (Index des
+   * Trainings, nicht der Reihe).
+   * @param o { kinds: [{ name, unit, color, decimals? }], series: [{ name, kind (Index), group (Training), points }],
+   *            length (m), icon, title }
+   */
+  showCompare({ kinds, series, length, icon, title }) {
+    this.#xLabels = null;
+    this.#mark = null;
+    const list = series.filter((m) => m.points?.length);
+    this.#host.hidden = !list.length;
+    if (!list.length) return;
+    const thinned = list.map((m) => ({ ...m, points: thin(m.points) }));
+    this.#points = thinned[0].points;
+    this.#groups = thinned.map((m) => m.group);
+    const used = [...new Set(thinned.map((m) => m.kind))];
+    const range = (k) => {
+      const vals = thinned.filter((m) => m.kind === k).flatMap((m) => m.points.map(([, v]) => v));
+      const lo = Math.min(...vals), hi = Math.max(...vals), pad = Math.max(1, (hi - lo) * 0.1);
+      return { min: Math.max(0, Math.floor(lo - pad)), max: Math.ceil(hi + pad) };
+    };
+    this.#config({
+      card: false,
+      legend: { hidden: true },
+      x_axis: { type: 'value', unit: 'km', decimals: length < 5000 ? 1 : 0 },
+      y_axes: used.map((k) => ({ unit: kinds[k].unit, ...range(k), split_number: 3 })),
+      chips: [],
+      series: thinned.map((m, i) => {
+        const k = kinds[m.kind];
+        return { key: `r${i}`, name: m.name, data: m.points, color: k.color, y_axis: used.indexOf(m.kind), smooth: true, decimals: k.decimals ?? 0, unit: k.unit };
+      }),
+    }, { icon, title });
+  }
+
+  /**
    * Vergleich: Reihe `focus` kräftig, die anderen blass; `hover` (Index oder null) dazu hervorgehoben. Gilt bis zur
    * nächsten anderen Darstellung (show, showMetric, showMany) – auch nach einem Neuzeichnen.
    */
@@ -255,10 +297,13 @@ export class ElevationProfile {
 
   #emphStyles(n) {
     const { focus, hover } = this.#emph;
-    return Array.from({ length: n }, (_, i) => ({
-      z: i === hover ? 5 : i === focus ? 4 : 2,
-      lineStyle: { width: i === focus ? 3 : i === hover ? 2.5 : 1.2, opacity: i === focus || i === hover ? 1 : 0.35 },
-    }));
+    return Array.from({ length: n }, (_, s) => {
+      const i = this.#groups ? this.#groups[s] : s;
+      return {
+        z: i === hover ? 5 : i === focus ? 4 : 2,
+        lineStyle: { width: i === focus ? 3 : i === hover ? 2.5 : 1.2, opacity: i === focus || i === hover ? 1 : 0.3 },
+      };
+    });
   }
 
   /** Stelle von außen zeigen, z. B. wenn die Maus über der Route auf der Karte steht. */

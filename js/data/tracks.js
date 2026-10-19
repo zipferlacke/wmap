@@ -158,7 +158,7 @@ export const trackCoords = (t) => (t?.shape ? decodePolyline(t.shape, 5) : []);
 const STUB_POINTS = 60;
 const VALUES = ['hr', 'cad', 'pow'];
 // Was die Karteikarte selbst weiß und beim Lesen der Datei gilt (dort geändert: Name, Art, Farbe …)
-const CARD = ['id', 'kind', 'profile', 'name', 'from', 'to', 'description', 'sport', 'color', 'hidden', 'pin', 'updated',
+const CARD = ['id', 'kind', 'profile', 'name', 'nameAuto', 'tags', 'from', 'to', 'description', 'sport', 'color', 'hidden', 'pin', 'updated',
   'start', 'end', 'length', 'moving', 'top'];
 
 /** Weg → Karteikarte. `fhash`: Fingerabdruck der Datei, die alles enthält */
@@ -543,7 +543,8 @@ export function parseGpx(text, profile = null) {
       const src = { ...(attr('app') ? { app: attr('app') } : {}), ...(attr('type') ? { type: attr('type') } : {}) };
       const kind = ['rec', 'nav', 'gpx', 'health'].includes(attr('kind')) ? attr('kind') : one.kind;
       const meta = { sport: attr('sport'), color: /^#[0-9a-f]{6}$/i.test(attr('color') ?? '') ? attr('color') : undefined,
-        hidden: attr('hidden') === '1' ? true : attr('hidden') === '0' ? false : undefined, from: attr('from'), to: attr('to') };
+        hidden: attr('hidden') === '1' ? true : attr('hidden') === '0' ? false : undefined, from: attr('from'), to: attr('to'),
+        tags: attr('tags')?.split('|').filter(Boolean), nameAuto: attr('nameAuto') };
       one = { ...one, kind, ...Object.fromEntries(Object.entries(meta).filter(([, v]) => v !== undefined)), ...(Object.keys(src).length ? { source: src } : {}) };
       const marks = (attr('marks') ?? '').split(',').map(Number).filter((x) => Number.isFinite(x) && x > 0);
       if (marks.length) one = { ...one, marks };
@@ -573,6 +574,8 @@ export function trackGpx(t) {
   const attrs = { points: coords.length, kind: t.kind, length: t.length, moving: t.moving, top: t.top, app: t.source?.app, type: t.source?.type,
     // Art, Farbe, aus-/eingeblendet, Start und Ziel – auf allen Geräten gleich
     sport: t.sport, color: t.color, hidden: t.hidden === true ? 1 : t.hidden === false ? 0 : undefined, from: t.from, to: t.to,
+    // Tags („Rennen|Vorbereitung“) und der Name, den WMap vergeben hat (data/auto-name.js)
+    tags: t.tags?.length ? t.tags.join('|') : undefined, nameAuto: typeof t.nameAuto === 'string' ? t.nameAuto : undefined,
     // Runden der Uhr: Sekunden ab Start, an denen eine Runde endete
     marks: t.marks?.length ? t.marks.join(',') : undefined };
   const own = `<extensions><wmap:track ${Object.entries(attrs).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => `${k}="${esc(v)}"`).join(' ')}/></extensions>`;

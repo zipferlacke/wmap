@@ -1,7 +1,7 @@
 """Meine Touren → Aufgezeichnet: Wege vergleichen (pages/wege-compare.js), Kopf eines Wegs, Antippen mit Spielraum.
 1. „Vergleichen“ in der Liste: Kästchen statt Auge, Leiste oben – vergleichen geht erst ab zwei angekreuzten.
 2. Zwei Läufe (der neuere schneller, mit weniger Puls): Spalten 1 und 2, Veränderung – Tempo und Herzschläge je km
-   grün, Puls −5; Verlauf über die Strecke mit beiden, Umschalten auf Puls; auf der Karte beide in ihrer Farbe.
+   grün, Puls −5 grün; Verlauf über die Strecke: alle Größen in einem Diagramm, Tempo abwählbar; auf der Karte beide in ihrer Farbe.
 3. ?compare= mit drei: drei Spalten und das Diagramm „Entwicklung“.
 4. Im Weg „Vergleichen“: zurück in die Liste, der Weg ist schon angekreuzt.
 5. Kopf eines Wegs: Symbol der Art und der Name als Feld zwischen ← und ✕ (kein zweites Feld darunter) – ändern speichert.
@@ -27,7 +27,7 @@ for (const [id, name, t0, v, hr] of runs) {
 }
 return (await tracks.all()).length;
 """
-TABLE = """return [[...document.querySelectorAll('.cmp-table thead th')].map((x) => x.innerText.trim()),
+TABLE = """document.querySelectorAll('.cmp-all').forEach((d) => { d.open = true; }); return [[...document.querySelectorAll('.cmp-table thead th')].map((x) => x.innerText.trim()),
   Object.fromEntries([...document.querySelectorAll('.cmp-table tbody tr')].map((r) => [r.querySelector('th').innerText.trim(),
     [...r.querySelectorAll('td')].map((c) => c.innerText.replace(/\\s+/g, ' ').trim() + (c.classList.contains('good') ? ' [gut]' : c.classList.contains('bad') ? ' [schlecht]' : ''))]))]"""
 
@@ -62,7 +62,7 @@ with Browser(width=420, height=900) as b:
     checks['2. Spalten 1, 2, Veränderung'] = head == ['', '1', '2', 'Veränderung']
     tempo, puls, beats = rows.get('Ø Tempo', []), rows.get('Ø Puls', []), rows.get('Herzschläge je km', [])
     checks['2. Tempo schneller: −0:… /km, grün'] = len(tempo) == 3 and tempo[2].startswith('−0:') and tempo[2].endswith('[gut]')
-    checks['2. Puls −5, ohne Wertung'] = len(puls) == 3 and puls[2].startswith('−5 ') and '[' not in puls[2]
+    checks['2. Puls −5, grün (weniger)'] = len(puls) == 3 and puls[2].startswith('−5 ') and puls[2].endswith('[gut]')
     checks['2. Herzschläge je km weniger, grün'] = len(beats) == 3 and beats[2].startswith('−') and beats[2].endswith('[gut]')
     TITLES = "return [...document.querySelectorAll('.cmp-along .elev-mountain')].map((x) => x.title)"
     chart = [b.js(TITLES), b.js("return document.querySelectorAll('.cmp-kinds .chip').length"), b.js("return !!document.querySelector('.cmp-trend')")]
@@ -71,7 +71,7 @@ with Browser(width=420, height=900) as b:
     chart.append(b.js(TITLES))
     lines = b.d.execute_async_script("const done = arguments[0]; window.__wmap.map.getSource('weg-sel').getData().then((d) => done(d.features.map((f) => f.properties.color)))")
     print('Diagramm:', chart, 'Karte:', lines)
-    checks['2. Verlauf: zuerst Puls, Tempo dazu (zwei Diagramme); ohne „Entwicklung“ bei zwei'] = chart == [['Puls'], 4, False, ['Tempo', 'Puls']]
+    checks['2. Verlauf: alle Größen in einem Diagramm, Tempo weg; ohne „Entwicklung“ bei zwei'] = chart == [['Tempo + Puls + Schrittfrequenz + Leistung'], 4, False, ['Puls + Schrittfrequenz + Leistung']]
     checks['2. Karte: beide Wege in ihrer Farbe'] = lines == ['#1a73e8', '#e8590c']
     b.shot('vergleich')
 

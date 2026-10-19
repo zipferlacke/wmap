@@ -39,6 +39,9 @@ with Browser(width=420, height=900) as b:
     b.open('wege.html?id=wtest1', wait=5)
     tabs = b.js("return [...document.querySelectorAll('.weg-chart-tabs .chip')].map(c => c.innerText.trim() + (c.getAttribute('aria-pressed') === 'true' ? ' *' : ''))")
     print('Diagramme:', tabs)
+    print('ok    ' if tabs and all(x.endswith(' *') for x in tabs) else 'FALSCH', 'Ohne eigene Wahl alle Reihen in einem Diagramm')
+    b.js("localStorage.setItem('wmap.chart', JSON.stringify(['ele']))")
+    b.open('wege.html?id=wtest1', wait=5)
     # Chips schalten Reihen dazu und weg – mindestens eine bleibt; der Titel nennt, was gezeigt wird
     b.js("localStorage.setItem('wmap.chart', JSON.stringify(['ele'])); document.querySelector('[data-chart=speed]').click(); document.querySelector('[data-chart=speed]').click()")
     shown = []

@@ -102,7 +102,9 @@ map.resize();
 runExtensions({ map, toast, appNav }).catch(() => {});
 // „Fliegen“ im Menü: hier auf der Karte ohne Neuladen starten
 appNav.el.querySelector('a[href*="action=fly"]')?.addEventListener('click', (e) => { e.preventDefault(); fly.start(); });
-const recording = setupRecording({ map, toast });
+const recording = setupRecording({ map, toast,
+  // „Zurück zum Start“ beim Aufzeichnen: Route vom Standort dorthin
+  onRouteTo: (point, name) => enterRoute({ to: placeWaypoint({ type: 'Feature', geometry: { type: 'Point', coordinates: point }, properties: { name } }) }) });
 appNav.addItem('radio_button_checked', 'Aufzeichnen', () => recording.choose());
 appNav.addItem('streetview', 'Street View', () => dispatchEvent(new CustomEvent('wmap:street')));
 appNav.addItem('share_location', 'Standort teilen', async () => {

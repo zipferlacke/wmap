@@ -489,11 +489,22 @@ body.wege-page { overflow: hidden; }
     }
 }
 .weg-when { line-height: 1.5; .msr { vertical-align: -.25rem; } .muted { font-size: var(--fs-200); } }
+/* Zahlen eines Wegs: die ersten drei (Zeit, Strecke, Tempo) groß nebeneinander, der Rest kompakt in zwei
+   Spalten „Bezeichnung … Wert“ – vorher neun gleich große Kacheln, die den halben Bildschirm füllten */
 .weg-stats {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); gap: .5rem;
-    div { display: grid; padding: .5rem; border-radius: .6rem; background: var(--surface-2); text-align: center; }
-    strong { font-size: var(--fs-500); }
-    small { color: var(--muted); font-size: var(--fs-100); }
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: .1rem 1rem;
+    div {
+        grid-column: span 3; display: flex; flex-direction: row-reverse; justify-content: space-between; align-items: baseline;
+        gap: .5rem; padding: .3rem 0; border-bottom: 1px solid var(--line); min-width: 0;
+    }
+    strong { font-size: var(--fs-300); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    small { color: var(--muted); font-size: var(--fs-200); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    div:nth-child(-n+3) {
+        grid-column: span 2; flex-direction: column-reverse; align-items: center; justify-content: flex-start; gap: 0;
+        margin-bottom: .4rem; padding: .45rem .3rem; border: 0; border-radius: .6rem; background: var(--surface-2);
+        strong { font-size: var(--fs-500); }
+        small { font-size: var(--fs-100); }
+    }
 }
 .weg-actions { display: flex; flex-wrap: wrap; gap: .5rem; .button { background: var(--surface-2); } .button.primary { background: var(--route); color: #fff; } }
 .wege-page .track-legend {
@@ -860,22 +871,44 @@ body.stage-mode #map canvas { cursor: crosshair; }
     > .msr { color: var(--route); font-size: 1.5rem; }
     > span:nth-child(2) { flex: 1; display: grid; min-width: 0; }
     small { color: var(--muted); font-size: var(--fs-100); }
+    flex-wrap: wrap;
+    .same-level { flex-basis: 100%; small { margin-left: .2rem; color: inherit; opacity: .75; } }
 }
 /* Dieser Lauf im Vergleich: Kacheln je Kennzahl */
 .cmp-tiles {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: .5rem;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: .4rem;
 }
+/* Groß der Wert, darunter eine Zeile: ± absolut und in Prozent – grün besser, rot schlechter */
 .cmp-tile {
-    display: grid; gap: .1rem; padding: .55rem .7rem; border-radius: .8rem; background: var(--surface-2);
-    font-variant-numeric: tabular-nums;
+    display: grid; gap: 0; padding: .45rem .6rem; border-radius: .7rem; background: var(--surface-2);
+    font-variant-numeric: tabular-nums; text-align: center;
     > small:first-child { color: var(--muted); font-size: var(--fs-100); }
-    strong { font-size: var(--fs-400, 1.15rem); }
-    > span { font-weight: 700; display: grid; }
-    /* Prozent darunter, kleiner – in der Farbe der Wertung (grün besser, rot schlechter) */
-    .cmp-pct { font-size: var(--fs-100); font-weight: 600; }
-    .muted { font-size: var(--fs-100); }
+    strong { font-size: var(--fs-500); line-height: 1.2; }
+    > span { font-weight: 700; font-size: var(--fs-200); white-space: nowrap; }
+    .cmp-pct { margin-left: .3rem; font-weight: 600; }
     &.good > span { color: light-dark(#2b8a3e, #69db7c); }
     &.bad > span { color: light-dark(#c92a2a, #ff8787); }
 }
 .cmp-all summary { display: flex; align-items: center; gap: .4rem; cursor: pointer; font-weight: 600; .msr { color: var(--route); } }
 .cmp-charts { display: grid; gap: .75rem; }
+
+/* Aufgezeichnet: Kopfzeile zum Sortieren und Filtern (Auswahlfelder als Chips) */
+.wege-head {
+    display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; margin: .4rem 0;
+    .chip { min-height: 2rem; }
+}
+.wege-head .head-pick {
+    display: inline-flex; width: auto; flex: none; margin: 0; align-items: center; gap: .2rem; padding: 0 .2rem 0 .5rem; min-height: 2rem;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: var(--fs-200);
+    > .msr { font-size: 1.1rem; color: var(--muted); }
+    select { width: auto; min-height: 0; height: auto; border: 0; background: transparent; color: inherit; font: inherit; padding: .2rem .1rem; max-width: 11rem; }
+    &.on { border-color: var(--route); background: color-mix(in srgb, var(--route) 12%, var(--surface)); > .msr { color: var(--route); } }
+}
+.wege-sum { margin: .2rem 0 .4rem; }
+/* Tags an der Zeile und im Weg */
+.w-tags { display: flex; flex-wrap: wrap; gap: .2rem; margin-top: .15rem;
+    i { font-style: normal; font-size: var(--fs-100); padding: 0 .4rem; border-radius: 999px;
+        background: color-mix(in srgb, var(--route) 14%, transparent); color: var(--route); } }
+.weg-tags { align-items: center; > span:first-child { color: var(--muted); font-size: var(--fs-200); margin-right: .2rem; }
+    .chip .msr { font-size: 1rem; } }
+

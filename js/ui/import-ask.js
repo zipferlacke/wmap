@@ -102,10 +102,10 @@ export async function askNewFiles(items, opts = {}) {
  * Die Haken für eine Datei (Nummer `i` von `n`, ab 0) → Haken | { same: Haken } (für alle so) | 'best' (für
  * diese und den Rest die genaueren) | 'later' (diese und der Rest bleiben – auch beim Schließen mit ✕)
  */
-export async function askOne(keep, list, { fileName = '', from = null, i = 0, n = 1 } = {}) {
+export async function askOne(keep, list, { fileName = '', from = null, newName = null, oldName = null, i = 0, n = 1 } = {}) {
   const last = i >= n - 1;
   const r = await askMerge(keep, list, {
-    fileName, from, cancel: false,
+    fileName, from, newName, oldName, cancel: false,
     title: n > 1 ? `Zusammenführen (${i + 1} von ${n})` : 'Zusammenführen',
     go: last ? 'Zusammenführen' : 'Weiter',
     extra: last ? [{ value: 'later', label: 'Später weitermachen', icon: 'schedule' }] : [

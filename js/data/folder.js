@@ -1418,6 +1418,8 @@ async function importFile(f, id, before = null, less = null) {
     if (twin) return { id: twin.id, kind: 'track', rev: rev(twin), file: t };
     const source = before?.source || t.source ? { ...before?.source, ...t.source } : undefined;
     const track = { ...unstub(before), ...t, id: id ?? before?.id ?? t.id, ...(source ? { source } : {}), updated: f.lastModified || Date.now() };
+    // Neue fremde Datei (Uhr, App): bekommt einen Namen aus Art, Gegend und Tageszeit (data/auto-name.js)
+    if (!before && !id && (isFit(f.path ?? '') || !/<keywords>[^<]*\bwmap:/.test(f.text))) track.nameAuto = 'pending';
     await tracks.putQuiet(track);
     syncTracks?.push(track);
     return { id: track.id, kind: 'track', rev: track.updated };
