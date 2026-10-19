@@ -122,9 +122,14 @@ export function toast(text, { action } = {}) {
   // Autobildschirm: auch dort kurz zeigen (car/car.js)
   window.wmapCarToast?.(text);
   let el = document.getElementById('toast');
-  if (!el) {
-    el = Object.assign(document.createElement('div'), { id: 'toast', role: 'status' });
-    document.body.append(el);
+  if (!el) el = Object.assign(document.createElement('div'), { id: 'toast', role: 'status', popover: 'manual' });
+  // Immer ganz vorn: Dialoge (showModal) und Seitenleisten liegen in der obersten Ebene, da hilft kein z-index.
+  // Als Popover neu geöffnet kommt der Toast über sie – im obersten Dialog, sonst wäre der Knopf dahinter gesperrt
+  const host = [...document.querySelectorAll('dialog[open]')].filter((d) => d.matches(':modal')).pop() ?? document.body;
+  if (el.parentNode !== host) host.append(el);
+  if (el.showPopover) {
+    if (el.matches(':popover-open')) el.hidePopover();
+    el.showPopover();
   }
   el.textContent = text;
   el.classList.toggle('has-action', !!action);

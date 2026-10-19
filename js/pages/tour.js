@@ -7,6 +7,8 @@
  * Aufruf:  tour.html            neue Tour
  *          tour.html?id=…       gespeicherte Tour bearbeiten
  *          tour.html#t=…        geteilte Tour ansehen (nur lesen, übernehmbar)
+ *          tour.html#k=….….…    gemeinsam planen: die Tour liegt verschlüsselt 30 Tage auf dem Server, wer den Link
+ *                               hat, plant mit – jede Änderung geht zurück, alle 20 s kommt der Stand der anderen
  *
  * Hintergrund (tour.backgrounds): bekannte Wege aus Entdecken und eigene
  * Touren liegen unter der Planung – so, wie sie in OSM bzw. gespeichert
@@ -24,8 +26,9 @@ import { tours, shapeOf, coordsOf, encodeShare, decodeShare, toGpx, download, lo
 import { sidePanel } from '../ui/side-panel.js';
 import { mountLayerMenu } from '../ui/layer-menu.js';
 import { ask, toast } from '../ui/dialogs.js';
-import { share, pageUrl } from '../ui/share.js';
-import { shortLink, resolveShort } from '../data/short-link.js';
+import { share, pageUrl, myName } from '../ui/share.js';
+import { shortLink, resolveShort, collabLink, collabUrl, collabGet, collabPut, collabState, COLLAB_OPEN } from '../data/short-link.js';
+import { mergeTours, resolve as resolveMerge } from '../data/tour-merge.js';
 import * as geocode from '../services/geocode.js';
 import { distance, nearestOnLine, pointAt, simplifyTo, bbox, cumulative, fmtDistance, fmtDuration, esc } from '../core/geo.js';
 import { setupStages } from '../ui/tour-stages.js';
@@ -51,7 +54,27 @@ const idParam = new URLSearchParams(location.search).get('id');
 
 let tour = null;
 let readOnly = false;
-if (shareCode) {
+// Gemeinsam planen: gerade über den Link geöffnet (data/short-link.js) – gibt es die Tour hier schon, die nehmen
+let collabOpen = null;
+try { collabOpen = JSON.parse(sessionStorage.getItem(COLLAB_OPEN) ?? 'null'); sessionStorage.removeItem(COLLAB_OPEN); } catch { /* ohne */ }
+const known = collabOpen && tours.all().find((t) => t.collab?.id === collabOpen.id);
+let joining = null;   // Link mit einer eigenen Tour verbunden: { code, rev, editor } – unten zusammengeführt
+if (known) {
+  tour = known;
+  if (collabOpen.expires) tour.collab = { ...tour.collab, expires: collabOpen.expires };
+  history.replaceState(null, '', `./tour.html?id=${encodeURIComponent(known.id)}`);
+} else if (collabOpen && shareCode) {
+  try {
+    const t = await decodeShare(shareCode);
+    const collab = { id: collabOpen.id, key: collabOpen.key, token: collabOpen.token, rev: collabOpen.rev, by: collabOpen.editor ?? null, expires: collabOpen.expires ?? null };
+    const into = await joinWhere(t, collabOpen.editor);
+    if (into) {
+      tour = { ...into, collab };
+      joining = { code: collabOpen.code, rev: collabOpen.rev, editor: collabOpen.editor };
+      history.replaceState(null, '', `./tour.html?id=${encodeURIComponent(into.id)}`);
+    } else tour = { ...t, id: null, collab };
+  } catch { toast('Der Link ist unvollständig oder beschädigt'); }
+} else if (shareCode) {
   try {
     tour = { ...(await decodeShare(shareCode)), id: null };
     // Nur eine Vorlage (aus Entdecken): gleich selbst planen
@@ -287,6 +310,8 @@ function pointPopup(i) {
 }
 
 map.on('click', (e) => {
+  // Zusammenführen: Tippen wählt eine Fassung, setzt keinen Punkt
+  if (picking) { picking(e); return; }
   // Etappen-Modus: Tippen auf die Linie setzt ein Tagesende (auch bei geteilten Touren)
   if (stages.click(e)) return;
   if (readOnly || e.originalEvent?.target?.closest?.('.wp-marker')) return;
@@ -895,6 +920,7 @@ async function save(preview) {
   } catch (err) { toast(err.message); return; }
   if (isNew) history.replaceState(null, '', `./tour.html?id=${encodeURIComponent(tour.id)}`);
   saveState('saved');
+  if (tour.collab) pushCollab();
 }
 
 /** Vorschaubild: Route einpassen, Karte zeichnen lassen, Bild verkleinern. */
@@ -948,13 +974,288 @@ descInput.addEventListener('input', () => {
   scheduleSave();
 });
 
-/* Teilen: Link trägt die Tour selbst */
+/* Teilen: Link trägt die Tour selbst – oder gemeinsam planen (Link zum Mitplanen) */
 async function shareTour() {
   if (tour.points.length < 2) { toast('Erst eine Strecke planen'); return; }
   const name = tour.name || nameInput.value || 'Tour';
+  const live = !collabOff(tour.collab);
+  const how = readOnly ? 'view' : await ask({
+    icon: 'share', title: 'Tour teilen',
+    text: live ? 'Diese Tour plant ihr schon gemeinsam – der Link bleibt derselbe.' : 'Nur zeigen – oder gemeinsam planen: Wer den Link hat, ändert mit, jede Änderung sehen alle.',
+    buttons: [{ value: 'view', label: 'Link zum Ansehen', icon: 'visibility' }, { value: 'collab', label: live ? 'Link zum Mitplanen' : 'Gemeinsam planen', icon: 'group', primary: true }],
+  });
+  if (!how) return;
   const code = await encodeShare({ ...tour, name });
-  share({ title: 'Tour teilen', text: `Tour: ${name}`, url: `${pageUrl('tour.html')}#t=${code}`, short: () => shortLink('tour', code) }, toast);
+  if (how === 'view') {
+    share({ title: 'Tour teilen', text: `Tour: ${name}`, url: `${pageUrl('tour.html')}#t=${code}`, short: () => shortLink('tour', code) }, toast);
+    return;
+  }
+  // Abgelaufen: ein neuer Link
+  if (!live) {
+    const me = await myName();
+    try {
+      const { collab } = await collabLink(code, me);
+      tour.collab = collab;
+      lastCollabCode = await normCode(code);
+      await save();
+    } catch (err) { toast(err.message || 'Der Link zum Mitplanen ließ sich nicht anlegen'); return; }
+  }
+  share({ title: 'Gemeinsam planen', text: `Plan mit: ${name}`, url: collabUrl(tour.collab),
+    note: 'Wer den Link hat, kann die Tour ändern. Sie liegt verschlüsselt 30 Tage auf dem WMap-Server.' }, toast);
+  paintCollab();
 }
+
+/* ── Gemeinsam planen: eigene Änderungen zurück, die der anderen holen ──────── */
+
+// So steht es auf dem Server (gepackt) – gleich: nichts zu schicken. Lag die Tour schon hier, ist sie womöglich
+// älter als der Link: dann unbekannt, pullCollab holt den neuesten Stand
+// Immer in der Form, in der diese App selbst packt (normCode): Vom Server kommt dieselbe Tour womöglich anders gepackt
+// (Name leer, Reihenfolge …) – ohne das schickte schon das Öffnen „eine Änderung“, und die anderen sahen „… hat geändert“
+const mineCode = () => encodeShare({ ...tour, name: tour.name || 'Tour' });
+const normCode = async (code) => { const t = await decodeShare(code); return encodeShare({ ...t, name: t.name || 'Tour' }); };
+let lastCollabCode = !known && !joining && collabOpen?.code ? await normCode(collabOpen.code).catch(() => null) : null;
+let collabBusy = false;
+let collabAgain = false;   // während des Schickens wieder geändert: danach gleich noch einmal
+
+function paintCollab() {
+  const box = $('.tour-collab');
+  if (!box) return;
+  box.hidden = !tour.collab;
+  if (!tour.collab) return;
+  const st = collabState(tour.collab);
+  box.querySelector('.msr').textContent = st.icon;
+  box.querySelector('span:last-child').innerHTML = `<b>Gemeinsame Tour</b> <span class="collab-chip${st.gone ? ' gone' : ''}">${esc(st.text)}</span>${
+    tour.collab.editor ? `<small>zuletzt geändert von ${esc(tour.collab.editor)}</small>` : ''}`;
+}
+
+/**
+ * Link zum Mitplanen, die Tour gibt es hier noch nicht: als neue Tour – oder mit einer eigenen verbinden (z. B. dieselbe
+ * Runde schon selbst geplant) → die eigene Tour | null (neue)
+ */
+async function joinWhere(t, by) {
+  const mine = tours.all().filter((x) => !x.collab);
+  if (!mine.length) return null;
+  // Gleicher Name zuerst, sonst die zuletzt geänderte
+  mine.sort((a, b) => (b.name === t.name) - (a.name === t.name) || (b.updated ?? 0) - (a.updated ?? 0));
+  const v = await ask({
+    icon: 'group_add', title: 'Gemeinsam planen', className: 'stacked',
+    text: `${by ? `${by} lädt dich ein` : 'Du bist eingeladen'}, „${t.name}“ mitzuplanen.`,
+    html: `<label class="collab-into"><span>Oder mit einer deiner Touren verbinden – beide werden zusammengeführt:</span>
+      <select>${mine.map((x) => `<option value="${esc(x.id)}">${esc(x.name || 'Tour')}</option>`).join('')}</select></label>`,
+    buttons: [
+      { value: 'new', label: 'Als neue Tour', icon: 'add_road', primary: true },
+      { value: 'join', label: 'Mit der gewählten verbinden', icon: 'merge', run: (dlg, done) => done(`join:${dlg.querySelector('.collab-into select').value}`) },
+    ],
+  });
+  return v?.startsWith('join:') ? tours.get(v.slice(5)) : null;
+}
+
+/** Eine Fassung übernehmen (vom Server oder zusammengeführt) und neu zeichnen */
+async function applyTour(t) {
+  Object.assign(tour, { name: t.name, description: t.description, profile: TOUR_PROFILES.includes(t.profile) ? t.profile : tour.profile,
+    points: t.points, backgrounds: t.backgrounds ?? [], fixed: !!t.fixed, shape: t.shape });
+  nameInput.value = tour.name;
+  descInput.value = tour.description;
+  paintTitle();
+  paintProfiles();
+  startBackgrounds();
+  await recompute({ fit: false });
+}
+
+async function applyRemote(code, rev, editor) {
+  tour.collab = { ...tour.collab, rev, editor };
+  lastCollabCode = await normCode(code);
+  await applyTour(await decodeShare(code));
+  paintCollab();
+  toast(`${editor || 'Jemand'} hat die Tour geändert`);
+}
+
+/* Beide haben dieselbe Stelle geändert: beide Fassungen auf der Karte, gepunktet – die eigene blau, die der anderen
+   orange, jeweils mit dem Punkt davor und danach, die beide behalten haben (direkt von Punkt zu Punkt). Gewählt: kräftig,
+   die andere blass */
+const MINE = '#1a73e8', THEIRS = '#e8590c';
+let picking = null;          // Auswahl auf der Karte läuft: (side) => void – ein Tipp setzt dann keinen Punkt
+function showConflict(cf, sel = null) {
+  const lines = cf ? [['mine', MINE], ['theirs', THEIRS]].map(([side, color]) => ({
+    side, color, pts: [cf.before, ...cf[side], cf.after].filter(Boolean),
+  })) : [];
+  const fc = { type: 'FeatureCollection', features: lines.flatMap(({ side, color, pts }) => {
+    const props = { side, color, on: sel === side ? 1 : sel ? 0 : 0.5 };
+    return [
+      { type: 'Feature', properties: props, geometry: { type: 'LineString', coordinates: pts } },
+      ...pts.map((p) => ({ type: 'Feature', properties: props, geometry: { type: 'Point', coordinates: p } })),
+    ];
+  }) };
+  if (!map.getSource('collab-diff')) {
+    if (!cf) return;
+    map.addSource('collab-diff', { type: 'geojson', data: fc });
+    // Breite Linie unsichtbar darunter: leichter zu treffen
+    map.addLayer({ id: 'collab-diff-hit', type: 'line', source: 'collab-diff', filter: ['==', '$type', 'LineString'],
+      paint: { 'line-color': '#000', 'line-width': 28, 'line-opacity': 0 } });
+    map.addLayer({ id: 'collab-diff-line', type: 'line', source: 'collab-diff', filter: ['==', '$type', 'LineString'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': ['get', 'color'], 'line-dasharray': [0.1, 1.8],
+        'line-width': ['interpolate', ['linear'], ['get', 'on'], 0, 5, 0.5, 6, 1, 8],
+        'line-opacity': ['interpolate', ['linear'], ['get', 'on'], 0, 0.3, 0.5, 0.95, 1, 1] } });
+    map.addLayer({ id: 'collab-diff-dot', type: 'circle', source: 'collab-diff', filter: ['==', '$type', 'Point'],
+      paint: { 'circle-color': ['get', 'color'], 'circle-radius': ['interpolate', ['linear'], ['get', 'on'], 0, 5, 1, 8],
+        'circle-opacity': ['interpolate', ['linear'], ['get', 'on'], 0, 0.3, 0.5, 1, 1, 1], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
+  } else map.getSource('collab-diff').setData(fc);
+}
+
+/** Tipp auf die Karte während der Auswahl: welche Fassung liegt unter dem Finger → 'mine' | 'theirs' | null */
+function sideAt(e) {
+  const box = [[e.point.x - 14, e.point.y - 14], [e.point.x + 14, e.point.y + 14]];
+  const hit = map.queryRenderedFeatures(box, { layers: ['collab-diff-dot', 'collab-diff-hit'] });
+  return hit[0]?.properties.side ?? null;
+}
+
+/**
+ * Dieselben Punkte: Auswahl auf der Karte – Leiste unten („So übernehmen“), die Karte bleibt frei zum Ansehen und
+ * Antippen. Auch die beiden Chips in der Leiste wählen → 'mine' | 'theirs' | null (später)
+ */
+function pickOnMap(cf, who, step) {
+  return new Promise((done) => {
+    let sel = null;
+    const bar = document.createElement('div');
+    bar.className = 'collab-pickbar';
+    bar.setAttribute('role', 'dialog');
+    bar.innerHTML = `<p><b>Zusammenführen${esc(step)}</b> Du und ${esc(who)} habt dieselben Punkte geändert. Tippe auf der
+        Karte die Fassung an, die bleiben soll.</p>
+      <div class="pick-sides">
+        <button type="button" class="pick-side" data-side="mine"><i style="background:${MINE}"></i>Deine (blau)</button>
+        <button type="button" class="pick-side" data-side="theirs"><i style="background:${THEIRS}"></i>Von ${esc(who)} (orange)</button>
+      </div>
+      <div class="pick-go"><button type="button" class="button" data-pick="later">Später</button>
+        <button type="button" class="button primary" data-pick="go" disabled><span class="msr">check</span> So übernehmen</button></div>`;
+    document.body.append(bar);
+    const choose = (side) => {
+      sel = side;
+      showConflict(cf, sel);
+      bar.querySelectorAll('.pick-side').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.side === sel)));
+      bar.querySelector('[data-pick=go]').disabled = !sel;
+    };
+    const finish = (v) => { picking = null; bar.remove(); done(v); };
+    bar.addEventListener('click', (e) => {
+      const side = e.target.closest('.pick-side')?.dataset.side;
+      if (side) return choose(side);
+      const act = e.target.closest('[data-pick]')?.dataset.pick;
+      if (act === 'go' && sel) finish(sel);
+      else if (act === 'later') finish(null);
+    });
+    picking = (e) => { const side = sideAt(e); if (side) choose(side); };
+    showConflict(cf);
+    const all = [cf.before, ...cf.mine, ...cf.theirs, cf.after].filter(Boolean);
+    const b = bbox(all);
+    requestAnimationFrame(() => {
+      const h = map.getContainer().clientHeight;
+      const pad = { top: 70, left: 40, right: 64, bottom: Math.min(bar.getBoundingClientRect().height + 40, h - 140) };
+      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: pad, maxZoom: 17, duration: 500 });
+    });
+  });
+}
+
+/** Eine Frage beim Zusammenführen → 'mine' | 'theirs' | null (abgebrochen) */
+function askConflict(cf, who, n, total) {
+  const step = total > 1 ? ` (${n} von ${total})` : '';
+  if (cf.key === 'points') return pickOnMap(cf, who, step);
+  showConflict(null);
+  const val = (v) => (cf.key === 'profile' ? PROFILES[v]?.label ?? v : cf.key === 'fixed' ? (v.fixed ? 'fest gezeichnet' : 'frei geplant') : v || '(leer)');
+  const what = { name: 'den Namen', description: 'die Beschreibung', profile: 'die Art', fixed: 'die Strecke' }[cf.key];
+  return ask({
+    icon: 'merge', title: `Zusammenführen${step}`, className: 'collab-pick stacked',
+    text: `Du und ${who} habt ${what} geändert. Welche Fassung soll bleiben?`,
+    buttons: [
+      { value: 'mine', icon: 'person', label: `Deine: ${val(cf.mine)}`, primary: true },
+      { value: 'theirs', icon: 'group', label: `Von ${who}: ${val(cf.theirs)}` },
+    ],
+  });
+}
+
+/**
+ * Inzwischen hat jemand anders geändert (`r` vom Server): zusammenführen. Was nur eine Seite geändert hat, kommt
+ * ohne Frage hinein; gefragt wird nur, wo beide dieselbe Stelle anders geändert haben (data/tour-merge.js).
+ * → true: zusammengeführt (danach geht der eigene Teil zum Server) | false: abgebrochen
+ */
+async function mergeRemote(r) {
+  const who = r.editor || 'den anderen';
+  const base = lastCollabCode ? await decodeShare(lastCollabCode).catch(() => null) : null;
+  const merged = mergeTours(base, { ...tour, name: tour.name || 'Tour' }, await decodeShare(r.code));
+  const picks = [];
+  try {
+    for (const [i, cf] of merged.conflicts.entries()) {
+      const p = await askConflict(cf, who, i + 1, merged.conflicts.length);
+      if (!p) return false;
+      picks.push(p);
+    }
+  } finally { showConflict(null); }
+  const c = tour.collab;
+  c.rev = r.rev; c.editor = r.editor;
+  lastCollabCode = await normCode(r.code);
+  await applyTour(resolveMerge(merged, picks));
+  tours.save(snapshotTour());
+  paintCollab();
+  toast(merged.conflicts.length ? `Mit den Änderungen von ${who} zusammengeführt` : `${r.editor || 'Jemand'} hat auch geändert – beides ist jetzt drin`);
+  return true;
+}
+
+/* Nach Ablauf (30 Tage ohne Änderung) ist die Kopie auf dem Server weg – die Tour bleibt bei jedem, der sie hat,
+   nur gemeinsam geht es nicht mehr: einmal Bescheid sagen, dann nichts mehr schicken oder holen */
+const collabOff = (c) => !c || c.gone || collabState(c).gone;
+function collabGone(err) {
+  if (!/nicht mehr/.test(err?.message ?? '')) return false;
+  tour.collab = { ...tour.collab, gone: true };
+  tours.save(snapshotTour());
+  paintCollab();
+  toast('Gemeinsam planen ist abgelaufen – die Tour bleibt bei dir');
+  return true;
+}
+
+async function pushCollab() {
+  const c = tour.collab;
+  if (collabOff(c) || readOnly) return;
+  // Nie zweimal zugleich: sonst kam das zweite Schicken mit demselben Stand als „gleichzeitig geändert“ zurück
+  if (collabBusy) { collabAgain = true; return; }
+  collabBusy = true;
+  try {
+    const code = await mineCode();
+    if (code === lastCollabCode) return;
+    const me = await myName();
+    const r = await collabPut(c, code, me);
+    if (r.ok) { c.rev = r.rev; c.editor = me; c.expires = r.expires ?? c.expires; lastCollabCode = code; tours.save(snapshotTour()); paintCollab(); return; }
+    // Der Server hat schon genau das (die Antwort aufs letzte Schicken ging verloren): nichts zu fragen
+    if (await normCode(r.code) === code) { c.rev = r.rev; c.editor = r.editor; lastCollabCode = code; tours.save(snapshotTour()); paintCollab(); return; }
+    // Inzwischen hat jemand anders geändert: zusammenführen, danach den eigenen Teil zurück zum Server.
+    // Abgebrochen: bleibt hier, wie es ist – beim nächsten Speichern kommt die Frage wieder
+    collabAgain = await mergeRemote(r);
+  } catch (err) {
+    if (!collabGone(err)) toast(err.message || 'Die Änderung kam nicht beim Server an – sie geht beim nächsten Speichern mit');
+  } finally {
+    collabBusy = false;
+    if (collabAgain) { collabAgain = false; pushCollab(); }
+  }
+}
+
+async function pullCollab() {
+  const c = tour.collab;
+  if (collabOff(c) || collabBusy || document.visibilityState !== 'visible') return;
+  try {
+    const r = await collabGet(c);
+    if (r.expires && r.expires !== c.expires) { c.expires = r.expires; paintCollab(); }
+    if (r.rev <= c.rev) return;
+    const theirs = await normCode(r.code);
+    // Inhaltlich derselbe Stand (jemand hat nur geöffnet, oder es ist der eigene): still übernehmen, keine Meldung
+    if (theirs === lastCollabCode || theirs === await mineCode()) { c.rev = r.rev; lastCollabCode = theirs; return; }
+    // Hier noch nicht gesichert: erst die eigene Änderung schicken – dann fragt pushCollab
+    if ($('#save').dataset.state === 'dirty') return;
+    // Gespeichert, aber nicht beim Server angekommen (kein Netz): nicht überschreiben – schicken, das führt zusammen
+    if (lastCollabCode && await mineCode() !== lastCollabCode) { pushCollab(); return; }
+    await applyRemote(r.code, r.rev, r.editor);
+    tours.save(snapshotTour());
+  } catch (err) { collabGone(err); /* sonst nächstes Mal */ }
+}
+setInterval(pullCollab, 20000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pullCollab(); });
 
 /* GPX mit Höhen */
 function exportGpx() {
@@ -1014,6 +1315,19 @@ document.addEventListener('visibilitychange', async () => {
 /* ── Los ─────────────────────────────────────────────────────────────────── */
 
 map.on('load', () => recompute({ fit: true }));
+
+// Gemeinsame Tour: über den Link geöffnet – gleich hier speichern; dann den neuesten Stand holen
+if (tour.collab) {
+  if (joining) {
+    // Mit der eigenen Tour verbunden: beide Fassungen zusammenführen (ohne gemeinsamen Stand – gefragt wird, wo sie sich
+    // unterscheiden), dann geht das Ergebnis an alle. Abgebrochen: die eigene Tour bleibt, wie sie war, ohne Link
+    if (!map.loaded()) await new Promise((ok) => map.once('load', ok));
+    if (await mergeRemote(joining)) { pushCollab(); toast('Verbunden – deine Änderungen sehen alle mit dem Link'); }
+    else { delete tour.collab; tours.save(snapshotTour()); }
+  } else if (!tour.id) { await save(); toast('Gemeinsame Tour – deine Änderungen sehen alle mit dem Link'); }
+  paintCollab();
+  if (tour.collab) pullCollab();
+}
 
 /* Beim Planen flach von oben: Straßennamen eine Stufe früher und dichter als
    auf der geneigten Hauptkarte – man orientiert sich an ihnen */

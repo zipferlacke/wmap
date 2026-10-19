@@ -32,6 +32,7 @@ let press = null;                      // trapBack: ←-Knopf der Seite drücken
  */
 const pushState = history.pushState.bind(history), replaceState = history.replaceState.bind(history);
 const waiting = [];
+const idle = [];                       // settled(): warten, bis das stille Zurück durch ist
 history.pushState = (...a) => (skip ? waiting.push([pushState, a]) : pushState(...a));
 history.replaceState = (...a) => (skip ? waiting.push([replaceState, a]) : replaceState(...a));
 
@@ -54,7 +55,10 @@ addEventListener('popstate', (e) => {
   if (skip) {
     skip -= 1;
     e.stopImmediatePropagation();
-    if (!skip) for (const [fn, a] of waiting.splice(0)) fn(...a);
+    if (!skip) {
+      for (const [fn, a] of waiting.splice(0)) fn(...a);
+      for (const ok of idle.splice(0)) ok();
+    }
     return;
   }
   const top = open.at(-1);
@@ -82,6 +86,17 @@ addEventListener('load', () => {
     return !!el;
   });
 });
+
+/**
+ * Erst wenn das stille Zurück eines gerade geschlossenen Dialogs durch ist – vorher zu einer anderen Seite
+ * wechseln (location.href = …) bricht das nachlaufende history.back() wieder ab: man bliebe auf der Seite
+ */
+export function settled() {
+  return new Promise((ok) => {
+    // Das close-Ereignis des Dialogs kommt erst nach dem Schließen (eigene Aufgabe) – kurz warten, dann steht skip
+    setTimeout(() => (skip ? idle.push(ok) : ok()), 50);
+  });
+}
 
 export function trapBack(fn) {
   press = fn;

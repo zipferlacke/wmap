@@ -43,7 +43,8 @@ import { metrics, laps, lapLine } from '../data/track-stats.js';
 import { PROFILES } from '../core/config.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { share, pageUrl, canShareFiles, shareFile } from '../ui/share.js';
-import { shortLink, resolveShort } from '../data/short-link.js';
+import { shortLink, resolveShort, collabState } from '../data/short-link.js';
+import { askOpenLink } from '../ui/open-link.js';
 import { folder } from '../data/folder.js';
 import { autoSync } from '../data/auto-sync.js';
 import { mapPage } from '../ui/map-page.js';
@@ -257,7 +258,8 @@ function showList({ push = false } = {}) {
         : 'Aufgezeichnet: Wege, die du wirklich gefahren oder gelaufen bist – mit Zeit, Tempo und Puls.'}</p>
     ${isBahn || isOrte ? '' : `<div class="wege-tools">${isPlan ? `
       <a class="button" href="./tour.html"><span class="msr">add_road</span> Tour planen</a>
-      <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>` : `
+      <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>
+      <button type="button" class="button" data-list="open-link"><span class="msr">link</span> Link öffnen</button>` : `
       <a class="button" href="./index.html?action=record"><span class="msr">radio_button_checked</span> Aufzeichnen</a>
       <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx"></label>
       <button type="button" class="button" data-list="open-link"><span class="msr">link</span> Link öffnen</button>
@@ -532,6 +534,7 @@ content.addEventListener('click', (e) => {
     paintGroups();
     return;
   }
+  if (listDo === 'open-link') { askOpenLink(); return; }
   if (listDo === 'compare') { picking = picking ? null : new Set(); showList(); return; }
   if (listDo === 'compare-cancel') { picking = null; showList(); return; }
   if (listDo === 'compare-go' && picking?.size > 1) { openCompare([...picking], { push: true }); return; }
@@ -1446,7 +1449,8 @@ async function paintMap() {
     })) }
     : tab === 'geplant'
     ? { type: 'FeatureCollection', features: visiblePlanned().map((t) => ({
-      type: 'Feature', properties: { id: t.id, color: groupOf(t).color }, geometry: { type: 'LineString', coordinates: coordsOf(t.shape) },
+      // Gemeinsam geplant: überall blau wie im Planer – auf jedem Gerät gleich, egal welche Art
+      type: 'Feature', properties: { id: t.id, color: t.collab ? COLLAB_BLUE : groupOf(t).color }, geometry: { type: 'LineString', coordinates: coordsOf(t.shape) },
     })) }
     // Aufgezeichnet: in der Farbe der Art bzw. der eigenen, je älter, desto blasser – nur was eingeblendet ist
     : { type: 'FeatureCollection', features: [...onMap()].sort((a, b) => a.start - b.start).map((t) => ({

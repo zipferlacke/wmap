@@ -127,6 +127,7 @@ class DB_Helper{
             // ===================================
             // Shares – kurzer Link beim Teilen (api_share.php): der gepackte Inhalt des Links, 30 Tage
             // id (steht im Link) - kind (weg | tour) - code - created (Sekunden) - who (Fingerabdruck aus Adresse und Tag)
+            // gemeinsam planen: token (Schlüssel zum Ändern, Hash) - rev (Stand) - editor (Name) - changed (Sekunden)
             // ===================================
             "CREATE TABLE IF NOT EXISTS Shares (
                 id                  TEXT        PRIMARY KEY,
@@ -139,6 +140,13 @@ class DB_Helper{
         ];
         foreach ($tables as $sql) {
             $result = $this->execSql($sql, [], "openDatabase");
+            if($result[0] == 1)                     {return($result);}
+        }
+        // Gemeinsam planen (api_share.php): Schlüssel zum Ändern, Stand, wer zuletzt und wann
+        $cols = array_column($this->execSql("PRAGMA table_info(Shares)", [], "openDatabase")[1], "name");
+        foreach (["token" => "TEXT", "rev" => "INTEGER DEFAULT 1", "editor" => "TEXT", "changed" => "INTEGER"] as $col => $type) {
+            if (in_array($col, $cols, true)) continue;
+            $result = $this->execSql("ALTER TABLE Shares ADD COLUMN $col $type", [], "openDatabase");
             if($result[0] == 1)                     {return($result);}
         }
         // Aus der Passkey-Zeit: Users ohne osm_id → Spalte nachrüsten

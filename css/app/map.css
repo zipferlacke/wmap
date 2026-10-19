@@ -175,6 +175,10 @@ body.route-view:not(.navigating) .maplibregl-user-location-dot {
 #toast {
     position: fixed;
     z-index: 50;
+    /* Popover (ui/dialogs.js toast): Vorgaben des Browsers zurücknehmen */
+    inset: auto;
+    margin: 0;
+    overflow: visible;
     left: 50%;
     top: calc(var(--panel-h, 4rem) + 3.5rem);
     transform: translate(-50%, -.5rem);
