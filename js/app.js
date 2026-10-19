@@ -66,8 +66,9 @@ if (!CAR && !/[?&](view|q|from|to|reach|geo|ort|tour|track)=/.test(location.sear
 }
 
 const saveView = ({ now = false } = {}) => {
-  // Im Auto nicht: der Ausschnitt dort ist ein anderer als am Handy
-  if (nav.active || CAR) return;
+  // Im Auto nicht: der Ausschnitt dort ist ein anderer als am Handy. In Street View auch nicht – Neigung bis 150°
+  // und Zoom 21 sind keine Kartenansicht (beim Beenden wird die vorherige Ansicht ohnehin wieder gespeichert)
+  if (nav.active || CAR || document.body.classList.contains('street-view')) return;
   const view = { center: map.getCenter().toArray(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), at: Date.now() };
   local.set('wmap.view', view);
   // In den Ordner: beim Verlassen, sonst höchstens alle 2 Minuten (data/folder.js)
@@ -103,6 +104,7 @@ runExtensions({ map, toast, appNav }).catch(() => {});
 appNav.el.querySelector('a[href*="action=fly"]')?.addEventListener('click', (e) => { e.preventDefault(); fly.start(); });
 const recording = setupRecording({ map, toast });
 appNav.addItem('radio_button_checked', 'Aufzeichnen', () => recording.choose());
+appNav.addItem('streetview', 'Street View', () => dispatchEvent(new CustomEvent('wmap:street')));
 appNav.addItem('share_location', 'Standort teilen', async () => {
   try {
     const p = await myPosition();
@@ -135,13 +137,20 @@ q.title = `Auch Kategorien: ${CATEGORIES.slice(0, 12).map((c) => c.one).join(', 
    ?reach=lon,lat                         Erreichbarkeit ab einem Punkt
    ?action=route                          Planung öffnen (App-Verknüpfung)
    ?action=record                         Aufzeichnen (Touren-Seite)
-   ?action=fly|reach|survey               Fliegen, Erreichbarkeit, Mitmachen (Übersicht)
+   ?action=fly|street|reach|survey        Fliegen, Street View, Erreichbarkeit, Mitmachen (Übersicht)
    ?ort=lon,lat&name=…&zeit=…             geteilter Ort / Standort (ui/share.js)
+   ?street=lon,lat,richtung,blick         geteilte Street-View-Ansicht
    ?route=…                               geteilte Route (gepackt)
    ?anfrage=Name                          Standortanfrage beantworten
    ?geo=geo:51.5,9.9?q=…                  Karten-Link einer anderen App (core/geo-uri.js)
    Auch für die Screenshots in appdata/takeshots.json.
    ══════════════════════════════════════════════════════════════════════════ */
+
+/** Street View starten, sobald die Karte steht – ist sie schon fertig, kommt kein 'idle' mehr */
+function streetWhenReady(detail) {
+  const go = () => dispatchEvent(new CustomEvent('wmap:street', { detail }));
+  if (map.loaded()) go(); else map.once('idle', go);
+}
 
 async function fromUrl() {
   const p = new URLSearchParams(location.search);
@@ -162,6 +171,12 @@ async function fromUrl() {
       if (PROFILES[p.get('profile')]?.nav) setProfile(p.get('profile'));
       const [a, b] = await Promise.all([p.get('from') ? find(p.get('from')) : null, p.get('to') ? find(p.get('to')) : null]);
       enterRoute({ from: a ? placeWaypoint(a) : null, to: b ? placeWaypoint(b) : null });
+    } else if (p.get('street')) {
+      const [lon, lat, bearing = 0, look = 82] = p.get('street').split(',').map(Number);
+      if ([lon, lat, bearing, look].every(Number.isFinite)) {
+        map.jumpTo({ center: [lon, lat], zoom: 18, pitch: 60, bearing });
+        streetWhenReady({ point: [lon, lat], bearing, look });
+      }
     } else if (p.get('reach')) {
       const [lon, lat] = p.get('reach').split(',').map(Number);
       openReach({ origin: [lon, lat], label: 'Punkt auf der Karte' });
@@ -175,6 +190,8 @@ async function fromUrl() {
       recording.choose();
     } else if (p.get('action') === 'fly') {
       map.once('idle', () => fly.start());
+    } else if (p.get('action') === 'street') {
+      streetWhenReady(null);
     } else if (p.get('action') === 'reach') {
       openReach();
     } else if (p.get('action') === 'survey') {

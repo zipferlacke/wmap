@@ -38,14 +38,15 @@
  *   - nach 10 Tagen wird er gelöscht
  *   - reicht der Platz nicht, weicht zuerst die älteste Navigation
  */
-const VERSION = '2.3.2';            // von appdata/version.py – neue Nummer = Update
+const VERSION = '3.0.0';            // von appdata/version.py – neue Nummer = Update
 // Stand der Dateien (Prüfsumme über alles in sw-files.json, von version.py):
 // dieselbe Nummer noch einmal hochgeladen ist trotzdem ein neuer Service Worker
 // mit eigenem Speicher – Alt und Neu mischen sich nie
-const BUILD = 'e8b0ca9574';
+const BUILD = 'd61025a5af';
 const APP = `wmap-app-${VERSION}-${BUILD}`;
 const APP_PREFIX = 'wmap-app-';
 const SHARE = 'wmap-share';
+const STREET = 'wmap-street';     // Street View: Mauern, Dächer, Bäume je Feld (map/street-shops.js)
 const DEV = self.location.hostname === 'localhost';
 const TILES = 'wmap-tiles-v1';
 const MAX_TILES = 8000;
@@ -118,7 +119,7 @@ async function precache() {
 }
 
 self.addEventListener('activate', (e) => e.waitUntil((async () => {
-  for (const k of await caches.keys()) if (![APP, TILES, SHARE].includes(k) && !k.startsWith(NAV) && !k.startsWith(AREA)) await caches.delete(k);
+  for (const k of await caches.keys()) if (![APP, TILES, SHARE, STREET].includes(k) && !k.startsWith(NAV) && !k.startsWith(AREA)) await caches.delete(k);
   await dropOldNavs();
   await self.clients.claim();
 })()));

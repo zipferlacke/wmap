@@ -4,7 +4,7 @@
  */
 import { PROFILES } from '../core/config.js';
 import * as geocode from '../services/geocode.js';
-import { byId, matchCategory } from '../core/categories.js';
+import { byId, matchCategory, nameCategory } from '../core/categories.js';
 import { recent } from '../data/store.js';
 import { isStop } from '../services/transit.js';
 import { places, PLACE_KINDS, DEFAULT_LIST } from '../data/saved.js';
@@ -28,8 +28,10 @@ export const suggest = {
   items: [],
   active: -1,
 
-  show(items) {
+  forText: '',                       // für welchen Suchtext die gezeigten Vorschläge gelten
+  show(items, text = '') {
     this.items = items;
+    this.forText = text;
     this.active = -1;
     let section = null;
     this.el.innerHTML = items.map((it, i) => {
@@ -69,7 +71,7 @@ export const suggest = {
       first.forEach((i, k) => { const e = el(i); if (e && road[k]) e.textContent = fmtDistance(road[k].length); });
     }, 350);
   },
-  hide() { this.el.hidden = true; this.el.replaceChildren(); this.items = []; this.active = -1; },
+  hide() { this.el.hidden = true; this.el.replaceChildren(); this.items = []; this.active = -1; this.forText = ''; },
   move(d) {
     if (!this.items.length) return;
     this.active = (this.active + d + this.items.length) % this.items.length;
@@ -136,16 +138,22 @@ export async function placeSuggestions(text, onPick, { withCategory = true, extr
     const d = geocode.describe(f);
     return { icon: d.icon, title: d.title, subtitle: d.subtitle, type: d.type, point: f.geometry.coordinates, run: () => onPick(f) };
   });
-  const cat = withCategory ? matchCategory(query, { loose: true }) : null;
-  if (!cat) return [...extra, ...places];
-  const catItem = {
+  if (!withCategory) return [...extra, ...places];
+  const cat = matchCategory(query, { loose: true });
+  const catItem = cat && {
     icon: cat.category.icon, color: cat.category.color, title: cat.category.label,
     subtitle: cat.place ? `in ${cat.place}` : 'hier in der Gegend', type: 'Kategorie',
     run: () => runCategory(cat.category, cat.place, { rememberAs: query }),
   };
-  // „Parkplatz“ oder „Parkplätze in Göttingen“ → Kategorie zuerst;
-  // „Park Sanssouci“ → erst der eine Park, die Kategorie danach
-  return cat.strong ? [...extra, catItem, ...places] : [...extra, ...places.slice(0, 2), catItem, ...places.slice(2)];
+  // Mit Hausnummer oder Postleitzahl ist eine Adresse gemeint: die Treffer zuerst
+  if (/\d/.test(query)) return catItem && cat.strong ? [...extra, catItem, ...places] : [...extra, ...places, ...(catItem ? [catItem] : [])];
+  // Sonst oben „in der Nähe“: die Kategorie („Parkplatz“) bzw. alle mit dem Namen („Rewe“, „Aldi“), darunter die
+  // einzelnen Treffer zum direkten Wählen
+  const byName = !cat?.strong && query.length >= 3 && {
+    icon: 'storefront', color: '#e8590c', title: `„${query}“ in der Nähe`, subtitle: 'alle mit diesem Namen hier in der Gegend', type: 'Suche',
+    run: () => runCategory(nameCategory(query), null, { rememberAs: query }),
+  };
+  return [...extra, ...(catItem ? [catItem] : []), ...(byName ? [byName] : []), ...places];
 }
 
 /* ── Zuletzt genutzt ──────────────────────────────────────────────────────── */
@@ -292,7 +300,7 @@ const updateSearchSuggestions = debounce(async () => {
   const items = text.length < 2
     ? [...savedItems((f) => showPlace(f)), ...discoverItems(), ...recentItems((f) => showPlace(f))]
     : withSaved(savedItems((f) => showPlace(f), text), await placeSuggestions(q.value, (f) => showPlace(f)));
-  if (items && document.activeElement === q) suggest.show(items);
+  if (items && document.activeElement === q) suggest.show(items, text);
 }, 160);
 
 q.addEventListener('input', () => {
@@ -307,7 +315,13 @@ q.addEventListener('keydown', keyNav);
 $('#search-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (suggest.active >= 0) { suggest.pick(); return; }
-  if (!q.value.trim()) return;
+  const text = q.value.trim();
+  if (!text) return;
+  // Die Vorschläge zu genau diesem Text stehen schon da: den obersten nehmen
+  if (suggest.items.length && suggest.forText === text) { suggest.pick(0); return; }
+  // Sonst frisch suchen – und die verzögerte Vorschlagssuche verwerfen: kam sie nach Enter noch, machte sie diese
+  // Suche ungültig („Nichts gefunden“, obwohl es Treffer gab)
+  updateSearchSuggestions.cancel();
   const items = await placeSuggestions(q.value, (f) => showPlace(f));
   suggest.hide();
   q.blur();

@@ -6,7 +6,8 @@
  * Profil, meldet `onHover` die Stelle in Kilometern – die Karte markiert sie.
  *
  * Mit `showMetric` zeigt dasselbe Diagramm andere Werte über die Strecke:
- * Tempo, Puls, Frequenz, Leistung eines Wegs (pages/wege.js).
+ * Tempo, Puls, Frequenz, Leistung eines Wegs (pages/wege.js), mit `showMany`
+ * mehrere davon übereinander – jede Reihe mit eigener Skala.
  *
  * Der Knopf rechts im Kopf öffnet das Diagramm im Vollbild (Diagramm der
  * Bibliothek: derselbe Knoten wandert in einen <dialog>). Dort lässt es sich
@@ -40,10 +41,46 @@ function axisRange(min, max) {
 
 export class ElevationProfile {
   #diagram; #points = []; #host;
+  #xLabels = null;                 // showSeries mit x.labels: Beschriftung je ganzer Zahl (1, 2, 3 …)
+  #emph = null;                    // emphasize: { focus, hover } – Reihe kräftig bzw. hervorgehoben, der Rest blass
+  #mark = null;                    // showSeries mit x.mark: { x, color } – dieser Punkt der ersten Reihe groß
 
   constructor(host, { onHover } = {}) {
     this.#host = host;
-    this.#diagram = new Diagramm(host, { renderer: echartsRenderer(echarts, { renderer: 'svg' }) });
+    // Mehrere Reihen: jede hat ihre eigene Achse. Die Bibliothek stellt die erste links, die zweite rechts und
+    // jede weitere wieder links darüber – die ab der dritten bleiben unsichtbar (Werte im Tooltip); die
+    // Beschriftung der Achse in der Farbe ihrer Reihe
+    const renderer = echartsRenderer(echarts, { renderer: 'svg' });
+    const draw = renderer.draw.bind(renderer);
+    renderer.draw = (griff, option) => {
+      if (Array.isArray(option?.yAxis) && option.yAxis.length > 1) {
+        option.yAxis = option.yAxis.map((ax, i) => {
+          const color = option.series?.find((x) => x.yAxisIndex === i)?.itemStyle?.color;
+          return i > 1 ? { ...ax, show: false, splitLine: { show: false } }
+            : { ...ax, axisLabel: { ...ax.axisLabel, color }, nameTextStyle: { ...ax.nameTextStyle, color } };
+        });
+      }
+      // Je Training eine Stelle (Entwicklung): nur ganze Zahlen, beschriftet mit dem Namen des Punkts
+      const labels = this.#xLabels;
+      if (labels && Array.isArray(option?.xAxis)) {
+        option.xAxis = option.xAxis.map((ax) => ({ ...ax, interval: 1, axisLabel: { ...ax.axisLabel, formatter: (v) => labels[v - 1] ?? '' } }));
+      }
+      const mark = this.#mark, first = option?.series?.[0];
+      if (mark && first) {
+        const hit = (first.data ?? []).find((d) => (Array.isArray(d) ? d[0] : d?.value?.[0]) === mark.x);
+        const y = Array.isArray(hit) ? hit[1] : hit?.value?.[1];
+        if (y != null) {
+          option.series = [{ ...first, markPoint: { symbol: 'circle', symbolSize: 14, label: { show: false }, silent: true,
+            itemStyle: { color: mark.color, borderColor: '#fff', borderWidth: 2 }, data: [{ coord: [mark.x, y] }] } }, ...option.series.slice(1)];
+        }
+      }
+      if (this.#emph && Array.isArray(option?.series)) {
+        const st = this.#emphStyles(option.series.length);
+        option.series = option.series.map((x, i) => ({ ...x, z: st[i].z, lineStyle: { ...x.lineStyle, ...st[i].lineStyle } }));
+      }
+      return draw(griff, option);
+    };
+    this.#diagram = new Diagramm(host, { renderer });
     this.#on('updateAxisPointer', (e) => {
       const km = e.axesInfo?.[0]?.value;
       onHover?.(Number.isFinite(km) ? km : null);
@@ -86,6 +123,9 @@ export class ElevationProfile {
 
   /** Route anzeigen; ohne Höhendaten verschwindet das Profil. */
   show(route) {
+    this.#xLabels = null;
+    this.#mark = null;
+    this.#emph = null;
     this.#host.hidden = !route?.elevation?.length;
     if (this.#host.hidden) return;
     this.#points = thin(route.elevation);
@@ -118,6 +158,9 @@ export class ElevationProfile {
    * @param m { name, unit, icon, color, points: [[km, wert]], length (m), decimals?, chips: [[icon, wert, titel]] }
    */
   showMetric({ name, unit, icon, color, points, length, decimals = 0, chips = [] }) {
+    this.#xLabels = null;
+    this.#mark = null;
+    this.#emph = null;
     this.#host.hidden = !points?.length;
     if (this.#host.hidden) return;
     this.#points = thin(points);
@@ -133,6 +176,89 @@ export class ElevationProfile {
       })),
       series: [{ key: name, name, data: this.#points, color, fill: 'gradient', smooth: true, decimals, unit }],
     }, { icon, title: name, color });
+  }
+
+  /**
+   * Mehrere Reihen über dieselbe Strecke, jede mit eigener Skala (Höhe + Puls, Tempo + Leistung …).
+   * @param list [{ name, unit, icon, color, points: [[km, wert]], decimals?, mean? }]
+   * @param length Strecke (m)
+   */
+  showMany(list, length) {
+    this.#xLabels = null;
+    this.#mark = null;
+    this.#emph = null;
+    list = list.filter((m) => m.points?.length);
+    if (list.length < 2) { if (list[0]) this.showMetric({ ...list[0], length }); else this.#host.hidden = true; return; }
+    this.#host.hidden = false;
+    const series = list.map((m) => ({ ...m, points: thin(m.points) }));
+    this.#points = series[0].points;
+    const range = ({ points }) => {
+      const vals = points.map(([, v]) => v);
+      const lo = Math.min(...vals), hi = Math.max(...vals), pad = Math.max(1, (hi - lo) * 0.1);
+      return { min: Math.max(0, Math.floor(lo - pad)), max: Math.ceil(hi + pad) };
+    };
+    this.#config({
+      card: false,
+      legend: { hidden: true },
+      x_axis: { type: 'value', unit: 'km', decimals: length < 5000 ? 1 : 0 },
+      y_axes: series.map((m) => ({ unit: m.unit, ...range(m), split_number: 3 })),
+      // Je Reihe der Durchschnitt in ihrer Farbe
+      chips: series.filter((m) => m.mean != null).map((m) => ({
+        value: m.mean, unit: m.unit, decimals: m.decimals ?? 0, color: m.color,
+        label: `<span class="msr" title="Ø ${m.name}">${m.icon}</span>`,
+      })),
+      series: series.map((m, i) => ({
+        key: m.name, name: m.name, data: m.points, color: m.color, y_axis: i,
+        // Nur die erste als Fläche – sonst deckt eine die andere zu
+        ...(i === 0 ? { fill: 'gradient' } : {}), smooth: m.smooth ?? true, decimals: m.decimals ?? 0, unit: m.unit,
+      })),
+    }, { icon: 'stacked_line_chart', title: list.map((m) => m.name).join(' + ') });
+  }
+
+  /**
+   * Mehrere Reihen auf einer gemeinsamen Skala (Vergleich: dasselbe Maß verschiedener Trainings).
+   * @param o { unit, decimals?, icon, title, x: { unit, decimals?, labels? }, series: [{ name, color, points: [[x, wert]] }],
+   *            smooth? } – `x.labels`: x sind die Zahlen 1, 2, 3 … mit diesen Namen an der Achse; `x.mark`:
+   *            { x, color } – dieser Punkt der ersten Reihe groß (der aktuelle Lauf in der Entwicklung)
+   */
+  showSeries({ unit, decimals = 0, icon, title, x = { unit: 'km' }, series, smooth = true }) {
+    this.#xLabels = x.labels ?? null;
+    this.#mark = x.mark ?? null;
+    this.#emph = null;
+    const list = series.filter((m) => m.points?.length);
+    this.#host.hidden = !list.length;
+    if (!list.length) return;
+    const thinned = list.map((m) => ({ ...m, points: thin(m.points) }));
+    this.#points = thinned[0].points;
+    const vals = thinned.flatMap((m) => m.points.map(([, v]) => v));
+    const lo = Math.min(...vals), hi = Math.max(...vals), pad = Math.max(1, (hi - lo) * 0.1);
+    this.#config({
+      card: false,
+      legend: { hidden: true },
+      x_axis: { type: 'value', unit: x.unit, decimals: x.decimals ?? 1 },
+      y_axes: [{ unit, min: Math.max(0, Math.floor(lo - pad)), max: Math.ceil(hi + pad), split_number: 3 }],
+      chips: [],
+      series: thinned.map((m, i) => ({ key: `r${i}`, name: m.name, data: m.points, color: m.color, smooth, decimals, unit })),
+    }, { icon, title });
+  }
+
+  /**
+   * Vergleich: Reihe `focus` kräftig, die anderen blass; `hover` (Index oder null) dazu hervorgehoben. Gilt bis zur
+   * nächsten anderen Darstellung (show, showMetric, showMany) – auch nach einem Neuzeichnen.
+   */
+  emphasize(focus, hover = null) {
+    this.#emph = { focus, hover };
+    const chart = this.#chart();
+    const n = chart?.getOption?.()?.series?.length;
+    if (n) chart.setOption({ series: this.#emphStyles(n) });
+  }
+
+  #emphStyles(n) {
+    const { focus, hover } = this.#emph;
+    return Array.from({ length: n }, (_, i) => ({
+      z: i === hover ? 5 : i === focus ? 4 : 2,
+      lineStyle: { width: i === focus ? 3 : i === hover ? 2.5 : 1.2, opacity: i === focus || i === hover ? 1 : 0.35 },
+    }));
   }
 
   /** Stelle von außen zeigen, z. B. wenn die Maus über der Route auf der Karte steht. */

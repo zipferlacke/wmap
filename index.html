@@ -81,7 +81,7 @@
             <form id="search-form" class="search-row" role="search" autocomplete="off">
                 <span class="msr lead">search</span>
                 <input id="q" type="text" enterkeyhint="search"
-                    placeholder="Ort, Adresse, Parkplatz, Fluss …" aria-label="Suche"
+                    placeholder="Ort, Adresse, Koordinate, Link …" aria-label="Suche"
                     aria-autocomplete="list" aria-controls="suggest">
                 <button type="button" id="q-clear" class="button" data-shape="round no-background" title="Leeren" hidden>
                     <span class="msr">close</span>
@@ -373,6 +373,10 @@
         </section>
     </main>
 
+    <!-- Zurück-Taste: zuerst geladen (js/core/back.js) -->
+    <script type="module" src="./js/core/back.js"></script>
+    <!-- Abgleich im Service Worker: Bote und Meldungen (js/core/sw-link.js) -->
+    <script type="module" src="./js/core/sw-link.js"></script>
     <script type="module" src="./js/app.js"></script>
 </body>
 

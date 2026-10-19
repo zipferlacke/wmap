@@ -102,6 +102,8 @@ export function createMap(container, {
     demRepaint = setTimeout(() => map.triggerRepaint(), 150);
   });
 
+  retryFailedSources(map);
+
   map.on('style.load', () => {
     map.setProjection({ type: 'globe' });
     germanLabels(map);
@@ -296,11 +298,10 @@ function autoThreeD(map) {
   applyDataSaver(map);
 
   /*
-   * Überhöhung nach Zoom: weit draußen darf das Relief betont sein, nah dran
-   * nicht – sonst stehen Gebäude schief in den Hang gebaut und Straßen wellen
-   * sich über Höhenfehler des Modells.
+   * Überhöhung auf jeder Zoomstufe gleich (bis 2.3.2 nah heran 1 – die Häuser von MapLibre standen sonst schief
+   * im Hang; die eigenen in map/buildings.js stehen auf ihrer Bodenhöhe, auch überhöht)
    */
-  const exaggeration = () => (map.getZoom() >= 14 ? 1 : map.getZoom() >= 12 ? 1.25 : TERRAIN_EXAGGERATION);
+  const exaggeration = () => TERRAIN_EXAGGERATION;
   const source = () => (document.body.classList.contains('navigating') ? 'terrain-lo' : 'terrain');
   const terrain = (on) => {
     // Autobildschirm (car/car.js): ohne Gelände – darübergelegt werden Route
@@ -318,12 +319,6 @@ function autoThreeD(map) {
     ours = true;
     map.setTerrain({ ...t, source: source() });
   }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
-  map.on('zoomend', () => {
-    const t = map.getTerrain();
-    if (!t || Math.abs((t.exaggeration ?? 1) - exaggeration()) < 0.01) return;
-    ours = true;
-    map.setTerrain({ ...t, exaggeration: exaggeration() });
-  });
 
   // Schon geneigt gestartet (wiederhergestellte Ansicht): Gelände gleich dazu
   if (map.getPitch() >= 15) allow3d().then((ok) => { if (ok && !terrainOff) terrain(true); });
@@ -421,7 +416,7 @@ function fixStyle(style) {
   const b = style.layers?.find((l) => l.id === 'building-3d');
   // Häuser aus mehreren Teilen (building:part): Der Umriss des ganzen Hauses steht mit `hide_3d` in den Kacheln
   // – nur für den Grundriss. Hochgezogen stand er als eigener Block mit eigenem Dach mitten in den Teilen:
-  // Zwischendächer, die flackern. Schatten und Dächer übernehmen den Filter (addShadows, addRoofs)
+  // Zwischendächer, die flackern. Die Dächer übernehmen den Filter (addRoofs)
   if (b) {
     const solid = ['!=', ['get', 'hide_3d'], true];
     b.filter = b.filter ? ['all', b.filter, solid] : solid;
@@ -447,37 +442,13 @@ function colorBuildings(map) {
     map.setPaintProperty('building-3d', 'fill-extrusion-color', wall);
     map.setPaintProperty('building-3d', 'fill-extrusion-opacity', 0.96);
     map.setPaintProperty('building-3d', 'fill-extrusion-vertical-gradient', true);
-    addShadows(map);
+    // Kein Schatten am Boden mehr: der versetzte Grundriss ließ die Häuser schräg von nah schweben (bis 3.0.0)
     addRoofs(map);
   }
   // Licht fest aus Südwest statt vom Bildschirm aus: Jede Hausseite bekommt
   // ihre eigene Helligkeit, Ecken und Höhen werden sichtbar
   map.setLight({ anchor: 'map', position: [1.3, 225, 50], color: '#ffffff', intensity: 0.55 });
   if (map.getLayer('building')) map.setPaintProperty('building', 'fill-color', wall);
-}
-
-/**
- * Schatten am Boden: der Grundriss dunkel und leicht nach Nordost versetzt.
- * Zeigt, wo ein Haus auf dem Boden steht – das Auge liest daraus die Höhe.
- */
-function addShadows(map) {
-  const base = map.getStyle().layers.find((l) => l.id === 'building-3d');
-  if (!base || map.getLayer('building-shadow')) return;
-  map.addLayer({
-    id: 'building-shadow',
-    type: 'fill',
-    source: base.source,
-    'source-layer': base['source-layer'],
-    minzoom: 15,
-    ...(base.filter ? { filter: base.filter } : {}),
-    paint: {
-      'fill-color': '#5b5046',
-      'fill-opacity': ['interpolate', ['linear'], ['zoom'], 15, 0, 16, 0.22],
-      'fill-translate': ['interpolate', ['exponential', 2], ['zoom'], 15, ['literal', [1, -1]], 19, ['literal', [14, -14]]],
-      'fill-translate-anchor': 'map',
-      'fill-antialias': false,
-    },
-  }, 'building-3d');
 }
 
 /**
@@ -579,7 +550,7 @@ const lightColors = new WeakMap();
 function rememberColors(map, pick = () => true) {
   const known = lightColors.get(map) ?? new Map();
   for (const l of map.getStyle().layers) {
-    if (known.has(l.id) || l.id === 'building-shadow' || !pick(l)) continue;
+    if (known.has(l.id) || !pick(l)) continue;
     const props = {};
     for (const [k, v] of Object.entries(l.paint ?? {})) if (k.endsWith('-color')) props[k] = v;
     if (l.type === 'raster') props['raster-brightness-max'] = l.paint?.['raster-brightness-max'] ?? 1;
@@ -1233,6 +1204,28 @@ export function showHover(map, lngLat) {
  * ersten Aufruf) – die Karte blieb dann klein in der Ecke, bis man neu lud.
  * Darum selbst nachsehen und bei Abweichung anpassen.
  */
+/*
+ * Scheitert das Laden einer Kartenquelle (TileJSON von OpenFreeMap: kurz kein Netz beim Start, Aussetzer),
+ * versucht MapLibre es nie wieder – die Karte blieb dann bis zum Neustart ohne Straßen, Orte und Namen, nur mit
+ * Relief. Darum selbst neu laden: nach 2, 5, 10 s, dann alle 30 s, und sofort, wenn das Netz zurück ist oder die
+ * App wieder vorn ist.
+ */
+function retryFailedSources(map) {
+  const failed = () => Object.entries(map.style?.tileManagers ?? map.style?.sourceCaches ?? {})
+    .filter(([, t]) => t._sourceErrored && !t._sourceLoaded).map(([id]) => id);
+  let timer = null, tries = 0;
+  const retry = () => {
+    clearTimeout(timer);
+    const ids = failed();
+    if (!ids.length) { tries = 0; timer = null; return; }
+    for (const id of ids) map.getSource(id)?.load?.();
+    timer = setTimeout(retry, [2000, 5000, 10000][tries++] ?? 30000);
+  };
+  map.on('error', (e) => { if (e.sourceId && !timer) timer = setTimeout(retry, 2000); });
+  addEventListener('online', retry);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) retry(); });
+}
+
 function keepSized(map) {
   const fit = () => {
     const box = map.getContainer();

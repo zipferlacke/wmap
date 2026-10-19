@@ -4,6 +4,7 @@
  *
  *   ?ort=lon,lat&name=…&zeit=…    ein Ort oder „hier bin ich“ (mit Uhrzeit)
  *   ?route=…                       Route mit Profil und Wegpunkten (gepackt)
+ *   ?street=lon,lat,richtung,blick Street View genau so, wie man gerade steht und schaut
  *   ?anfrage=Name                  „Name möchte wissen, wo du bist“ – wer den
  *                                  Link öffnet, schickt seinen Standort zurück
  *
@@ -65,6 +66,10 @@ export async function readRoute(code) {
   const o = await unpackJson(code);
   return { profile: o.p, waypoints: (o.w ?? []).map(([lon, lat, label]) => ({ label: label || 'Geteilter Punkt', point: [lon, lat], me: false })) };
 }
+
+/** Street View: Standpunkt, Blickrichtung und Neigung → Link */
+export const streetUrl = ({ point: [lon, lat], bearing, look }) =>
+  `${base()}?street=${r5(lon)},${r5(lat)},${Math.round((bearing % 360 + 360) % 360)},${+look.toFixed(1)}`;
 
 export const requestUrl = (name) => `${base()}?anfrage=${encodeURIComponent(name)}`;
 

@@ -27,7 +27,8 @@ const carStart = Array.isArray(carAt) && carAt.length >= 2 && carAt.slice(0, 2).
 export const { map, geolocate } = createMap('map', carStart ? {
   center: [carAt[0], carAt[1]], zoom: 16.5, pitch: 50, bearing: Number.isFinite(carAt[2]) ? carAt[2] : 0,
 } : lastView ? {
-  center: lastView.center, zoom: lastView.zoom, pitch: lastView.pitch ?? 0, bearing: lastView.bearing ?? 0,
+  // Neigung höchstens 85 – über 85 (gespeichert aus Street View, Version 3.0.0 vor der Korrektur) brach der Start ab
+  center: lastView.center, zoom: lastView.zoom, pitch: Math.min(lastView.pitch ?? 0, 85), bearing: lastView.bearing ?? 0,
 } : {});
 
 export const state = {
@@ -55,9 +56,12 @@ window.__wmap = { map, state };
    Hilfen
    ══════════════════════════════════════════════════════════════════════════ */
 
+/** Erst nach `ms` Ruhe aufrufen; `.cancel()` verwirft einen noch ausstehenden Aufruf */
 export const debounce = (fn, ms) => {
   let t;
-  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+  const call = (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+  call.cancel = () => clearTimeout(t);
+  return call;
 };
 
 /** Nach dem nächsten Layout – erst dann haben Sheet und Leiste ihre echte Größe. */

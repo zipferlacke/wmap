@@ -28,6 +28,14 @@
         &.open { color: var(--clr-success-700); }
         &.closed { color: var(--clr-danger-600); }
     }
+    /* Zugang eingeschränkt (Kundenparkplatz …) oder privat: deutlich, gleich unter dem Namen */
+    .poi-access {
+        display: flex; align-items: center; gap: .4rem; width: fit-content;
+        padding: .25rem .65rem; border-radius: 999px; font-size: var(--fs-200); font-weight: 600;
+        background: light-dark(#fff3bf, #4a3b00); color: light-dark(#7a5a00, #ffe066);
+        &.private { background: light-dark(#ffe3e3, #4a1212); color: light-dark(#a51111, #ffa8a8); }
+        .msr { font-size: 1.1rem; }
+    }
     .poi-desc { font-size: var(--fs-200); color: var(--muted); white-space: pre-line; }
     .poi-facts {
         display: grid;
@@ -41,6 +49,8 @@
             background: var(--surface-2);
             min-width: 0;
         }
+        /* Eine allein in der letzten Zeile: über die ganze Breite statt Lücke rechts */
+        > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
         dt {
             display: flex;
             align-items: center;
@@ -191,6 +201,21 @@ textarea.share-link {
         overflow: hidden;
         a { color: var(--route); }
     }
+}
+
+.poi-equip {
+    h4 {
+        display: flex;
+        align-items: center;
+        gap: .3rem;
+        margin-bottom: .35rem;
+        color: var(--muted);
+        font-size: var(--fs-100);
+        font-weight: 600;
+        .msr { font-size: 1rem; }
+    }
+    > div { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .chip .msr { font-size: 1.1rem; }
 }
 
 .poi-hours-wrap {

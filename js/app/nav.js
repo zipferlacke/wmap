@@ -16,7 +16,7 @@ import { carLink, sendToCar } from '../data/car-link.js';
 import { trace, trips } from '../data/trace.js';
 import { registerOffline, saveRouteOffline, offlineSetting, rememberNav, forgetNav, savedNav } from '../data/offline.js';
 import { nearestOnLine, pointAt, simplifyTo, fmtDistance, esc, cumulative } from '../core/geo.js';
-import { numberHits, renderResultList, tilePointsAlong } from './category.js';
+import { filterHits, numberHits, renderResultList, tilePointsAlong } from './category.js';
 import { $, $$, CAR, SIMULATING, chipHtml, current, map, state } from './core.js';
 import { askAfterTrip, askContributeOnce } from './mitmachen.js';
 import { alongStart, alongStop, alongFix, alongReroute } from './ask-along.js';
@@ -256,14 +256,16 @@ $('.navsearch-cats').addEventListener('click', async (e) => {
   const { signal } = navSearchCtl;
   const radius = PROFILES[nav.profile]?.radius ?? 400;
   const render = (points, final) => {
-    const ahead = points.filter((p) => p.properties.along > 0).sort((a, b) => a.properties.along - b.properties.along);
+    // Private und gerade Geschlossene erst auf Wunsch (category.js filterHits)
+    const f = filterHits(points.filter((p) => p.properties.along > 0).sort((a, b) => a.properties.along - b.properties.along));
+    const ahead = f.points;
     numberHits(ahead, 60);
     showPois(map, ahead);
+    renderResultList(list, ahead.slice(0, 60), cat, (p) => `in ${fmtDistance(p.properties.along)} · ${fmtDistance(p.properties.offset)} abseits`,
+      { filter: f, redo: () => { if (!signal.aborted) render(points, final); } });
     if (!ahead.length) {
-      list.innerHTML = `<li class="muted">${final ? `Keine ${esc(cat.label)} vor dir an der Strecke` : `Suche ${esc(cat.label)} vor dir …`}</li>`;
-      return;
+      list.insertAdjacentHTML('beforeend', `<li class="muted">${final ? `Keine ${esc(cat.label)} vor dir an der Strecke` : `Suche ${esc(cat.label)} vor dir …`}</li>`);
     }
-    renderResultList(list, ahead.slice(0, 60), cat, (p) => `in ${fmtDistance(p.properties.along)} · ${fmtDistance(p.properties.offset)} abseits`);
   };
   // Sofort aus den Kacheln (meist schon offline gespeichert), Overpass ergänzt
   let fromTiles = [];

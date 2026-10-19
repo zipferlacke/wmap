@@ -33,10 +33,14 @@
 -->
 <body class="dash-page settings-page sync-page">
     <header class="dash-head">
-        <a class="button" data-shape="round no-background" href="./dashboard.html" title="Zur Übersicht"><span class="msr">arrow_back</span></a>
+        <a class="button" data-back data-shape="round no-background" href="./dashboard.html" title="Zur Übersicht"><span class="msr">arrow_back</span></a>
         <h1>Offline</h1>
     </header>
     <main class="dash settings sync offline-data"></main>
+    <!-- Zurück-Taste: zuerst geladen (js/core/back.js) -->
+    <script type="module" src="./js/core/back.js"></script>
+    <!-- Abgleich im Service Worker: Bote und Meldungen (js/core/sw-link.js) -->
+    <script type="module" src="./js/core/sw-link.js"></script>
     <script type="module" src="./js/pages/offline-daten.js"></script>
 </body>
 </html>

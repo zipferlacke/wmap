@@ -102,6 +102,53 @@ const DAYS_DE = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 const DAY = '(?:Mo|Tu|We|Th|Fr|Sa|Su)';
 const DAY_LIST = new RegExp(`^(${DAY}(?:-${DAY})?(?:,${DAY}(?:-${DAY})?)*)\\s*(.*)$`);
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_DE = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+const MONTHS_LONG = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+const MON = `(?:${MONTHS.join('|')})`;
+const SEASON = new RegExp(`^(${MON}(?:-${MON})?(?:,${MON}(?:-${MON})?)*):?\\s+`);
+
+/** 'Feb-Oct' → [1 … 9], auch über den Jahreswechsel ('Nov-Feb') */
+function expandMonths(spec) {
+  const out = new Set();
+  for (const part of spec.split(',')) {
+    const [a, b] = part.split('-').map((m) => MONTHS.indexOf(m));
+    if (b === undefined) { out.add(a); continue; }
+    for (let i = a; ; i = (i + 1) % 12) { out.add(i); if (i === b) break; }
+  }
+  return out;
+}
+
+/**
+ * Für Tabelle und „Jetzt geöffnet“: Monate, die vor allen Regeln gleich stehen
+ * („Feb-Oct: Mo-Sa 09:00-21:00; Feb-Oct: Su,PH 12:00-20:00“), abtrennen und
+ * Feiertage aus Tageslisten lösen („Su,PH 12:00-20:00“ → „Su 12:00-20:00; PH 12:00-20:00“).
+ * → { oh, months: { set, text } | null } – bei unterschiedlichen Monaten unverändert.
+ */
+function season(oh) {
+  let spec = null;
+  const rules = [];
+  for (const raw of oh.split(';')) {
+    let r = raw.trim();
+    if (!r) continue;
+    const m = r.match(SEASON);
+    const s = m ? m[1] : '';
+    if (spec === null) spec = s;
+    else if (spec !== s) return { oh, months: null };
+    if (m) r = r.slice(m[0].length);
+    const d = r.match(/^([A-Za-z]{2}(?:[,-][A-Za-z]{2})*)\s+(.*)$/);
+    const parts = d ? d[1].split(',') : [];
+    if (parts.length > 1 && parts.includes('PH')) {
+      rules.push(`${parts.filter((x) => x !== 'PH').join(',')} ${d[2]}`, `PH ${d[2]}`);
+    } else rules.push(r);
+  }
+  const months = spec ? {
+    set: expandMonths(spec),
+    text: spec.split(',').map((p) => p.split('-').map((x) => MONTHS_LONG[MONTHS.indexOf(x)]).join(' bis ')).join(', '),
+  } : null;
+  return { oh: rules.join('; '), months };
+}
+
 function expandDays(spec) {
   const out = new Set();
   for (const part of spec.split(',')) {
@@ -147,11 +194,13 @@ export function parseWeek(oh) {
   return week.every((x) => x === null) ? null : week;
 }
 
-function openState(oh, now = new Date()) {
+export function openState(oh, now = new Date()) {
   if (!oh) return null;
   if (oh.trim() === '24/7') return { open: true, always: true };
-  const week = parseWeek(oh);
+  const s = season(oh);
+  const week = parseWeek(s.oh);
   if (!week) return null;
+  if (s.months && !s.months.set.has(now.getMonth())) return { open: false, offSeason: s.months.text };
   const today = (now.getDay() + 6) % 7;
   const mins = now.getHours() * 60 + now.getMinutes();
   const yesterday = (week[(today + 6) % 7] ?? []).find(([a, b]) => mins + 1440 >= a && mins + 1440 < b);
@@ -166,6 +215,7 @@ function statusText(state) {
   if (!state) return null;
   if (state.always) return 'Rund um die Uhr geöffnet';
   if (state.open) return `Jetzt geöffnet · bis ${state.until}`;
+  if (state.offSeason) return `Geschlossen · geöffnet ${state.offSeason}`;
   return state.next ? `Geschlossen · öffnet um ${state.next}` : 'Heute geschlossen';
 }
 
@@ -195,16 +245,22 @@ export { DAYS_DE };
 /** Wochentabelle Mo–So, heute hervorgehoben. null, wenn das Format zu exotisch ist. */
 export function hoursTable(oh, now = new Date()) {
   if (!oh) return null;
-  const week = parseWeek(oh);
+  const s = season(oh);
+  const week = parseWeek(s.oh);
   if (!week) return null;
   const today = (now.getDay() + 6) % 7;
   const rows = DAYS_DE.map((d, i) => {
     const spans = week[i];
     const text = spans === null ? '–' : !spans.length ? 'geschlossen'
-      : spans.map(([a, b]) => (a === 0 && b === 1440 ? 'ganztägig' : `${fmtMin(a)}–${fmtMin(b)}`)).join(', ');
+      : spans.map(([a, b]) => (a === 0 && b === 1440 ? 'ganztägig' : `${fmtMin(a)}–${b === 1440 ? '24:00' : fmtMin(b)}`)).join(', ');
     return `<tr class="${i === today ? 'today' : ''}${spans && !spans.length ? ' closed' : ''}"><th>${d}</th><td>${text}</td></tr>`;
   }).join('');
-  const note = /\bPH\b/.test(oh) ? `<caption>Feiertage: ${esc(formatHours(oh.split(';').find((r) => /\bPH\b/.test(r)) ?? '').replace(/^Feiertag\s*/, ''))}</caption>` : '';
+  const ph = s.oh.split(';').map((r) => r.trim()).find((r) => /^PH\b/.test(r));
+  const notes = [
+    s.months ? `Geöffnet ${s.months.text}` : null,
+    ph ? `Feiertage: ${formatHours(ph).replace(/^Feiertag\s*/, '')}` : null,
+  ].filter(Boolean);
+  const note = notes.length ? `<caption>${notes.map(esc).join('<br>')}</caption>` : '';
   return `<table class="poi-hours">${note}<tbody>${rows}</tbody></table>`;
 }
 
@@ -213,6 +269,8 @@ function links(t) {
   const out = [];
   const add = (url, label, icon) => { if (url && /^https?:\/\//.test(url) && !out.some((l) => l.url === url)) out.push({ url, label, icon }); };
   add(t.website ?? t['contact:website'] ?? t.url, 'Website', 'language');
+  const phone = (t.phone ?? t['contact:phone'])?.split(';')[0].trim();
+  if (phone) out.push({ url: `tel:${phone.replace(/[^+\d]/g, '')}`, label: phone, icon: 'call' });
   add(t['website:menu'] ?? t.menu, 'Speisekarte', 'menu_book');
   // Kulturvereine, Kinos, Theater: manche verlinken ihr Programm eigens
   add(t['website:events'] ?? t['contact:events'] ?? t['event:website'], 'Programm', 'event');
@@ -228,8 +286,10 @@ export function formatHours(oh) {
   return oh.split(';').map((r) => r.trim()).filter(Boolean).map((r) => r
     .replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su)\b/g, (d) => DAYS_DE[DAYS.indexOf(d)])
     .replace(/\bPH\b/g, 'Feiertag').replace(/\bSH\b/g, 'Schulferien')
+    .replace(new RegExp(`\\b${MON}\\b`, 'g'), (m) => MONTHS_DE[MONTHS.indexOf(m)])
     .replace(/\b(off|closed)\b/gi, 'geschlossen')
-    .replace(/,(?=\d)/g, ', ')).join('\n');
+    .replace(/-/g, '–')
+    .replace(/,(?=\S)/g, ', ')).join('\n');
 }
 
 /* ── Felder je Art ────────────────────────────────────────────────────────── */
@@ -257,10 +317,8 @@ const F = {
   surface: ['Belag', 'texture', (t) => tr(SURFACE, t.surface), true, E.pick('surface', SURFACE)],
   access: ['Zugang', 'lock_open', (t) => tr(ACCESS, t.access), false, E.pick('access', ACCESS)],
   operator: ['Betreiber', 'business', (t) => t.operator ?? t.brand, false, E.text('operator', 'z. B. Stadtwerke Göttingen')],
-  wheelchair: ['Rollstuhl', 'accessible', (t) => tr(YES_NO, t.wheelchair), false, E.pick('wheelchair', { yes: 'ja', limited: 'eingeschränkt', no: 'nein' })],
   phone: ['Telefon', 'call', (t) => t.phone ?? t['contact:phone'], false, { key: 'phone', kind: 'text' }],
   cuisine: ['Küche', 'restaurant_menu', (t) => t.cuisine?.replaceAll(';', ', ').replaceAll('_', ' '), false, E.text('cuisine', 'z. B. italian;pizza')],
-  outdoor: ['Außenplätze', 'deck', (t) => tr(YES_NO, t.outdoor_seating), false, E.pick('outdoor_seating', JA_NEIN)],
   payment: ['Bezahlung', 'credit_card', payment, false, E.flags('payment:', PAYMENT)],
   ele: ['Höhe', 'landscape', (t) => (t.ele ? `${Math.round(Number(t.ele))} m` : null), false, E.num('ele', 'Meter über dem Meer')],
 };
@@ -285,7 +343,7 @@ const SCHEMA = {
     ['Stecker', 'electrical_services', sockets, true, { key: 'socket:', kind: 'sockets' }],
     F.fee, F.operator, F.hours, F.access, F.payment,
   ],
-  toilets: [F.fee, F.wheelchair, ['Wickeltisch', 'baby_changing_station', (t) => tr(YES_NO, t.changing_table), false, E.pick('changing_table', JA_NEIN)], F.hours],
+  toilets: [F.fee, F.hours],          // Rollstuhl, Wickeltisch: bei der Ausstattung
   water: [['Trinkwasser', 'water_drop', (t) => tr(YES_NO, t.drinking_water ?? 'yes'), false, E.pick('drinking_water', JA_NEIN)],
     ['Saisonal', 'event', (t) => tr(YES_NO, t.seasonal), false, E.pick('seasonal', JA_NEIN)]],
   bikeparking: [['Stellplätze (gesamt)', 'pedal_bike', (t) => t.capacity, true, E.num('capacity')],
@@ -296,10 +354,10 @@ const SCHEMA = {
   playground: [F.surface, ['Mindestalter', 'child_care', (t) => t.min_age, false, E.num('min_age', 'Jahre')]],
 };
 for (const id of ['bakery', 'cafe', 'restaurant', 'fastfood', 'icecream', 'pub']) {
-  SCHEMA[id] = [F.hoursReq, F.cuisine, F.outdoor, F.wheelchair, F.phone];
+  SCHEMA[id] = [F.hoursReq, F.cuisine, F.phone];
 }
-SCHEMA.supermarket = [F.hoursReq, F.operator, F.wheelchair, F.payment];
-const DEFAULT = [F.hours, F.operator, F.wheelchair, F.phone, F.ele];
+SCHEMA.supermarket = [F.hoursReq, F.operator, F.payment];
+const DEFAULT = [F.hours, F.operator, F.phone, F.ele];
 
 /**
  * Was sich an einem Ort dieser Art bearbeiten lässt – dieselben Felder wie in
@@ -321,15 +379,45 @@ export const TRAITS = [
   ['organic', 'Bio', { yes: 'Bio', only: 'Nur Bio' }],
   ['diet:vegan', 'Vegan', { yes: 'Vegane Auswahl', only: 'Vegan' }],
   ['diet:vegetarian', 'Vegetarisch', { yes: 'Vegetarische Auswahl', only: 'Vegetarisch' }],
-  ['outdoor_seating', 'Draußen sitzen', { yes: 'Draußen sitzen' }],
-  ['internet_access', 'WLAN', { wlan: 'WLAN', yes: 'WLAN' }],
   ['drive_through', 'Drive-in', { yes: 'Drive-in' }],
 ];
 const traitsOf = (t) => TRAITS.map(([k, , txt]) => txt[t[k]]).filter(Boolean);
 
 /**
+ * Ausstattung – als Chips unter den Angaben. [Schlüssel, Name im Bearbeiten, Icon, Tags → Text | null]
+ * Außenplätze zählen bei jedem Wert außer „no“ (terrace, pedestrian_zone … sagt nur, wo sie sind).
+ */
+export const EQUIPMENT = [
+  ['wheelchair', 'Rollstuhlgerecht', 'accessible', (t) => ({ yes: 'Rollstuhlgerecht', designated: 'Rollstuhlgerecht', limited: 'Teilweise rollstuhlgerecht', no: 'Nicht rollstuhlgerecht' })[t.wheelchair] ?? null],
+  ['outdoor_seating', 'Außenplätze', 'deck', (t) => (t.outdoor_seating && t.outdoor_seating !== 'no' ? 'Außenplätze' : null)],
+  ['toilets', 'Toiletten', 'wc', (t) => (t.toilets !== 'yes' ? null
+    : ['customers', 'permissive'].includes(t['toilets:access']) ? 'Toiletten für Gäste'
+      : ['yes', 'public'].includes(t['toilets:access']) ? 'Öffentliche Toiletten' : 'Toiletten')],
+  ['changing_table', 'Wickeltisch', 'baby_changing_station', (t) => (t.changing_table === 'yes' ? 'Wickeltisch' : null)],
+  ['internet_access', 'WLAN', 'wifi', (t) => (['wlan', 'yes'].includes(t.internet_access) ? 'WLAN' : null)],
+  ['air_conditioning', 'Klimaanlage', 'ac_unit', (t) => (t.air_conditioning === 'yes' ? 'Klimaanlage' : null)],
+  ['dog', 'Hunde erlaubt', 'pets', (t) => (['yes', 'leashed'].includes(t.dog) ? 'Hunde erlaubt' : null)],
+];
+const equipmentOf = (t) => EQUIPMENT.map(([k, , icon, get]) => ({ icon: k === 'wheelchair' && t.wheelchair === 'no' ? 'not_accessible' : icon, text: get(t) })).filter((e) => e.text);
+
+/**
+ * Wer darf hin (access)? → { kind: 'public' | 'limited' | 'private', text } – privat heißt: für einen selbst nicht
+ * nutzbar (privat, kein Zugang, nur Anwohner, mit Genehmigung); eingeschränkt: Kunden, Anlieger. Die
+ * Trefferlisten blenden private aus (app/category.js filterHits), eingeschränkte stehen mit Hinweis da.
+ */
+const ACCESS_NOTE = {
+  customers: ['limited', 'Nur für Kunden'], destination: ['limited', 'Nur für Anlieger'], delivery: ['limited', 'Nur Lieferverkehr'],
+  private: ['private', 'Privat – nicht öffentlich'], no: ['private', 'Kein Zugang'], residents: ['private', 'Nur für Anwohner'],
+  permit: ['private', 'Nur mit Genehmigung'],
+};
+export function accessOf(tags = {}) {
+  const [kind, text] = ACCESS_NOTE[tags.access] ?? ['public', null];
+  return { kind, text };
+}
+
+/**
  * Alle Angaben zu einem Ort.
- * → { category, name, type, traits, description, status, facts: [{ label, icon, value, unknown }], website }
+ * → { category, name, type, traits, equipment: [{ icon, text }], description, status, access: { kind, text }, facts: [{ label, icon, value, unknown }], website }
  */
 export function describePoi(tags = {}, { name, fallbackType } = {}) {
   const category = categoryFor(tags);
@@ -347,9 +435,11 @@ export function describePoi(tags = {}, { name, fallbackType } = {}) {
     name: name || tags.name || tags.brand || category?.one || fallbackType || 'Ort',
     type: category?.one ?? fallbackType ?? null,
     traits: traitsOf(tags),
+    equipment: equipmentOf(tags),
     description: tags['description:de'] ?? tags.description ?? null,
     status: statusText(openState(tags.opening_hours)),
     open: openState(tags.opening_hours)?.open ?? null,
+    access: accessOf(tags),
     facts,
     website: web && /^https?:\/\//.test(web) ? web : null,
   };
@@ -362,7 +452,17 @@ const subline = (info) => [info.type !== info.name ? info.type : null, ...(info.
 export function poiCard(info, { compact = false } = {}) {
   const c = info.category;
   const table = compact ? null : hoursTable(info.hours);
-  const facts = (compact ? info.facts.slice(0, 5) : info.facts).filter((f) => !(table && f.label === 'Öffnungszeiten'));
+  // Telefon steht oben bei den Links (antippen ruft an)
+  // Nichts doppelt: Zugang steht schon als Badge, eine Art gleich der unter dem Namen („Parkplatz“) fällt weg
+  const dup = (f) => (info.access?.text && f.label === 'Zugang') || (!f.unknown && info.type && f.value.toLowerCase() === info.type.toLowerCase());
+  const facts = (compact ? info.facts.slice(0, 5) : info.facts)
+    .filter((f) => !dup(f) && !(table && f.label === 'Öffnungszeiten') && !(!compact && f.label === 'Telefon' && !f.unknown));
+  // Im Sheet: Bekanntes als Badges, Unbekanntes in einer Zeile – keine grauen Kacheln mit „unbekannt“
+  const known = facts.filter((f) => !f.unknown), unknown = facts.filter((f) => f.unknown);
+  const badges = known.length ? `<ul class="poi-badges">${known.map((f) => `
+        <li class="${f.value.includes('\n') ? 'multi' : ''}"><span class="msr">${f.icon}</span><span class="b-label">${esc(f.label)}</span>
+        <b>${esc(f.value).replaceAll('\n', '<br>')}</b></li>`).join('')}</ul>` : '';
+  const missing = unknown.length ? `<p class="poi-unknown"><span class="msr">help</span>Noch unbekannt: ${unknown.map((f) => esc(f.label)).join(' · ')}</p>` : '';
   return `
     <div class="poi-card${compact ? ' compact' : ''}">
       <header>
@@ -370,12 +470,16 @@ export function poiCard(info, { compact = false } = {}) {
         <div><strong>${esc(info.name)}</strong>${subline(info) ? `<small>${esc(subline(info))}</small>` : ''}</div>
       </header>
       ${info.status ? `<p class="poi-status ${info.open ? 'open' : 'closed'}">${esc(info.status)}</p>` : ''}
-      ${!compact && info.description ? `<p class="poi-desc">${esc(info.description)}</p>` : ''}
-      ${facts.length ? `<dl class="poi-facts">${facts.map((f) => `
-        <div class="${f.unknown ? 'unknown' : ''}"><dt><span class="msr">${f.icon}</span>${esc(f.label)}</dt>
-        <dd>${esc(f.value).replaceAll('\n', '<br>')}</dd></div>`).join('')}</dl>` : ''}
-      ${table ? `<div class="poi-hours-wrap"><h4><span class="msr">schedule</span> Öffnungszeiten</h4>${table}</div>` : ''}
+      ${info.access?.text ? `<p class="poi-access ${info.access.kind}"><span class="msr">${info.access.kind === 'private' ? 'lock' : 'storefront'}</span>${esc(info.access.text)}</p>` : ''}
       ${!compact && info.links.length ? `<div class="poi-links">${info.links.map((l) => `
         <a class="chip" href="${esc(l.url)}" target="_blank" rel="noopener"><span class="msr">${l.icon}</span>${esc(l.label)}</a>`).join('')}</div>` : ''}
+      ${!compact && info.description ? `<p class="poi-desc">${esc(info.description)}</p>` : ''}
+      ${compact && facts.length ? `<dl class="poi-facts">${facts.map((f) => `
+        <div class="${f.unknown ? 'unknown' : ''}"><dt><span class="msr">${f.icon}</span>${esc(f.label)}</dt>
+        <dd>${esc(f.value).replaceAll('\n', '<br>')}</dd></div>`).join('')}</dl>` : ''}
+      ${compact ? '' : badges + missing}
+      ${!compact && info.equipment?.length ? `<div class="poi-equip"><h4><span class="msr">checklist</span> Ausstattung</h4><div>${info.equipment.map((e) => `
+        <span class="chip"><span class="msr">${e.icon}</span>${esc(e.text)}</span>`).join('')}</div></div>` : ''}
+      ${table ? `<div class="poi-hours-wrap"><h4><span class="msr">schedule</span> Öffnungszeiten</h4>${table}</div>` : ''}
     </div>`;
 }

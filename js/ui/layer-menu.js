@@ -181,6 +181,7 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
       <div class="layer-bases">
         <button type="button" data-base="map" aria-pressed="${state.base === 'map'}"><span class="layer-thumb thumb-map"></span>Karte</button>
         <button type="button" data-base="sat" aria-pressed="${state.base === 'sat'}"><span class="layer-thumb thumb-sat"></span>Satellit</button>
+        ${map.wmapStreet ? `<button type="button" data-l="street" aria-pressed="${map.wmapStreet.active}" title="Auf der Straße umsehen"><span class="layer-thumb thumb-street"><span class="msr">streetview</span></span>Street View</button>` : ''}
       </div>
       ${check('focus', state.focus, 'hiking', 'Wandern & Rad', 'Große Straßen treten zurück, Wanderwege und Relief hervor')}
       <h4>Ebenen</h4>
@@ -198,6 +199,7 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
     if (base) { state.base = base; save(); applyBase(); applyFocus(); paint(); return; }
     const act = e.target.closest('[data-l]')?.dataset.l;
     if (act === 'close') toggle(false);
+    if (act === 'street') { toggle(false); dispatchEvent(new CustomEvent('wmap:street')); }
   });
   box.addEventListener('change', async (e) => {
     const t = e.target;
@@ -224,5 +226,13 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
     /** Eigene Ebenen, die gerade auf der Karte liegen (für Klicks) */
     shown: () => shown,
     open: () => toggle(true),
+    /** Grundkarte ('map' | 'sat') – Street View schaltet das Luftbild nur für sich an (`save: false`) */
+    base: () => state.base,
+    setBase(b, { save: keep = true } = {}) {
+      state.base = b;
+      if (keep) save();
+      applyBase(); applyFocus();
+      if (!box.hidden) paint();
+    },
   };
 }

@@ -1,0 +1,171 @@
+"""Meine Touren → Aufgezeichnet: Wege vergleichen (pages/wege-compare.js), Kopf eines Wegs, Antippen mit Spielraum.
+1. „Vergleichen“ in der Liste: Kästchen statt Auge, Leiste oben – vergleichen geht erst ab zwei angekreuzten.
+2. Zwei Läufe (der neuere schneller, mit weniger Puls): Spalten 1 und 2, Veränderung – Tempo und Herzschläge je km
+   grün, Puls −5; Verlauf über die Strecke mit beiden, Umschalten auf Puls; auf der Karte beide in ihrer Farbe.
+3. ?compare= mit drei: drei Spalten und das Diagramm „Entwicklung“.
+4. Im Weg „Vergleichen“: zurück in die Liste, der Weg ist schon angekreuzt.
+5. Kopf eines Wegs: Symbol der Art und der Name als Feld zwischen ← und ✕ (kein zweites Feld darunter) – ändern speichert.
+6. Auf der Karte 6 px neben der Linie getippt: der Weg geht trotzdem auf.
+7. Gleiche Strecke: im dritten Lauf der Vorschlag „Gleiche Strecke – 3-mal“; Vergleichen geht vom aktuellen aus (kräftig,
+   Veränderung „zum vorigen Mal“), Maus über einem anderen hebt ihn auf der Karte hervor, Doppelklick macht ihn zum
+   aktuellen; Zurück (Browser) führt zum vorigen aktuellen, ← zurück in den Weg.
+8. Zurück-Taste bei offenem Dialog (Löschen?): der Dialog geht zu, die Seite bleibt; per Knopf geschlossen bleibt
+   kein Eintrag im Verlauf übrig (core/back.js)."""
+import json
+import sys
+import time
+from common import Browser
+
+# Drei Läufe auf derselben Strecke (5 km nach Osten), je zwei Wochen auseinander, schneller und mit weniger Puls
+MAKE = """
+const { buildTrack, tracks } = await import('./js/data/tracks.js');
+const runs = [['cmp1', 'Lauf 1', Date.UTC(2026, 8, 1, 8), 2.8, 160], ['cmp2', 'Lauf 2', Date.UTC(2026, 8, 15, 8), 3.0, 155], ['cmp3', 'Lauf 3', Date.UTC(2026, 8, 29, 8), 3.3, 150]];
+for (const [id, name, t0, v, hr] of runs) {
+  const pts = []; let lon = 9.90, ms = t0;
+  while ((lon - 9.90) * 69500 < 5000) { pts.push([lon, 51.53, ms, hr, 170, 250]); lon += v * 10 / 69500; ms += 10000; }
+  await tracks.put({ ...buildTrack(pts, { kind: 'gpx', profile: 'foot', name }), id, sport: 'running' });
+}
+return (await tracks.all()).length;
+"""
+TABLE = """return [[...document.querySelectorAll('.cmp-table thead th')].map((x) => x.innerText.trim()),
+  Object.fromEntries([...document.querySelectorAll('.cmp-table tbody tr')].map((r) => [r.querySelector('th').innerText.trim(),
+    [...r.querySelectorAll('td')].map((c) => c.innerText.replace(/\\s+/g, ' ').trim() + (c.classList.contains('good') ? ' [gut]' : c.classList.contains('bad') ? ' [schlecht]' : ''))]))]"""
+
+with Browser(width=420, height=900) as b:
+    checks = {}
+    b.open('wege.html', wait=3)
+    made = b.d.execute_async_script('const done = arguments[0]; (async () => {' + MAKE + '})().then(done, (e) => done(String(e)))')
+    print('Wege angelegt:', made)
+
+    # 1. Liste im Modus „Vergleichen“
+    b.open('wege.html', wait=4)
+    b.js("document.querySelector('[data-list=compare]').click()")
+    time.sleep(.5)
+    bar = b.js("return [document.querySelector('.compare-count')?.innerText, document.querySelector('[data-list=compare-go]')?.disabled, document.querySelectorAll('.row-pick').length, document.querySelectorAll('.row-eye').length]")
+    print('Leiste:', bar)
+    checks['1. Vergleichen: Leiste, drei Kästchen statt Augen, Knopf noch aus'] = bar == ['Wege zum Vergleichen ankreuzen', True, 3, 0]
+    b.js("document.querySelector('tr[data-id=cmp1]').click(); document.querySelector('tr[data-id=cmp2] .row-pick').click()")
+    time.sleep(.3)
+    bar = b.js("return [document.querySelector('.compare-count')?.innerText, document.querySelector('[data-list=compare-go]')?.disabled, location.search]")
+    print('Zwei angekreuzt:', bar)
+    checks['1. Zwei angekreuzt (Zeile und Kästchen): Knopf an, nichts geöffnet'] = bar == ['2 gewählt', False, '']
+
+    # 2. Vergleich zweier Läufe
+    b.js("document.querySelector('[data-list=compare-go]').click()")
+    b.wait("return document.querySelector('.cmp-table')", 20)
+    time.sleep(1.5)
+    head, rows = b.js(TABLE)
+    print('Kopf:', head)
+    print('Zeilen:', json.dumps(rows, ensure_ascii=False))
+    title = b.js("return [location.search, document.querySelector('.wege-bar .uD-title').innerText.trim()]")
+    checks['2. Adresse ?compare=cmp1,cmp2, Kopf „Vergleich“'] = title == ['?compare=cmp1,cmp2', 'Vergleich']
+    checks['2. Spalten 1, 2, Veränderung'] = head == ['', '1', '2', 'Veränderung']
+    tempo, puls, beats = rows.get('Ø Tempo', []), rows.get('Ø Puls', []), rows.get('Herzschläge je km', [])
+    checks['2. Tempo schneller: −0:… /km, grün'] = len(tempo) == 3 and tempo[2].startswith('−0:') and tempo[2].endswith('[gut]')
+    checks['2. Puls −5, ohne Wertung'] = len(puls) == 3 and puls[2].startswith('−5 ') and '[' not in puls[2]
+    checks['2. Herzschläge je km weniger, grün'] = len(beats) == 3 and beats[2].startswith('−') and beats[2].endswith('[gut]')
+    TITLES = "return [...document.querySelectorAll('.cmp-along .elev-mountain')].map((x) => x.title)"
+    chart = [b.js(TITLES), b.js("return document.querySelectorAll('.cmp-kinds .chip').length"), b.js("return !!document.querySelector('.cmp-trend')")]
+    b.js("document.querySelector('[data-cmp=speed]').click()")
+    time.sleep(.5)
+    chart.append(b.js(TITLES))
+    lines = b.d.execute_async_script("const done = arguments[0]; window.__wmap.map.getSource('weg-sel').getData().then((d) => done(d.features.map((f) => f.properties.color)))")
+    print('Diagramm:', chart, 'Karte:', lines)
+    checks['2. Verlauf: zuerst Puls, Tempo dazu (zwei Diagramme); ohne „Entwicklung“ bei zwei'] = chart == [['Puls'], 4, False, ['Tempo', 'Puls']]
+    checks['2. Karte: beide Wege in ihrer Farbe'] = lines == ['#1a73e8', '#e8590c']
+    b.shot('vergleich')
+
+    # 3. Drei über die Adresse
+    b.open('wege.html?compare=cmp3,cmp1,cmp2', wait=5)
+    head, rows = b.js(TABLE)
+    trend = b.js("return [!!document.querySelector('.cmp-trend:not([hidden])'), [...document.querySelectorAll('.cmp-list strong')].map((x) => x.innerText)]")
+    print('Drei:', head, trend)
+    checks['3. Drei: das älteste zuerst, „Entwicklung“ da'] = head == ['', '1', '2', '3', 'Veränderung'] and trend == [True, ['Lauf 1', 'Lauf 2', 'Lauf 3']]
+    b.js("document.querySelector('.cmp-trend').scrollIntoView()")
+    time.sleep(.5)
+    b.shot('vergleich_drei')
+
+    # 4. Aus dem Weg heraus
+    b.open('wege.html?id=cmp2', wait=4)
+    b.js("document.querySelector('[data-do=compare]').click()")
+    time.sleep(.8)
+    pick = b.js("return [location.search, document.querySelector('.compare-count')?.innerText, [...document.querySelectorAll('.row-pick:checked')].map((x) => x.dataset.pick)]")
+    print('Aus dem Weg:', pick)
+    checks['4. „Vergleichen“ im Weg: Liste, der Weg angekreuzt'] = pick == ['', '1 gewählt – noch einen ankreuzen', ['cmp2']]
+
+    # 5. Kopf eines Wegs
+    b.open('wege.html?id=cmp1', wait=4)
+    head = b.js("const t = document.querySelector('.wege-bar .uD-title'); return [t.querySelector('.panel-title-icon')?.textContent, t.querySelector('.panel-title-input')?.value, !!document.querySelector('.weg-name'), [...document.querySelectorAll('.weg-stats small')].slice(0, 2).map((x) => x.innerText)]")
+    b.js("const i = document.querySelector('.panel-title-input'); i.value = 'Morgenlauf'; i.dispatchEvent(new Event('change'))")
+    time.sleep(1)
+    saved = b.d.execute_async_script("const done = arguments[0]; import('./js/data/tracks.js').then((m) => m.tracks.get('cmp1')).then((t) => done(t.name))")
+    print('Kopf:', head, 'gespeichert:', saved)
+    checks['5. Kopf: Symbol Laufen, Name als Feld, kein Feld darunter; Zeit vor Strecke'] = head == ['directions_run', 'Lauf 1', False, ['in Bewegung', 'Strecke']]
+    checks['5. Name im Kopf geändert und gespeichert'] = saved == 'Morgenlauf'
+
+    # 6. Neben die Linie getippt
+    b.open('wege.html', wait=5)
+    hit = b.js("""const m = window.__wmap.map; m.jumpTo({ center: [9.93, 51.53], zoom: 13 });
+      return new Promise((r) => m.once('idle', () => { const p = m.project([9.93, 51.53]); p.y += 6;
+        m.fire('click', { point: p, lngLat: m.unproject(p), originalEvent: new MouseEvent('click') });
+        setTimeout(() => r(new URLSearchParams(location.search).get('id')), 800); }));""")
+    print('6 px daneben getippt:', hit)
+    checks['6. 6 px neben der Linie: der Weg geht auf'] = hit in ('cmp1', 'cmp2', 'cmp3')
+
+    # 7. Gleiche Strecke
+    b.open('wege.html?id=cmp3', wait=4)
+    same = b.js("const x = document.querySelector('.weg-same'); return [x && !x.hidden, x?.innerText.replace(/\\s+/g, ' ').trim()]")
+    print('Vorschlag:', same)
+    checks['7. Vorschlag im Weg: Gleiche Strecke – 3-mal'] = same[0] and 'Gleiche Strecke – 3-mal' in same[1]
+    b.js("document.querySelector('[data-do=same]').click()")
+    b.wait("return document.querySelector('.cmp-table')", 20)
+    time.sleep(1)
+    focus = b.js("return [location.search, document.querySelector('.cmp-list li.focus')?.dataset.cmpId, [...document.querySelectorAll('.cmp-table thead th')].at(-1).textContent.trim(), document.querySelector('.wege-bar .panel-title-icon')?.textContent]")
+    print('Vom aktuellen aus:', focus)
+    checks['7. Vergleich vom aktuellen: ?focus=cmp3, „zum vorigen Mal“'] = focus[0].endswith('&focus=cmp3') and focus[1] == 'cmp3' and focus[2] == 'zum vorigen Mal'
+    tiles = b.js("""const t = (k) => { document.querySelector(`[data-ref=${k}]`)?.click(); return Object.fromEntries([...document.querySelectorAll('.cmp-tile')].map((x) => [x.querySelector('small').innerText, x.querySelector(':scope > span').innerText.replace(/\\s+/g, ' ') + (x.classList.contains('good') ? ' [gut]' : x.classList.contains('bad') ? ' [schlecht]' : '')])); };
+      return { refs: [...document.querySelectorAll('[data-ref]')].map((x) => x.innerText.trim()), prev: t('prev'), best: t('best'), worst: t('worst'),
+        trend: [[...document.querySelectorAll('[data-trend]')].map((x) => x.innerText.trim()), document.querySelector('.cmp-trend .elev-mountain')?.title] }""")
+    print('Kacheln:', json.dumps(tiles, ensure_ascii=False))
+    checks['7. Kacheln: vorheriges, letzte 5, Durchschnitt, bestes, schlechtestes'] = tiles['refs'] == ['Vorheriges Mal', 'Letzte 5', 'Durchschnitt', 'Bestes', 'Schlechtestes']
+    checks['7. Zum vorigen Mal: Zeit −2:…, Tempo grün; zum schlechtesten ebenso'] = tiles['prev'].get('Zeit in Bewegung', '').startswith('−') and tiles['prev'].get('Ø Tempo', '').endswith('[gut]') and tiles['worst'].get('Ø Tempo', '').endswith('[gut]')
+    checks['7. Entwicklung: Gesamtzeit zuerst'] = tiles['trend'][0][0] == 'Gesamtzeit' and tiles['trend'][1] == 'Gesamtzeit'
+    b.js("document.querySelector('.cmp-list li[data-cmp-id=cmp2]').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))")
+    time.sleep(.3)
+    lit = b.js("const m = window.__wmap.map; return [JSON.stringify(m.getPaintProperty('weg-sel', 'line-width')), document.querySelector('.cmp-list li.hover')?.dataset.cmpId]")
+    print('Hervorgehoben:', lit)
+    checks['7. Maus über Lauf 2: in der Liste und auf der Karte hervorgehoben'] = 'cmp2' in lit[0] and lit[1] == 'cmp2'
+    b.shot('gleiche_strecke')
+    b.js("document.querySelector('.cmp-list li[data-cmp-id=cmp1]').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))")
+    b.wait("return location.search.endsWith('focus=cmp1') && document.querySelector('.cmp-list li.focus')?.dataset.cmpId === 'cmp1'", 20)
+    first = b.js("return [...document.querySelectorAll('.cmp-table thead th')].at(-1).textContent.trim()")
+    b.js("history.back()")
+    b.wait("return location.search.endsWith('focus=cmp3') && document.querySelector('.cmp-list li.focus')?.dataset.cmpId === 'cmp3'", 20)
+    b.js("document.querySelector('.wege-bar .uD-bar-btn, .wege-bar button').click()")
+    time.sleep(1.5)
+    back = b.js("return [location.search, !!document.querySelector('.weg-same')]")
+    print('Doppelklick → Lauf 1:', first, '· Zurück → Lauf 3 · ← →', back)
+    checks['7. Doppelklick: Lauf 1 ist der aktuelle („zum nächsten Mal“), Zurück wieder Lauf 3'] = first == 'zum nächsten Mal'
+    checks['7. ← führt zurück in den Weg'] = back == ['?id=cmp3', True]
+
+    # 8. Zurück-Taste mit offenem Dialog
+    depth = b.js("return history.length")
+    b.js("document.querySelector('[data-do=delete]').click()")
+    time.sleep(.6)
+    opened = b.js("return [!!document.querySelector('dialog:modal'), history.length]")
+    b.js("history.back()")
+    time.sleep(.8)
+    after = b.js("return [!!document.querySelector('dialog:modal'), location.search, !!document.querySelector('.weg-same')]")
+    b.js("document.querySelector('[data-do=delete]').click()")
+    time.sleep(.6)
+    b.js("[...document.querySelectorAll('dialog:modal button')].find((x) => x.innerText.trim() === 'Abbrechen')?.click()")
+    time.sleep(.8)
+    clean = b.js("return [!!document.querySelector('dialog:modal'), !!history.state?.wmapModal, location.search]")
+    print('Dialog:', depth, opened, after, clean)
+    checks['8. Zurück-Taste schließt den Dialog, der Weg bleibt'] = opened[0] and after == [False, '?id=cmp3', True]
+    checks['8. Per Knopf geschlossen: kein Eintrag bleibt'] = clean == [False, False, '?id=cmp3']
+
+    for k, v in checks.items():
+        print(('ok    ' if v else 'FALSCH') + ' ' + k)
+    ok = not b.report() and all(checks.values())
+    sys.exit(0 if ok else 1)

@@ -173,6 +173,16 @@
     button { padding-inline: .25rem; border-radius: .6rem; }
     button:hover { background: var(--surface-2); }
     .muted { color: var(--muted); font-size: var(--fs-200); padding: .25rem; }
+    /* Filter über der Liste (app/category.js): Chips wie sonst, nicht wie Listenzeilen */
+    .hit-filters { display: flex; flex-wrap: wrap; gap: .4rem; padding: .1rem 0 .5rem; }
+    .hit-filters .chip {
+        width: auto; gap: .3rem; padding: .3rem .75rem .3rem .55rem; border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--chip) 45%, transparent);
+        background: color-mix(in srgb, var(--chip) 9%, transparent);
+        &[aria-pressed="true"] { background: var(--chip); color: #fff; .msr { color: #fff; } }
+    }
+    .hit-filters small { opacity: .75; margin-left: .2rem; }
+    .hit-muted strong { color: var(--muted); }
 }
 
 .result-list .dot {

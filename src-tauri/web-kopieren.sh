@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 OUT=src-tauri/web
 rm -rf "$OUT"
 mkdir -p "$OUT/appdata" "$OUT/libs"
-cp ./*.html sw.js "$OUT/"
+cp ./*.html sw.js sw-app.js "$OUT/"
 cp -r css js "$OUT/"
 cp -rL libs/wuefl-libs libs/maplibre-gl libs/echarts libs/earcut "$OUT/libs/"
 rm -rf "$OUT/libs/wuefl-libs/.git"

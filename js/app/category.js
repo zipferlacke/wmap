@@ -5,7 +5,7 @@ import { osmRef } from '../map/map.js';
 import { poisInBounds, poisAlong } from '../map/tile-pois.js';
 import * as geocode from '../services/geocode.js';
 import * as overpass from '../services/overpass.js';
-import { describePoi, inCategory } from '../ui/poi-info.js';
+import { accessOf, describePoi, inCategory, openState } from '../ui/poi-info.js';
 import { recent } from '../data/store.js';
 import { toast } from '../ui/dialogs.js';
 import { nearestOnLine, pointAt, bboxAround, distance, fmtDistance, esc } from '../core/geo.js';
@@ -66,15 +66,20 @@ export async function runCategory(cat, placeText = null, { bounds = null, label 
 
   const center = [(area.bounds[0] + area.bounds[2]) / 2, (area.bounds[1] + area.bounds[3]) / 2];
   const ref = state.position && distance(state.position, center) < 20000 ? state.position : center;
-  const show = (shapes, points, final) => {
-    points.forEach((p) => { p.properties.dist = distance(ref, p.geometry.coordinates); });
-    points.sort((a, b) => a.properties.dist - b.properties.dist);
+  const show = (allShapes, all, final) => {
+    all.forEach((p) => { p.properties.dist = distance(ref, p.geometry.coordinates); });
+    all.sort((a, b) => a.properties.dist - b.properties.dist);
+    const f = filterHits(all, allShapes);
+    const { points, shapes } = f;
     numberHits(points);
     showHl({ shapes, points });
+    const hidden = all.length - points.length;
     $('.cat-sub', view).textContent = !final
       ? `${points.length} gefunden ${area.label} …`
-      : points.length ? `${points.length}${points.length >= 400 ? '+' : ''} gefunden ${area.label}` : `Keine ${cat.label} ${area.label}`;
-    renderResultList($('.cat-list', view), points.slice(0, 80), cat, (p) => `${fmtDistance(p.properties.dist)} entfernt`);
+      : points.length ? `${points.length}${all.length >= 400 ? '+' : ''} gefunden ${area.label}${hidden ? ` · ${hidden} ausgeblendet` : ''}`
+        : `Keine ${cat.label} ${area.label}${hidden ? ` · ${hidden} ausgeblendet` : ''}`;
+    renderResultList($('.cat-list', view), points.slice(0, 80), cat, (p) => `${fmtDistance(p.properties.dist)} entfernt`,
+      { filter: f, redo: () => { if (state.category?.category === cat) show(allShapes, all, final); } });
   };
 
   // Sofort: die Punkte aus den Kartenkacheln des Suchbereichs – unabhängig
@@ -116,13 +121,16 @@ export async function runCategory(cat, placeText = null, { bounds = null, label 
 const TILE_KEYS = ['amenity', 'shop', 'tourism', 'leisure', 'highway', 'railway', 'historic', 'natural', 'man_made'];
 
 /** Kachel-Punkt → Treffer im Overpass-Format (gleiche Liste, gleiche Symbole). */
+const fold = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ß/g, 'ss');
+
 function tileHit(cat, { id, props, point }) {
   const sub = props.subclass;
   if (!sub) return null;
   const tags = Object.fromEntries(TILE_KEYS.map((k) => [k, sub]));
-  if (!inCategory(cat, tags)) return null;
-  const r = osmRef({ id });
   const name = props['name:de'] ?? props.name_de ?? props.name ?? '';
+  // Suche nach Namen („Rewe“): der Name zählt, nicht die Art
+  if (cat.byName ? !fold(name).includes(fold(cat.byName)) : !inCategory(cat, tags)) return null;
+  const r = osmRef({ id });
   return {
     type: 'Feature', geometry: { type: 'Point', coordinates: point },
     properties: {
@@ -188,19 +196,76 @@ export function numberHits(points, limit = 80) {
   return points;
 }
 
-/** Trefferliste für Kategorie, Erreichbarkeit und „Entlang der Route“. */
-export function renderResultList(ul, points, cat, meta) {
-  ul.innerHTML = points.map((p, i) => {
+/* ── Filter der Trefferlisten ─────────────────────────────────────────────── */
+
+/*
+ * Standardmäßig fehlt, was man nicht nutzen kann: Private (Parkplätze und andere ohne Zugang, nur Anwohner …) und
+ * was gerade geschlossen hat (nach opening_hours – ohne Angabe gilt es als offen). Chips über der Liste holen sie
+ * dazu, dann grau – auf der Karte wie in der Liste. Kundenparkplätze bleiben drin, mit Hinweis. Gilt für alle
+ * Listen (In der Nähe, Entlang der Route, unterwegs, Erreichbar), bis die Seite neu lädt.
+ */
+export const hitFilter = { open: true, priv: false };
+const GREY = '#9aa0a6';
+
+/**
+ * Punkte (und ihre Flächen) filtern und die übrigen einfärben.
+ * → { points, shapes, closed, priv, hours } – closed/priv: so viele gibt es (gezeigt oder nicht), hours: ob
+ *   überhaupt Öffnungszeiten dabei sind (sonst kein Chip „Nur offene“)
+ */
+export function filterHits(points, shapes = []) {
+  let closed = 0, priv = 0, hours = false;
+  const gone = new Set();
+  const out = points.filter((p) => {
+    const tags = parseTags(p.properties.tags);
+    const isPriv = accessOf(tags).kind === 'private';
+    const st = openState(tags.opening_hours);
+    if (st) hours = true;
+    const isClosed = st?.open === false;
+    if (isPriv) priv += 1;
+    if (isClosed) closed += 1;
+    // Flächen teilen sich die Eigenschaften mit ihrem Punkt (services/overpass.js) – die Farbe gilt für beide
+    p.properties.color0 ??= p.properties.color;
+    p.properties.color = isPriv || isClosed ? GREY : p.properties.color0;
+    if ((isPriv && !hitFilter.priv) || (isClosed && hitFilter.open)) { gone.add(p.properties.id); return false; }
+    return true;
+  });
+  return { points: out, shapes: shapes.filter((f) => !gone.has(f.properties.id)), closed, priv, hours };
+}
+
+/** Chips über der Liste: „Nur offene“ (an), „Private“ (aus) – nur, wenn es etwas zu filtern gibt */
+function filterChips(f) {
+  const chips = [];
+  if (f.hours || f.closed) {
+    chips.push(`<button type="button" class="chip" data-hf="open" aria-pressed="${hitFilter.open}"><span class="msr">schedule</span> Nur offene${
+      hitFilter.open && f.closed ? ` <small>${f.closed} zu</small>` : ''}</button>`);
+  }
+  if (f.priv) {
+    chips.push(`<button type="button" class="chip" data-hf="priv" aria-pressed="${hitFilter.priv}"><span class="msr">lock</span> Auch private <small>${f.priv}</small></button>`);
+  }
+  return chips.length ? `<li class="hit-filters chip-row" role="group" aria-label="Filter">${chips.join('')}</li>` : '';
+}
+
+/**
+ * Trefferliste für Kategorie, Erreichbarkeit und „Entlang der Route“. `opts.filter` (aus filterHits) und
+ * `opts.redo()` (alles neu filtern und zeigen): dann stehen die Filter-Chips oben.
+ */
+export function renderResultList(ul, points, cat, meta, { filter = null, redo = null } = {}) {
+  ul.innerHTML = (filter && redo ? filterChips(filter) : '') + points.map((p, i) => {
     const info = describePoi(parseTags(p.properties.tags), { name: p.properties.name });
-    const c = cat ?? info.category;
-    const known = info.facts.filter((f) => !f.unknown && !f.value.includes('\n')).slice(0, 2).map((f) => f.value);
-    return `<li><button type="button" data-i="${i}">
-      <span class="dot msr" style="--c:${c?.color ?? '#e8590c'}">${c?.icon ?? 'location_on'}</span>
+    const c = cat?.byName ? info.category ?? cat : cat ?? info.category;
+    // Der Zugang steht schon als Hinweis da – nicht noch einmal als Angabe
+    const known = info.facts.filter((f) => !f.unknown && !f.value.includes('\n') && !(info.access.text && f.label === 'Zugang')).slice(0, 2).map((f) => f.value);
+    // Ausgegraut (privat, geschlossen – filterHits): auch in der Liste grau
+    const grey = p.properties.color === GREY;
+    return `<li${grey ? ' class="hit-muted"' : ''}><button type="button" data-i="${i}">
+      <span class="dot msr" style="--c:${grey ? GREY : c?.color ?? '#e8590c'}">${c?.icon ?? 'location_on'}</span>
       <span class="sg-text"><strong>${esc(info.name)}${p.properties.nr ? `, (${p.properties.nr})` : ''}</strong>
-      <small>${esc([meta(p), info.status, ...known].filter(Boolean).join(' · '))}</small></span>
+      <small>${esc([meta(p), info.status, info.access.text, ...known].filter(Boolean).join(' · '))}</small></span>
     </button></li>`;
   }).join('');
   ul.onclick = (e) => {
+    const hf = e.target.closest('[data-hf]')?.dataset.hf;
+    if (hf && redo) { hitFilter[hf] = !hitFilter[hf]; redo(); return; }
     const b = e.target.closest('button[data-i]');
     if (!b) return;
     const p = points[Number(b.dataset.i)];

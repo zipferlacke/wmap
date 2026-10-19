@@ -23,7 +23,7 @@ gewollt?“) und als Grundlage für Erklärungen in der App.
 5. [Navigation](#5-navigation)
 6. [Ebenen: Satellit, Wandern & Rad, Plugins](#6-ebenen-satellit-wandern--rad-plugins)
 7. [3D, Gelände und Höhen](#7-3d-gelände-und-höhen)
-8. [Tastatur und Fliegen](#8-tastatur-und-fliegen)
+8. [Tastatur, Fliegen und Street View](#8-tastatur-fliegen-und-street-view)
 9. [Übersicht (Dashboard)](#9-übersicht-dashboard)
 10. [Meine Touren: Geplant, Aufgezeichnet, Bus & Bahn, Orte](#10-meine-touren-geplant-aufgezeichnet-bus--bahn-orte)
 11. [Tour planen](#11-tour-planen)
@@ -90,6 +90,17 @@ Man startet immer mit der Karte.
 
 ---
 
+**Zurück-Taste** (`js/core/back.js`, auf jeder Seite als erstes Modul geladen):
+Handy und Browser wirken wie der Zurück-Knopf dessen, was oben liegt. Ein
+modaler Dialog (Rückfrage, Diagramm im Vollbild …) geht zu und die Seite
+bleibt – er legt beim Öffnen einen Eintrag in den Verlauf, per Knopf
+geschlossen verschwindet der still wieder. Karte, Meine Touren und Plugins
+führen ihren eigenen Verlauf; Entdecken drückt mit `trapBack()` das ← der
+Detailansicht, in der Liste verlässt Zurück die Seite. Seiten, deren ← auf eine
+andere Seite führt (Eigene Ebenen, Offline-Karten, Offline, Tourenplaner),
+markieren es mit `data-back` – Zurück drückt dann genau diesen Knopf, statt
+zur zuvor besuchten Seite zu gehen.
+
 ## 2. Karte
 
 - **Navigation unten bzw. links** (ui/appbar.js): Karte · Übersicht · Touren ·
@@ -118,8 +129,9 @@ Man startet immer mit der Karte.
   Overpass-Server.
 - **Kartenbild:** OpenFreeMap „Liberty“ mit deutschen Namen (`name:de` vor
   `name`; bei nicht-lateinischer Schrift steht der deutsche Name vorn und das
-  Original darunter). Gebäude haben Farben nach Nutzung und Schatten am Boden,
-  damit man ihre Höhe liest; Dächer sind eine eigene helle Fläche.
+  Original darunter). Gebäude haben Farben nach Nutzung; Dächer sind eine eigene
+  Fläche. Den aufgemalten Schatten am Boden gibt es seit 3.0.0 nicht mehr – der
+  versetzte Grundriss ließ die Häuser schräg von nah schweben.
 - **Globus:** ganz herausgezoomt ist die Erde eine Kugel.
 - **Hell und dunkel:** Karte und App folgen dem Modus des Geräts (auch wenn er
   abends umschaltet) oder fest „Hell“/„Dunkel“ aus Einstellungen → Darstellung.
@@ -223,6 +235,25 @@ Man startet immer mit der Karte.
   genutzten Profil –, bei den übrigen „≈“ und die Luftlinie. Die genauen
   Zahlen kommen kurz nach der Liste (`fillRoad` in `js/app/search.js`,
   `roadDistances` in `js/services/routing.js`).
+- **Koordinaten und Links** (`js/app/search-direct.js`, ohne Suchdienst): Wer
+  eine Koordinate tippt oder einen Link einfügt, bekommt genau einen Vorschlag;
+  Enter zeigt den Punkt mit Adresse wie langes Drücken. Gelesen werden
+  (`js/core/coords.js`): Dezimalgrad mit Punkt oder Komma („51.5319, 9.9355“,
+  „51,5319 9,9355“, „N 51.5319 E 9.9355“), Grad/Minuten/Sekunden
+  („51°31'55"N 9°56'08"E“), Grad mit Dezimalminuten („N 51° 31.914 E 009°
+  56.130“), **MGRS/UTMREF** („32U NC 64889 09391“, auch ohne Leerzeichen und
+  kürzer: „32U NC 648 093“ = 100-m-Quadrat), UTM („32U 564398 5710079“) und
+  Plus Codes („8FVC9G8F+6X“, kurz mit Ort: „9G8F+6X Zürich“). Links
+  (`js/core/map-links.js`): **WMap** (app.wuefl.de, dev.wuefl.de … – „WMap-Link
+  öffnen“ geht auf die Seite: Tour, Aufzeichnung, Ort, Route), OpenStreetMap
+  (`#map=`, Marker, `/node|way|relation/…` – dann mit Details),
+  Google Maps (Stecknadel samt Name, `@`, `?q=`, Suche), Apple Karten, Bing,
+  `geo:`; Google-Kurzlinks (maps.app.goo.gl) löst nur Google auf – dazu ein
+  Hinweis. Auch in den Feldern der Routenplanung: eine Koordinate wird
+  Wegpunkt. Adressen mit Hausnummer („Weg 1, 2“) bleiben Suche.
+- **Koordinaten jedes Orts** stehen im Sheet direkt unter den Knöpfen: Breite/Länge
+  und MGRS (das Gitter von NATO, Bundeswehr, Feuerwehr, THW, auf 1 m) – ein
+  Tipp kopiert (`paintCoords` in `js/app/place.js`).
 - **Kategorien** („Parkplatz“, „Bäckerei“, „Fluss“ …): zuerst sofort aus den
   Kartenkacheln (Zoom 14, ohne Netzabfrage), dann ergänzt aus Overpass
   (Flächen, Linien, seltene Kategorien). Restaurants zeigen auch Imbisse.
@@ -233,7 +264,10 @@ Man startet immer mit der Karte.
   auch an Flächen (`numberHits` in `js/app/category.js`; Ebenen `hl-nr`,
   `poi-nr`, Bild `hit-<Kategorie>-<Nummer>` in `js/map/map.js`). Treffer,
   die die Liste nicht mehr zeigt, behalten den Tropfen ohne Nummer.
-- **Ortskarte:** Name, Art, Öffnungszeiten, Adresse, Bild und Kurztext aus
+- **Ortskarte:** Name, Art, Öffnungszeiten (Wochentabelle, auch mit Saison
+  wie „Feb-Oct:“ – außerhalb „Geschlossen · geöffnet Februar bis Oktober“),
+  Ausstattung als Chips (Außenplätze, Toiletten für Gäste/öffentlich,
+  Wickeltisch, WLAN, Klimaanlage, Hunde erlaubt), Adresse, Bild und Kurztext aus
   Wikipedia/Commons, an Bahnhöfen die Abfahrten, an Tankstellen die Preise
   (mit eigenem Tankerkönig-Schlüssel). Knöpfe: **Route**, Teilen,
   Erreichbar, Merken, Bearbeiten (OSM) bzw. am freien Punkt „Hier
@@ -250,6 +284,28 @@ Man startet immer mit der Karte.
 - **Listen ansehen und teilen:** Meine Touren → Orte.
 - **Zuletzt gesucht:** WMap merkt sich Orte, Kategorien und Routen; löschbar
   in den Einstellungen und in der Übersicht.
+
+**Suche nach Namen** („Rewe“, „Aldi“, „dm“ – `nameCategory` in
+`js/core/categories.js`): Steht keine Hausnummer oder Postleitzahl im Text
+(keine Ziffer), kommt oben „in der Nähe“ – die passende Kategorie
+(„Parkplatz“ → Parkplätze) bzw. „„Rewe“ in der Nähe“: alle Geschäfte, Lokale
+usw. der Gegend, deren Name oder Marke den Text enthält, als Liste und auf der
+Karte (jeder mit dem Symbol seiner Art; antippen öffnet ihn, dort „Route“).
+Darunter wie bisher die einzelnen Treffer zum direkten Wählen; **Enter** nimmt den
+obersten – stehen die Vorschläge zu genau diesem Text schon da, sofort; sonst
+wird frisch gesucht, und eine noch ausstehende Vorschlagssuche verfällt (kam
+sie nach Enter, machte sie die Suche ungültig: „Nichts gefunden“). Mit Ziffer ist eine Adresse gemeint: die Treffer zuerst.
+
+**Filter der Trefferlisten** (In der Nähe, Entlang der Route, „Vor dir“ in der
+Navigation, Erreichbar – `filterHits` in `js/app/category.js`): Was man nicht
+nutzen kann, fehlt zunächst – **private** Orte (access=private/no, nur
+Anwohner, mit Genehmigung) und was **gerade geschlossen** hat (nach den
+Öffnungszeiten; ohne Angabe gilt es als offen). Chips über der Liste holen sie
+dazu: „Auch private“ (aus) und „Nur offene“ (an, mit der Zahl der
+geschlossenen); dann stehen sie **grau** da, in der Liste und auf der Karte.
+Eingeschränkte wie **Kundenparkplätze** oder „nur Anlieger“ bleiben in der
+Liste, mit dem Hinweis dahinter, und stehen im Dialog gelb gleich unter dem
+Namen („Nur für Kunden“ – `accessOf` in `js/ui/poi-info.js`).
 
 ## 4. Route planen
 
@@ -492,7 +548,9 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
   ein `has`, fehlende Symbole des Grundstils (`atm`, `gate` …) werden leer
   nachgeliefert. Sonst meldet MapLibre das je Kachel in der Konsole.
 - **Eigener Standort:** ein ruhiger Punkt – das Pulsieren von MapLibre ist aus.
-- **Überhöhung:** weit draußen 1,5-fach, ab Zoom 12 1,25, ab Zoom 14 1-fach.
+- **Überhöhung:** auf jeder Zoomstufe 1,5-fach. Bis 2.3.2 nah heran 1-fach,
+  weil MapLibres Häuser sonst schief im Hang standen – die eigenen stehen auf
+  ihrer Bodenhöhe, auch überhöht.
 - **Relief (Schummerung):** Schatten an Hängen, damit Berge und Täler auch
   flach von oben sichtbar sind – kräftig bis Zoom 12, nah heran etwas
   schwächer, aber deutlich (Zoom 16: 0,45, Zoom 17,5: 0,35; `RELIEF` in
@@ -508,18 +566,26 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
   die Wände. Jetzt steht jedes Haus für sich, mit einer Bodenhöhe für alles,
   was dazugehört:
   - Teile eines Hauses (`building:part`): die Höhe seines Umrisses (`hide_3d`
-    – selbst nicht gezeichnet, auch kein Schatten)
+    – selbst nicht gezeichnet)
   - Stücke über einer Kachelgrenze (gleiche Kennung): eine Höhe
   - ein Körper in einem größeren: dessen Höhe; der niedrigere rückt 10 cm je
     Rang ein, sonst kämpfen Wände in derselben Ebene ums Pixel
 
-  Die Wände reichen 10 m in den Boden (am Hang keine Lücke). Farben wie
+  Das Haus steht auf der **tiefsten Stelle** seines Grundrisses (Mitte und
+  Ecken gemessen) – am Hang schwebt nichts. Die Wände reichen nur 0,5 m in den
+  Boden: MapLibre verdeckt eigene Ebenen nicht mit dem Gelände, bis 2.3.2 (10 m)
+  lagen die unterirdischen Wände je nach Blickrichtung über der Straße. Farben wie
   vorher: warme Wände, hohe Häuser kühler, rote, braune oder graue Dächer mit
   Dachkante – je Haus nach seiner Lage (zusammengefasste Häuser teilen sich die
   Kennung), Licht aus Südwest, im Dunkeln fast grau; auf dem Luftbild graue
   Wände und das Luftbild auf dem Dach. Gebaut wird neu, wenn Ort oder Zoom sich
   merklich ändern, Kacheln nachkommen, das Gelände wechselt oder das Design –
-  nicht beim Drehen und Neigen.
+  nicht beim Drehen und Neigen. Ohne Ruckeln: Die Geländehöhe wird einmal je
+  Durchgang nachgeschlagen (`queryTerrainElevation` sucht sonst bei jedem Haus
+  die Kacheln im Bild – in Göttingen 1,2 s), jedes Haus wird nur einmal zu
+  Dreiecken (Zwischenspeicher, fester Ursprung je ≈ 40-km-Feld), und gebaut
+  wird in Häppchen von 8 ms – die Karte zeichnet dazwischen weiter, bis zum
+  Ende stehen die alten Häuser.
 - **Schärfe der Karte** (Einstellungen, ganz unten): Pixeldichte, mit der die
   Karte zeichnet – Automatisch (wie der Bildschirm, höchstens 2), Sparsam (1),
   Mittel (1,5), Scharf (2), Volle Auflösung. Höher: schärfer, aber mehr
@@ -527,10 +593,16 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
   Öffnen der Karte (`sharpness`, `mapPixelRatio` in `js/map/map.js`).
 - **Mobilfunk:** Einmal je Sitzung wird gefragt, ob 3D Daten laden darf. Im
   Datensparmodus bleibt alles flach.
+- **Kartenquelle neu laden:** Scheitert das Laden einer Quelle (TileJSON von
+  OpenFreeMap: kurz kein Netz beim Start), versucht MapLibre es nie wieder –
+  die Karte blieb dann bis zum Neustart ohne Straßen, Orte und Namen. WMap lädt
+  sie selbst neu: nach 2, 5, 10 s, dann alle 30 s, und sofort, wenn das Netz
+  zurück ist oder die App wieder vorn ist (`retryFailedSources` in
+  `js/map/map.js`).
 - **Funkloch:** Scheitern Höhenkacheln dreimal, geht das Gelände aus und wird
   nach einer Minute wieder versucht.
 
-## 8. Tastatur und Fliegen
+## 8. Tastatur, Fliegen und Street View
 
 **Tastatur** (solange kein Eingabefeld den Fokus hat):
 
@@ -565,6 +637,97 @@ ansteigend bis zum **Sechsfachen nach 2,5 s**.
   weit oben schneller, nah am Boden langsamer.
 - **Esc beendet** das Fliegen (mit gesperrtem Zeiger gibt Esc zuerst die Maus
   frei – das beendet den Flug ebenfalls).
+
+**Street View** (`js/map/street.js`; dritte Kachel im Ebenen-Menü neben Karte
+und Satellit, Menü → Street View, am Ort „Umsehen“, `?action=street`): als
+Mensch auf der Straße stehen und umhergehen – **nicht in Häuser**: Wer gegen
+ein Haus läuft, bleibt 40 cm davor stehen oder rutscht an der Wand entlang
+(Grundrisse aus dem letzten Bau der Gebäude-Ebene, `inside` in
+`js/map/buildings.js`; Brückenteile und Durchfahrten zählen nicht).
+
+- Kamera auf **Augenhöhe** (1,7 m über dem Gelände, folgt Hängen weich), Blick
+  82°, bis 60° in den Himmel, Blickwinkel 60°. Der **Boden als Modell**
+  (`js/map/street-look.js`, in der Art von Streets GL) statt Luftbild: Straßen
+  und Wege in echter Breite (Meter), Gehwege als heller Rand, Asphalt grau,
+  Rasen, Wald, Wasser, Plätze gepflastert (ohne Muster); war Satellit an, kommt
+  es danach wieder. Einbahnige Fahrstraßen (`oneway`, meist eine Fahrbahn einer
+  zweibahnigen Straße) gut halb so breit – sonst deckten sie den Grünstreifen zu. Suche und Knöpfe weg, unten ein Hinweis mit dem Knopf „Karte“.
+- **Rechner:** Ein Klick ins Bild fängt die Maus (Pointer Lock, Punkt in der
+  Mitte) – sie dreht den Blick ohne Ziehen, gleichzeitig gehen W/A/S/D
+  (Shift laufen, 1,6 → 6 m/s); Q/E (←/→) drehen, R/F hoch/runter schauen,
+  Mausrad vor/zurück, Doppelklick geht zur Bildmitte. Esc gibt die Maus frei,
+  ein zweites Esc beendet.
+- Beschriftungen und Symbole der Karte sind in Street View aus (auch später
+  dazukommende wie Ampeln): MapLibre zeichnet sie über alles, auch durch
+  Hauswände.
+- **Geschäfte** (`js/map/street-shops.js`): ihr Haus bekommt ein Erdgeschoss
+  (bis 3,6 m) in der Farbe ihrer Art, darüber steht der Name an der Fassade –
+  nur, was man sieht (kein Haus dazwischen), bis 200 m (fern kleiner);
+  überdecken sich Namen, bleibt der nähere. **Bauwerke** (Schloss, Kirche,
+  Museum, Denkmal …) mit grauem Namen höher an der Fassade, Hinschauen bis 80 m. **Hinschauen** (bis 35 m, ±7° um die Bildmitte, 0,8 s)
+  öffnet unten den Dialog des Geschäfts, wegschauen schließt ihn wieder; wer
+  ihn selbst schließt, bekommt ihn erst nach einem Blick woanders hin wieder.
+  Antippen des Namens öffnet ihn auch (bleibt dann offen).
+- **Dachformen** aus OSM (`roof:shape`, `roof:height`, `roof:orientation`,
+  `roof:colour`, `building:colour` – mit den Details aus Overpass geholt):
+  Das Dach steht über dem kleinsten Rechteck um den Grundriss, jede Fläche
+  steigt gleichmäßig von ihrer Seite an. Satteldach (First längs, mit
+  `across` quer; Giebelwände bis unter den First), Walm- und Zeltdach, Pultdach;
+  Mansard-, Kuppel- und Zwiebeldach angenähert. Ohne `roof:height` etwa 35°
+  (Pultdach flacher), höchstens 60 % des Hauses. Dach- und Hausfarbe aus OSM.
+- **Gleise:** Schotterbett mit Schwellen (alle 64 cm) und zwei Schienen
+  (Spur 1,435 m); Straßenbahn ohne Schotter, die Schienen im Straßenbelag.
+- **Bilder an der Wand:** Hat ein Geschäft oder Bauwerk in OSM ein Bild
+  (`image`, `wikimedia_commons`), steht es klein vorn im Schild (gleicher
+  Name, höchstens 60 m weg; aus derselben Overpass-Abfrage).
+- **Haltestellen aus den Kacheln** (Bus und Straßenbahn): Mast mit gelbem
+  Schild; steht ein Unterstand (`amenity=shelter`) bis 12 m daneben, ein
+  Wartehäuschen (Dach, Bank, Glas halb durchsichtig). Straßenbahn-Halte rücken
+  vom Gleis an den nächsten Bahnsteig (bis 25 m); jede nur einmal.
+  Darüber ein gelber Knopf „H Name ›“ – antippen öffnet die Abfahrten
+  (`js/map/tile-stops.js`, auch für die 3D-Karte). Der Klotz des Unterstands
+  aus den Kacheln fällt dort weg.
+- **3D-Karte ab Zoom 17:** dieselben Haltestellen (Schild, Häuschen) im Umkreis
+  von 600 m – ohne Overpass, Mauern und Bäume nur in Street View.
+- **Namen als Schild an der Wand:** auf dem farbigen Erdgeschoss der Wand zur
+  Straße, perspektivisch (CSS `matrix3d`); zu klein zum Lesen (unter 10 px):
+  schwebend davor.
+- **Sparsam:** Geländehöhe nur für Namen im Bild (je Name höchstens alle 5 s),
+  Lage der Haltestellen an der Straße einmal je Haltestelle.
+- **Aus Overpass nur, was die Kacheln nicht kennen** – je Feld des Rasters
+  (Kachel z16, rund 400 × 400 m; das eigene und Nachbarn bis 200 m) einmal
+  gefragt, 30 Tage im Cache „wmap-street“ behalten (leere Antworten nur für
+  die Sitzung – so antwortet ein überlasteter Server); nach einem Fehler 60 s
+  Ruhe:
+  - **Mauern** (`barrier=wall`, Stadtmauer, Stützmauer) mit Höhe aus OSM.
+  - **Dächer auf Pfosten** (`building=roof`, Unterstände) statt Klotz – dort
+    kein zweites Häuschen.
+  - **Bäume** und Baumreihen (alle 8 m ein Baum); Krone aus `diameter_crown`,
+    sonst 0,4 × Höhe (höchstens 6 m).
+- **Hausfarben** aus OSM (`building:colour` bzw. Material, in den Kacheln
+  `colour`), leicht mit dem üblichen Ton gemischt. Grün sind nur echte Parks –
+  nicht Natur- und Geoparks über ganzen Städten.
+- **Oben** nur, wo man ist: „Haltestelle …“ (bis 15 m) oder Straße bzw. Platz.
+- **Häuser nur im Umkreis von 250 m** (`setFocus` in `js/map/buildings.js`),
+  neu gebaut erst nach 100 m Weg – der Rest bis zum Horizont kostet nur.
+- **Handy:** Ein Finger dreht (und hebt) den Blick – ein Wisch über die ganze
+  Breite dreht doppelt so weit, wie das Bild breit ist (hoch und runter bleibt
+  die Welt am Finger); die Zoomgeste geht vor
+  (auseinander) oder zurück (zusammen) in Blickrichtung – 14 m je Verdopplung
+  des Fingerabstands. Doppelt tippen: dorthin gehen (bis 300 m, 1,5 m davor
+  stehen bleiben). Ein Tipp auf ein Geschäft öffnet es wie auf der Karte.
+- **Teilen** (Knopf unten): Link `?street=Länge,Breite,Richtung,Blick` – wer
+  ihn öffnet, steht genau so da.
+- **Esc** oder „Karte“: zurück zur Karte über dem Punkt, an dem man stand.
+- Technik: MapLibre bekommt Mitte, Zoom und Neigung aus Kamera-Ort, Höhe und
+  Blick (`calculateCameraOptionsFromCameraLngLatAltRotation`); die Mitte darf
+  dafür nicht am Boden kleben (`centerClampedToGround` aus), sonst hebt
+  MapLibre die Kamera an. Ab 85° legt MapLibre die Mitte 10 km weit weg – die
+  Karte nähme die Zoomstufe der Übersicht (breite Straßen, grobe Kacheln).
+  Ab 90° Neigung findet MapLibre den Punkt unter der Kamera nicht mehr (er
+  läge unendlich weit oben) und nahm den Startpunkt – nach 100–200 m Weg teilte
+  es Kacheln bis Zoom 26 und lud nichts mehr. Street View gibt ihn selbst an
+  (`fixCameraPoint`); genau 90° wird zu 90,05° (sonst atan(0/0)).
 
 ## 9. Übersicht (Dashboard)
 
@@ -613,6 +776,24 @@ Die ersten zwei:
 | Gruppen | Zu Fuß · Rad · Auto | Jahre, jede Tour in der Farbe ihrer Art |
 | Zahlen | Strecke, Anstieg | Strecke, Zeit in Bewegung, Tempo, Puls |
 
+- **Kopfzeile in Aufgezeichnet:** sortieren nach Datum, Länge, Dauer, Tempo
+  oder Name (der Pfeil daneben dreht um) und filtern nach Art, Tag und
+  Zeitraum (letzte 30/90 Tage, letztes Jahr, dieses Jahr), „Alle“ setzt
+  zurück; gemerkt (`wmap.wegeView`). Nach Datum bleiben die Jahre, sonst eine
+  Liste mit der Summe oben. Im Modus „Vergleichen“ kreuzt **Alle auswählen**
+  alle sichtbaren an – erst filtern, dann alle vergleichen.
+- **Namen** (`js/data/auto-name.js`): Touren, die nur nach Datei, App oder
+  Datum heißen („Zepp20240503181502“, „Activity_1234.fit“, „Morning Run“,
+  „Lauf 1“), bekommen einen Namen aus Art, Gegend und Tageszeit: „Lauf in
+  Klein Lengden am Sonntagmorgen“. Die Gegend ist der nächste Ort laut Photon
+  (bei Runden die Mitte der Strecke, sonst der Start; höchstens ein Abruf je
+  Sekunde, ohne Netz ohne Gegend). Beim Import (Datei, Ordner, Uhr) bekommt
+  jede fremde Datei so einen Namen – von WMap exportierte behalten ihren.
+  Selbst Aufgezeichnetes nie. Benannt wird jede Tour einmal (`nameAuto`);
+  ändert man den Namen selbst, bleibt er.
+- **Tags:** im Weg unter „Art, Farbe, Tags und Anzeige“ – z. B. „Rennen“,
+  „Vorbereitung“; vorhandene werden vorgeschlagen. Sie stehen an der Zeile,
+  filtern die Liste und stehen in der GPX-Datei (`<wmap:track tags="…"/>`).
 - **Oben:** Tour planen bzw. Aufzeichnen und GPX/FIT importieren (mehrere
   Dateien bzw. solche, die es als Tour schon gibt: mit der Rückfrage aus
   [15](#mehrere-dateien-eine-frage-für-alle)), darunter die Suche (Name, Ort, Jahr, Monat, Profil …),
@@ -644,16 +825,27 @@ Die ersten zwei:
   Tour ein Punkt am Start, nahe beieinander zusammengefasst mit der Anzahl
   (antippen zoomt hinein); näher die Linien. Die gewählte Tour trägt
   **Kilometermarken** 1, 2, 3 … (lange Touren alle 5 bzw. 10 km); der Punkt
-  aus dem Diagramm liegt über der Linie.
+  aus dem Diagramm liegt über der Linie. **Antippen mit Spielraum:** die
+  Linien sind nur 2–4 px dünn – getroffen wird erst genau, dann immer weiter
+  um den Punkt (am Handy bis 24 px um den Finger, mit der Maus bis 8 px).
 - **Unten:** ein Hinweis auf „Sicherung & Synchronisation“ (Ordner, Health
   Connect, ZIP) – die Knöpfe dafür stehen nur noch dort.
-- **Detail** (Zeile oder Linie antippen): Name oben, ← zurück zur Liste.
-  - Aufgezeichnet: Name änderbar, Datum und Uhrzeit, Strecke, Zeit in
-    Bewegung, Ø und max. km/h, Anstieg, Ø/max. Puls, Ø Frequenz und
+- **Detail** (Zeile oder Linie antippen): Name oben, ← zurück – im Verlauf,
+  wenn man innerhalb der Seite hierher kam (dann führen ← und die
+  Zurück-Taste von Handy und Browser an dieselbe Stelle, auch durch mehrere
+  Wechsel), sonst zur Liste.
+  - Aufgezeichnet: im Kopf zwischen ← und ✕ das Symbol der Art und der
+    **Name als Feld** (antippen und ändern, Enter oder Verlassen speichert;
+    geteilte und geöffnete nur lesen – `header()` in `js/ui/map-page.js`),
+    Datum und Uhrzeit, Zeit in Bewegung, Strecke, Ø und max. km/h, Anstieg, Ø/max. Puls, Ø Frequenz und
     Leistung (aus GPX oder Health Connect); die Linie ist nach Tempo
     gefärbt (langsam grün → schnell rot).
-    **Diagramm** mit Umschalter: Höhe, Tempo, Puls, Schritt- bzw.
-    Trittfrequenz, Leistung – nur, was gemessen wurde; Zeiger im Diagramm
+    **Diagramm**, frei kombinierbar: Höhe, Tempo, Puls, Schritt- bzw.
+    Trittfrequenz, Leistung – nur, was gemessen wurde; jeder Chip schaltet
+    seine Reihe dazu oder weg (eine bleibt, gemerkt in `wmap.chart`). Mehrere
+    liegen übereinander, jede mit eigener Skala: die erste links, die zweite
+    rechts in ihrer Farbe, ab der dritten nur im Tooltip; oben je Reihe ihr
+    Durchschnitt (`showMany` in `js/ui/elevation.js`). Zeiger im Diagramm
     und auf der Linie zeigen dieselbe Stelle. Der Knopf rechts im Kopf
     öffnet es im **Vollbild** (auch in der Route und im Tourenplaner; die
     Umschalter ziehen mit, zoomen geht nur dort – `js/ui/elevation.js`).
@@ -692,10 +884,44 @@ Die ersten zwei:
       lange Wege auf 500 Punkte ausgedünnt, `js/data/track-share.js`): wer ihn
       öffnet, sieht die Tour mit Diagrammen und kann sie „Bei mir speichern“.
       Oder als **GPX-Datei** (Teilen-Menü des Geräts, sonst speichern).
+    - **Vergleichen:** zurück in die Liste, diese Tour schon angekreuzt.
     - GPX, Löschen.
     Liegt die Tour nur im Ordner, zeigt die Seite erst die Karteikarte und
     holt dann alle Punkte; ist der Ordner nicht erreichbar, bleiben Zahlen
     und grober Verlauf mit einem Hinweis.
+    **Gleiche Strecke** (`js/data/same-route.js`): Gibt es denselben Weg öfter
+    (gleiche Fortbewegung, Länge ±15 %, Start bei Start und Ziel bei Ziel je
+    200 m, Verlauf deckt sich zu 90 % auf 60 m – in beide Richtungen geprüft),
+    steht oben im Weg „Gleiche Strecke – n-mal“ mit „Vergleichen“. Darunter
+    die **Abweichung**: Genau (so), Ähnlich (150 m, Länge ±30 %, 75 %) oder
+    Grob (400 m, ±50 %, 60 %, Start und Ziel 1,5 km) – je mit der Zahl der
+    weiteren Touren, gemerkt (`wmap.sameLevel`). Der
+    Vergleich geht dann **vom aktuellen aus** (`?compare=…&focus=id`): er
+    kräftig, die anderen schmal und blass (Liste, Diagramme, Karte); Maus über
+    einem anderen (Liste oder Linie) hebt ihn überall hervor, **Doppelklick**
+    macht ihn zum aktuellen (am Handy: erster Tipp hebt hervor, zweiter
+    wechselt) – als neuer Eintrag im Verlauf, Zurück führt zum vorigen.
+    **Kacheln** „Dieser Lauf im Vergleich“: zum vorigen Mal, zu den letzten 5,
+    zum Durchschnitt, zum besten bzw. schlechtesten (umschaltbar, gemerkt) –
+    je Kennzahl der Wert, ± und Prozent, grün besser, rot schlechter. Die
+    Tabelle aller Läufe ist dann zugeklappt; die **Entwicklung** zeigt die
+    Gesamtzeit (oder Ø Tempo, Puls …) über die Tage, der aktuelle als großer
+    Punkt. Im Verlauf über die Strecke lassen sich mehrere Größen zugleich
+    zeigen (je Größe ein Diagramm).
+    **Vergleichen** (`js/pages/wege-compare.js`, `wege.html?compare=id,id,…`):
+    in Aufgezeichnet „Vergleichen“, dann Zeilen (oder Linien auf der Karte)
+    ankreuzen – oben eine Leiste mit der Anzahl, ab zwei geht es los. Jedes
+    Training hat eine Farbe und eine Nummer (das älteste zuerst), auf der
+    Karte jede Linie in ihrer Farbe. Eine **Tabelle**: Zeit in Bewegung,
+    Strecke, Ø Tempo, Ø/max. Puls, Herzschläge je km (Ø Puls × Zeit ÷
+    Strecke – gleich schnell mit weniger Schlägen heißt fitter), Ø Frequenz,
+    Ø Leistung; rechts die **Veränderung** vom ältesten zum neuesten, mit
+    Prozent: grün besser, rot schlechter (Tempo, Strecke, Leistung mehr,
+    Herzschläge je km weniger; Puls und Zeit ohne Wertung; unter 0,5 %
+    zählt nicht). Darunter der **Verlauf über die Strecke** – Tempo, Puls,
+    Frequenz oder Leistung aller Trainings übereinander auf einer Skala –
+    und ab drei Trainings die **Entwicklung**: der Durchschnitt des
+    gewählten Maßes je Training, am Datum.
     Puls, Frequenz und Leistung stehen je Punkt am Weg und gehen als
     GPX-Erweiterung (gpxtpx:hr/cad, power) mit in den verbundenen Ordner;
     beim Ausdünnen bleibt mindestens alle 30 s ein Punkt.
@@ -709,6 +935,28 @@ Die ersten zwei:
 ## 11. Tour planen
 
 `tour.html` – Punkte in die Karte setzen, dazwischen wird nach Profil geroutet.
+
+- **Gemeinsam planen** (Teilen → „Gemeinsam planen“): Die Tour liegt
+  verschlüsselt auf dem WMap-Server – 30 Tage ab der letzten Änderung, solange
+  geplant wird, verfällt sie nicht. Der Link
+  (`tour.html#k=<Kennung>.<Schlüssel>.<Recht>`) erlaubt das Mitplanen. Wer ihn
+  öffnet, wählt „Als neue Tour“ oder „Mit der gewählten verbinden“ (eine eigene
+  Tour, z. B. dieselbe Runde – beide werden zusammengeführt); danach plant er
+  mit. Jede gespeicherte Änderung geht zurück (`share/update`, mit
+  Stand-Nummer), die der anderen kommen alle 20 s und beim Zurückkehren zur
+  Seite. Haben zwei gleichzeitig geändert, **führt die App zusammen**
+  (`data/tour-merge.js`, wie diff3 gegen den letzten gemeinsamen Stand): Was
+  nur einer geändert hat, kommt ohne Frage hinein; nur wo beide dieselbe
+  Stelle anders geändert haben (dieselben Punkte, Name, Beschreibung, Art),
+  fragt sie – bei Punkten mit beiden Fassungen auf der Karte (eigene lila,
+  die andere orange, gestrichelt vom Punkt davor bis danach). Oben im Panel
+  und in Meine Touren ein Chip: „Geteilt · noch 28 Tage“ bzw. „Eingeladen
+  von Anna · noch 28 Tage“, darunter „zuletzt geändert von …“; der Name kommt
+  aus derselben Frage wie bei Standort-Anfragen (einmal, bleibt auf dem Gerät).
+- **Link öffnen** (Meine Touren, Geplant und Aufgezeichnet): einen geteilten
+  WMap-Link in der App öffnen, ohne Umweg über den Browser – steht einer in
+  der Zwischenablage, steht er gleich im Feld; Text drumherum (aus dem Chat)
+  stört nicht (`ui/open-link.js`).
 
 - **Aufbau:** Panel wie bei Meine Touren und Entdecken – am Rechner links in
   voller Höhe (Breite ziehen, ganz einklappen), am Handy unten. Kopf: ← zu
@@ -766,8 +1014,16 @@ Die ersten zwei:
 
 - Menü → Aufzeichnen, Art wählen (zu Fuß, Rad, Auto), los. Unten Zeit, Strecke
   und Tempo, Pause und Stopp; die Linie wächst live mit.
-- Punkte werden nur genommen, wenn das GPS auf **35 m** genau ist und man sich
-  **4 m** bewegt hat. Stehzeiten zählen nicht zur Bewegungszeit.
+- Das GPS meldet sich **jede Sekunde** (genau, `enableHighAccuracy`; im
+  Hintergrund-Dienst der App alle 2 s). Ein Punkt kommt dazu, wenn das GPS
+  auf **35 m** genau ist und man sich **4 m** bewegt hat – zu Fuß also etwa
+  alle 3 s, mit dem Rad jede Sekunde. Stehzeiten zählen nicht zur
+  Bewegungszeit.
+- **Karte:** Sie folgt dem Standort, er steht im unteren Teil des Bilds –
+  vorn ist mehr zu sehen. Wer selbst schiebt, zoomt oder dreht, schaut frei
+  herum: Dann wandert nur der Punkt, **Mitführen** holt die Karte zurück.
+  Suchen und Navigieren gehen nebenher (die Aufzeichnung läuft weiter);
+  **Zum Start** plant die Route vom Standort zum Anfang der Aufzeichnung.
 - Nach Absturz oder Neuladen geht es weiter (bis 12 Stunden).
 - Beim Stopp einen Namen geben oder verwerfen. Gespeichert wird nur auf dem
   Gerät.
@@ -1098,9 +1354,31 @@ und ohne Server.
 - **Fortschritt:** „Gleiche ab … 40 von 96 (42 %) · noch etwa 1 Min.“ mit
   Balken, in der Übersicht „Gleiche ab …“ auf der Kachel. Alle 2 s wird der
   Stand gespeichert (`pending`) und schon Übernommenes gemeldet (Meine
-  Touren zeigt es sofort). Wer die Seite wechselt, bricht den Abgleich ab –
-  die nächste Seite mit `autoSync()` macht dort weiter (auch bei Automatik
-  „Aus“) und liest nur, was noch nicht im Stand war.
+  Touren zeigt es sofort).
+- **Im Service Worker** (`js/sw/sync.js`, angemeldet als Modul `sw-app.js`):
+  Ordner-Abgleich, Health Connect, Import von Dateien und ZIP laufen dort –
+  ein **Seitenwechsel bricht sie nicht ab**. Die Seiten geben nur Aufträge
+  (`js/core/sw-link.js`: `sync:auto`, `sync:folder`, `sync:soon` nach einer
+  Änderung …) und zeigen den Stand aus seinen Meldungen (`wmap:folder`,
+  `wmap:folder-progress` … kommen auf jeder offenen Seite an – Meine Touren
+  zeigt neue Wege ohne Neuladen). Solange er arbeitet, halten ihn die Seiten
+  alle 20 s wach.
+  - **App:** Ordner und Health Connect gibt es nur über Tauri in der Seite –
+    der Service Worker bittet eine offene Seite als **Boten**
+    (`js/core/tauri.js`); beim Seitenwechsel wartet er, bis die nächste da
+    ist, und fragt dort noch einmal. Im Hintergrund friert Android die App
+    samt Service Worker nach etwa 10 s ein – zurück im Bild geht es weiter.
+  - **Browser:** den gewählten Ordner öffnet er selbst; nach dem Recht fragt
+    die Seite (braucht den Klick). Darf er ihn nicht, gleicht die Seite ab.
+  - Einstellungen, Touren, Lesezeichen liegen im localStorage, den es im
+    Service Worker nicht gibt – was der Abgleich braucht, hat eine Kopie in
+    IndexedDB (`local`, `js/data/store.js`); je Schlüssel gilt das Neuere.
+  - GPX liest er mit einem eigenen kleinen XML-Leser (`js/core/xml.js`, kein
+    DOMParser im Service Worker).
+  - Ohne Service Worker (erster Besuch, Debug-App mit eingepackter
+    Oberfläche) gleicht die Seite selbst ab; ein abgebrochener Abgleich wird
+    von der nächsten Seite fertig gemacht (auch bei Automatik „Aus“) und
+    liest nur, was noch nicht im Stand war.
 - **Abgleich** beim Öffnen und 2,5 s nach jeder Änderung (je nach
   Automatik), sonst mit „Jetzt abgleichen“. Beim Öffnen einer Seite höchstens
   alle 5 Minuten (`autoFolderSync` – WMap hat mehrere Seiten, sonst liefe er
@@ -1233,11 +1511,17 @@ Zeit, Puls, Frequenz, Leistung, Sportart und die Runden der Uhr). Je Datei:
   für die Sitzung in `sessionStorage`), sonst im Planer. Dort: **Als
   aufgezeichnete Tour speichern** oder **Als geplante Tour öffnen**. Bei
   mehreren Dateien hat jede Karte „Ansehen“.
-- **Zusammenführen mit Haken:** Gibt es die Tour schon, kommt ein Dialog mit
-  einem Haken je Angabe, die die Datei anders hat – Strecke („x Punkte mehr/weniger in der
-  Datei, y hier“), Puls, Frequenz, Leistung, Runden der Uhr. Angehakt ist, wo
-  die genaueren Daten gewinnen; „Zusammenführen“ übernimmt, „Abbrechen“ ändert
-  nichts (`choices`/`combine`, `js/ui/merge-ask.js`).
+- **Zusammenführen: Neu oder Bisher.** Gibt es die Tour schon, sagt der
+  Dialog oben, was **Neu** ist (die Datei, die doppelte Aufzeichnung samt
+  Herkunft – sie wird danach gelöscht – oder der geteilte Link) und was
+  **Bisher** (die Tour, die bleibt). Je Angabe, die sich unterscheidet, eine
+  Zeile mit beiden Werten zur Wahl: **Strecke · Zeit · Kilometer** (eine
+  Angabe – alle drei kommen aus denselben Punkten; z. B. „8,4 km · 47 min ·
+  88 Punkte“ gegen „8,3 km · 46 min · 41 Punkte“), Puls, Frequenz, Leistung,
+  Runden der Uhr. Gewählt ist, wo die genaueren Daten sind; „Neu“ ersetzt das
+  Bisherige, Name, Art und Farbe bleiben. „Abbrechen“ ändert nichts
+  (`choices`/`combine`, `js/ui/merge-ask.js`). Neue Dateien ohne vorhandene
+  Tour behalten die Haken, welche Messwerte mitkommen.
 - **Mehrere Dateien:** oben die Übersicht (neu / zu einer Tour, die es schon
   gibt / gibt es schon) und „Alle … übernehmen …“; die Frage für alle kommt
   gleich nach dem Wählen von selbst (nächster Abschnitt).
@@ -1291,9 +1575,12 @@ In der App schickt `js/core/theme.js` beim Start einer Seite zu
 - **Kurzer Link** (`js/data/short-link.js`, `bEnd/api_share.php`): Der Link
   einer Aufzeichnung oder Tour ist bei vielen Daten zu lang für manches
   Chatfeld. Ab 400 Zeichen bietet der Teilen-Dialog „Kurzen Link erstellen“:
-  Der gepackte Inhalt liegt dann 30 Tage unverschlüsselt auf dem WMap-Server
-  (Tabelle `Shares`), der Link trägt nur die Kennung (`wege.html#k=…`,
-  `tour.html#k=…`). Beim Öffnen holt die Seite den Inhalt und setzt den langen
+  Der gepackte Inhalt liegt dann 30 Tage auf dem WMap-Server (Tabelle
+  `Shares`) – **verschlüsselt** (AES-GCM im Browser), der Link trägt Kennung
+  und Schlüssel (`wege.html#k=<Kennung>.<Schlüssel>`, `tour.html#k=…`); der
+  Schlüssel steht hinter `#` und erreicht den Server nie. Ältere Links ohne
+  Schlüssel gehen weiter; ohne https (keine Verschlüsselung im Browser) wie
+  früher. Beim Öffnen holt die Seite den Inhalt und setzt den langen
   Link in die Adresse (`resolveShort`). Ohne Anmeldung, höchstens 40 Links je
   Herkunft und Tag; Älteres löscht der Server bei jedem Aufruf. Der lange Link
   ohne Server bleibt die Voreinstellung.
@@ -1513,7 +1800,9 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 
 ## 20. Offline und Datenverbrauch
 
-- Der Service Worker (`sw.js`) hält **genau eine Version** der App bereit –
+- Der Service Worker (`sw.js`, angemeldet als Modul `sw-app.js` mit dem
+  Abgleich, siehe Abschnitt 15; kann ein Browser das nicht, `sw.js` allein)
+  hält **genau eine Version** der App bereit –
   **erst Cache, sonst Netz**, auch mit Netz. Jede Fassung hat ihren Cache
   `wmap-app-<Version>-<Stand>`; beim Installieren lädt er alle Dateien aus
   `appdata/sw-files.json` vorab (von `appdata/version.py` erzeugt: alles,
@@ -1605,7 +1894,8 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
 | `?q=Parkplatz` | Suche |
 | `?from=Göttingen&to=Kassel&profile=bike` | Route (auch `lon,lat`) |
 | `?reach=lon,lat` | Erreichbarkeit |
-| `?action=route\|record\|fly\|reach\|survey` | Ansicht öffnen |
+| `?action=route\|record\|fly\|street\|reach\|survey` | Ansicht öffnen |
+| `?street=lon,lat,richtung,blick` | geteilte Street-View-Ansicht |
 | `?ort=…`, `?route=…`, `?anfrage=…` | Geteiltes |
 | `?geo=geo:51.53,9.93?q=…` | Karten-Link einer anderen App (`geo:`) – Punkt, Punkt mit Namen oder Suche. In der App: `open_link` (läuft schon) bzw. beim Start `pending_link` – die Seite holt den Link selbst ab (`js/core/theme.js`), am Handy kommt das Umschalten beim Start sonst nicht an |
 | `?sim`, `?tempo=4` | Navigation simulieren – auch am Handy im Browser oder in der App (Link `https://app.wuefl.de/wmap/index.html?from=…&to=…&profile=car&sim` öffnen); `sim=verfahren`, `sim=rauschen` |

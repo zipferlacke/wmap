@@ -3,13 +3,19 @@
  * hat das Log-Plugin, src-tauri/capabilities/debug-log.json). Die Zeilen landen in der Ausgabe von
  * `cargo tauri dev` und in ~/.local/share/de.wuefl.wmap/logs/WMap.log. Überall sonst: nur die Konsole.
  */
-const core = window.__TAURI__?.core;
+const core = globalThis.window?.__TAURI__?.core;
 const dev = !!core && ['localhost', '127.0.0.1'].includes(location.hostname);
 const t0 = performance.now();
+// Im Service Worker (js/sw/sync.js): weiter an eine offene Seite, die schreibt es mit
+const sw = typeof ServiceWorkerGlobalScope !== 'undefined' && globalThis instanceof ServiceWorkerGlobalScope;
 
 export function devLog(...parts) {
   const text = parts.map((p) => (typeof p === 'string' ? p : JSON.stringify(p))).join(' ');
   console.info('[WMap]', text);
+  if (sw) {
+    self.clients.matchAll({ type: 'window' }).then((list) => list[0]?.postMessage({ type: 'devlog', text })).catch(() => {});
+    return;
+  }
   if (!dev) return;
   const line = `[${((performance.now() - t0) / 1000).toFixed(1)} s ${location.pathname.split('/').pop() || 'index.html'}] ${text}`;
   // level 3 = Info (tauri-plugin-log)

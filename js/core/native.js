@@ -16,7 +16,8 @@
  */
 import { trustedSpeed } from './smooth.js';
 
-const core = window.__TAURI__?.core;
+// (Auch im Service Worker geladen – über data/tracks.js; dort ohne Fenster)
+const core = globalThis.window?.__TAURI__?.core;
 // Das Plugin gibt es nur in den Handy-Apps (siehe src-tauri/Cargo.toml)
 let nativeGeo = !!core && /Android|iPhone|iPad/i.test(navigator.userAgent);
 const notAllowed = (err) => /not allowed/i.test(String(err));

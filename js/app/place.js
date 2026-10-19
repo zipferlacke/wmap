@@ -204,6 +204,7 @@ export function paintPlaceActions() {
       carLink.connected && ['directions_car', 'Ans Auto', false, () => sendToCar({ type: 'place', point, label, poi: !!wp.poi }, toast)],
       ['share', 'Teilen', false, () => share({ title: label, text: label, url: () => placeUrl(point, label), geo: { point, name: label } }, toast)],
       ['radar', 'Erreichbar', false, () => openReach({ origin: point, label })],
+      ['streetview', 'Umsehen', false, () => { closeAll(); dispatchEvent(new CustomEvent('wmap:street', { detail: point })); }],
       [places.find(point) ? 'bookmark_added' : 'bookmark_add', places.find(point) ? 'Gemerkt' : 'Merken', false,
         () => togglePlace(f, point, label, f.properties._point ? '' : geocode.describe(f).subtitle)],
       // OpenStreetMap: Ort aus OSM bearbeiten, am freien Punkt einen neuen eintragen

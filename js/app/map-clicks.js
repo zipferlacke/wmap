@@ -3,11 +3,13 @@
  */
 import { showHover, BASE_POI_LAYERS, osmRef } from '../map/map.js';
 import { keyboardControl } from '../map/keys.js';
+import { streetView } from '../map/street.js';
 import { mountSignals } from '../map/signals.js';
 import { mapLayerIds, propertyTable } from '../map/layers.js';
 import { mountLayerMenu } from '../ui/layer-menu.js';
 import { presetOf, layerInfoAt, layerInfoHtml } from '../map/presets.js';
 import { ask, toast } from '../ui/dialogs.js';
+import { share, streetUrl } from '../ui/share.js';
 import { nearestOnLine, esc } from '../core/geo.js';
 import { current, map, sheet, state } from './core.js';
 import { nav } from './nav.js';
@@ -16,6 +18,7 @@ import { reach } from './reach.js';
 import { isSet, setWaypoint } from './route-plan.js';
 import { elevation, focusTransitLeg, selectRoute } from './route-results.js';
 import { trafficItems } from './traffic-along.js';
+import { closeAll } from './views.js';
 
 /* ══════════════════════════════════════════════════════════════════════════
    Karte: Klicks und langes Drücken – alles erscheint unten im Sheet,
@@ -38,7 +41,7 @@ function openBasePoi(feat) {
   showPlace(f, { over: overContext(), fly: false });
 }
 
-map.on('contextmenu', (e) => showPoint(e.lngLat.toArray()));
+map.on('contextmenu', (e) => { if (!street.active) showPoint(e.lngLat.toArray()); });
 
 /* Langes Drücken auf dem Handy entspricht dem Rechtsklick */
 {
@@ -46,7 +49,7 @@ map.on('contextmenu', (e) => showPoint(e.lngLat.toArray()));
   const cancel = () => { clearTimeout(timer); timer = null; };
   map.on('touchstart', (e) => {
     cancel();
-    if (e.points.length !== 1) return;
+    if (e.points.length !== 1 || street.active) return;
     timer = setTimeout(() => showPoint(e.lngLat.toArray()), 550);
   });
   map.on('touchend', cancel);
@@ -58,12 +61,28 @@ const CLICKABLE = ['traffic-icon', 'poi-nr', 'poi-dot', 'hl-nr', 'hl-dot', 'rout
 
 /* Ebenen-Menü: Satellit, Wandern & Rad, Wanderwege, eigene Ebenen und Plugins */
 const layerMenu = mountLayerMenu(map, { toast });
+/* Street View (map/street.js): auf Augenhöhe durch die Straßen – aus dem Ebenen-Menü, dem Menü, „Umsehen“ an einem
+   Ort (Ereignis 'wmap:street', detail: Punkt) oder ?action=street */
+export const street = streetView(map, {
+  base: layerMenu.base, setBase: layerMenu.setBase,
+  onShare: (where) => share({ title: 'Street View', text: 'Schau mal, hier:', url: () => streetUrl(where) }, toast),
+  // Geschäft angeschaut oder angetippt: sein Dialog unten (wie ein Klick auf den Ort in der Karte)
+  poi: {
+    open: (f) => openBasePoi(f),
+    close: () => { if (sheet.dataset.current === 'place') closeAll(); },
+    isOpen: () => sheet.open && sheet.dataset.current === 'place',
+  },
+});
+map.wmapStreet = street;
+addEventListener('wmap:street', (e) => { if (fly.active) fly.stop(); street.start(e.detail ?? null); });
 // Ampeln ab Zoom 15 – nur wo eine steht (map/signals.js)
 mountSignals(map);
 
 map.on('click', (e) => {
   // Beim Fliegen sperrt ein Klick nur die Maus (map/keys.js) – nichts öffnen
   if (fly.active) return;
+  // Street View mit gefangener Maus: der Klick fängt nur die Maus
+  if (street.active && document.pointerLockElement) return;
   // Bus & Bahn: Abschnitt der Verbindung angetippt → hervorheben, Beschreibung zeigen
   if (current()?.transit && !nav.active && sheet.dataset.current === 'route') {
     const legs = ['route-main', 'route-walk'].filter((id) => map.getLayer(id));

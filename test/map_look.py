@@ -4,7 +4,7 @@
 2. 3D-Häuser zeichnet WMap selbst (js/map/buildings.js), MapLibres „building-3d“ ist aus. Jedes Haus hat seine
    eigene Bodenhöhe, auch wenn die Kacheln viele zu einem Objekt zusammenfassen (Rittmarshausen, Birkenweg);
    was ineinander steckt (dasselbe Haus mit 12 m und als 5-m-Stück), steht auf derselben Höhe, der niedrigere
-   rückt ein. Der Umriss von Häusern aus Teilen (`hide_3d`) wird nicht hochgezogen, auch kein Schatten.
+   rückt ein. Der Umriss von Häusern aus Teilen (`hide_3d`) wird nicht hochgezogen. Kein Schatten am Boden mehr.
 3. Gelände in voller Auflösung (Zoom 16), die Navigation gröber (Zoom 13).
 4. Relief nah heran noch deutlich (Zoom 16: mindestens 0,4); der Schalter „Relief“ blendet es aus und ein."""
 import json
@@ -19,7 +19,7 @@ MAP = """const m = window.__wmap.map; const st = m.getStyle(); const lay = (id) 
 const hasHide = (f) => JSON.stringify(f ?? null).includes('hide_3d');
 const ex = m.getPaintProperty('hillshade', 'hillshade-exaggeration');
 const at = (z) => { const a = ex.slice(3); let v = a[1]; for (let i = 0; i < a.length; i += 2) if (a[i] <= z) v = a[i + 1]; return v; };
-return { ratio: m.getPixelRatio(), b3d: hasHide(lay('building-3d')?.filter), roof: hasHide(lay('building-roof')?.filter), shadow: hasHide(lay('building-shadow')?.filter),
+return { ratio: m.getPixelRatio(), b3d: hasHide(lay('building-3d')?.filter), roof: hasHide(lay('building-roof')?.filter), shadow: !lay('building-shadow'),
   terrain: m.getSource('terrain')?.maxzoom, lo: m.getSource('terrain-lo')?.maxzoom, relief16: at(16), relief175: at(17.5), vis: m.getLayoutProperty('hillshade', 'visibility') }"""
 
 with Browser(1000, 760) as b:
@@ -44,7 +44,7 @@ with Browser(1000, 760) as b:
     b.open('index.html?view=9.9365,51.5343,16.5,60', 9)
     r = b.js(MAP)
     print('Karte:', json.dumps(r, ensure_ascii=False))
-    checks['2. Umriss von Häusern aus Teilen (hide_3d) nicht in 3D: Wände, Dach, Schatten'] = r['b3d'] and r['roof'] and r['shadow']
+    checks['2. Umriss von Häusern aus Teilen (hide_3d) nicht in 3D: Wände, Dach; kein Schatten am Boden'] = r['b3d'] and r['roof'] and r['shadow']
     own = b.js("const m = window.__wmap.map; return [!!m.getLayer('wmap-buildings'), m.getLayoutProperty('building-3d', 'visibility'), m.getLayoutProperty('building-roof', 'visibility')]")
     print('eigene Ebene:', own)
     checks['2. eigene Gebäude-Ebene da, MapLibres 3D-Häuser aus'] = own == [True, 'none', 'none']
@@ -63,7 +63,7 @@ with Browser(1000, 760) as b:
       }, (e) => done('FEHLER ' + e));""")
     print('Birkenweg:', birk)
     heights = sorted(x[0] for x in birk['near']) if isinstance(birk, dict) else []
-    checks['2. Birkenweg: 12-m-Haus und 5-m-Stück auf derselben Bodenhöhe, das niedrigere rückt ein'] = isinstance(birk, dict) and 12 in heights and 5 in heights and len({x[1] for x in birk['near']}) == 1 and any(x[2] > 0 for x in birk['near'] if x[0] == 5)
+    checks['2. Birkenweg: 12-m-Haus und 5-m-Stück auf derselben Bodenhöhe, das niedrigere rückt ein'] = isinstance(birk, dict) and 12 in heights and 5 in heights and any(x[2] > 0 for x in birk['near'] if x[0] == 5) and len({x[1] for x in birk['near'] if x[0] == 12 or x[2] > 0}) == 1
     checks['2. Birkenweg: zusammengefasste Häuser (5 m) mit eigener Bodenhöhe je Haus'] = isinstance(birk, dict) and birk['five'] > 20 and birk['grounds'] > 5
     checks['3. Gelände Zoom 16, Navigation Zoom 13'] = r['terrain'] == 16 and r['lo'] == 13
     checks['4. Relief nah heran deutlich (Zoom 16 ≥ 0,4, Zoom 17,5 ≥ 0,3)'] = r['relief16'] >= 0.4 and r['relief175'] >= 0.3 and r['vis'] == 'visible'

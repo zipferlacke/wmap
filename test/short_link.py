@@ -57,7 +57,7 @@ with Browser(width=420, height=900) as b:
     seen = None
     if '#k=' in short:
         b.open('wege.html#k=' + short.split('#k=')[1], wait=3)
-        seen = b.wait("return document.querySelector('.weg-note') && [document.querySelector('.weg-name input').value, location.hash.slice(0, 5), document.querySelector('.weg-note').innerText.trim()]", 20)
+        seen = b.wait("return document.querySelector('.weg-note') && [[...document.querySelector('.wege-bar .uD-title').childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim(), location.hash.slice(0, 5), document.querySelector('.weg-note').innerText.trim()]", 20)
     print('Geöffnet:', seen)
     b.open('wege.html#k=gibtesnicht1', wait=3)
     gone = b.wait("return [...document.querySelectorAll('.toast, .wmap-toast, [role=status]')].map((x) => x.innerText).join(' ') || document.body.innerText.includes('gibt es nicht mehr')", 10)

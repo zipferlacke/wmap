@@ -9,14 +9,22 @@
     "messages": [],
     "changelog": [
         {
-            "version": "2.3.2",
-            "date": "2026-10-16",
+            "version": "3.0.0",
+            "date": "2026-10-17",
             "appVersion": "2.3.1",
             "changes": [
+                "Neu: Street View – auf Augenhöhe durch die Straßen gehen, die Straßen in echter Breite, oben die Namen der Geschäfte vor dir. Am Rechner umsehen mit der Maus und gehen mit W/A/S/D, am Handy drehen mit einem Finger und mit der Zoomgeste vor und zurück. Zu finden im Ebenen-Menü, im Menü und bei jedem Ort unter „Umsehen“; die Ansicht lässt sich als Link teilen. Geschäfte mit farbigem Erdgeschoss und Namen an der Fassade – schaust du eins an, geht unten sein Dialog auf; Bushaltestellen mit Wartehäuschen",
+                "Neu: Street View – auf Augenhöhe durch die Straßen gehen, die Straßen in echter Breite, oben die Namen der Geschäfte vor dir. Am Rechner umsehen mit der Maus und gehen mit W/A/S/D, am Handy drehen mit einem Finger und mit der Zoomgeste vor und zurück. Zu finden im Ebenen-Menü, im Menü und bei jedem Ort unter „Umsehen“; die Ansicht lässt sich als Link teilen. Geschäfte mit farbigem Erdgeschoss und Namen an der Fassade – schaust du eins an, geht unten sein Dialog auf; Bushaltestellen mit Wartehäuschen. Häuser mit echten Dachformen und -farben, Gleise mit Schotter und Schienen, Bilder aus OpenStreetMap in den Schildern",
+                "Karte: neue Symbole für Orte – Parkplatz, Fahrradständer, Mülleimer, Haltestelle, Bäckerei, Supermarkt, Trinkwasser und viele mehr im selben Stil wie in den Dialogen. Geneigte Karte ruhiger: kein Hinausfliegen und kein Ruck mehr nach dem Loslassen, Schieben im Maßstab des Vordergrunds, Neigen zoomt mit. 3D-Häuser zeichnet die Karte jetzt selbst – schneller und sparsamer; nah heran stehen dezent die Hausnummern",
+                "Orte: Öffnungszeiten mit Saison als Wochentabelle, Ausstattung (Außenplätze, Toiletten, WLAN …) als Chips",
+                "In der Nähe und entlang der Route: private Parkplätze und gerade Geschlossenes erst auf Wunsch (dann grau), Kundenparkplätze mit Hinweis. Suche nach Namen wie „Rewe“ oder „Aldi“ zeigt alle in der Nähe; Enter direkt nach dem Tippen findet jetzt zuverlässig",
+                "Meine Touren: Trainings vergleichen und sehen, wie du dich steigerst – läufst du dieselbe Strecke öfter, schlägt WMap das selbst vor. Diagramme frei kombinierbar, der Name oben änderbar. Die Zurück-Taste schließt offene Dialoge",
+                "Ordner und Health Connect gleichen jetzt im Hintergrund ab und brechen beim Seitenwechsel nicht mehr ab – neue Touren erscheinen sofort, ohne Neuladen",
                 "Verbundener Ordner: Für neue Dateien gibt es jetzt eine eigene Frage – alle übernehmen, auswählen, was mitkommt (z. B. nur Strecke und Puls), oder nicht importieren. Danach kommen die Dateien zu Touren, die es schon gibt. Die Frage kommt nicht mehr mehrfach",
                 "Standort: Die App fragt beim Start danach, und ein Tipp auf den Standort-Knopf holt ihn immer frisch – auch wenn er unterwegs (Zug, Tunnel) hängen geblieben war",
                 "Orte teilen als Karten-Link (geo:), den jede Karten-App öffnet – der WMap-Link steht darunter",
-                "Karte: genaueres Gelände in 3D, Relief auch nah heran sichtbar, keine flackernden Zwischendächer mehr bei Häusern aus mehreren Teilen. Neu in den Einstellungen ganz unten: „Schärfe der Karte“",
+                "Karte: Gelände auf jeder Zoomstufe gleich hoch, genauer und mit Relief auch nah heran; Häuser stehen auf ihrem eigenen Boden, ohne Flackern und ohne Ruckeln. Neu in den Einstellungen ganz unten: „Schärfe der Karte“",
+                "Karte ohne Straßen und Namen nach einem Start ohne Netz: WMap lädt sie jetzt von selbst nach",
                 "Weniger Speicher: Kartenkacheln liegen nur noch einmal auf dem Gerät"
             ]
         },

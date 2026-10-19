@@ -83,7 +83,7 @@ with Browser(width=420, height=900) as b:
     print('Vorschau:', seen)
     ok_view = bool(seen) and 'Geöffnete Datei' in seen[0] and len(seen[1]) == 2 and 'Als aufgezeichnete Tour speichern' in seen[1][0] and 'Als geplante Tour öffnen' in seen[1][1]
     b.js("document.querySelector('.weg-actions [data-do=keep]').click()")
-    kept = b.wait("return new URLSearchParams(location.search).get('id') && !document.querySelector('.weg-note') && document.querySelector('.weg-name input')?.value", 20)
+    kept = b.wait("return new URLSearchParams(location.search).get('id') && !document.querySelector('.weg-note') && document.querySelector('.panel-title-input')?.value", 20)
     print('Aus der Vorschau gespeichert:', kept)
     b.d.execute_async_script("const done = arguments[arguments.length - 1]; import('./js/data/tracks.js').then(async ({ tracks }) => { for (const t of await tracks.all()) if (t.name === 'Morgenlauf Vorschau') await tracks.remove(t.id); done(1); });")
     ok_view = ok_view and kept == 'Morgenlauf Vorschau'

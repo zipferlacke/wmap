@@ -1,5 +1,5 @@
 """Aufgezeichnete Tour: Knöpfe und Navigation (pages/wege.js, data/track-share.js, app/nav.js).
-1. Knöpfe: Navigieren, Als Planung öffnen, Teilen, GPX, Löschen.
+1. Knöpfe: Navigieren, Als Planung öffnen, Teilen, GPX, Vergleichen, Löschen.
 2. Teilen: Dialog mit Auswahl (Puls); „Als Link teilen“ gibt wege.html#weg=… – geöffnet zeigt der Link die
    Aufzeichnung mit Tempo und Puls, noch nicht gespeichert; ohne Haken bei Puls fehlt er.
 3. „Bei mir speichern“: landet unter Aufgezeichnete Touren (einmal – beim zweiten Mal „gibt es schon“).
@@ -44,7 +44,7 @@ with Browser(width=1300, height=900) as b:
     b.open('wege.html?id=act1', wait=5)
     actions = b.js("return [...document.querySelectorAll('.weg-actions .button')].map((x) => x.innerText.trim().replace(/^\\S+\\s+/, ''))")
     print('Knöpfe:', actions)
-    checks = {'1. Knöpfe: Navigieren, Als Planung öffnen, Teilen, Herunterladen, Löschen': actions == ['Navigieren', 'Als Planung öffnen', 'Teilen', 'Herunterladen', 'Löschen']}
+    checks = {'1. Knöpfe: Navigieren, Als Planung öffnen, Teilen, Herunterladen, Vergleichen, Löschen': actions == ['Navigieren', 'Als Planung öffnen', 'Teilen', 'Herunterladen', 'Vergleichen', 'Löschen']}
 
     # ── 2. Teilen ──
     # Herunterladen: Auswahl GPX oder FIT

@@ -35,7 +35,10 @@ export async function registerOffline() {
     await new Promise((r) => setTimeout(r, 1500));
   }
   try {
-    await navigator.serviceWorker.register('./sw.js');
+    // Als Modul mit dem Abgleich (sw-app.js); kann der Browser das nicht, sw.js allein. `updateViaCache: 'none'`:
+    // auch die eingebundenen Dateien beim Prüfen auf Updates frisch holen, nicht aus dem HTTP-Cache
+    await navigator.serviceWorker.register('./sw-app.js', { type: 'module', updateViaCache: 'none' })
+      .catch(() => navigator.serviceWorker.register('./sw.js'));
     const reg = await navigator.serviceWorker.ready;
     // Was schon geladen ist, bevor der Service Worker mitlesen konnte
     const urls = performance.getEntriesByType('resource').map((e) => e.name)

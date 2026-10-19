@@ -32,6 +32,7 @@
  * oder Neuladen weitermacht.
  */
 import { devLog } from '../core/devlog.js';
+import { parseXml } from '../core/xml.js';
 import { local, tours, changed } from './store.js';
 import { store } from './db.js';
 import { geo } from '../core/native.js';
@@ -302,6 +303,8 @@ class Recorder {
   #held = [];
 
   constructor() {
+    // Im Service Worker (Abgleich, js/sw/sync.js) wird nicht aufgezeichnet
+    if (typeof document === 'undefined') return;
     const saved = local.get(LIVE);
     if (saved?.points && Date.now() - (saved.points.at(-1)?.[2] ?? saved.started) < 12 * 3600e3) this.#live = saved;
     if (this.#live) this.#background(true);
@@ -502,7 +505,7 @@ export function defaultName(profile, when = Date.now()) {
 /** GPX-Datei → Wege (Tracks mit Zeit; Routen ohne Zeit gehen auch). Ohne `profile` gilt der
  *  Typ aus der Datei (<type>) – oder er wird am Tempo erkannt. */
 export function parseGpx(text, profile = null) {
-  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  const doc = parseXml(text);
   if (doc.querySelector('parsererror')) throw new Error('Keine gültige GPX-Datei');
   const out = [];
   const fileName = doc.querySelector('metadata > name')?.textContent?.trim();

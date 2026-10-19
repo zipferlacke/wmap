@@ -1,5 +1,24 @@
 [
     {
+        "relation": [
+            "delegate_permission/common.handle_all_urls",
+            "delegate_permission/common.get_login_creds"
+        ],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "de.wuefl.app.musicTrack",
+            "sha256_cert_fingerprints": ["EA:62:5A:CA:8D:8D:F7:0A:F6:43:46:5C:09:B9:6C:55:0F:72:BD:0D:0E:79:90:11:80:09:93:6A:C4:CF:EF:32"]
+        }
+    },
+    {
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "de.wuefl.wmap",
+            "sha256_cert_fingerprints": ["A0:B1:41:A1:B1:C0:D2:A3:41:9E:22:5B:8F:C0:AF:56:C7:A0:38:BA:26:A8:A0:30:5D:81:7D:81:72:69:EF:E3"]
+        }
+    },
+    {
         "relation": ["delegate_permission/common.handle_all_urls"],
         "target": {
             "namespace": "android_app",

@@ -98,6 +98,7 @@ const panel = sidePanel($('#sheet-src'), {
 const sheet = panel.dialog;
 sheet.querySelector('.uD-header').classList.add('tour-bar');
 panel.title.replaceChildren(nameField);
+panel.left.querySelector('button')?.setAttribute('data-back', '');   // Zurück-Taste wie ← (core/back.js)
 panel.right.prepend(saveButton);
 document.activeElement?.blur();                // kein Fokusrahmen um den Griff
 const mobile = () => matchMedia('(max-width: 700px)').matches;

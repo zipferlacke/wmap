@@ -27,7 +27,7 @@
 
 <body class="tour-page offline-page">
     <header class="tour-head panel">
-        <a class="button" data-shape="round no-background" href="./offline-daten.html" title="Zu „Offline“">
+        <a class="button" data-back data-shape="round no-background" href="./offline-daten.html" title="Zu „Offline“">
             <span class="msr">arrow_back</span>
         </a>
         <h1 class="tour-name">Offline-Karten</h1>
@@ -75,6 +75,10 @@
         </dialog>
     </main>
 
+    <!-- Zurück-Taste: zuerst geladen (js/core/back.js) -->
+    <script type="module" src="./js/core/back.js"></script>
+    <!-- Abgleich im Service Worker: Bote und Meldungen (js/core/sw-link.js) -->
+    <script type="module" src="./js/core/sw-link.js"></script>
     <script type="module" src="./js/pages/offline.js"></script>
 </body>
 

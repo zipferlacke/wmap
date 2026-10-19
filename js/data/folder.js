@@ -110,6 +110,28 @@ import { tours, toGpx, coordsOf, shapeOf, local } from './store.js';
 import { simplifyTo, distance } from '../core/geo.js';
 import { connections, mergePlaces, mergeSaved } from './saved.js';
 import { devLog } from '../core/devlog.js';
+import { tauri } from '../core/tauri.js';
+import { parseXml } from '../core/xml.js';
+import { inSw } from './store.js';
+// Seite: Gleicht der Service Worker ab (js/sw/sync.js)? Dann geht die Arbeit dorthin – ein Seitenwechsel bricht sie
+// nicht ab. Ohne ihn (erster Besuch, alter Browser, Tests mit _useBackend) wie früher hier
+const link = inSw ? null : import('../core/sw-link.js');
+async function viaSw() {
+  if (inSw || testBackend) return null;
+  const { swSync, swCall } = await link;
+  return (await swSync())?.folder ? swCall : null;
+}
+// Seite: Stand des Abgleichs im Service Worker (aus seinen Meldungen)
+let remote = { busy: false, progress: null };
+if (!inSw) {
+  addEventListener('wmap:folder-progress', (e) => {
+    const d = e.detail ?? {};
+    if (!d.remote) return;
+    if (d.done) remote = { busy: false, progress: null };
+    else if (d.busy && !Number.isFinite(d.n)) remote = { busy: true, progress: remote.progress };
+    else remote = { busy: true, progress: { i: d.i, n: d.n, since: d.since, what: d.what } };
+  });
+}
 
 const kv = store('kv');
 const KEY = 'folder';
@@ -121,10 +143,12 @@ const DAY_MS = 24 * 3600 * 1000;
 const AUTO_EVERY_MS = 5 * 60000;          // beim Öffnen einer Seite höchstens so oft
 const AUTO = 'wmap.sync.auto';            // 'off' | 'start' (beim Öffnen und nach Änderungen) | 'every30' (dazu alle 30 min)
 
-const core = typeof window !== 'undefined' ? window.__TAURI__?.core : null;
-const nativeHere = !!core;
-const browserHere = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+// App: Plugin „folder“ – im Service Worker über die Brücke (core/tauri.js, erst nach tauri.ready() bekannt)
+const nativeHere = () => tauri.here;
+// Browser: Ordner wählen geht nur in der Seite, ein gewählter Ordner geht auch im Service Worker
+const browserHere = typeof window !== 'undefined' ? 'showDirectoryPicker' in window : typeof FileSystemDirectoryHandle !== 'undefined';
 
+let supportedSet = null;  // von Hand gesetzt (Tests)
 let conf = null;          // { id, native?, handle?, name, index: { pfad: { id, kind, at, hash, rev } }, last, result, error, pending }
 let syncing = null;
 let progress = null;      // { i, n, since } während des Abgleichs
@@ -141,8 +165,8 @@ async function load() {
   conf = (await kv.get(KEY).catch(() => null)) ?? null;
   // App: Ordner im Plugin gewählt, aber hier nie angekommen (die Antwort des
   // Ordnerdialogs ging unterwegs verloren) – dann jetzt übernehmen
-  if (!conf && nativeHere) {
-    const i = await core.invoke('plugin:folder|info').catch(() => null);
+  if (!conf && nativeHere()) {
+    const i = await call('info').catch(() => null);
     if (i?.connected) {
       conf = { id: KEY, native: true, name: i.name ?? 'Ordner', index: {}, last: null, result: null, error: null };
       await kv.put(conf).catch(() => {});
@@ -160,7 +184,7 @@ const persist = () => (testBackend ? null : kv.put(conf));
 
 /* ── Zugang: Browser-API oder App-Plugin ──────────────────────────────────── */
 
-const call = (cmd, args = {}) => core.invoke(`plugin:folder|${cmd}`, args);
+const call = (cmd, args = {}) => tauri.invoke(`plugin:folder|${cmd}`, args);
 
 /** In der App: das Plugin „folder“ */
 const nativeBackend = {
@@ -247,7 +271,8 @@ const backendOf = (c) => testBackend ?? (c.native ? nativeBackend : handleBacken
 
 export const folder = {
   /** Geht hier ein Ordner? (App immer, Browser nur Chrome/Edge) */
-  supported: nativeHere || browserHere,
+  get supported() { return supportedSet ?? (nativeHere() || browserHere); },
+  set supported(v) { supportedSet = v; },
 
   /** Selbst abgleichen: 'off', 'start' (beim Öffnen und nach Änderungen, Standard), 'every30' (dazu alle 30 min) */
   get auto() { const v = local.get(AUTO, 'start'); return v === true ? 'start' : v === false ? 'off' : v; },
@@ -261,11 +286,11 @@ export const folder = {
   get keep() { const v = String(local.get(KEEP, '30')); return v === 'all' || Number(v) > 0 ? v : '30'; },
   set keep(v) { local.set(KEEP, String(v)); },
 
-  /** Läuft gerade ein Abgleich? */
-  get busy() { return !!syncing; },
+  /** Läuft gerade ein Abgleich? (hier oder im Service Worker) */
+  get busy() { return !!syncing || remote.busy; },
 
   /** Wie weit? { i, n, since } – Dateien bzw. Einträge, seit wann (ms) – oder null */
-  get progress() { return progress; },
+  get progress() { return progress ?? remote.progress; },
 
   /** Stand für die Anzeige: { connected, name, permission, last, result, error, pending } */
   async info() {
@@ -280,7 +305,7 @@ export const folder = {
   async connect() {
     // Ordner wechseln: erst holen, was nur im alten lag
     if (await load()) await this.fillAll().catch(() => {});
-    if (nativeHere) {
+    if (nativeHere()) {
       let r;
       try { r = await call('pick'); } catch (err) {
         if (/abgebrochen|cancel/i.test(String(err))) throw Object.assign(new Error('abgebrochen'), { name: 'AbortError' });
@@ -301,6 +326,8 @@ export const folder = {
    * Wechseln des Ordners). → Anzahl, die nicht zu holen war
    */
   async fillAll() {
+    const sw = await viaSw();
+    if (sw) return sw('sync:fill');
     let missing = 0;
     for (const t of await tracks.all()) {
       if (!t.stub) continue;
@@ -318,8 +345,10 @@ export const folder = {
 
   /** Trennen – vorher kommt alles, was nur im Ordner lag, in die App. `keepStubs`: ohne das (Ordner ist weg) */
   async disconnect({ keepStubs = false } = {}) {
+    const sw = await viaSw();
+    if (sw) { await sw('sync:disconnect', { opts: { keepStubs } }); conf = null; return; }
     if (!keepStubs && conf) await this.fillAll().catch(() => {});
-    if (conf?.native || nativeHere) await call('disconnect').catch(() => {});
+    if (conf?.native || nativeHere()) await call('disconnect').catch(() => {});
     conf = null;
     await kv.remove(KEY);
     local.set(DELETED, []);
@@ -339,6 +368,17 @@ export const folder = {
    * durch ist. Ohne Entscheidung bleiben sie liegen und stehen in `inbox`. `others`: siehe folder-inbox.js.
    */
   async sync({ interactive = false, decide = null } = {}) {
+    const sw = await viaSw();
+    if (sw) {
+      // Im Browser fragt nur die Seite nach dem Recht (braucht den Klick) – danach darf er es auch
+      const c = interactive ? await load() : null;
+      const ask = c && !c.native ? await backendOf(c).permission(true).catch(() => 'denied') : null;
+      const r = await sw('sync:folder', { opts: { decide } });
+      // Er darf den Ordner nicht (Browser ohne dauerhafte Freigabe), die Seite schon: dann hier
+      if (!r?.needsPermission) return r;
+      const here = await load();
+      if (!here || (ask ?? await backendOf(here).permission(false).catch(() => 'denied')) !== 'granted') return r;
+    }
     // Mit Entscheidung: einen laufenden Abgleich erst zu Ende, dann eigens noch einmal
     if (syncing && decide) await syncing.catch(() => {});
     if (syncing) return syncing;
@@ -1163,7 +1203,8 @@ const SETTINGS = [
 function snapshot() {
   const v = {};
   for (const k of SETTINGS) {
-    try { const raw = localStorage.getItem(k); if (raw !== null) v[k] = raw; } catch { /* gesperrt */ }
+    const raw = local.raw(k);
+    if (raw !== null) v[k] = raw;
   }
   return v;
 }
@@ -1206,7 +1247,7 @@ async function syncSettings(c, be, file, path) {
       if (m === undefined) delete merged[k]; else merged[k] = m;
     } else {
       took = true;
-      try { if (t === undefined) localStorage.removeItem(k); else localStorage.setItem(k, t); } catch { /* gesperrt */ }
+      local.setRaw(k, t === undefined ? null : t);
     }
   }
   const sorted = (o) => JSON.stringify(Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]])));
@@ -1385,7 +1426,7 @@ async function importFile(f, id, before = null, less = null) {
 
 /** GPX → Tour: Verlauf aus dem Track, die gesetzten Punkte aus den Wegpunkten */
 export function tourFromGpx(text, path = '') {
-  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  const doc = parseXml(text);
   if (doc.querySelector('parsererror')) return null;
   const pts = [...doc.querySelectorAll('trkpt, rtept')];
   if (pts.length < 2) return null;
@@ -1418,7 +1459,10 @@ export function tourFromGpx(text, path = '') {
 /* ── Automatisch: nach Änderungen kurz warten, dann abgleichen ────────────── */
 
 let timer = null;
+let soonDone = [];
 addEventListener('wmap:data', (e) => {
+  // Vom Service Worker gemeldet: dort schon vermerkt und abgeglichen
+  if (e.detail?.remote) return;
   const id = e.detail?.id;
   if (id && e.detail.removed) local.set(DELETED, [...new Set([...local.get(DELETED, []), id])]);
   // Wieder angelegt (ZIP einspielen, Import, Bearbeiten): nicht mehr als gelöscht führen
@@ -1426,7 +1470,8 @@ addEventListener('wmap:data', (e) => {
     local.set(DELETED, (local.get(DELETED, []) ?? []).filter((x) => x !== id));
     local.set(REVIVED, [...new Set([...(local.get(REVIVED, []) ?? []), id])].slice(-500));
   }
-  later();
+  // Gleicht der Service Worker ab: gleich ihm sagen – er wartet selbst kurz, und ein Seitenwechsel verliert nichts
+  viaSw().then((sw) => (sw ? sw('sync:soon') : later())).catch(() => {});
 });
 function later() {
   clearTimeout(timer);
@@ -1434,9 +1479,18 @@ function later() {
     // Health Connect holt gerade viele Wege: erst danach, einmal für alle
     if (bulk.active) { later(); return; }
     await syncing?.catch(() => {});
-    if (!await load()) { local.set(DELETED, []); return; }
-    if (folder.auto !== 'off') folder.sync().catch(() => { /* steht als Fehler auf der Seite „Sicherung & Synchronisation“ */ });
+    const done = soonDone;
+    soonDone = [];
+    try {
+      if (!await load()) { local.set(DELETED, []); return; }
+      if (folder.auto !== 'off') await folder.sync().catch(() => { /* steht als Fehler auf der Seite „Sicherung & Synchronisation“ */ });
+    } finally { done.forEach((r) => r()); }
   }, 2500);
+}
+
+/** Nach einer Änderung (Service Worker, „sync:soon“): kurz warten, dann abgleichen – fertig, wenn er durch ist */
+export function syncSoon() {
+  return new Promise((resolve) => { soonDone.push(resolve); later(); });
 }
 
 /* ── Ohne Ordner-Zugriff (Firefox, Safari): Dateien laden und teilen ──────── */
@@ -1447,6 +1501,10 @@ function later() {
  * → { imported, skipped }
  */
 export async function importLoose(fileList) {
+  const sw = await viaSw();
+  const list = [...fileList];
+  // Echte Dateien (<input>) gehen an den Service Worker – den Pfad im Ordner extra, er geht beim Übergeben verloren
+  if (sw && list.every((f) => f instanceof File)) return sw('sync:import', { files: list.map((file) => ({ file, path: file.webkitRelativePath })) });
   const known = new Set([...(await tracks.all()).map((t) => t.id), ...tours.all().map((t) => t.id)]);
   const all = await tracks.all();
   const out = { imported: 0, skipped: 0 };
@@ -1473,17 +1531,29 @@ export async function importLoose(fileList) {
  * daraus, sonst die GPX-Dateien. → { imported, skipped }
  */
 export async function importFolder(fileList = null) {
-  if (fileList) return importFrom([...fileList]);
+  const sw = await viaSw();
+  if (fileList) {
+    const list = [...fileList];
+    if (sw && list.every((f) => f instanceof File)) return sw('sync:import', { files: list.map((file) => ({ file, path: file.webkitRelativePath })) });
+    return importFiles(list);
+  }
   let picked;
   try { picked = await call('pick', { slot: 'import' }); } catch (err) {
     if (/abgebrochen|cancel/i.test(String(err))) throw Object.assign(new Error('abgebrochen'), { name: 'AbortError' });
     throw new Error(String(err?.message ?? err));
   }
+  // Gewählt wird hier, eingelesen im Service Worker (die Dateien holt er über die Seite, core/tauri.js)
+  if (sw) return sw('sync:import-slot', { name: picked.name ?? 'Ordner' });
+  return importSlot(picked.name ?? 'Ordner');
+}
+
+/** App: den eben gewählten Ordner (Platz „import“) einlesen, danach freigeben */
+export async function importSlot(name) {
   try {
     const { files } = await call('list', { slot: 'import' });
-    return await importFrom(files.map((f) => ({
+    return await importFiles(files.map((f) => ({
       name: f.path.split('/').pop(),
-      webkitRelativePath: `${picked.name ?? 'Ordner'}/${f.path}`,
+      webkitRelativePath: `${name}/${f.path}`,
       lastModified: f.modified || Date.now(),
       text: async () => (await call('read', { slot: 'import', path: f.path })).text,
     })));
@@ -1492,7 +1562,8 @@ export async function importFolder(fileList = null) {
   }
 }
 
-async function importFrom(files) {
+/** Dateien einlesen – mit wmap-sicherung.json alles daraus, sonst die GPX-Dateien */
+export async function importFiles(files) {
   const full = files.find((f) => /^wmap-sicherung[^/]*\.json$/i.test(f.name));
   if (full) {
     const n = await restore(await full.text());
@@ -1535,6 +1606,8 @@ export async function zipBackup({ format = 'gpx' } = {}) {
  * (auch ein gezippter Ordner von woanders). → Anzahl übernommen
  */
 export async function restoreZip(file) {
+  const sw = await viaSw();
+  if (sw && file instanceof Blob) return sw('sync:restore-zip', { file });
   const entries = await readZip(file);
   const json = entries.find((e) => /(^|\/)wmap-sicherung[^/]*\.json$/i.test(e.path));
   if (json) return restore(await json.text());

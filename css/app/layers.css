@@ -15,6 +15,74 @@ body.flying :is(#search, #sheet, .appnav, .maplibregl-ctrl-top-right, .maplibreg
     &:hover { opacity: 1; }
 }
 
+/* ── Street View (street.js): nur das Bild, unten Hinweis und Knopf „Karte“ (.button aus wuefl-libs) ── */
+.street-hud {
+    position: fixed; z-index: 30;
+    left: 50%; bottom: calc(1rem + var(--safe-bottom)); translate: -50% 0;
+    display: flex; align-items: center; gap: .5rem;
+    width: max-content; max-width: calc(100vw - 2rem);
+    padding: .45rem .5rem .45rem 1rem; border-radius: 1.4rem;
+    background: rgb(20 24 30 / .78); color: #fff;
+    font-size: var(--fs-200); backdrop-filter: blur(6px);
+    b { font-weight: 700; }
+    > .msr { font-size: 1.3rem; }
+    .street-hint { flex: 1; }
+}
+/* Oben: Straße und Geschäfte vor einem, halbdurchsichtig */
+.street-top {
+    position: fixed; z-index: 30;
+    left: 50%; top: calc(.75rem + var(--safe-top)); translate: -50% 0;
+    display: grid; justify-items: center; gap: .1rem;
+    max-width: calc(100vw - 2rem); padding: .4rem 1rem; border-radius: 1rem;
+    background: rgb(20 24 30 / .55); color: #fff; text-align: center;
+    backdrop-filter: blur(6px); pointer-events: none;
+    b { font-size: var(--fs-300, 1.05rem); }
+    small { font-size: var(--fs-200); opacity: .9; }
+    &:empty { display: none; }
+}
+body.street-view :is(#search, .appnav, .appbar, .maplibregl-ctrl-top-right, .maplibregl-ctrl-bottom-left, .fly-hud) {
+    display: none !important;
+}
+body.street-view .maplibregl-canvas-container { cursor: pointer; touch-action: none; }
+/* Namen der Geschäfte an der Fassade (map/street-shops.js) – Lage je Bild per transform, Größe nach Entfernung;
+   „looked“: gerade angeschaut (Dialog kommt gleich) */
+.street-labels { position: fixed; inset: 0; z-index: 15; pointer-events: none; overflow: hidden; }
+.street-label {
+    --c: #7048e8;
+    position: absolute; left: 0; top: 0;
+    display: inline-flex; align-items: center; gap: .25em;
+    max-width: 16em; padding: .2em .55em .2em .35em; border: 0; border-radius: .5em;
+    background: color-mix(in srgb, var(--c) 82%, #000); color: #fff;
+    font: 600 1em/1.15 system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    box-shadow: 0 1px 4px rgb(0 0 0 / .35); pointer-events: auto; cursor: pointer;
+    .msr { font-size: 1.15em; }
+    /* Bild aus OSM vorn im Schild */
+    .pic { width: 1.7em; height: 1.7em; margin: -.1em .15em -.1em -.15em; border-radius: .25em; object-fit: cover; flex: none; background: rgb(255 255 255 / .2); }
+    &[hidden] { display: none; }
+    &.looked { outline: 2px solid #fff; outline-offset: 1px; }
+    /* Bauwerke (Schloss, Kirche, Museum …): neutral, ohne Farbe einer Art */
+    &.landmark { background: rgb(40 44 52 / .82); }
+    /* Haltestelle: gelbes Schild als Knopf – weißer Rand und Pfeil zeigen, dass man tippen kann */
+    &.stop {
+        background: #ffd43b; color: #1d2025; border: 2px solid #fff;
+        box-shadow: 0 2px 6px rgb(0 0 0 / .45);
+        .h { display: inline-grid; place-items: center; width: 1.25em; height: 1.25em; border-radius: 50%; background: #2b8a3e; color: #ffd43b; font-weight: 800; }
+        .more { font-size: 1.2em; margin-left: -.1em; }
+        &:active { filter: brightness(.9); }
+    }
+    /* An der Wand (map/street-shops.js): perspektivisch verzerrt – kein Schatten, der schwebt */
+    &.on-wall { transform-origin: 0 0; box-shadow: none; border-radius: .2em; max-width: none; }
+}
+/* Dialog eines Geschäfts offen: der Hinweis unten macht ihm Platz */
+body.street-view:has(#sheet[open]) .street-hud { display: none; }
+/* Gefangene Maus: ein Punkt in der Bildmitte zeigt, wohin man schaut */
+body.street-locked::after {
+    content: ''; position: fixed; z-index: 30; left: 50%; top: 50%; translate: -50% -50%;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #fff; box-shadow: 0 0 0 1.5px rgb(0 0 0 / .55);
+    pointer-events: none;
+}
+
 /* ── Ebenen-Menü (layer-menu.js) ──────────────────────────────────────────── */
 .layer-ctrl button .msr { font-size: 1.4rem; line-height: var(--ctrl-size); }
 /* Über den Seitenleisten aus wuefl-libs (userDialog, z-index 1000) – sonst lag
@@ -41,7 +109,7 @@ body.flying :is(#search, #sheet, .appnav, .maplibregl-ctrl-top-right, .maplibreg
     }
 }
 .layer-bases {
-    display: grid; grid-template-columns: 1fr 1fr; gap: .5rem;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: .5rem;
     button {
         display: grid; gap: .3rem; justify-items: center;
         padding: .35rem; border: 2px solid transparent; border-radius: .8rem;
@@ -51,6 +119,13 @@ body.flying :is(#search, #sheet, .appnav, .maplibregl-ctrl-top-right, .maplibreg
     .layer-thumb { width: 100%; height: 3.6rem; border-radius: .55rem; }
     .thumb-map { background: linear-gradient(135deg, #f2efe9 0 45%, #fff 45% 52%, #cfe3c1 52% 70%, #aad3df 70%); }
     .thumb-sat { background: linear-gradient(135deg, #4b5d3a 0 30%, #7a8a5a 30% 48%, #d9d4c4 48% 52%, #2f4d2a 52% 75%, #3c5f78 75%); }
+    /* Street View: Himmel, zwei Häuserzeilen, die Straße dazwischen */
+    .thumb-street {
+        display: grid; place-items: center; color: #fff;
+        background: linear-gradient(180deg, #a9cdf0 0 40%, transparent 40%),
+            linear-gradient(90deg, #b9b2a6 0 30%, #9b958c 30% 36%, #8a8f96 36% 64%, #9b958c 64% 70%, #b9b2a6 70%);
+        .msr { font-size: 1.6rem; text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
+    }
 }
 .layer-row {
     display: flex; align-items: center; gap: .6rem;
