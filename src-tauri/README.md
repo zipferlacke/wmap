@@ -141,6 +141,21 @@ Debug-App). Dazu gehören:
 Ohne die Datei geht es trotzdem: App-Info → „Standardmäßig öffnen“ → Link
 hinzufügen. Am Rechner nimmt der Browser https-Links selbst an.
 
+**Testversion `https://dev.wuefl.de/wmap/…`:** Nur die Debug-Fassung meldet
+sich dafür – zusätzlich zu app.wuefl.de (`app/src/debug/AndroidManifest.xml`,
+von `tools/android-einbinden.py` angelegt; Android mischt es nur in den
+Debug-Build). In `tauri.conf.json` steht dev nicht – sonst bekäme auch die
+Store-App den Filter. Weil das Deep-Link-Plugin nur Adressen von dort annimmt,
+schreibt `tools/android/MainActivity.kt` (`devToApp`) den Link vorher auf
+app.wuefl.de um; die App nimmt ohnehin nur Seite, `?…` und `#…`. Auf
+dev.wuefl.de gehört dafür `/.well-known/assetlinks.json` mit der Debug-App –
+Vorlage `appdata/assetlinks-dev.json`.
+
+Am Handy prüfen: `adb shell pm get-app-links de.wuefl.wmap.debug` (beide
+Domains „verified“). **Firefox** öffnet Links nur dann in Apps, wenn in seinen
+Einstellungen „Links in Apps öffnen“ auf „Immer“ oder „Fragen“ steht – sonst
+bleibt er ohne Frage im Browser.
+
 ## Karten-Links (`geo:`)
 
 WMap meldet sich für `geo:`-Links an (`plugins.deep-link` in
