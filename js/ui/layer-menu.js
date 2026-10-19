@@ -181,7 +181,7 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
       <div class="layer-bases">
         <button type="button" data-base="map" aria-pressed="${state.base === 'map'}"><span class="layer-thumb thumb-map"></span>Karte</button>
         <button type="button" data-base="sat" aria-pressed="${state.base === 'sat'}"><span class="layer-thumb thumb-sat"></span>Satellit</button>
-        ${map.wmapStreet ? `<button type="button" data-l="street" aria-pressed="${map.wmapStreet.active}" title="Auf der Straße umsehen"><span class="layer-thumb thumb-street"><span class="msr">streetview</span></span>Street View</button>` : ''}
+        <!-- Street View: vorerst nicht im Menü (Umsehen am Ort und Menü bleiben) -->
       </div>
       ${check('focus', state.focus, 'hiking', 'Wandern & Rad', 'Große Straßen treten zurück, Wanderwege und Relief hervor')}
       <h4>Ebenen</h4>

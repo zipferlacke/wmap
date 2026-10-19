@@ -58,6 +58,7 @@ REF = [
     re.compile(r'''@import\s+(?:url\()?\s*['"]?([^'")\s;]+)'''),           # @import
     re.compile(r'''url\(\s*['"]?([^'")]+)['"]?\s*\)'''),                    # url(…)
     re.compile(r'''(?:src|href)\s*=\s*["']([^"'#]+)["']'''),                # src=, href=
+    re.compile(r'''new URL\(\s*['"]([^'"]+)['"]\s*,\s*import\.meta\.url'''),  # new URL('…', import.meta.url)
 ]
 
 

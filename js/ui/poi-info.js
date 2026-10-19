@@ -9,6 +9,7 @@
  */
 import { CATEGORIES, searchFilters } from '../core/categories.js';
 import { esc } from '../core/geo.js';
+import { iconForTags } from '../map/poi-icons.js';
 
 /* ── Welche Kategorie passt zu den Tags? ──────────────────────────────────── */
 
@@ -417,7 +418,7 @@ export function accessOf(tags = {}) {
 
 /**
  * Alle Angaben zu einem Ort.
- * → { category, name, type, traits, equipment: [{ icon, text }], description, status, access: { kind, text }, facts: [{ label, icon, value, unknown }], website }
+ * → { category, look: { icon, color } (wie auf der Karte), name, type, traits, equipment: [{ icon, text }], description, status, access: { kind, text }, facts: [{ label, icon, value, unknown }], website }
  */
 export function describePoi(tags = {}, { name, fallbackType } = {}) {
   const category = categoryFor(tags);
@@ -429,6 +430,7 @@ export function describePoi(tags = {}, { name, fallbackType } = {}) {
   }
   const web = tags.website ?? tags['contact:website'] ?? tags.url;
   return {
+    look: category ? { icon: category.icon, color: category.color } : iconForTags(tags),
     hours: tags.opening_hours ?? null,
     links: links(tags),
     category,
@@ -466,7 +468,7 @@ export function poiCard(info, { compact = false } = {}) {
   return `
     <div class="poi-card${compact ? ' compact' : ''}">
       <header>
-        <span class="poi-ico msr" style="--c:${c?.color ?? '#e8590c'}">${c?.icon ?? 'location_on'}</span>
+        <span class="poi-ico msr" style="--c:${info.look?.color ?? c?.color ?? '#e8590c'}">${info.look?.icon ?? c?.icon ?? 'location_on'}</span>
         <div><strong>${esc(info.name)}</strong>${subline(info) ? `<small>${esc(subline(info))}</small>` : ''}</div>
       </header>
       ${info.status ? `<p class="poi-status ${info.open ? 'open' : 'closed'}">${esc(info.status)}</p>` : ''}

@@ -11,7 +11,7 @@
  *
  * Vektorkacheln bis Zoom 14 (darüber vergrößert MapLibre selbst), dazu Stil,
  * Schriften und Symbole. Auf Wunsch das Gelände (Schummerung, 3D) bis Zoom 13
- * – das reicht auch für die Navigation (terrain-lo).
+ * (darüber vergrößert MapLibre das Gelände selbst).
  */
 import { local } from './store.js';
 import { tileXY, styleAssets } from './offline.js';

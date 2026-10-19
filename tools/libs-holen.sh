@@ -1,7 +1,8 @@
 #!/bin/sh
 # Fremde Bibliotheken nach libs/ holen – feste Versionen, damit Web, App und
 # Offline-Cache dasselbe laden. Neue Version: Nummer hier ändern, Skript
-# laufen lassen, testen, committen.
+# laufen lassen, danach tools/maplibre-anpassen.py (eigene Änderungen an
+# MapLibre), testen, committen.
 #   MapLibre GL JS  Karte                       libs/maplibre-gl/
 #   Apache ECharts  Höhenprofil (elevation.js)  libs/echarts/
 #   earcut          Dächer der Satelliten-Häuser (sat-buildings.js)  libs/earcut/

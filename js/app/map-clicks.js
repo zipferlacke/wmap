@@ -5,6 +5,9 @@ import { showHover, BASE_POI_LAYERS, osmRef } from '../map/map.js';
 import { keyboardControl } from '../map/keys.js';
 import { streetView } from '../map/street.js';
 import { mountSignals } from '../map/signals.js';
+import { MY_PLACES_LAYER, mountMyPlaces } from '../map/my-places.js';
+import { places } from '../data/saved.js';
+import { mountPoiAccess } from '../map/poi-access.js';
 import { mapLayerIds, propertyTable } from '../map/layers.js';
 import { mountLayerMenu } from '../ui/layer-menu.js';
 import { presetOf, layerInfoAt, layerInfoHtml } from '../map/presets.js';
@@ -57,7 +60,7 @@ map.on('contextmenu', (e) => { if (!street.active) showPoint(e.lngLat.toArray())
   map.on('movestart', cancel);
 }
 
-const CLICKABLE = ['traffic-icon', 'poi-nr', 'poi-dot', 'hl-nr', 'hl-dot', 'route-alt', 'hl-fill', ...BASE_POI_LAYERS];
+const CLICKABLE = [MY_PLACES_LAYER, 'traffic-icon', 'poi-nr', 'poi-dot', 'hl-nr', 'hl-dot', 'route-alt', 'hl-fill', ...BASE_POI_LAYERS];
 
 /* Ebenen-Menü: Satellit, Wandern & Rad, Wanderwege, eigene Ebenen und Plugins */
 const layerMenu = mountLayerMenu(map, { toast });
@@ -77,6 +80,10 @@ map.wmapStreet = street;
 addEventListener('wmap:street', (e) => { if (fly.active) fly.stop(); street.start(e.detail ?? null); });
 // Ampeln ab Zoom 15 – nur wo eine steht (map/signals.js)
 mountSignals(map);
+// Zuhause und Arbeit aus den Lesezeichen (map/my-places.js)
+mountMyPlaces(map);
+// Private Parkplätze u. Ä. blass (map/poi-access.js)
+mountPoiAccess(map);
 
 map.on('click', (e) => {
   // Beim Fliegen sperrt ein Klick nur die Maus (map/keys.js) – nichts öffnen
@@ -105,6 +112,13 @@ map.on('click', (e) => {
   const layers = CLICKABLE.filter((id) => map.getLayer(id) && !(nav.active && id === 'route-alt'));
   const hit = layers.length ? map.queryRenderedFeatures(e.point, { layers })[0] : null;
   const id = hit?.layer.id;
+  if (id === MY_PLACES_LAYER) {
+    // Der gespeicherte Punkt, nicht der gezeichnete (auf die Kachel gerundet) – dann gilt der Ort als gemerkt
+    const p = hit.properties;
+    const point = places.byKind(p.kind)[0]?.point ?? hit.geometry.coordinates;
+    showPlace({ type: 'Feature', geometry: { type: 'Point', coordinates: point }, properties: { name: p.name, _poi: !!p.poi } }, { over: overContext(), fly: false });
+    return;
+  }
   if (id === 'traffic-icon') { const t = trafficItems[hit.properties.i]; if (t) showTrafficItem(t); return; }
   if (id === 'poi-dot' || id === 'poi-nr' || ((id === 'hl-dot' || id === 'hl-nr') && (state.category || reach.cat))) {
     showPlace(featureFromPoint(hit), { over: true, fly: false });

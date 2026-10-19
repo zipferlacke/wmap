@@ -99,7 +99,7 @@ export function streetView(map, { base = () => 'map', setBase = () => {}, onShar
       at = new maplibregl.MercatorCoordinate(from.x + dx * k, from.y + dy * k);
       k = along * at.meterInMercatorCoordinateUnits();
     }
-    const tr = map.transform;
+    const tr = map._camera?.transform ?? map.transform;
     const zoom = Math.log2(tr.height / 2 / Math.tan((FOV * RAD) / 2) / k / (tr.tileSize ?? 512));
     return { center: at.toLngLat(), zoom, elevation: g + EYE - along * Math.cos(pitch), bearing, pitch: tilt };
   }
@@ -111,7 +111,7 @@ export function streetView(map, { base = () => 'map', setBase = () => {}, onShar
    * bekannt: unter pos. → zurücksetzen
    */
   function fixCameraPoint() {
-    const tr = map.transform, own = tr.screenPointToMercatorCoordinate;
+    const tr = map._camera?.transform ?? map.transform, own = tr.screenPointToMercatorCoordinate;
     tr.screenPointToMercatorCoordinate = function (p, terrain) {
       const cp = this.getCameraPoint();
       if (pos && p.x === cp.x && p.y === cp.y) return maplibregl.MercatorCoordinate.fromLngLat(pos);

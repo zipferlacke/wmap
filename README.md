@@ -115,6 +115,10 @@ zur zuvor besuchten Seite zu gehen.
   nichts. Die Abfrage fragt die Server nacheinander statt parallel; ein
   Server, der ablehnt (429 bzw. 406) oder überlastet ist (5xx), bekommt 60,
   30 bzw. 20 s Pause – das gilt für alle Overpass-Abfragen der App.
+  Geneigt verschwindet eine Ampel hinter einem Haus (MapLibre zeichnet
+  Symbole sonst durch die Häuser): Sichtstrahl von der Kamera zur Ampel (2 m
+  hoch) gegen Grundriss und Höhe der Häuser aus den Kacheln, nach jeder
+  Bewegung und währenddessen höchstens alle 250 ms.
 - **Overpass und Kennung:** Die öffentlichen Server verlangen einen
   User-Agent oder Referer, der die App eindeutig erkennen lässt (sonst 406;
   [Nutzungsregeln](https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances):
@@ -161,6 +165,14 @@ zur zuvor besuchten Seite zu gehen.
   In der Navigation gibt es kein (i).
 - **Letzter Ausschnitt:** Die Karte merkt sich Mitte, Zoom, Neigung und
   Richtung (`wmap.view`) und startet dort wieder.
+- **Symbole der Orte** (`js/map/poi-icons.js`): ein runder Knopf in der Farbe
+  der Art mit weißem Symbol aus der Icon-Schrift (Material Symbols Rounded, wie
+  überall in der App) – Parkplatz, Fahrradständer, Mülleimer, Bus, Straßenbahn,
+  Bäckerei, Drogerie, Supermarkt, Trinkwasser und gut 150 weitere – statt der
+  Symbole des Grundstils. Gibt es eine WMap-Kategorie, gelten deren Symbol und
+  Farbe; der Dialog zeigt dasselbe (auch ohne Kategorie: `iconForTags`).
+  Schranken, Poller und Tore ohne Symbol. Gezeichnet erst, wenn die Karte ein
+  Bild braucht (`poi:<Klasse>:<Unterklasse>`).
 - **Antippen:** ein Ort der Karte (Laden, Haltestelle …) öffnet seine Karte
   unten; ein Treffer einer eigenen Ebene zeigt alle Werte des Objekts.
 - **Haltestellen und Bahnhöfe** (die Symbole der Grundkarte):
@@ -277,6 +289,56 @@ zur zuvor besuchten Seite zu gehen.
   („Oma“, „Verein“ …), eine andere oder neue **Liste** („Hannover Urlaub“),
   Zuhause oder Arbeit. „Gemerkt“ antippen öffnet denselben Dialog mit
   „Entfernen“.
+- **Orte der Karte nach Wichtigkeit** (`sortPois` in `js/map/map.js`): Der
+  Grundstil zeigte Orte nur nach dem `rank` der Kacheln (Zoom 15/16/17). Jetzt
+  stehen Supermärkte, Bäckereien, Ärzte, Apotheken, Krankenhäuser, Museen,
+  Sehenswürdigkeiten, Burgen, Denkmäler, Parks, Zoos, Aussichtspunkte und
+  Theater ab Zoom 14 (eigene Ebene `poi_early`, gewinnt bei Platzmangel);
+  Kleidung, Schuhe, Bücher, Kaufhäuser, Schmuck, Handy, Parfüm, Spielhallen,
+  Büros u. Ä. erst ab Zoom 17,5 (`poi_late`, verliert bei Platzmangel) –
+  C&A, Karstadt, Only kommen eine Ebene tiefer. Bushaltestellen wie immer.
+- **Je näher, desto mehr Orte** (`POI_PLACEMENT` in `js/map/map.js`): MapLibre
+  prüft Platz in Bildschirmpixeln – der Name eines Ladens am Straßenrand
+  überlappt auf dem Bild den Straßennamen, und bisher flog der Laden samt
+  Symbol raus, beim Hineinzoomen um eine Viertelstufe bis zu 21 Orte, obwohl
+  sie im Bild blieben. Jetzt sperren Straßennamen keinen Platz mehr und
+  stehen immer (`text-ignore-placement`, `text-allow-overlap`), die Orte liegen
+  darüber (unter den Ortsnamen); das Symbol bleibt auch ohne Namen
+  (`text-optional`), der Name weicht unter, über, rechts oder links aus, und
+  wer gewinnt, steht fest (`symbol-sort-key` = rank der Kacheln). Gemessen in
+  Göttingen (Zoom 15–18,5): flach wie geneigt etwa doppelt so viele Orte,
+  beim Hineinzoomen verschwinden meist 1–5; Straßennamen 30 flach / 20
+  geneigt. Straßennamen fast schwarz mit weißem Rand (`STREET_NAME`).
+- **Geneigte Karte scharf beschriftet:** Straßennamen stehen aufrecht entlang
+  der Straße (`text-pitch-alignment: viewport`) statt flach auf dem Boden –
+  steil von der Seite waren sie gestaucht und unscharf. MapLibre vergrößert
+  Namen und Symbole vorn bis aufs Vierfache; angepasst
+  (`tools/maplibre-anpassen.py`) liegt der Faktor zwischen 0,5 (hinten) und 1
+  – nie größer als eingestellt.
+- **Speicher mit Gelände** (`drapeTogether` in `js/map/map.js`): MapLibre malt
+  mit Gelände die Bodenebenen je Geländekachel in eine Textur von 2048 × 2048
+  (16 MB), und zwar je Folge von Bodenebenen zwischen anderen Ebenen eine. Es
+  waren 6 Folgen – am Darmstädter Schloss geneigt 1,7 GB Grafikspeicher, das
+  iPad 9 (3 GB) lud die Seite immer wieder neu. Mit Gelände stehen jetzt alle
+  Bodenebenen vor den übrigen (eine Folge; am Bild ändert das nichts, Häuser
+  verdecken dann über die Tiefe), ohne Gelände kommt die alte Reihenfolge
+  zurück. Gemessen in Chrome am Handy, Zoom 19, 70°: Grafik 1680 → 460 MB,
+  gesamt 1966 → 792 MB. Pixeldichte 1 statt 2 spart dabei nichts – die
+  Texturen sind immer gleich groß.
+- **Fußgängerzonen und Plätze** hell ocker (`PEDESTRIAN_FILL`) statt
+  schraffiert – anders als Wasser und Wege.
+- **Nicht öffentliche Orte blass** (`js/map/poi-access.js`): Die Kacheln
+  kennen keinen Zugang. Ab Zoom 16 fragt WMap im Hintergrund Overpass nach
+  Parkplätzen, Toiletten, Ladesäulen, Bänken u. Ä. mit `access` im Ausschnitt
+  (Felder von ≈ 1 km wie bei den Ampeln, nur fehlende, nach Absage Pause) und
+  setzt den Feature-State `access`: privat (private, no, Anwohner,
+  Genehmigung) mit Deckkraft 0,4, nur für Kunden/Anlieger 0,7 – wie die grauen
+  Treffer in der Liste „in der Nähe“.
+- **Zuhause und Arbeit auf der Karte** (`js/map/my-places.js`): rundes
+  Abzeichen mit Haus (blau) bzw. Koffer (braun), der eigene Name darunter
+  („Zuhause“, „Bei Oma“). Kommt aus den Lesezeichen und zieht beim Ändern
+  sofort nach; antippen öffnet den Ort (als gemerkt). Übrige Lesezeichen
+  (noch) nicht.
 - **In der Suche** (und in den Feldern der Routenplanung): ohne Eingabe
   Zuhause und Arbeit ganz oben; beim Tippen dazu die Lesezeichen, deren
   Name, Ort oder Liste passt – im Abschnitt „Lesezeichen“ vor den
@@ -465,8 +527,7 @@ alle Spuren mit Pfeilen; die richtigen sind hervorgehoben.
 (+3 km/h) wird die Anzeige rot.
 
 **Sonstiges:** Der Bildschirm bleibt an (Wake Lock). Vor dem Start wird auf
-Wunsch die Karte entlang der Route offline gespeichert. In der Navigation
-nutzt das Gelände gröbere Höhendaten (siehe [7](#7-3d-gelände-und-höhen)).
+Wunsch die Karte entlang der Route offline gespeichert.
 
 **Simulation zum Testen** (am Schreibtisch, ohne GPS): `sim` an die Adresse
 hängen, Route planen, auf „Los“ tippen – ein simulierter Standort fährt die
@@ -502,9 +563,13 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
     springen die gröberen Übersichten desselben Dienstes (3,2 m, 50 m) ein.
     Hessen, Rheinland-Pfalz und das Saarland liefern JPEG statt PNG (ein
     Drittel bis ein Zehntel der Daten). Straßen (etwas zurückgenommen), Flüsse und Namen liegen obenauf.
-    **Gebäude**: graue, deckende Wände, auf dem Dach das Luftbild – dieselbe
-    eigene Gebäude-Ebene wie auf der Karte (map/buildings.js, siehe 3D-Häuser);
-    weiter hinten bleiben Dächer grau.
+    **Gebäude**: graue, deckende Wände, auf dem Dach das Luftbild – die
+    eigene Gebäude-Ebene (map/buildings.js, siehe 3D-Häuser); weiter hinten
+    bleiben Dächer grau. Die Häuser stehen sofort, das Bild kommt Kachel für
+    Kachel darauf, von der Mitte nach außen (8 × 8 Kacheln). Welches Stück
+    Bild auf welches Dach gehört, rechnet die Grafikkarte aus der Lage der Ecke
+    – kommt ein neues Bild, bleiben die Häuser stehen (bis 3.0.0 wartete die
+    App auf alle 64 Kacheln und baute dann jedes Haus ein zweites Mal).
 - **Wandern & Rad** (Schwerpunkt): große Straßen (Autobahn bis Kreisstraße)
   treten auf 40 % zurück, die Wanderwege von Waymarked Trails liegen darüber,
   das Relief wird kräftiger.
@@ -540,13 +605,34 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
   ging das Gelände nur bis Zoom 14 (≈ 3 m), weil ältere MapLibre-Versionen
   die 3D-Häuser bei feinerem Gelände neben ihren Grundriss in die Luft
   setzten; mit 5.24 an einem Hang (St. Andreasberg, Zoom 15–17,5)
-  nachgesehen – sie stehen. In der **Navigation** reicht Zoom 13
-  (≈ 6 m): weniger Daten, und die Straße liegt ruhiger, weil kleine
-  Höhenfehler sie sonst wellen.
+  nachgesehen – sie stehen. **Eine einzige Quelle** (`terrain`) für Gelände,
+  Schummerung und Navigation: jede Kachel einmal geladen, entpackt und auf
+  der Grafikkarte. Bis 3.0 waren es drei (eigene für die Schummerung, grob
+  für die Navigation) – doppelter Grafikspeicher am Handy.
+- **MapLibre 6.15** (seit 3.0; vorher 5.24): nur noch als ES-Modul,
+  `js/core/maplibre.js` lädt es und stellt es als `window.maplibregl` bereit
+  (steht in jeder Seite vor dem eigenen Modul). Den Worker liefert es als
+  `maplibre-gl-worker.js` mit (nicht `.mjs` – nicht jeder Server gibt `.mjs`
+  als JavaScript aus), der Pfad steht dort (`setWorkerUrl`). Gewechselt wegen der
+  Kamera über Gelände: Version 5 legte nach Gesten über 84° die Mitte 10 km
+  weit weg (Zoom 20 → 12,6), hob die Ansicht beim Eintreffen von Geländekacheln
+  ruckartig an, ließ die Kamera nach dem Start auf 0 m und verlor beim Schieben
+  den angefassten Punkt – alles ab 6.3–6.15 behoben, die Umwege von WMap sind
+  weg. Interna, die WMap nutzt: `map._camera.transform` (Street View, Gesten),
+  `map._handlers._updateMapTransform` (Gesten), `map.terrain`,
+  GeolocateControl-Felder (`_watchState` …), `style.tileManagers`.
+- **Neigen zoomt mit** (`js/map/tilt-gestures.js`, ab 40°): bis 1,6 Stufen
+  näher bei 85°, zurückkippen wieder heraus – in der Geste selbst (nicht mit
+  setZoom danach: das meldete je Bild „Bewegung zu Ende“, Häuser und Namen
+  wurden mitten in der Geste neu gebaut).
+- **Schieben geneigt:** mit einem Finger im Maßstab des Vordergrunds (unteres
+  Viertel des Bilds) mal 0,5 + 0,5 · cos(Neigung) – gleitend zwischen 1 flach
+  und 0,5 (0,75 bei 60°, 0,63 bei 75°, 0,54 bei 85°), das Nachrollen ebenso. MapLibre schiebt so, dass der Punkt unter dem
+  Finger mitgeht – nahe am Horizont waren das Kilometer je Wisch.
 - **Warnungen:** Der Grundstil wird vor dem ersten Zeichnen gerichtet –
   fehlende Gebäudehöhen gelten als 0, Zahlenvergleiche in Filtern bekommen
-  ein `has`, fehlende Symbole des Grundstils (`atm`, `gate` …) werden leer
-  nachgeliefert. Sonst meldet MapLibre das je Kachel in der Konsole.
+  ein `has`, fehlende Symbole werden nachgeliefert (`setMissingStyleImageResolver`;
+  ohne eigenes Bild leer). Sonst meldet MapLibre das je Kachel in der Konsole.
 - **Eigener Standort:** ein ruhiger Punkt – das Pulsieren von MapLibre ist aus.
 - **Überhöhung:** auf jeder Zoomstufe 1,5-fach. Bis 2.3.2 nah heran 1-fach,
   weil MapLibres Häuser sonst schief im Hang standen – die eigenen stehen auf
@@ -556,8 +642,21 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
   schwächer, aber deutlich (Zoom 16: 0,45, Zoom 17,5: 0,35; `RELIEF` in
   `js/map/map.js`). Bis 2.3.2 fiel es nah heran fast auf null – dort tat der
   Schalter „Relief“ sichtbar nichts. Im Schwerpunkt „Wandern & Rad“ stärker.
-- **3D-Häuser zeichnet WMap selbst** (`js/map/buildings.js`, eine eigene
-  WebGL-Ebene; MapLibres `building-3d` ist aus). MapLibre stellt jedes Objekt
+- **Hausnummern** ab Zoom 17, klein und blass (9–11 px, grau; im Grundstil
+  fehlen sie – Ebene `housenumber` aus den Kacheln, `addHouseNumbers` in
+  `js/map/map.js`); Straßennamen und Orte gehen vor.
+- **3D-Häuser zeichnet in der normalen Karte MapLibre** (`building-3d` und
+  die Dächer `building-roof`, seit 3.0): Ab 6.x steht jedes Haus auf dem
+  Gelände unter seiner eigenen Mitte, auch wenn die Kacheln viele zu einem
+  Objekt zusammenfassen; die Wände reichen 10 m in den Boden, das Gelände
+  verdeckt sie. Gebaut wird im Hintergrund (Worker) statt im Hauptfaden – am
+  Rechner fiel rund 1 s je Bau weg. „Steht der Punkt in einem Haus?“
+  (Umsehen) prüft dann die Grundrisse der Kacheln bei Bedarf (`insideTiles`).
+- **Auf dem Luftbild und in Street View zeichnet WMap die Häuser selbst**
+  (`js/map/buildings.js`, eine eigene WebGL-Ebene; MapLibres Häuser sind dann
+  aus) – fürs Luftbild auf den Dächern und für Geschäfte, Wartehäuschen und
+  Bäume in Street View. In der normalen Karte zeichnet die Ebene nur die
+  Haltestellen. Warum selbst (bis 3.0 überall): MapLibre 5 stellte jedes Objekt
   der Kacheln auf die Bodenhöhe an seiner Mitte – die Kacheln fassen aber
   kleine Häuser gleicher Höhe zu einem Objekt zusammen (am Birkenweg in
   Rittmarshausen fast 1800 Häuser mit 5 m): Alle standen auf der Höhe eines
@@ -571,16 +670,20 @@ Knopf **Ebenen** rechts oben auf der Karte. Die Wahl bleibt gespeichert.
   - ein Körper in einem größeren: dessen Höhe; der niedrigere rückt 10 cm je
     Rang ein, sonst kämpfen Wände in derselben Ebene ums Pixel
 
-  Das Haus steht auf der **tiefsten Stelle** seines Grundrisses (Mitte und
-  Ecken gemessen) – am Hang schwebt nichts. Die Wände reichen nur 0,5 m in den
+  Die Wände reichen bis zur **tiefsten Stelle** des Grundrisses (Mitte und
+  Ecken gemessen) – am Hang schwebt nichts; die Höhe aus OSM zählt ab der
+  **mittleren** (sonst steckte die Bergseite um den ganzen, 1,5-fach überhöhten
+  Hang im Boden). Liegt eine Gruppe über mehr als 4 m (ein Block am Hang), steht
+  jedes Haus für sich. Die Wände reichen nur 0,5 m in den
   Boden: MapLibre verdeckt eigene Ebenen nicht mit dem Gelände, bis 2.3.2 (10 m)
   lagen die unterirdischen Wände je nach Blickrichtung über der Straße. Farben wie
   vorher: warme Wände, hohe Häuser kühler, rote, braune oder graue Dächer mit
   Dachkante – je Haus nach seiner Lage (zusammengefasste Häuser teilen sich die
   Kennung), Licht aus Südwest, im Dunkeln fast grau; auf dem Luftbild graue
   Wände und das Luftbild auf dem Dach. Gebaut wird neu, wenn Ort oder Zoom sich
-  merklich ändern, Kacheln nachkommen, das Gelände wechselt oder das Design –
-  nicht beim Drehen und Neigen. Ohne Ruckeln: Die Geländehöhe wird einmal je
+  merklich ändern, Kacheln nachkommen (Häuser: sobald die Kartenkacheln da sind,
+  nicht erst, wenn auch Gelände und Relief fertig sind), das Gelände wechselt
+  oder das Design – nicht beim Drehen und Neigen. Ohne Ruckeln: Die Geländehöhe wird einmal je
   Durchgang nachgeschlagen (`queryTerrainElevation` sucht sonst bei jedem Haus
   die Kacheln im Bild – in Göttingen 1,2 s), jedes Haus wird nur einmal zu
   Dreiecken (Zwischenspeicher, fester Ursprung je ≈ 40-km-Feld), und gebaut

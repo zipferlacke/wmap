@@ -47,20 +47,27 @@ const SHOP_FLOOR = 3.6;                   // Street View: Erdgeschoss eines Gesc
 // Licht aus Südwest (Azimut 225°, wie map.setLight in map/map.js) – Richtung zum Licht in Ost/Nord
 const LIGHT = (() => { const a = (225 * Math.PI) / 180; return [Math.sin(a), Math.cos(a)]; })();
 
+// Wo auf dem Luftbild ein Dach liegt, rechnet die Grafikkarte aus der Lage der Ecke: u_texOff = Ursprung − Ecke der
+// Textur, u_texScale = 1 / Größe (Mercator). So bleiben die Häuser stehen, wenn das Bild wechselt oder nachkommt
 const VERT = `
 attribute vec3 a_pos; attribute vec2 a_uv; attribute vec4 a_color;
-uniform mat4 u_matrix;
+uniform mat4 u_matrix; uniform vec2 u_texOff; uniform vec2 u_texScale;
 varying vec2 v_uv; varying vec4 v_color;
-void main() { v_uv = a_uv; v_color = a_color; gl_Position = u_matrix * vec4(a_pos, 1.0); }`;
+void main() { v_uv = (a_pos.xy + u_texOff) * u_texScale; v_color = a_color; gl_Position = u_matrix * vec4(a_pos, 1.0); }`;
 const FRAG = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 uniform sampler2D u_tex; uniform float u_hasTex; uniform float u_alpha;
 varying vec2 v_uv; varying vec4 v_color;
 void main() {
-  // a < 0.5: Dach mit Luftbild (außerhalb der Textur die Farbe selbst)
+  // a < 0.5: Dach mit Luftbild – außerhalb der Textur und wo die Kachel noch fehlt (durchsichtig) die Farbe selbst
   if (v_color.a < 0.5) {
     bool inside = u_hasTex > 0.5 && v_uv.x >= 0.0 && v_uv.x <= 1.0 && v_uv.y >= 0.0 && v_uv.y <= 1.0;
-    gl_FragColor = inside ? vec4(texture2D(u_tex, v_uv).rgb, 1.0) : vec4(v_color.rgb, 1.0);
+    vec4 img = inside ? texture2D(u_tex, v_uv) : vec4(0.0);
+    gl_FragColor = img.a > 0.5 ? vec4(img.rgb, 1.0) : vec4(v_color.rgb, 1.0);
   } else {
     gl_FragColor = vec4(v_color.rgb, u_alpha);
   }
@@ -117,35 +124,35 @@ function loadImage(url) {
 }
 
 /**
- * Kacheln z/x0..x1/y0..y1 in eine Leinwand – je Kachel erst Sentinel-2 (nur
- * bis Zoom 14, darüber vergrößert), darüber die amtlichen Luftbilder, in deren
- * Gebiet die Kachel liegt. Außerhalb ihres Landes sind die durchsichtig, so
- * bleibt an Landesgrenzen nichts schwarz.
+ * Kacheln z/x0..x1/y0..y1 einzeln – von der Mitte nach außen, jede, sobald sie da ist: `onTile(Leinwand, x, y)`
+ * (x, y: Kachel). Je Kachel erst Sentinel-2 (nur bis Zoom 14, darüber vergrößert), darüber die amtlichen
+ * Luftbilder, in deren Gebiet die Kachel liegt. Außerhalb ihres Landes sind die durchsichtig, so bleibt an
+ * Landesgrenzen nichts schwarz.
  */
-async function paintTexture(sources, z, x0, x1, y0, y1, signal) {
-  const c = Object.assign(document.createElement('canvas'), { width: (x1 - x0 + 1) * TILE, height: (y1 - y0 + 1) * TILE });
-  const ctx = c.getContext('2d');
-  const jobs = [];
+async function paintTiles(sources, z, x0, x1, y0, y1, signal, onTile) {
   const base = sources.find((s) => !s.bounds);
-  const draw = (url, sx, sy, sw, dx, dy) => loadImage(url).then((img) => img && (sw ? ctx.drawImage(img, sx, sy, sw, sw, dx, dy, TILE, TILE) : ctx.drawImage(img, dx, dy, TILE, TILE)));
-  for (let x = x0; x <= x1; x += 1) {
-    for (let y = y0; y <= y1; y += 1) {
-      const lng = lngOf(x + 0.5, z), lat = latOf(y + 0.5, z);
-      const dx = (x - x0) * TILE, dy = (y - y0) * TILE;
-      // Erst Sentinel-2 (nur bis Zoom 14, das passende Stück der Elternkachel) …
-      const pz = Math.min(z, base.maxzoom ?? 14), k = 2 ** (z - pz), part = base.tileSize / k;
-      const under = draw(base.tiles.replace('{z}', pz).replace('{x}', Math.floor(x / k)).replace('{y}', Math.floor(y / k)), (x % k) * part, (y % k) * part, part, dx, dy);
-      // … darüber die amtlichen Luftbilder, deren Gebiet die Kachel berührt –
-      // außerhalb ihres Landes sind sie durchsichtig
-      const regions = sources.filter((s) => s.bounds && z >= (s.minzoom ?? 0)
-        && lng >= s.bounds[0] && lng <= s.bounds[2] && lat >= s.bounds[1] && lat <= s.bounds[3]);
-      const tops = regions.map((r) => loadImage(r.tiles.replace('{bbox-epsg-3857}', tileBounds(x, y, z).join(',')).replace('WIDTH=512&HEIGHT=512', `WIDTH=${TILE}&HEIGHT=${TILE}`)));
-      jobs.push(under.then(() => Promise.all(tops)).then((imgs) => imgs.forEach((img) => img && ctx.drawImage(img, dx, dy, TILE, TILE))));
-    }
-  }
-  await Promise.all(jobs);
-  if (signal.aborted) return null;
-  return c;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const all = [];
+  for (let x = x0; x <= x1; x += 1) for (let y = y0; y <= y1; y += 1) all.push([x, y]);
+  all.sort((a, b) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(b[0] - cx, b[1] - cy));
+  await Promise.all(all.map(async ([x, y]) => {
+    const lng = lngOf(x + 0.5, z), lat = latOf(y + 0.5, z);
+    // Erst Sentinel-2 (nur bis Zoom 14, das passende Stück der Elternkachel) …
+    const pz = Math.min(z, base.maxzoom ?? 14), k = 2 ** (z - pz), part = base.tileSize / k;
+    const under = loadImage(base.tiles.replace('{z}', pz).replace('{x}', Math.floor(x / k)).replace('{y}', Math.floor(y / k)));
+    // … darüber die amtlichen Luftbilder, deren Gebiet die Kachel berührt – außerhalb ihres Landes durchsichtig
+    const regions = sources.filter((s) => s.bounds && z >= (s.minzoom ?? 0)
+      && lng >= s.bounds[0] && lng <= s.bounds[2] && lat >= s.bounds[1] && lat <= s.bounds[3]);
+    const tops = regions.map((r) => loadImage(r.tiles.replace('{bbox-epsg-3857}', tileBounds(x, y, z).join(',')).replace('WIDTH=512&HEIGHT=512', `WIDTH=${TILE}&HEIGHT=${TILE}`)));
+    const [img, ...over] = await Promise.all([under, ...tops]);
+    if (signal.aborted || (!img && !over.some(Boolean))) return;
+    const c = Object.assign(document.createElement('canvas'), { width: TILE, height: TILE });
+    const ctx = c.getContext('2d');
+    if (img) ctx.drawImage(img, (x % k) * part, (y % k) * part, part, part, 0, 0, TILE, TILE);
+    for (const o of over) if (o) ctx.drawImage(o, 0, 0, TILE, TILE);
+    onTile(c, x, y);
+    c.width = 0;
+  }));
 }
 
 /* ── Häuser sammeln: jedes für sich, mit einer Bodenhöhe ────────────────── */
@@ -166,14 +173,14 @@ const areaOf = (ring) => { let a = 0; for (let i = 0; i < ring.length - 1; i += 
 const tint = (p) => Math.abs(Math.round(p[0] * 1e5) * 7 + Math.round(p[1] * 1e5) * 13);
 
 /**
- * Geländehöhe an einem Punkt – schnell. `queryTerrainElevation` bestimmt bei jedem Aufruf neu, welche Kacheln im
- * Bild sind, nur um die Zoomstufe des Geländes zu finden (am Handy Sekunden für eine Stadt). Hier wird diese
- * Stufe einmal abgehört, danach gilt sie für alle Häuser – dieselbe Höhe wie bei `queryTerrainElevation`.
+ * Geländehöhe an einem Punkt – schnell. Ab MapLibre 6.12 liest `queryTerrainElevation` aus dem gezeichneten Gelände
+ * und ist billig. Davor bestimmte es bei jedem Aufruf neu, welche Kacheln im Bild sind, nur um die Zoomstufe des
+ * Geländes zu finden (am Handy Sekunden für eine Stadt) – dort wird diese Stufe einmal abgehört.
  */
 function groundOf(map) {
   const t = map.terrain;
   const slow = (p) => map.queryTerrainElevation?.(p) ?? 0;
-  if (!t?.getElevationForLngLatZoom) return slow;
+  if (t?.getDrawnElevationForLngLat || !t?.getElevationForLngLatZoom) return slow;
   let z = null;
   const own = t.getElevationForLngLatZoom;
   t.getElevationForLngLatZoom = function (lngLat, zoom) { z = zoom; return own.call(this, lngLat, zoom); };
@@ -204,7 +211,10 @@ const NO_PACE = { due: () => false, rest: async () => {} };
  * Objekten) einmal, mit der gemeinsamen Bodenhöhe seiner Gruppe. `near` ({ point, radius } in m): nur Häuser im
  * Umkreis (Street View – der Rest bis zum Horizont kostet nur)
  */
-export async function collectBuildings(map, pace = NO_PACE, near = null, shops = [], roofs = [], shelters = []) {
+export async function collectBuildings(map, pace = NO_PACE, near = null, shops = [], roofs = [], shelters = [], shapes = []) {
+  // Dachformen aus OSM (Street View): das Haus, dessen Mitte im Umriss liegt
+  const shapeBoxes = shapes.map((x) => [ringBox(x.ring), x]);
+  const shapeAt = (c) => shapeBoxes.find(([b, x]) => inBox(c, b) && inRing(c, x.ring))?.[1] ?? null;
   // Dächer auf Pfosten (Street View, aus OSM) zeichnet streetMesh – hier nicht als Klotz
   const roofBoxes = roofs.map((r) => [ringBox(r.ring), r.ring]);
   const isRoof = (c) => roofBoxes.some(([b, ring]) => inBox(c, b) && inRing(c, ring));
@@ -232,6 +242,10 @@ export async function collectBuildings(map, pace = NO_PACE, near = null, shops =
       const item = { key, rings, height, min, center: ringCenter(outer), box: ringBox(outer), area: Math.abs(areaOf(outer)), n: outer.length,
         // Street View: Farbe aus OSM (building:colour bzw. Material, in den Kacheln „colour“)
         colour: near ? colourOf(f.properties.colour) : null };
+      if (shapeBoxes.length) {
+        const sh = shapeAt(item.center);
+        if (sh) { item.shape = sh; item.colour = colourOf(sh.colour) ?? item.colour; }
+      }
       // Ein Haus über einer Kachelgrenze: gleiche Kennung, eigenes Polygon je Kachel. Zusammengefasste Häuser
       // (MultiPolygon) teilen sich die Kennung auch – die gehören nicht zusammen
       if (f.id != null && f.geometry.type === 'Polygon') item.idKey = `${f.id}`;
@@ -277,7 +291,19 @@ export async function collectBuildings(map, pace = NO_PACE, near = null, shops =
     }
     if (host >= 0) join(i, host);
   }
-  // Bodenhöhe je Gruppe: die tiefste Stelle unter dem Umriss, sonst unter allen Stücken zusammen
+  /*
+   * Bodenhöhe je Gruppe aus fünf Proben (Mitte und Ecken, 15 % nach innen – die Ecken eines L-Hauses lägen sonst
+   * auf der Straße): die Wände reichen bis zur tiefsten (`ground`, am Hang schwebt nichts), die Höhe aus OSM zählt
+   * ab der mittleren (`ref`) – sonst steckte die Bergseite um den ganzen Hang im Boden (das Gelände ist dazu noch
+   * 1,5-fach überhöht). Liegt eine Gruppe über mehr als 4 m Höhe (ein Block am Hang), steht jedes Haus für sich.
+   */
+  const SPREAD = 4;
+  const ground = groundOf(map);
+  const samples = (box, at) => {
+    const k = 0.15, [x0, y0, x1, y1] = box, dx = (x1 - x0) * k, dy = (y1 - y0) * k;
+    const v = [ground(at), ground([x0 + dx, y0 + dy]), ground([x1 - dx, y0 + dy]), ground([x0 + dx, y1 - dy]), ground([x1 - dx, y1 - dy])];
+    return { min: Math.min(...v), max: Math.max(...v), ref: v.reduce((a, b) => a + b, 0) / v.length };
+  };
   const groups = new Map();
   all.forEach((it, i) => {
     const r = find(i);
@@ -288,16 +314,14 @@ export async function collectBuildings(map, pace = NO_PACE, near = null, shops =
     g.box = [Math.min(g.box[0], it.box[0]), Math.min(g.box[1], it.box[1]), Math.max(g.box[2], it.box[2]), Math.max(g.box[3], it.box[3])];
     if (!g.color || it.area > g.colorArea) { g.color = it.center; g.colorArea = it.area; }
   });
-  const ground = groundOf(map);
   for (const g of groups.values()) {
     if (pace.due()) await pace.rest();
     const at = g.outline ? g.outline.center : g.w ? [g.x / g.w, g.y / g.w] : null;
     const box = g.outline ? g.outline.box : g.box;
     if (at && Number.isFinite(box[0])) {
-      // Mitte und die Ecken des Rechtecks, 15 % nach innen (die Ecken eines L-Hauses lägen sonst auf der Straße)
-      const k = 0.15, [x0, y0, x1, y1] = box, dx = (x1 - x0) * k, dy = (y1 - y0) * k;
-      g.ground = Math.min(ground(at), ground([x0 + dx, y0 + dy]), ground([x1 - dx, y0 + dy]), ground([x0 + dx, y1 - dy]), ground([x1 - dx, y1 - dy]));
-    } else g.ground = at ? ground(at) : 0;
+      const p = samples(box, at);
+      g.ground = p.min; g.ref = p.ref; g.split = p.max - p.min > SPREAD;
+    } else { g.ground = at ? ground(at) : 0; g.ref = g.ground; }
     g.tint = tint(g.outline ? g.outline.center : g.color ?? at ?? [0, 0]);
   }
   // Rang in der Gruppe: der höchste 0, dann absteigend (bei gleicher Höhe der größere zuerst)
@@ -320,7 +344,11 @@ export async function collectBuildings(map, pace = NO_PACE, near = null, shops =
     }
     if (best >= 0 && !shopOf.has(best)) shopOf.set(best, sh.color);
   }
-  return solids.map((s, i) => { const g = groups.get(find(i)); return { key: s.key, rings: s.rings, height: s.height, min: s.min, ground: g.ground, tint: g.tint, rank: rank[i], shop: shopOf.get(i) ?? null, colour: s.colour }; });
+  return solids.map((s, i) => {
+    const g = groups.get(find(i));
+    const own = g.split ? samples(s.box, s.center) : g;
+    return { key: s.key, rings: s.rings, height: s.height, min: s.min, ground: own.min ?? own.ground, ref: own.ref, tint: g.tint, rank: rank[i], shop: shopOf.get(i) ?? null, colour: s.colour };
+  });
 }
 
 /* ── Häuser als Dreiecke ────────────────────────────────────────────────── */
@@ -333,20 +361,22 @@ const mercY = (lat) => (180 - (180 / Math.PI) * Math.log(Math.tan(Math.PI / 4 + 
  * Ein Haus → Float32Array: je Ecke x, y, z (relativ zum Ursprung), u, v, r, g, b, a
  *   a = 0: Dach mit Luftbild (nur `sat`), sonst die Farbe
  */
-function houseMesh(hs, origin, unit, { sat, darkMode, tex }) {
+function houseMesh(hs, origin, unit, { sat, darkMode }) {
   const look = (c) => (darkMode ? dark(c) : c);
   const high = hs.height >= 40;
   // Farbe aus OSM (Street View) – leicht mit dem üblichen Ton gemischt, reines Weiß oder Rot wirkt sonst grell
   const own = !sat && hs.colour ? hs.colour.map((v, i) => v * 0.8 + WALLS[hs.tint % 4][i] * 0.2) : null;
   const wall = sat ? SAT_WALL : look(own ?? (high ? WALLS_HIGH[hs.tint % 3] : WALLS[hs.tint % 4]));
-  const roof = sat ? SAT_WALL.map((v) => v * 1.08) : look(hs.height >= 25 ? ROOF_HIGH : ROOFS[hs.tint % 4]);
-  const zTop = (hs.ground + hs.height) * unit;
-  const zEave = (hs.ground + Math.max(hs.min, hs.height - EAVE)) * unit;
-  const zBase = (hs.ground + (hs.min > 0 ? hs.min : -SINK)) * unit;
+  const roof = sat ? SAT_WALL.map((v) => v * 1.08) : look(colourOf(hs.shape?.roofColour) ?? (hs.height >= 25 ? ROOF_HIGH : ROOFS[hs.tint % 4]));
+  // Höhe ab der mittleren Bodenhöhe (`ref`), Wände bis zur tiefsten (`ground`) – siehe collectBuildings
+  const ref = hs.ref ?? hs.ground;
+  const zTop = (ref + hs.height) * unit;
+  const zEave = (ref + Math.max(hs.min, hs.height - EAVE)) * unit;
+  const zBase = (hs.min > 0 ? ref + hs.min : hs.ground - SINK) * unit;
   // Geschäft im Haus (Street View): das Erdgeschoss in der Farbe seiner Art, bis 3,6 m
   // (zu einem Viertel mit der Wand gemischt – sonst leuchten ganze Häuserzeilen)
   const shop = hs.shop ? look(hex(hs.shop).map((v, i) => v * 0.75 + wall[i] * 0.25)) : null;
-  const zShop = shop ? (hs.ground + Math.min(SHOP_FLOOR, hs.height - EAVE - 0.3)) * unit : null;
+  const zShop = shop ? (ref + Math.min(SHOP_FLOOR, hs.height - EAVE - 0.3)) * unit : null;
   const band = shop && zShop > zBase;
   // Ecken in Mercator; eingerückt (rank > 0): jede Ecke zur Mitte des Hauses hin
   const outer = hs.rings[0];
@@ -369,6 +399,8 @@ function houseMesh(hs, origin, unit, { sat, darkMode, tex }) {
     }
     rings.push(pts);
   }
+  const plan = hs.shape && rings.length === 1 ? roofPlan(rings[0], hs, unit) : null;
+  if (plan) return shapedMesh(rings[0], plan, { origin, zBase, wall, roof, shop, zShop: band ? zShop : null, ccw: areaOf(hs.rings[0]) > 0, sat });
   const tris = earcut(flat, holes);
   let n = tris.length;
   for (const pts of rings) n += (pts.length / 2) * (band ? 18 : 12);
@@ -407,12 +439,142 @@ function houseMesh(hs, origin, unit, { sat, darkMode, tex }) {
     }
   });
   // Dach: Fläche auf Dachhöhe – Luftbild oder Farbe
-  for (const i of tris) {
-    const x = flat[2 * i], y = flat[2 * i + 1];
-    const u = tex ? (x - tex.x0) / (tex.x1 - tex.x0) : -1, v = tex ? (y - tex.y0) / (tex.y1 - tex.y0) : -1;
-    put(x, y, zTop, u, v, roof, sat ? 0 : 1);
+  for (const i of tris) put(flat[2 * i], flat[2 * i + 1], zTop, 0, 0, roof, sat ? 0 : 1);
+  return out;
+}
+
+/* ── Dachformen (Street View, roof:shape aus OSM) ────────────────────────── */
+
+/*
+ * Das Dach steht über dem kleinsten Rechteck um den Grundriss. Jede Dachfläche gehört zu einer Seite des Rechtecks
+ * und steigt von ihr gleichmäßig an; die Höhe an einem Punkt ist die der nächsten Fläche:
+ *   z = Traufe + Steigung · min(Abstand zu den Seiten der Flächen)
+ *   Satteldach  die zwei langen Seiten (roof:orientation=across: die kurzen) – Giebel an den anderen
+ *   Walmdach    alle vier (auch Zelt-, Mansard-, Kuppel- und Zwiebeldach, angenähert)
+ *   Pultdach    eine lange Seite, steigt bis zur gegenüber
+ * Jede Fläche ist eben: der Teil des Grundrisses, der ihrer Seite am nächsten liegt (Schnitt mit Halbebenen).
+ */
+const ROOF_SIDES = {
+  gabled: 'long', 'half-hipped': 'all', hipped: 'all', pyramidal: 'all', mansard: 'all', gambrel: 'long', saltbox: 'long',
+  dome: 'all', onion: 'all', round: 'long', skillion: 'one', 'side_hipped': 'all', cone: 'all',
+};
+function roofPlan(pts, hs, unit) {
+  const kind = ROOF_SIDES[hs.shape.shape];
+  if (!kind) return null;
+  // Kleinstes Rechteck: je Kante des Grundrisses als Richtung probiert
+  const n = pts.length / 2;
+  let best = null;
+  for (let i = 0; i < n; i += 1) {
+    const j = (i + 1) % n;
+    const dx = pts[2 * j] - pts[2 * i], dy = pts[2 * j + 1] - pts[2 * i + 1], len = Math.hypot(dx, dy);
+    if (!len) continue;
+    const ux = dx / len, uy = dy / len;
+    let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+    for (let k = 0; k < n; k += 1) {
+      const x = pts[2 * k], y = pts[2 * k + 1], u = x * ux + y * uy, v = -x * uy + y * ux;
+      u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v);
+    }
+    const area = (u1 - u0) * (v1 - v0);
+    if (!best || area < best.area) best = { area, ux, uy, u0, u1, v0, v1 };
+  }
+  if (!best) return null;
+  const { ux, uy, u0, u1, v0, v1 } = best;
+  // Seiten als Abstand nach innen: d = nx·x + ny·y − c
+  const sU0 = { nx: ux, ny: uy, c: u0 }, sU1 = { nx: -ux, ny: -uy, c: -u1 };
+  const sV0 = { nx: -uy, ny: ux, c: v0 }, sV1 = { nx: uy, ny: -ux, c: -v1 };
+  const uLong = u1 - u0 >= v1 - v0;
+  const across = hs.shape.orientation === 'across';
+  const longSides = uLong !== across ? [sV0, sV1] : [sU0, sU1];
+  const sides = kind === 'all' ? [sU0, sU1, sV0, sV1] : kind === 'one' ? [longSides[0]] : longSides;
+  // Abstand von der Traufe bis zum First: Satteldach halber Abstand der Traufseiten, Walmdach halbe Breite,
+  // Pultdach der ganze Abstand
+  const between = longSides[0] === sV0 ? v1 - v0 : u1 - u0;
+  const span = kind === 'one' ? between : kind === 'all' ? Math.min(u1 - u0, v1 - v0) / 2 : between / 2;
+  const spanM = span / unit;                                   // bis zum First (m)
+  if (!(spanM > 0.5)) return null;
+  // Dachhöhe aus OSM, sonst etwa 35° (Pultdach flacher) – höchstens 60 % des Hauses, mindestens 2 m Wand bleiben
+  const wantM = hs.shape.height ?? spanM * (kind === 'one' ? 0.27 : 0.7);
+  const rh = Math.max(0.5, Math.min(wantM, hs.height * 0.6, hs.height - hs.min - 2));
+  if (!(rh > 0.4)) return null;
+  const ref = hs.ref ?? hs.ground;
+  return { sides, eave: (ref + hs.height - rh) * unit, slope: (rh * unit) / span, top: (ref + hs.height) * unit };
+}
+
+const dOf = (s, x, y) => s.nx * x + s.ny * y - s.c;
+function roofZ(plan, x, y) {
+  let d = Infinity;
+  for (const s of plan.sides) d = Math.min(d, dOf(s, x, y));
+  return Math.min(plan.top, plan.eave + plan.slope * Math.max(0, d));
+}
+
+/** Polygon (x, y, …) ∩ Halbebene f(x, y) ≤ 0 – Sutherland-Hodgman */
+function clipHalf(pts, f) {
+  const out = [];
+  const n = pts.length / 2;
+  for (let i = 0; i < n; i += 1) {
+    const j = (i + 1) % n;
+    const ax = pts[2 * i], ay = pts[2 * i + 1], bx = pts[2 * j], by = pts[2 * j + 1];
+    const fa = f(ax, ay), fb = f(bx, by);
+    if (fa <= 0) out.push(ax, ay);
+    if ((fa < 0 && fb > 0) || (fa > 0 && fb < 0)) { const t = fa / (fa - fb); out.push(ax + (bx - ax) * t, ay + (by - ay) * t); }
   }
   return out;
+}
+
+function shapedMesh(pts, plan, { origin, zBase, wall, roof, shop, zShop, ccw, sat }) {
+  const out = [];
+  const put = (x, y, z, c, a = 1) => out.push(x - origin.x, y - origin.y, z, 0, 0, c[0], c[1], c[2], a);
+  const n = pts.length / 2;
+  // Wände: jede Kante bis unters Dach – geteilt, wo die nächste Dachfläche wechselt (Giebel, Grate)
+  for (let i = 0; i < n; i += 1) {
+    const j = (i + 1) % n;
+    const ax = pts[2 * i], ay = pts[2 * i + 1], bx = pts[2 * j], by = pts[2 * j + 1];
+    const ts = [0, 1];
+    const S = plan.sides;
+    for (let p = 0; p < S.length; p += 1) {
+      for (let q = p + 1; q < S.length; q += 1) {
+        const fa = dOf(S[p], ax, ay) - dOf(S[q], ax, ay), fb = dOf(S[p], bx, by) - dOf(S[q], bx, by);
+        if ((fa < 0 && fb > 0) || (fa > 0 && fb < 0)) ts.push(fa / (fa - fb));
+      }
+    }
+    ts.sort((a, b) => a - b);
+    const ex = bx - ax, ny = -(by - ay), len = Math.hypot(ex, ny) || 1;
+    const nx = ccw ? ny / len : -ny / len, nn = ccw ? -ex / len : ex / len;
+    const lit = Math.max(0, nx * LIGHT[0] + nn * LIGHT[1]);
+    const shade = 0.72 + 0.3 * lit;
+    const lo = wall.map((v) => v * shade * 0.86), hi = wall.map((v) => v * shade);
+    for (let k = 0; k + 1 < ts.length; k += 1) {
+      const t0 = ts[k], t1 = ts[k + 1];
+      if (t1 - t0 < 1e-9) continue;
+      const x0 = ax + ex * t0, y0 = ay + (by - ay) * t0, x1 = ax + ex * t1, y1 = ay + (by - ay) * t1;
+      const z0 = roofZ(plan, x0, y0), z1 = roofZ(plan, x1, y1);
+      let b0 = zBase;
+      if (shop && zShop > zBase) {
+        const s0 = shop.map((v) => v * shade * 0.9), s1 = shop.map((v) => v * shade);
+        put(x0, y0, zBase, s0); put(x1, y1, zBase, s0); put(x1, y1, zShop, s1);
+        put(x0, y0, zBase, s0); put(x1, y1, zShop, s1); put(x0, y0, zShop, s1);
+        b0 = zShop;
+      }
+      put(x0, y0, b0, lo); put(x1, y1, b0, lo); put(x1, y1, z1, hi);
+      put(x0, y0, b0, lo); put(x1, y1, z1, hi); put(x0, y0, z0, hi);
+    }
+  }
+  // Dachflächen: je Seite der Teil des Grundrisses, der ihr am nächsten liegt
+  const S = plan.sides;
+  S.forEach((s, i) => {
+    let poly = pts;
+    for (let k = 0; k < S.length && poly.length >= 6; k += 1) {
+      if (k === i) continue;
+      const o = S[k];
+      poly = clipHalf(poly, (x, y) => dOf(s, x, y) - dOf(o, x, y) - 1e-12);
+    }
+    if (poly.length < 6) return;
+    // Fläche zeigt nach außen über ihre Seite (Normale nach innen umgedreht, Nord nach oben)
+    const lit = Math.max(0, -s.nx * LIGHT[0] + s.ny * LIGHT[1]);
+    const c = roof.map((v) => v * (0.7 + 0.35 * lit));
+    for (const t of earcut(poly)) put(poly[2 * t], poly[2 * t + 1], roofZ(plan, poly[2 * t], poly[2 * t + 1]), c, sat ? 0 : 1);
+  });
+  return new Float32Array(out);
 }
 
 /* ── Street View: Haltestellen, Mauern, Dächer auf Pfosten, Bäume ────────── */
@@ -537,7 +699,7 @@ async function buildMesh(houses, origin, opts, cache = new Map(), pace = NO_PACE
   }
   for (const hs of houses) {
     if (pace.due()) await pace.rest();
-    const key = `${hs.key}|${hs.ground.toFixed(2)}|${hs.rank}|${hs.tint}|${hs.shop ?? ''}|${hs.colour ?? ''}`;
+    const key = `${hs.key}|${hs.ground.toFixed(2)}|${(hs.ref ?? hs.ground).toFixed(2)}|${hs.rank}|${hs.tint}|${hs.shop ?? ''}|${hs.colour ?? ''}|${hs.shape?.id ?? ''}`;
     const part = cache.get(key) ?? next.get(key) ?? houseMesh(hs, origin, unit, opts);
     next.set(key, part);
     parts.push(part);
@@ -573,10 +735,28 @@ function houseIndex(houses) {
     .some(([b, rings]) => inBox(p, b) && inRing(p, rings[0]) && !rings.slice(1).some((hole) => inRing(p, hole)));
 }
 
+/**
+ * Steht der Punkt [lon, lat] in einem Haus? Direkt an den Grundrissen der Kacheln – wenn MapLibre die Häuser zeichnet
+ * (nativ), gibt es keinen eigenen Bau, aus dem man es wüsste. Nur bei Bedarf (Umsehen), nicht je Bild.
+ */
+function insideTiles(map, p) {
+  const feats = map.querySourceFeatures('openmaptiles', { sourceLayer: 'building' });
+  return feats.some((f) => {
+    if ((f.properties.render_min_height ?? 0) > 0 || f.properties.hide_3d) return false;
+    const g = f.geometry;
+    const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+    return polys.some((rings) => inBox(p, ringBox(rings[0])) && inRing(p, rings[0]) && !rings.slice(1).some((hole) => inRing(p, hole)));
+  });
+}
+
 /* ── Die Ebene ──────────────────────────────────────────────────────────── */
 
 /**
- * Häuser selbst zeichnen und MapLibres 3D-Häuser („building-3d“, „building-roof“) ausblenden.
+ * Häuser zeichnen – in der normalen Karte MapLibre selbst („building-3d“, „building-roof“: ab 6.x steht jedes Haus
+ * auf dem Gelände unter seiner eigenen Mitte, auch wenn die Kacheln viele zu einem Objekt zusammenfassen; die Wände
+ * reichen in den Boden und das Gelände verdeckt sie; gebaut im Hintergrund statt im Hauptfaden). Diese Ebene zeichnet
+ * dann nur Haltestellen. Selbst gezeichnet werden die Häuser auf dem Luftbild (Luftbild auf den Dächern) und in
+ * Street View (Geschäfte im Erdgeschoss, Wartehäuschen, Bäume).
  * `darkMode()`: dunkles Design? → { setSat(an, Quellen der Satellitenkarte), rebuild, inside(Punkt) }
  */
 export function mountBuildings(map, { darkMode = () => false } = {}) {
@@ -585,6 +765,7 @@ export function mountBuildings(map, { darkMode = () => false } = {}) {
   let loc = {};
   let ctl = null, timer = null;
   let tex = null;                         // Mercator-Bereich der Textur
+  let tilesIn = 0;                        // so viele Luftbild-Kacheln liegen schon darin (Tests)
   let sat = false, sources = [];
 
   const layer = {
@@ -599,6 +780,7 @@ export function mountBuildings(map, { darkMode = () => false } = {}) {
       loc = {
         pos: gl.getAttribLocation(prog, 'a_pos'), uv: gl.getAttribLocation(prog, 'a_uv'), color: gl.getAttribLocation(prog, 'a_color'),
         matrix: gl.getUniformLocation(prog, 'u_matrix'), tex: gl.getUniformLocation(prog, 'u_tex'), hasTex: gl.getUniformLocation(prog, 'u_hasTex'), alpha: gl.getUniformLocation(prog, 'u_alpha'),
+        texOff: gl.getUniformLocation(prog, 'u_texOff'), texScale: gl.getUniformLocation(prog, 'u_texScale'),
       };
       buf = gl.createBuffer();
       texture = gl.createTexture();
@@ -621,6 +803,11 @@ export function mountBuildings(map, { darkMode = () => false } = {}) {
       gl.useProgram(prog);
       gl.uniformMatrix4fv(loc.matrix, false, new Float32Array(m));
       gl.uniform1f(loc.hasTex, sat && hasTex ? 1 : 0);
+      // Lage des Luftbilds zum Ursprung – in doppelter Genauigkeit gerechnet, erst die Differenz geht an die Grafikkarte
+      if (tex) {
+        gl.uniform2f(loc.texOff, ox - tex.x0, oy - tex.y0);
+        gl.uniform2f(loc.texScale, 1 / (tex.x1 - tex.x0), 1 / (tex.y1 - tex.y0));
+      }
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.uniform1i(loc.tex, 0);
@@ -676,15 +863,15 @@ export function mountBuildings(map, { darkMode = () => false } = {}) {
   let inside = () => false;               // Grundrisse vom letzten Bau
   let focus = null;                       // Street View: { point, radius } – nur Häuser im Umkreis
   // Street View: Geschäfte (Erdgeschoss färben), Haltestellen, Mauern, Dächer auf Pfosten, Bäume
-  const NONE = { shops: [], stops: [], walls: [], roofs: [], trees: [], key: '' };
+  const NONE = { shops: [], stops: [], walls: [], roofs: [], trees: [], shapes: [], key: '' };
   let things = NONE;
   let mapStops = 0;                       // 3D-Karte: so viele Haltestellen stehen (Tests)
   async function make(o) {
     const mine = ++gen;
     const pace = pacer(() => mine === gen && !!gl);
-    const opts = { sat, darkMode: darkMode(), tex: sat && hasTex ? tex : null };
+    const opts = { sat, darkMode: darkMode() };
     const zone = new maplibregl.MercatorCoordinate(Math.floor(o.x * 1024) / 1024, Math.floor(o.y * 1024) / 1024, 0);
-    const look = `${zone.x}|${zone.y}|${opts.sat}|${opts.darkMode}|${opts.tex ? `${tex.z}|${tex.x0}|${tex.y0}` : ''}`;
+    const look = `${zone.x}|${zone.y}|${opts.sat}|${opts.darkMode}`;
     if (look !== cacheFor) { cache = new Map(); cacheFor = look; }
     try {
       // 3D-Karte nah dran: Haltestellen aus den Kacheln wie in Street View (ohne Overpass)
@@ -696,9 +883,9 @@ export function mountBuildings(map, { darkMode = () => false } = {}) {
       }
       mapStops = stops?.length ?? 0;
       const shown = focus ? things.stops : stops ?? [];
-      const houses = await collectBuildings(map, pace, focus, focus ? things.shops : [], focus ? things.roofs : [],
-        shown.filter((x) => x.shelter).map((x) => x.point));
-      inside = houseIndex(houses);
+      const houses = native() ? [] : await collectBuildings(map, pace, focus, focus ? things.shops : [], focus ? things.roofs : [],
+        shown.filter((x) => x.shelter).map((x) => x.point), focus ? things.shapes : []);
+      inside = native() ? (p) => insideTiles(map, p) : houseIndex(houses);
       const street = focus ? { things, ground: groundOf(map) }
         : stops?.length ? { things: { ...NONE, stops }, ground: groundOf(map) } : null;
       const { data, next, glass } = await buildMesh(houses, zone, opts, cache, pace, street);
@@ -741,33 +928,60 @@ export function mountBuildings(map, { darkMode = () => false } = {}) {
     if (tex && hasTex && tex.z === z && inner(o.x, tex.x0, tex.x1) && inner(o.y, tex.y0, tex.y1)) return;
     ctl?.abort();
     ctl = new AbortController();
-    const canvas = await paintTexture(sources, z, x0, x1, y0, y1, ctl.signal);
-    if (!canvas || !gl || !sat) return;
+    const signal = ctl.signal;
+    // Neuer Block: leer (durchsichtig – die Dächer zeigen ihre Farbe), dann Kachel für Kachel hinein. Die Häuser
+    // bleiben stehen, nur das Bild auf den Dächern kommt nach
+    const W = (x1 - x0 + 1) * TILE, H = (y1 - y0 + 1) * TILE;
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    canvas.width = 0;                      // Leinwand freigeben – das Bild liegt jetzt auf der Grafikkarte
     tex = { ...area, z };
     hasTex = true;
-    await make(o);
+    tilesIn = 0;
+    map.triggerRepaint();
+    await paintTiles(sources, z, x0, x1, y0, y1, signal, (c, x, y) => {
+      if (signal.aborted || !gl || !sat) return;
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, (x - x0) * TILE, (y - y0) * TILE, gl.RGBA, gl.UNSIGNED_BYTE, c);
+      tilesIn += 1;
+      map.triggerRepaint();
+    });
   }
-  const schedule = (force = false) => { clearTimeout(timer); timer = setTimeout(() => rebuild({ force }), 250); };
+  const schedule = (force = false, wait = 250) => { clearTimeout(timer); timer = setTimeout(() => rebuild({ force }), wait); };
   map.on('moveend', () => schedule());
-  // Kommen Gebäude- oder Geländekacheln nach (genauere Zoomstufe), sobald die Karte fertig geladen hat neu
-  // bauen – ohne dass man sie bewegen muss. Gelände an/aus: Die Häuser stehen dann anders hoch
-  let dirty = false;
-  map.on('sourcedata', (e) => { if (e.tile && (e.sourceId === 'openmaptiles' || e.sourceId?.startsWith('terrain'))) dirty = true; });
-  map.on('idle', () => { if (dirty) { dirty = false; schedule(true); } });
+  /*
+   * Kommen Kacheln nach, neu bauen – ohne dass man die Karte bewegen muss:
+   *   Häuser (openmaptiles)  sobald diese Quelle ganz geladen ist – nicht erst, wenn auch Gelände, Relief und
+   *                          Overlays fertig sind (das kostete am Handy Sekunden)
+   *   Gelände (genauer)      wenn die Karte ruht (idle); Gelände an/aus: die Häuser stehen dann anders hoch
+   */
+  let houseTiles = false, dirty = false;
+  map.on('sourcedata', (e) => {
+    if (!e.tile) return;
+    if (e.sourceId === 'openmaptiles') houseTiles = true;
+    else if (e.sourceId?.startsWith('terrain')) dirty = true;
+    if (houseTiles && map.isSourceLoaded('openmaptiles')) { houseTiles = false; dirty = false; schedule(true, 30); }
+  });
+  map.on('idle', () => { if (dirty || houseTiles) { dirty = false; houseTiles = false; schedule(true, 0); } });
   map.on('terrain', () => schedule(true));
 
-  // MapLibres eigene 3D-Häuser aus – an ihrer Stelle diese Ebene (Routen bleiben darunter)
+  // MapLibres 3D-Häuser in der normalen Karte, sonst diese Ebene an ihrer Stelle (Routen bleiben darunter)
   const extrusions = () => map.getStyle().layers.filter((l) => l.type === 'fill-extrusion').map((l) => l.id);
   const first = extrusions()[0];
-  for (const id of extrusions()) map.setLayoutProperty(id, 'visibility', 'none');
+  let shownNative = null;
+  function native() {
+    const on = !sat && !focus;
+    if (on !== shownNative) {
+      shownNative = on;
+      for (const id of extrusions()) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+    }
+    return on;
+  }
+  native();
   map.addLayer(layer, first);
 
   return {
@@ -780,6 +994,8 @@ export function mountBuildings(map, { darkMode = () => false } = {}) {
       built = null;
       schedule(true);
     },
+    /** Luftbild: { tiles: Kacheln schon auf den Dächern, houses: Ecken gezeichnet } (Tests) */
+    satState: () => ({ tiles: tilesIn, houses: count, z: tex?.z ?? null }),
     /** Design gewechselt: neu einfärben */
     rebuild: () => { built = null; schedule(true); },
     /** Steht der Punkt [lon, lat] in einem Haus? (aus dem letzten Bau) */
@@ -791,14 +1007,17 @@ export function mountBuildings(map, { darkMode = () => false } = {}) {
      *  ({ point, dir, away }) – neu gebaut nur, wenn sich etwas geändert hat */
     /** Was gerade steht: { stops, shelters, walls, roofs, trees } (Tests) */
     thingCount: () => ({ stops: things.stops.length, shelters: things.stops.filter((x) => x.shelter).length,
-      walls: things.walls.length, roofs: things.roofs.length, trees: things.trees.length, mapStops }),
+      walls: things.walls.length, roofs: things.roofs.length, trees: things.trees.length, shapes: things.shapes.length, mapStops }),
     /** Street View: Geschäfte ({ point, color }) und was aus Overpass kommt (`details`: { id, walls, roofs, trees })
      *  – neu gebaut nur, wenn sich etwas geändert hat */
     setStreetThings({ shops = [], stops = [], details = null } = {}) {
       const key = JSON.stringify([shops.map((x) => [x.point, x.color]), stops.map((x) => [x.point, Math.round(x.dir), x.away, !!x.shelter]), details?.id ?? '']);
       if (key === things.key) return;
-      things = { shops, stops, walls: details?.walls ?? [], roofs: details?.roofs ?? [], trees: details?.trees ?? [], key };
+      things = { shops, stops, walls: details?.walls ?? [], roofs: details?.roofs ?? [], trees: details?.trees ?? [], shapes: details?.shapes ?? [], key };
       if (focus) schedule(true);
     },
   };
 }
+
+/** Für Tests: Dachformen an einem Haus durchrechnen → Ecken (x, y, z relativ, …) */
+export const roofTest = (hs, origin, unit) => houseMesh(hs, origin, unit, { sat: false, darkMode: false });

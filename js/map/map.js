@@ -15,6 +15,8 @@ import { geo, geolocationApi } from '../core/native.js';
 import { smoothGeolocation } from '../core/smooth.js';
 import { enhanceDot } from './location-dot.js';
 import { mountBuildings } from './buildings.js';
+import { tiltGestures } from './tilt-gestures.js';
+import { POI_ICON, addPoiIcon } from './poi-icons.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const fc = (features) => ({ type: 'FeatureCollection', features });
@@ -28,7 +30,7 @@ export const ROUTE_COLOR = '#1a73e8';
 export const ROAD_ZOOM = 16.2;
 
 /** Symbol-Ebenen des Kartenstils mit Geschäften, Parkplätzen, Haltestellen … */
-export const BASE_POI_LAYERS = ['poi_r1', 'poi_r7', 'poi_r20', 'poi_transit'];
+export const BASE_POI_LAYERS = ['poi_early', 'poi_r1', 'poi_r7', 'poi_r20', 'poi_late', 'poi_transit'];
 
 /**
  * OSM-Objekt hinter einem POI der Karte. OpenMapTiles kodiert es in der
@@ -84,11 +86,13 @@ export function createMap(container, {
     pixelRatio: mapPixelRatio(),
     canvasContextAttributes: { antialias: mapPixelRatio() < 2, preserveDrawingBuffer: snapshot },
   });
+  // Geneigt: Gesten um die Bildmitte, Neigen zoomt mit, Schieben im Maßstab vorn (map/tilt-gestures.js)
+  tiltGestures(map);
   // Stil erst hier: so lässt er sich vor dem ersten Kachel-Zeichnen anpassen
   map.setStyle(style, { transformStyle: (prev, next) => fixStyle(next) });
   // Fehlende Symbole gleich von Anfang an nachliefern (Kategorien, Spurpfeile,
   // Lücken im Grundstil) – sonst warnt MapLibre für die ersten Kacheln
-  map.on('styleimagemissing', (e) => addCategoryIcon(map, e.id));
+  map.setMissingStyleImageResolver((id) => addCategoryIcon(map, id));
 
   /*
    * Kommen Höhendaten später als die Gebäude (langsames Netz), standen Häuser
@@ -103,12 +107,14 @@ export function createMap(container, {
   });
 
   retryFailedSources(map);
+  drapeTogether(map);
 
   map.on('style.load', () => {
     map.setProjection({ type: 'globe' });
     germanLabels(map);
     calmLabels(map);
     colorBuildings(map);
+    addHouseNumbers(map);
     rememberColors(map);
     paintTheme(map);
   });
@@ -150,15 +156,13 @@ export function createMap(container, {
     // Gelände in voller Auflösung (Zoom 16, ≈ 0,75 m). Bis 2.3.2 nur Zoom 14 wie die Kacheln mit den Häusern:
     // Mit älterem MapLibre schwebten die 3D-Häuser sonst neben ihrem Grundriss („elevation maxzoom >
     // source.maxzoom“) – mit 5.24 nachgesehen (St. Andreasberg am Hang, Zoom 15–17,5): sie stehen.
+    // Eine Quelle für Gelände, Schummerung und Navigation: jede Kachel einmal geladen, entpackt und auf der
+    // Grafikkarte (bis 3.0 drei – Gelände, Schummerung, grob für die Navigation: doppelter Grafikspeicher).
+    // MapLibre rät zu getrennten Quellen für Gelände und Schummerung (etwas feinere Schummerung) – der Speicher
+    // am Handy geht vor
     map.addSource('terrain', { ...DEM_SOURCE });
-    // In der Navigation reicht gröberes Gelände (Zoom 13, ≈ 6 m): weniger Daten,
-    // und die Straße liegt ruhiger – feine Höhenfehler lassen sie sonst wellen
-    map.addSource('terrain-lo', { ...DEM_SOURCE, maxzoom: 13 });
-    // Eigene Quelle für die Schummerung – MapLibre rät davon ab, Gelände und
-    // Schummerung aus derselben Quelle zu speisen
-    map.addSource('hillshade', { ...DEM_SOURCE });
     map.addLayer({
-      id: 'hillshade', type: 'hillshade', source: 'hillshade',
+      id: 'hillshade', type: 'hillshade', source: 'terrain',
       paint: {
         // Nah heran schwächer: Mapterhorn nutzt in Städten teils Oberflächen-
         // modelle, dort erscheinen Häuser als Hügel – „Berge“ um die Gebäude
@@ -172,7 +176,7 @@ export function createMap(container, {
     map.setLight({ anchor: 'viewport', color: '#ffffff', intensity: 0.32, position: [1.4, 200, 35] });
     map.addControl(new maplibregl.TerrainControl({ source: 'terrain', exaggeration: TERRAIN_EXAGGERATION }), 'top-right');
     addLayers(map);
-    // 3D-Häuser selbst gezeichnet – jedes Haus auf seiner eigenen Bodenhöhe (map/buildings.js)
+    // 3D-Häuser: normal von MapLibre, auf dem Luftbild und in Street View selbst gezeichnet (map/buildings.js)
     if (map.getLayer('building-3d')) {
       map.wmapBuildings = mountBuildings(map, { darkMode: () => theme.dark });
       addEventListener('wmap:theme', () => map.wmapBuildings.rebuild());
@@ -203,8 +207,8 @@ export const RELIEF = ['interpolate', ['linear'], ['zoom'], 5, 0.6, 12, 0.55, 14
 export const RELIEF_FOCUS = ['interpolate', ['linear'], ['zoom'], 5, 0.8, 14, 0.7, 16, 0.6, 17.5, 0.5];
 /*
  * Höhen: Mapterhorn liefert in Deutschland bis Zoom 16 – bei 512er Kacheln
- * ≈ 0,75 m je Pixel, aus den amtlichen 1-m-Geländemodellen der Länder. Gelände
- * und Schummerung nutzen das volle Maß, die Navigation 'terrain-lo' (Zoom 13).
+ * ≈ 0,75 m je Pixel, aus den amtlichen 1-m-Geländemodellen der Länder. Gelände,
+ * Schummerung und Navigation teilen sich diese eine Quelle.
  */
 const DEM_SOURCE = {
   type: 'raster-dem', tiles: [TERRAIN_TILES], tileSize: 512, maxzoom: 16, encoding: 'terrarium',
@@ -302,7 +306,7 @@ function autoThreeD(map) {
    * im Hang; die eigenen in map/buildings.js stehen auf ihrer Bodenhöhe, auch überhöht)
    */
   const exaggeration = () => TERRAIN_EXAGGERATION;
-  const source = () => (document.body.classList.contains('navigating') ? 'terrain-lo' : 'terrain');
+  const source = () => 'terrain';
   const terrain = (on) => {
     // Autobildschirm (car/car.js): ohne Gelände – darübergelegt werden Route
     // und Fahrspuren mit gröberem Zoom gezeichnet und wirken dann blass
@@ -312,13 +316,6 @@ function autoThreeD(map) {
     map.setTerrain(on ? { source: source(), exaggeration: exaggeration() } : null);
     autoTerrain = on;
   };
-  // Navigation an/aus: Gelände in der passenden Auflösung
-  new MutationObserver(() => {
-    const t = map.getTerrain();
-    if (!t || t.source === source()) return;
-    ours = true;
-    map.setTerrain({ ...t, source: source() });
-  }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
   // Schon geneigt gestartet (wiederhergestellte Ansicht): Gelände gleich dazu
   if (map.getPitch() >= 15) allow3d().then((ok) => { if (ok && !terrainOff) terrain(true); });
@@ -329,7 +326,7 @@ function autoThreeD(map) {
   let demErrors = 0;
   map.on('error', (e) => {
     // 404 ist kein Funkloch; 504 schickt der Service Worker, wenn das Netz fehlt
-    if (!['terrain', 'terrain-lo', 'hillshade'].includes(e.sourceId) || (e.error?.status && e.error.status !== 504)) return;
+    if (e.sourceId !== 'terrain' || (e.error?.status && e.error.status !== 504)) return;
     if (++demErrors < 3 || !map.getTerrain()) return;
     demErrors = 0;
     terrain(false);
@@ -409,9 +406,101 @@ function guardCompare(e) {
   const get = out.find((a, i) => i > 0 && Array.isArray(a) && a[0] === 'get' && typeof a[1] === 'string' && a.length === 2);
   return COMPARE.has(out[0]) && get ? ['all', ['has', get[1]], out] : out;
 }
+/*
+ * Orte nach Wichtigkeit statt nur nach `rank` der Kacheln (Grundstil: Zoom 15, 16, 17 je rank):
+ * Grundversorgung und Sehenswertes ab Zoom 14 – man sieht gleich „hier ist ein Museum“ –, Mode, Bücher,
+ * Vergnügen und Büros erst nah heran (17,5): C&A, Karstadt, Only kommen erst eine Ebene tiefer.
+ * Bushaltestellen zeigt ohnehin immer `poi_transit`. Werte: OpenMapTiles class/subclass.
+ */
+const POI_EARLY = ['supermarket', 'bakery', 'doctors', 'pharmacy', 'hospital', 'clinic', 'museum', 'attraction', 'castle',
+  'monument', 'memorial', 'zoo', 'theme_park', 'viewpoint', 'park', 'theatre', 'aquarium'];
+const POI_LATE_SUB = ['clothes', 'shoes', 'boutique', 'fashion', 'fashion_accessories', 'books', 'gift', 'jewelry', 'toys',
+  'department_store', 'mall', 'perfumery', 'cosmetics', 'beauty', 'tattoo', 'mobile_phone', 'electronics', 'computer',
+  'photo', 'sports', 'outdoor', 'ticket', 'travel_agency', 'tobacco', 'e-cigarette', 'copyshop', 'bag', 'watches', 'video_games',
+  'music', 'art', 'antiques', 'second_hand', 'amusement_arcade', 'casino', 'gambling', 'nightclub', 'lottery'];
+const POI_LATE_CLASS = ['office', 'clothing_store'];
+const POI_LATE_ZOOM = 17.5;
+
+/**
+ * Nicht öffentlich (map/poi-access.js setzt den Feature-State `access`): privat blass, nur für Kunden o. Ä.
+ * etwas – wie die grauen Treffer in der Liste „in der Nähe“.
+ */
+const ACCESS_OPACITY = ['case', ['==', ['feature-state', 'access'], 'private'], 0.4, ['==', ['feature-state', 'access'], 'limited'], 0.7, 1];
+
+/*
+ * Je näher, desto mehr Orte – nicht weniger: Nah heran gibt es mehr und längere Straßennamen, die vor den Orten
+ * Platz bekommen. Fand der Name eines Orts keinen Platz, flog er samt Symbol raus – bis zu 17 von 30 beim
+ * Hineinzoomen um eine Viertelstufe, obwohl sie im Bild blieben. Jetzt: Das Symbol bleibt auch ohne Namen, der Name
+ * weicht unter, über, rechts oder links des Symbols aus, und wer bei Platzmangel gewinnt, steht fest (rank aus den
+ * Kacheln: wichtig zuerst) – sonst wechselt es von Stufe zu Stufe.
+ */
+const POI_PLACEMENT = {
+  'text-optional': true,
+  'text-variable-anchor-offset': ['top', [0, 0.7], 'bottom', [0, -0.9], 'left', [0.95, 0], 'right', [-0.95, 0]],
+  'symbol-sort-key': ['coalesce', ['get', 'rank'], 99],
+};
+
+function sortPois(style) {
+  const layers = style.layers ?? [];
+  const r1 = layers.findIndex((l) => l.id === 'poi_r1');
+  const r20 = layers.findIndex((l) => l.id === 'poi_r20');
+  if (r1 < 0 || r20 < 0) return;
+  const point = ['match', ['geometry-type'], ['MultiPoint', 'Point'], true, false];
+  const early = ['in', ['get', 'subclass'], ['literal', POI_EARLY]];
+  const late = ['any', ['in', ['get', 'subclass'], ['literal', POI_LATE_SUB]], ['in', ['get', 'class'], ['literal', POI_LATE_CLASS]]];
+  for (const l of layers) {
+    if (['poi_r1', 'poi_r7', 'poi_r20'].includes(l.id)) l.filter = ['all', l.filter, ['!', early], ['!', late]];
+  }
+  const copy = (id, minzoom, filter) => ({ ...structuredClone(layers[r1]), id, minzoom, filter: ['all', point, filter] });
+  // Oben eingereiht gewinnt bei Platzmangel: die frühen über allen, die späten unter allen
+  layers.splice(r1 + 1, 0, copy('poi_early', 14, early));
+  layers.splice(r20, 0, copy('poi_late', POI_LATE_ZOOM, late));
+  // Straßennamen sperren keinen Platz und weichen nicht aus: Geprüft wird in Bildschirmpixeln – der Name eines Ladens
+  // am Straßenrand überlappt auf dem Bild den Straßennamen, und einer von beiden flog raus. Jetzt stehen beide, die
+  // Orte darüber (über den Straßennamen und -schildern, unter den Ortsnamen)
+  // Geneigt stehen sie aufrecht entlang der Straße (viewport) – flach auf dem Boden waren sie steil von der Seite
+  // gesehen gestaucht und unscharf
+  for (const l of layers) if (/^highway-name/.test(l.id)) Object.assign(l.layout ??= {}, { 'text-ignore-placement': true, 'text-allow-overlap': true, 'text-pitch-alignment': 'viewport' });
+  const pois = layers.filter((l) => /^poi_/.test(l.id));
+  const rest = layers.filter((l) => !/^poi_/.test(l.id));
+  const at = rest.findIndex((l) => /^label_/.test(l.id));
+  if (at >= 0) layers.splice(0, layers.length, ...rest.slice(0, at), ...pois, ...rest.slice(at));
+}
+
+/*
+ * Straßennamen fast schwarz mit weißem Rand statt grau (#666, Fußwege hellbraun) – auf Dächern und Straßen gut
+ * lesbar. Im Dunkeln färbt paintTheme sie wie alle Beschriftungen um (hell auf dunklem Rand).
+ */
+const STREET_NAME = {
+  'highway-name-major': { 'text-color': '#1a1a1a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5, 'text-halo-blur': 0.3 },
+  'highway-name-minor': { 'text-color': '#1a1a1a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5, 'text-halo-blur': 0.3 },
+  'highway-name-path': { 'text-color': '#3a3a3a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.2 },
+};
+
+/*
+ * Fußgängerzonen und Plätze: hell ocker statt der Schraffur des Grundstils – anders als Wasser (blau) und Wege
+ * (weiß). Im Dunkeln färbt paintTheme die Farbe mit um.
+ */
+const PEDESTRIAN_FILL = '#f2e2b6';
+
 function fixStyle(style) {
+  sortPois(style);
+  for (const l of style.layers ?? []) if (STREET_NAME[l.id]) Object.assign(l.paint ??= {}, STREET_NAME[l.id]);
+  const ped = style.layers?.find((l) => l.id === 'road_area_pattern');
+  if (ped?.paint?.['fill-pattern']) {
+    delete ped.paint['fill-pattern'];
+    Object.assign(ped.paint, { 'fill-color': PEDESTRIAN_FILL, 'fill-opacity': 0.85 });
+  }
   for (const l of style.layers ?? []) {
     if (Array.isArray(l.filter)) l.filter = guardCompare(l.filter);
+    // Orte: eigene Symbole aus der Icon-Schrift statt der des Grundstils (map/poi-icons.js)
+    if (BASE_POI_LAYERS.includes(l.id) && l.layout?.['icon-image']) l.layout['icon-image'] = POI_ICON;
+    if (BASE_POI_LAYERS.includes(l.id)) {
+      Object.assign(l.paint ??= {}, { 'icon-opacity': ACCESS_OPACITY, 'text-opacity': ACCESS_OPACITY });
+      Object.assign(l.layout ??= {}, POI_PLACEMENT);
+      delete l.layout['text-anchor'];
+      delete l.layout['text-offset'];
+    }
   }
   const b = style.layers?.find((l) => l.id === 'building-3d');
   // Häuser aus mehreren Teilen (building:part): Der Umriss des ganzen Hauses steht mit `hide_3d` in den Kacheln
@@ -449,6 +538,24 @@ function colorBuildings(map) {
   // ihre eigene Helligkeit, Ecken und Höhen werden sichtbar
   map.setLight({ anchor: 'map', position: [1.3, 225, 50], color: '#ffffff', intensity: 0.55 });
   if (map.getLayer('building')) map.setPaintProperty('building', 'fill-color', wall);
+}
+
+/**
+ * Hausnummern klein und blass ab Zoom 17 (OpenMapTiles „housenumber“, im Grundstil nicht gezeigt) – weichen
+ * Straßennamen und Orten, nicht umgekehrt
+ */
+function addHouseNumbers(map) {
+  const base = map.getStyle().layers.find((l) => l.id === 'building-3d');
+  if (!base || map.getLayer('housenumber')) return;
+  map.addLayer({
+    id: 'housenumber', type: 'symbol', source: base.source, 'source-layer': 'housenumber', minzoom: 17,
+    layout: {
+      'text-field': ['get', 'housenumber'], 'text-font': ['Noto Sans Regular'],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 17, 9, 19, 11],
+      'text-padding': 4, 'symbol-sort-key': 1,
+    },
+    paint: { 'text-color': '#8a8170', 'text-halo-color': 'rgba(255,255,255,0.8)', 'text-halo-width': 1 },
+  }, firstLabelLayer(map));
 }
 
 /**
@@ -675,6 +782,47 @@ function collapseAttribution(container) {
     byUser = false;
   }).observe(el, { attributes: true, attributeFilter: ['class'] });
   collapse();
+}
+
+/*
+ * Gelände und Speicher: Mit Gelände malt MapLibre die Bodenebenen (Flächen, Straßen, Routen …) je Geländekachel in
+ * eine Textur von 2048 × 2048 Pixeln (16 MB) und legt sie aufs Gelände. Jede Folge von Bodenebenen zwischen
+ * anderen (Symbole, Punkte, Häuser) bekommt eigene Texturen – bei uns waren es 6 Folgen, nah am Darmstädter Schloss
+ * geneigt 90 Texturen, 1,4 GB Grafikspeicher (Handy gemessen; auf dem iPad 9 lud Safari die Seite neu).
+ * Darum stehen mit Gelände alle Bodenebenen vor der ersten anderen: eine Folge, ein Sechstel davon. Am Bild ändert
+ * das nichts – mit Gelände verdecken Häuser den Boden über die Tiefe, nicht über die Reihenfolge. Ohne Gelände
+ * kommt die alte Reihenfolge zurück (Hervorhebung, Verkehr … über den Häusern). Neue Ebenen werden mit eingereiht.
+ */
+const DRAPED = new Set(['background', 'fill', 'line', 'raster', 'hillshade', 'color-relief']);
+
+function drapeTogether(map) {
+  let moved = [];                            // [id, Ebene davor] – in dieser Reihenfolge verschoben
+  let busy = false;
+  const draped = (id) => DRAPED.has(map.getLayer(id)?.type);
+  const arrange = () => {
+    if (busy || !map.style?._loaded) return;
+    busy = true;
+    try {
+      if (map.getTerrain()) {
+        const order = map.getLayersOrder();
+        const first = order.findIndex((id) => !draped(id));
+        if (first < 0) return;
+        for (const id of order.slice(first + 1).filter(draped)) {
+          const now = map.getLayersOrder();
+          moved.push([id, now[now.indexOf(id) + 1]]);
+          map.moveLayer(id, order[first]);
+        }
+      } else if (moved.length) {
+        for (const [id, before] of moved.reverse()) if (map.getLayer(id) && (!before || map.getLayer(before))) map.moveLayer(id, before);
+        moved = [];
+      }
+    } finally {
+      busy = false;
+    }
+  };
+  map.on('terrain', arrange);
+  map.on('styledata', arrange);
+  map.on('style.load', () => { moved = []; });
 }
 
 function firstLabelLayer(map) {
@@ -1027,6 +1175,7 @@ function addHitIcon(map, id) {
 }
 
 function addCategoryIcon(map, id) {
+  if (id.startsWith('poi:')) return addPoiIcon(map, id);
   if (id.startsWith('lane-')) { addLaneIcon(map, id); return; }
   if (map.hasImage(id)) return;
   if (id.startsWith('hit-') && addHitIcon(map, id)) return;

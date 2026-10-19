@@ -1,7 +1,8 @@
 """Darstellung der Karte (js/map/map.js, js/pages/settings.js, js/ui/layer-menu.js):
 1. „Schärfe der Karte“ steht in den Einstellungen ganz unten; die Wahl gilt beim nächsten Öffnen der Karte –
    auf einem Bildschirm mit Dichte 3: Automatisch → 2, Sparsam → 1, Mittel → 1,5, Volle Auflösung → 3.
-2. 3D-Häuser zeichnet WMap selbst (js/map/buildings.js), MapLibres „building-3d“ ist aus. Jedes Haus hat seine
+2. 3D-Häuser: in der normalen Karte MapLibres „building-3d“ und Dächer, auf dem Luftbild die eigene Ebene
+   (js/map/buildings.js, MapLibres dann aus). Dort hat jedes Haus seine
    eigene Bodenhöhe, auch wenn die Kacheln viele zu einem Objekt zusammenfassen (Rittmarshausen, Birkenweg);
    was ineinander steckt (dasselbe Haus mit 12 m und als 5-m-Stück), steht auf derselben Höhe, der niedrigere
    rückt ein. Der Umriss von Häusern aus Teilen (`hide_3d`) wird nicht hochgezogen. Kein Schatten am Boden mehr.
@@ -20,7 +21,7 @@ const hasHide = (f) => JSON.stringify(f ?? null).includes('hide_3d');
 const ex = m.getPaintProperty('hillshade', 'hillshade-exaggeration');
 const at = (z) => { const a = ex.slice(3); let v = a[1]; for (let i = 0; i < a.length; i += 2) if (a[i] <= z) v = a[i + 1]; return v; };
 return { ratio: m.getPixelRatio(), b3d: hasHide(lay('building-3d')?.filter), roof: hasHide(lay('building-roof')?.filter), shadow: !lay('building-shadow'),
-  terrain: m.getSource('terrain')?.maxzoom, lo: m.getSource('terrain-lo')?.maxzoom, relief16: at(16), relief175: at(17.5), vis: m.getLayoutProperty('hillshade', 'visibility') }"""
+  terrain: m.getSource('terrain')?.maxzoom, lo: m.getSource('terrain-lo') ?? null, hs: m.getLayer('hillshade')?.source, relief16: at(16), relief175: at(17.5), vis: m.getLayoutProperty('hillshade', 'visibility') }"""
 
 with Browser(1000, 760) as b:
     b.d.script.add_preload_script(PRELOAD)
@@ -45,9 +46,16 @@ with Browser(1000, 760) as b:
     r = b.js(MAP)
     print('Karte:', json.dumps(r, ensure_ascii=False))
     checks['2. Umriss von Häusern aus Teilen (hide_3d) nicht in 3D: Wände, Dach; kein Schatten am Boden'] = r['b3d'] and r['roof'] and r['shadow']
-    own = b.js("const m = window.__wmap.map; return [!!m.getLayer('wmap-buildings'), m.getLayoutProperty('building-3d', 'visibility'), m.getLayoutProperty('building-roof', 'visibility')]")
-    print('eigene Ebene:', own)
-    checks['2. eigene Gebäude-Ebene da, MapLibres 3D-Häuser aus'] = own == [True, 'none', 'none']
+    VIS = "const m = window.__wmap.map; return [!!m.getLayer('wmap-buildings'), m.getLayoutProperty('building-3d', 'visibility'), m.getLayoutProperty('building-roof', 'visibility')]"
+    own = b.js(VIS)
+    b.js("window.__wmap.map.wmapBuildings.setSat(true)")
+    time.sleep(3)
+    sat = b.js(VIS)
+    b.js("window.__wmap.map.wmapBuildings.setSat(false)")
+    time.sleep(2)
+    print('Häuser normal:', own, 'auf dem Luftbild:', sat)
+    checks['2. normale Karte: MapLibres 3D-Häuser und Dächer an (eigene Ebene nur für Haltestellen)'] = own[0] and own[1] != 'none' and own[2] != 'none'
+    checks['2. Luftbild: eigene Gebäude-Ebene, MapLibres 3D-Häuser aus'] = sat == [True, 'none', 'none']
     # Birkenweg in Rittmarshausen: viele Häuser in einem Objekt, ein Haus doppelt (12 m und 5-m-Stück)
     b.open('index.html?view=10.1025,51.4812,17.2,72,55', 3)
     b.js("window.__done = false; const m = window.__wmap.map; const f = () => { if (m.areTilesLoaded() && m.loaded()) window.__done = true; else setTimeout(f, 500); }; setTimeout(f, 3000);")
@@ -65,7 +73,7 @@ with Browser(1000, 760) as b:
     heights = sorted(x[0] for x in birk['near']) if isinstance(birk, dict) else []
     checks['2. Birkenweg: 12-m-Haus und 5-m-Stück auf derselben Bodenhöhe, das niedrigere rückt ein'] = isinstance(birk, dict) and 12 in heights and 5 in heights and any(x[2] > 0 for x in birk['near'] if x[0] == 5) and len({x[1] for x in birk['near'] if x[0] == 12 or x[2] > 0}) == 1
     checks['2. Birkenweg: zusammengefasste Häuser (5 m) mit eigener Bodenhöhe je Haus'] = isinstance(birk, dict) and birk['five'] > 20 and birk['grounds'] > 5
-    checks['3. Gelände Zoom 16, Navigation Zoom 13'] = r['terrain'] == 16 and r['lo'] == 13
+    checks['3. Eine Höhenquelle (Zoom 16) für Gelände, Relief und Navigation'] = r['terrain'] == 16 and r['lo'] is None and r['hs'] == 'terrain'
     checks['4. Relief nah heran deutlich (Zoom 16 ≥ 0,4, Zoom 17,5 ≥ 0,3)'] = r['relief16'] >= 0.4 and r['relief175'] >= 0.3 and r['vis'] == 'visible'
     # Schalter „Relief“ im Ebenen-Menü
     b.js("document.querySelector('.maplibregl-ctrl-layers, [data-act=layers], button[title*=Ebenen], button[aria-label*=Ebenen]')?.click()")

@@ -61,6 +61,7 @@ export function placeStops(map, raw, shelters, pos, radius) {
     }
   }
   const out = [];
+  let roads = null;                // Wege der Kacheln – einmal für alle neuen Haltestellen
   for (const x of raw) {
     let point = x.point;
     if (x.rail) {
@@ -75,7 +76,11 @@ export function placeStops(map, raw, shelters, pos, radius) {
     if (twin) { twin.shelter ||= shelter; continue; }
     const k = `${point[0].toFixed(6)},${point[1].toFixed(6)},${x.rail}`;
     let r = beside.get(k);
-    if (!r) { r = roadBeside(map, point, x.rail); if (r.dir != null) beside.set(k, r); }
+    if (!r) {
+      roads ??= map.querySourceFeatures('openmaptiles', { sourceLayer: 'transportation' });
+      r = roadBeside(roads, point, x.rail);
+      if (r.dir != null) beside.set(k, r);
+    }
     out.push({ ...x, point, shelter, ...r });
   }
   if (beside.size > 2000) beside.clear();
@@ -83,9 +88,9 @@ export function placeStops(map, raw, shelters, pos, radius) {
 }
 
 /** Richtung der nächsten Straße (bis 25 m) und auf welcher Seite die Haltestelle liegt → { dir, away } */
-function roadBeside(map, point, rail = false) {
+function roadBeside(roads, point, rail = false) {
   let best = 25, dir = null, side = 1;
-  for (const f of map.querySourceFeatures('openmaptiles', { sourceLayer: 'transportation' })) {
+  for (const f of roads) {
     // Auch Fußgängerzonen – Busse fahren durch manche (Göttingen); Gleise nur für Straßenbahnen
     if (f.properties.class === 'ferry' || (!rail && ['rail', 'transit'].includes(f.properties.class))) continue;
     const lines = f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.type === 'MultiLineString' ? f.geometry.coordinates : [];

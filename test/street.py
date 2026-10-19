@@ -14,7 +14,7 @@
 7. „Umsehen“ an einem Ort startet Street View dort; der Knopf „Karte“ beendet.
 8. „Teilen“: Link ?street=lon,lat,richtung,blick – geöffnet steht man genau so da.
 9. Nicht in Häuser: 12 s quer zur Straße auf die Häuserzeile zu – man bleibt davor stehen.
-10. Im Ebenen-Menü ist Street View die dritte Kachel neben Karte und Satellit.
+10. Im Ebenen-Menü vorerst keine Street-View-Kachel (nur Karte und Satellit); Start über das Menü-Ereignis.
 11. Geradeaus (Blick genau 90°) 30 s die Weender Straße hoch: Kacheln und Häuser kommen weiter nach, kein Fehler
     (MapLibre hielt die Kamera ab 90° für am Startpunkt und teilte Kacheln bis Zoom 26).
 12. Geschäfte (map/street-shops.js): Namen an den Fassaden der Weender Straße, ihr Haus mit farbigem Erdgeschoss;
@@ -250,10 +250,10 @@ with Browser(412, 900) as b:
     time.sleep(.8)
     tiles = b.js("return [...document.querySelectorAll('.layer-bases button')].map((x)=>x.innerText.trim())")
     print('Kacheln:', tiles)
-    checks['10. Street View als dritte Kachel'] = tiles == ['Karte', 'Satellit', 'streetview\nStreet View']
-    b.js("document.querySelector('.layer-bases [data-l=street]').click()")
+    checks['10. Keine Street-View-Kachel im Ebenen-Menü'] = tiles == ['Karte', 'Satellit']
+    b.js("document.querySelector('.layer-ctrl button').click(); dispatchEvent(new CustomEvent('wmap:street'))")
     time.sleep(.8)
-    checks['10. Kachel startet Street View'] = st()['on']
+    checks['10. Menü-Ereignis startet Street View'] = st()['on']
     b.shot('street_tile')
 
     # 11. Geradeaus (90°) die Weender Straße hoch
