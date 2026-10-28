@@ -833,10 +833,7 @@ body.stage-mode #map canvas { cursor: crosshair; }
 .cmp-list {
     display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; counter-reset: cmp;
     li { display: flex; align-items: center; gap: .5rem; counter-increment: cmp; }
-    li::before {
-        content: counter(cmp); flex-shrink: 0; display: grid; place-items: center;
-        width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--c); color: #fff; font-weight: 700; font-size: var(--fs-200);
-    }
+    li::before { content: ''; flex-shrink: 0; width: .8rem; height: .8rem; border-radius: 50%; background: var(--c); }
     .msr { color: var(--c); }
     span:last-child { display: grid; min-width: 0; }
     strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -864,15 +861,30 @@ body.stage-mode #map canvas { cursor: crosshair; }
 .cmp-list li.hover { background: var(--surface-2); outline: 2px solid var(--c); outline-offset: -2px; }
 .cmp-list em { font-style: normal; font-size: var(--fs-100); font-weight: 700; color: var(--c); margin-left: .3rem; }
 .cmp-table .focus { font-weight: 700; background: color-mix(in srgb, var(--route) 8%, transparent); }
-/* Vorschlag im Weg: dieselbe Strecke gibt es öfter */
-.weg-same {
-    display: flex; align-items: center; gap: .6rem; padding: .6rem .75rem; border-radius: .9rem;
-    background: color-mix(in srgb, var(--route) 10%, var(--surface-2));
-    > .msr { color: var(--route); font-size: 1.5rem; }
-    > span:nth-child(2) { flex: 1; display: grid; min-width: 0; }
-    small { color: var(--muted); font-size: var(--fs-100); }
-    flex-wrap: wrap;
-    .same-level { flex-basis: 100%; small { margin-left: .2rem; color: inherit; opacity: .75; } }
+/* Im Weg: dieselbe Strecke gibt es öfter – eine Zeile zum Vergleich */
+.weg-same-go {
+    display: flex; align-items: center; gap: .6rem; width: 100%; padding: .6rem .75rem; border: 0; border-radius: .9rem;
+    background: color-mix(in srgb, var(--route) 10%, var(--surface-2)); color: inherit; font: inherit; font-weight: 600;
+    text-align: left; cursor: pointer;
+    > .msr:first-child { color: var(--route); font-size: 1.5rem; }
+    > span:nth-child(2) { flex: 1; }
+    > .msr:last-child { color: var(--muted); }
+    &:hover { background: color-mix(in srgb, var(--route) 16%, var(--surface-2)); }
+}
+/* Vergleich der gleichen Strecke: wie streng gleich */
+.same-level small { margin-left: .2rem; color: inherit; opacity: .75; }
+/* Viele im Vergleich: oben nur Farbpunkte, die Liste klappt auf */
+.cmp-who {
+    > summary { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; cursor: pointer; color: var(--muted); font-size: var(--fs-200); }
+    &[open] > summary { margin-bottom: .4rem; }
+}
+.cmp-dots {
+    display: flex; flex-wrap: wrap; gap: .2rem;
+    i {
+        display: grid; place-items: center; height: 1.35rem; padding: 0 .4rem; border-radius: .7rem;
+        background: var(--c); color: #fff; font-style: normal; font-weight: 700; font-size: var(--fs-100); white-space: nowrap;
+    }
+    i.focus { outline: 2px solid var(--c); outline-offset: 2px; }
 }
 /* Dieser Lauf im Vergleich: Kacheln je Kennzahl */
 .cmp-tiles {
@@ -947,3 +959,18 @@ dialog.collab-pick .confirm-actions button:nth-child(2) .msr { color: #e8590c; }
 /* „Link öffnen“ (ui/open-link.js) */
 .open-link-input { width: 100%; box-sizing: border-box; font: inherit; padding: .55rem .6rem; border-radius: .6rem;
     border: 1px solid var(--line); background: var(--surface); color: inherit; }
+/* Tooltip im Vergleich: je Größe eine Zeile – vorn das aktuelle, dahinter die anderen mit Nummer, umbrechend */
+.cmp-tip {
+    display: grid; gap: .3rem; font-size: var(--fs-200); line-height: 1.3; white-space: normal; min-width: 11rem;
+    /* Datum grau, Wert in Schrift-Farbe – die Farben der Trainings sind im Tooltip nur Ablenkung */
+    i { font-style: normal; color: var(--muted); font-size: var(--fs-100); white-space: nowrap; }
+}
+.cmp-tip-row {
+    display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .5rem; row-gap: .15rem;
+    b { white-space: nowrap; small { font-weight: 400; color: var(--muted); } }
+}
+.cmp-tip-kind { flex-basis: 100%; font-weight: 600; font-size: var(--fs-100); }
+.cmp-tip-others {
+    display: flex; flex-wrap: wrap; column-gap: .7rem; row-gap: .1rem; color: var(--clr-neutral-900);
+    span { white-space: nowrap; }
+}

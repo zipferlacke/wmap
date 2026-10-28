@@ -23,9 +23,12 @@ import { metrics } from '../data/track-stats.js';
 import { local } from '../data/store.js';
 import { fmtDistance, fmtDuration, esc } from '../core/geo.js';
 
+const FEW = 4;                 // so viele stehen oben als Liste, mehr nur als Farbpunkte
 const COLORS = ['#1a73e8', '#e8590c', '#2f9e44', '#ae3ec9', '#f59f00', '#0c8599', '#e64980', '#5c940d'];
 const DAY = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short', year: '2-digit' });
 const SHORT = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short' });
+const DM = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'numeric' });
+const HM = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
 const LONG = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
 const moving = (t) => t.moving || (t.end - t.start) / 1000;
@@ -133,7 +136,10 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
   const [ai, bi, label] = fi < 0 ? [0, items.length - 1, 'Veränderung']
     : fi > 0 ? [fi - 1, fi, 'zum vorigen Mal'] : [1, 0, 'zum nächsten Mal'];
   const cls = (i) => (i === fi ? ' class="focus"' : '');
-  const head = items.map(({ color }, i) => `<th scope="col" style="--c:${color}"${cls(i)}><i></i>${i + 1}</th>`).join('');
+  // Jedes Training heißt nach seinem Tag („29.9.“), am selben Tag mit Uhrzeit – statt einer Nummer
+  const tags = items.map(({ t }) => DM.format(t.start));
+  const dayOf = items.map(({ t }, i) => (tags.filter((x) => x === tags[i]).length > 1 ? `${tags[i]} ${HM.format(t.start)}` : tags[i]));
+  const head = items.map(({ color }, i) => `<th scope="col" style="--c:${color}"${cls(i)}><i></i>${esc(dayOf[i])}</th>`).join('');
   const table = ROWS.map((row) => {
     const [k, name, show] = row;
     const a = figs[ai][k], b = figs[bi][k];
@@ -160,13 +166,16 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
   const trendKind = trends.includes(local.get(TREND_KEY)) ? local.get(TREND_KEY) : trends[0];
   const withTrend = items.length > 2 || (fi >= 0 && items.length > 1);
 
+  // Wer ist dabei: bis vier als Liste, mehr nur als Farbpunkte – die Liste klappt auf
+  const who = `<ol class="cmp-list">${items.map(({ t, color }, i) => `
+      <li style="--c:${color}" data-cmp-id="${esc(t.id)}"${cls(i)} tabindex="0"><span class="msr">${sportIcon(sportOf(t))}</span>
+        <span><strong>${esc(t.name || 'Weg')}${i === fi ? ' <em>aktuell</em>' : ''}</strong><small>${LONG.format(t.start)} · ${fmtDistance(t.length)} · ${fmtDuration(moving(t))}</small></span></li>`).join('')}</ol>`;
   box.innerHTML = `
     <p class="muted">${fi < 0 ? `${items.length} Trainings, das älteste zuerst. Veränderung: vom ersten zum letzten`
       : `Dieselbe Strecke, ${items.length}-mal – das aktuelle kräftig`} –
       <span class="cmp-good">grün</span> besser, <span class="cmp-bad">rot</span> schlechter.${fi < 0 ? '' : ' Doppelklick auf ein anderes macht es zum aktuellen.'}</p>
-    <ol class="cmp-list">${items.map(({ t, color }, i) => `
-      <li style="--c:${color}" data-cmp-id="${esc(t.id)}"${cls(i)} tabindex="0"><span class="msr">${sportIcon(sportOf(t))}</span>
-        <span><strong>${esc(t.name || 'Weg')}${i === fi ? ' <em>aktuell</em>' : ''}</strong><small>${LONG.format(t.start)} · ${fmtDistance(t.length)} · ${fmtDuration(moving(t))}</small></span></li>`).join('')}</ol>
+    ${items.length > FEW ? `<details class="cmp-who"><summary><span class="cmp-dots">${items.map(({ color }, i) => `<i style="--c:${color}"${cls(i)}>${esc(dayOf[i])}</i>`).join('')}</span>
+      <span>${items.length} Trainings${fi >= 0 ? ` · aktuell ${esc(dayOf[fi])}` : ''} – Liste</span></summary>${who}</details>` : who}
     ${refs.length ? `
       <h3 class="cmp-h"><span class="msr">leaderboard</span> ${fi >= 0 ? 'Dieser Lauf' : `Der neueste (${esc(SHORT.format(cur.t.start))})`} im Vergleich</h3>
       <div class="chip-row cmp-refs" role="group" aria-label="Vergleichen mit">${refs.map(([k, name]) => `
@@ -225,6 +234,14 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
     for (const c of charts) c.emphasize(ci, id ? index(id) : null);
   };
   // Verlauf: ein Diagramm mit allen gewählten Größen aller Trainings – Farbe je Größe, das aktuelle kräftig
+  // Tooltip des Verlaufs: das aktuelle, die letzten vier anderen, das schnellste und das langsamste – nicht alle
+  const speeds = figs.map((f, i) => [i, f.speed]).filter(([i, v]) => i !== ci && v != null).sort((a, b) => b[1] - a[1]);
+  const best = speeds[0]?.[0], worst = speeds.length > 1 ? speeds.at(-1)[0] : null;
+  const recent = items.map((x, i) => i).filter((i) => i !== ci).slice(-4);
+  const tip = {
+    focus: ci, best, worst, label: (g) => esc(dayOf[g]), color: (g) => items[g].color,
+    groups: [...new Set([...recent, best, worst].filter((g) => g != null))].sort((a, b) => a - b),
+  };
   const paintCharts = () => {
     const host = box.querySelector('.cmp-charts');
     if (!host) return;
@@ -235,9 +252,9 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
     const chart = new ElevationProfile(el);
     const kindList = shown.map((k) => ({ ...KINDS[k], name: k === 'cad' ? cadName(ref) : KINDS[k].name }));
     chart.showCompare({
-      kinds: kindList, length: Math.max(...items.map(({ t }) => t.length)), icon: 'stacked_line_chart',
+      kinds: kindList, length: Math.max(...items.map(({ t }) => t.length)), icon: 'stacked_line_chart', tip,
       title: kindList.map((k) => k.name).join(' + '),
-      series: shown.flatMap((k, ki) => items.map(({ t }, i) => ({ name: `${kindList[ki].name} · ${i + 1} · ${DAY.format(t.start)}`, kind: ki, group: i, points: m[i][k] ?? [] }))),
+      series: shown.flatMap((k, ki) => items.map(({ t }, i) => ({ name: `${kindList[ki].name} · ${dayOf[i]} · ${DAY.format(t.start)}`, kind: ki, group: i, points: m[i][k] ?? [] }))),
     });
     chart.emphasize(ci, hovered ? index(hovered) : null);
     charts = [chart];

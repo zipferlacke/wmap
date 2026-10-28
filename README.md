@@ -999,17 +999,30 @@ Die ersten zwei:
     holt dann alle Punkte; ist der Ordner nicht erreichbar, bleiben Zahlen
     und grober Verlauf mit einem Hinweis.
     **Gleiche Strecke** (`js/data/same-route.js`): Gibt es denselben Weg öfter
-    (gleiche Fortbewegung, Länge ±15 %, Start bei Start und Ziel bei Ziel je
+    (gleiche Art – zu einem Lauf nur Läufe, keine Spaziergänge –, Länge ±15 %, Start bei Start und Ziel bei Ziel je
     200 m, Verlauf deckt sich zu 90 % auf 60 m – in beide Richtungen geprüft),
-    steht oben im Weg „Gleiche Strecke – n-mal“ mit „Vergleichen“. Darunter
-    die **Abweichung**: Genau (so), Ähnlich (150 m, Länge ±30 %, 75 %) oder
-    Grob (400 m, ±50 %, 60 %, Start und Ziel 1,5 km) – je mit der Zahl der
-    weiteren Touren, gemerkt (`wmap.sameLevel`). Der
+    steht oben im Weg nur eine Zeile „Mit n Touren vergleichen“. Die
+    **Abweichung** wählt man im Vergleich oben: Genau (so), Ähnlich (150 m,
+    Länge ±30 %, 75 %) oder Grob (400 m, ±50 %, 60 %, Start und Ziel 1,5 km) –
+    je mit der Zahl der weiteren Touren, gemerkt (`wmap.sameLevel`); findet
+    die gemerkte Stufe nichts, gilt die strengste, die etwas findet. Der
     Vergleich geht dann **vom aktuellen aus** (`?compare=…&focus=id`): er
     kräftig, die anderen schmal und blass (Liste, Diagramme, Karte); Maus über
     einem anderen (Liste oder Linie) hebt ihn überall hervor, **Doppelklick**
     macht ihn zum aktuellen (am Handy: erster Tipp hebt hervor, zweiter
     wechselt) – als neuer Eintrag im Verlauf, Zurück führt zum vorigen.
+    **Tooltip im Verlauf:** je Größe eine Zeile – vorn groß das aktuelle
+    Training, dahinter in derselben Zeile (umbrechend) die anderen mit ihrem
+    Datum (grau, die Werte schwarz); nur die letzten vier, das schnellste (▲) und das
+    langsamste (▼), nicht alle. Die Werte liest WMap selbst zwischen den
+    Punkten jeder Reihe ab (ECharts nennt nur Reihen mit einem Punkt genau dort).
+    **Datum statt Nummer:** jedes Training heißt im Vergleich nach seinem Tag
+    („29.9.“, am selben Tag mit Uhrzeit) – Tabellenspalten, Farbpunkte, Tooltip.
+    Der Tooltip darf die Umschalter (Tempo, Puls …) verdecken, nur das Diagramm
+    hält er frei.
+    **Oben:** bis vier Touren als Liste, ab fünf nur Farbpunkte mit Datum
+    und „n Trainings“ – die Liste klappt auf (sonst stand eine lange Liste vor
+    allem anderen).
     **Kacheln** „Dieser Lauf im Vergleich“ (ohne gleiche Strecke: der neueste):
     zum vorigen Mal, zu den letzten 5, zum Durchschnitt, zum besten bzw.
     schlechtesten (umschaltbar, gemerkt) – groß der Wert, darunter in einer

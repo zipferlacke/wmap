@@ -595,11 +595,12 @@ function paintPicking() {
  * vom aktuellen Weg aus; Doppelklick auf einen anderen (Liste, Karte) macht ihn zum aktuellen – als neuer Eintrag
  * im Verlauf, Zurück führt wieder zum vorigen.
  */
-async function openCompare(ids, { push = false, focus = null } = {}) {
+async function openCompare(ids, { push = false, replace = false, focus = null } = {}) {
   tab = 'wege';
   selected = null;
   const url = `./wege.html?compare=${ids.map(encodeURIComponent).join(',')}${focus ? `&focus=${encodeURIComponent(focus)}` : ''}`;
   if (push) history.pushState({ wege: 1, compare: ids, focus }, '', url);
+  else if (replace) history.replaceState({ ...history.state, compare: ids, focus }, '', url);
   const cards = ids.map((id) => all.find((t) => t.id === id)).filter(Boolean);
   const own = focus && cards.find((t) => t.id === focus);
   document.title = `${own ? 'Gleiche Strecke' : 'Vergleich'} – WMap`;
@@ -621,6 +622,7 @@ async function openCompare(ids, { push = false, focus = null } = {}) {
     onHover: (id) => compareHover(id),
     onSwitch: (id) => openCompare(ids, { push: true, focus: id }),
   });
+  if (compareFocus) paintSameLevels(own);
   paintMap();
   fitView();
 }
@@ -807,32 +809,49 @@ function folderWatch() {
   };
 }
 
-/** Gleiche Strecke schon öfter? Dann gleich vorschlagen, sie zu vergleichen (data/same-route.js) */
+/**
+ * Gleiche Strecke schon öfter – in derselben Art (Lauf mit Lauf)? Dann im Weg nur eine Zeile „Mit 3 Touren
+ * vergleichen“ (data/same-route.js). Wie streng
+ * „gleich“ ist (Genau, Ähnlich, Grob), wählt man im Vergleich oben; gemerkt. Findet die gemerkte Stufe nichts, gilt
+ * die strengste, die etwas findet.
+ */
 const SAME_KEY = 'wmap.sameLevel';
+function sameFor(t) {
+  // Nur dieselbe Art: zu einem Lauf nur Läufe, keine Spaziergänge auf derselben Runde.
+  // Grob zuerst (das Meiste) – Ähnlich und Genau suchen nur darin
+  const rough = sameRoutes(t, all.filter((x) => sportKey(x) === sportKey(t)), 'rough');
+  const found = Object.fromEntries(Object.keys(SAME_LEVELS).map((k) => [k, k === 'rough' ? rough : sameRoutes(t, rough, k)]));
+  let level = local.get(SAME_KEY) ?? 'exact';
+  if (!found[level]?.length) level = Object.keys(SAME_LEVELS).find((k) => found[k].length) ?? 'exact';
+  return { found, level, same: found[level] };
+}
 function paintSame(t) {
   const box = $('.weg-same', content);
   if (!box || t.shared) return;
-  // Grob zuerst (das Meiste) – Ähnlich und Genau suchen nur darin
-  const rough = sameRoutes(t, all, 'rough');
-  box.hidden = !rough.length;
-  if (!rough.length) return;
-  const found = Object.fromEntries(Object.keys(SAME_LEVELS).map((k) => [k, k === 'rough' ? rough : sameRoutes(t, rough, k)]));
-  let level = local.get(SAME_KEY) ?? 'exact';
-  if (!found[level]) level = 'exact';
-  const same = found[level];
-  const n = same.length + 1;
-  box.innerHTML = `<span class="msr">compare_arrows</span>
-    <span><strong>${same.length ? `Gleiche Strecke – ${n}-mal` : 'Gleiche Strecke – so genau keine'}</strong><small>${same.length ? `Auch am ${same.slice(0, 3).map((x) => SHORT.format(x.start)).join(', ')}${same.length > 3 ? ' …' : ''}` : 'Weniger streng wählen'}</small></span>
-    <button type="button" class="button primary" data-do="same" ${same.length ? '' : 'disabled'}><span class="msr">compare_arrows</span> Vergleichen</button>
-    <div class="chip-row same-level" role="group" aria-label="Wie genau gleich">${Object.entries(SAME_LEVELS).map(([k, lv]) => `
-      <button type="button" class="chip" data-same-level="${k}" aria-pressed="${k === level}" title="${found[k].length} weitere – höchstens ${lv.near} m daneben, Länge ±${Math.round(lv.len * 100)} %">${lv.label} <small>${found[k].length}</small></button>`).join('')}</div>`;
+  const { same } = sameFor(t);
+  box.hidden = !same.length;
+  if (!same.length) return;
+  box.innerHTML = `<button type="button" class="weg-same-go" data-do="same"><span class="msr">compare_arrows</span>
+    <span>Mit ${same.length} ${same.length === 1 ? 'Tour' : 'Touren'} vergleichen</span><span class="msr">chevron_right</span></button>`;
   box.dataset.ids = [t.id, ...same.map((x) => x.id)].join(',');
+}
+/** Im Vergleich der gleichen Strecke oben: wie streng gleich – mit der Zahl je Stufe; ein Tipp vergleicht neu */
+function paintSameLevels(own) {
+  const { found, level } = sameFor(own);
+  const row = Object.assign(document.createElement('div'), { className: 'chip-row same-level', role: 'group' });
+  row.setAttribute('aria-label', 'Wie genau gleich');
+  row.innerHTML = Object.entries(SAME_LEVELS).map(([k, lv]) => `
+    <button type="button" class="chip" data-same-level="${k}" aria-pressed="${k === level}" ${found[k].length ? '' : 'disabled'}
+      title="${found[k].length} weitere – höchstens ${lv.near} m daneben, Länge ±${Math.round(lv.len * 100)} %">${lv.label} <small>${found[k].length}</small></button>`).join('');
+  content.prepend(row);
 }
 content.addEventListener('click', (e) => {
   const lv = e.target.closest('[data-same-level]')?.dataset.sameLevel;
-  if (!lv || !selected) return;
+  const own = compareFocus && all.find((t) => t.id === compareFocus);
+  if (!lv || !own) return;
   local.set(SAME_KEY, lv);
-  paintSame(selected);
+  const { same } = sameFor(own);
+  if (same.length) openCompare([own.id, ...same.map((x) => x.id)], { focus: own.id, replace: true });
 });
 
 /** Kopf, Zahlen, Aussehen und Knöpfe eines Wegs; `note`: Hinweis, solange bzw. weil die Punkte fehlen */

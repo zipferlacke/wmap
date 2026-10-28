@@ -1,16 +1,20 @@
 """Meine Touren → Aufgezeichnet: Wege vergleichen (pages/wege-compare.js), Kopf eines Wegs, Antippen mit Spielraum.
 1. „Vergleichen“ in der Liste: Kästchen statt Auge, Leiste oben – vergleichen geht erst ab zwei angekreuzten.
-2. Zwei Läufe (der neuere schneller, mit weniger Puls): Spalten 1 und 2, Veränderung – Tempo und Herzschläge je km
+2. Zwei Läufe (der neuere schneller, mit weniger Puls): Spalten nach Datum (1.9., 15.9.), Veränderung – Tempo und Herzschläge je km
    grün, Puls −5 grün; Verlauf über die Strecke: alle Größen in einem Diagramm, Tempo abwählbar; auf der Karte beide in ihrer Farbe.
 3. ?compare= mit drei: drei Spalten und das Diagramm „Entwicklung“.
 4. Im Weg „Vergleichen“: zurück in die Liste, der Weg ist schon angekreuzt.
 5. Kopf eines Wegs: Symbol der Art und der Name als Feld zwischen ← und ✕ (kein zweites Feld darunter) – ändern speichert.
 6. Auf der Karte 6 px neben der Linie getippt: der Weg geht trotzdem auf.
-7. Gleiche Strecke: im dritten Lauf der Vorschlag „Gleiche Strecke – 3-mal“; Vergleichen geht vom aktuellen aus (kräftig,
+7. Gleiche Strecke: im dritten Lauf eine Zeile „Mit 2 Touren vergleichen“; im Vergleich oben die Stufen (Genau, Ähnlich,
+   Grob mit Anzahl); Vergleichen geht vom aktuellen aus (kräftig,
    Veränderung „zum vorigen Mal“), Maus über einem anderen hebt ihn auf der Karte hervor, Doppelklick macht ihn zum
    aktuellen; Zurück (Browser) führt zum vorigen aktuellen, ← zurück in den Weg.
 8. Zurück-Taste bei offenem Dialog (Löschen?): der Dialog geht zu, die Seite bleibt; per Knopf geschlossen bleibt
-   kein Eintrag im Verlauf übrig (core/back.js)."""
+   kein Eintrag im Verlauf übrig (core/back.js).
+9. Sechs Läufe im Vergleich: oben nur Farbpunkte mit Datum und „6 Trainings“, die Liste klappt auf; am Handy über dem
+   Diagramm mit dem Tooltip lässt sich nichts seitlich schieben; der Tooltip zeigt je Größe eine Zeile, vorn das
+   aktuelle, dahinter nur die letzten vier und das schnellste/langsamste."""
 import json
 import sys
 import time
@@ -43,7 +47,7 @@ with Browser(width=420, height=900) as b:
     time.sleep(.5)
     bar = b.js("return [document.querySelector('.compare-count')?.innerText, document.querySelector('[data-list=compare-go]')?.disabled, document.querySelectorAll('.row-pick').length, document.querySelectorAll('.row-eye').length]")
     print('Leiste:', bar)
-    checks['1. Vergleichen: Leiste, drei Kästchen statt Augen, Knopf noch aus'] = bar == ['Wege zum Vergleichen ankreuzen', True, 3, 0]
+    checks['1. Vergleichen: Leiste, drei Kästchen statt Augen, Knopf noch aus'] = bar == ['Wege ankreuzen', True, 3, 0]
     b.js("document.querySelector('tr[data-id=cmp1]').click(); document.querySelector('tr[data-id=cmp2] .row-pick').click()")
     time.sleep(.3)
     bar = b.js("return [document.querySelector('.compare-count')?.innerText, document.querySelector('[data-list=compare-go]')?.disabled, location.search]")
@@ -59,7 +63,7 @@ with Browser(width=420, height=900) as b:
     print('Zeilen:', json.dumps(rows, ensure_ascii=False))
     title = b.js("return [location.search, document.querySelector('.wege-bar .uD-title').innerText.trim()]")
     checks['2. Adresse ?compare=cmp1,cmp2, Kopf „Vergleich“'] = title == ['?compare=cmp1,cmp2', 'Vergleich']
-    checks['2. Spalten 1, 2, Veränderung'] = head == ['', '1', '2', 'Veränderung']
+    checks['2. Spalten nach Datum 1.9., 15.9., Veränderung'] = head == ['', '1.9.', '15.9.', 'Veränderung']
     tempo, puls, beats = rows.get('Ø Tempo', []), rows.get('Ø Puls', []), rows.get('Herzschläge je km', [])
     checks['2. Tempo schneller: −0:… /km, grün'] = len(tempo) == 3 and tempo[2].startswith('−0:') and tempo[2].endswith('[gut]')
     checks['2. Puls −5, grün (weniger)'] = len(puls) == 3 and puls[2].startswith('−5 ') and puls[2].endswith('[gut]')
@@ -80,7 +84,7 @@ with Browser(width=420, height=900) as b:
     head, rows = b.js(TABLE)
     trend = b.js("return [!!document.querySelector('.cmp-trend:not([hidden])'), [...document.querySelectorAll('.cmp-list strong')].map((x) => x.innerText)]")
     print('Drei:', head, trend)
-    checks['3. Drei: das älteste zuerst, „Entwicklung“ da'] = head == ['', '1', '2', '3', 'Veränderung'] and trend == [True, ['Lauf 1', 'Lauf 2', 'Lauf 3']]
+    checks['3. Drei: das älteste zuerst, „Entwicklung“ da'] = head == ['', '1.9.', '15.9.', '29.9.', 'Veränderung'] and trend == [True, ['Lauf 1', 'Lauf 2', 'Lauf 3']]
     b.js("document.querySelector('.cmp-trend').scrollIntoView()")
     time.sleep(.5)
     b.shot('vergleich_drei')
@@ -91,7 +95,7 @@ with Browser(width=420, height=900) as b:
     time.sleep(.8)
     pick = b.js("return [location.search, document.querySelector('.compare-count')?.innerText, [...document.querySelectorAll('.row-pick:checked')].map((x) => x.dataset.pick)]")
     print('Aus dem Weg:', pick)
-    checks['4. „Vergleichen“ im Weg: Liste, der Weg angekreuzt'] = pick == ['', '1 gewählt – noch einen ankreuzen', ['cmp2']]
+    checks['4. „Vergleichen“ im Weg: Liste, der Weg angekreuzt'] = pick == ['', '1 gewählt', ['cmp2']]
 
     # 5. Kopf eines Wegs
     b.open('wege.html?id=cmp1', wait=4)
@@ -112,16 +116,23 @@ with Browser(width=420, height=900) as b:
     print('6 px daneben getippt:', hit)
     checks['6. 6 px neben der Linie: der Weg geht auf'] = hit in ('cmp1', 'cmp2', 'cmp3')
 
-    # 7. Gleiche Strecke
+    # 7. Gleiche Strecke – ein Spaziergang auf derselben Strecke zählt bei einem Lauf nicht mit
+    b.d.execute_async_script("""const done = arguments[0]; import('./js/data/tracks.js').then(async ({ buildTrack, tracks }) => {
+      const pts = []; let lon = 9.90, ms = Date.UTC(2026, 8, 20, 8);
+      while ((lon - 9.90) * 69500 < 5000) { pts.push([lon, 51.53, ms]); lon += 1.3 * 10 / 69500; ms += 10000; }
+      await tracks.put({ ...buildTrack(pts, { kind: 'gpx', profile: 'foot', name: 'Spaziergang' }), id: 'cmpw', sport: 'walking' }); done(1); })""")
     b.open('wege.html?id=cmp3', wait=4)
     same = b.js("const x = document.querySelector('.weg-same'); return [x && !x.hidden, x?.innerText.replace(/\\s+/g, ' ').trim()]")
     print('Vorschlag:', same)
-    checks['7. Vorschlag im Weg: Gleiche Strecke – 3-mal'] = same[0] and 'Gleiche Strecke – 3-mal' in same[1]
+    checks['7. Im Weg eine Zeile: Mit 2 Touren vergleichen (nur Läufe, der Spaziergang zählt nicht)'] = same[0] and same[1] == 'compare_arrows Mit 2 Touren vergleichen chevron_right'
     b.js("document.querySelector('[data-do=same]').click()")
     b.wait("return document.querySelector('.cmp-table')", 20)
     time.sleep(1)
     focus = b.js("return [location.search, document.querySelector('.cmp-list li.focus')?.dataset.cmpId, [...document.querySelectorAll('.cmp-table thead th')].at(-1).textContent.trim(), document.querySelector('.wege-bar .panel-title-icon')?.textContent]")
     print('Vom aktuellen aus:', focus)
+    lv = b.js("return [...document.querySelectorAll('.same-level [data-same-level]')].map((c) => c.innerText.replace(/\\s+/g, ' ').trim() + (c.getAttribute('aria-pressed') === 'true' ? ' *' : ''))")
+    print('Stufen:', lv)
+    checks['7. Im Vergleich oben die Stufen mit Anzahl, eine gewählt'] = len(lv) == 3 and all(x.split(' ')[1] == '2' for x in lv) and sum(x.endswith('*') for x in lv) == 1
     checks['7. Vergleich vom aktuellen: ?focus=cmp3, „zum vorigen Mal“'] = focus[0].endswith('&focus=cmp3') and focus[1] == 'cmp3' and focus[2] == 'zum vorigen Mal'
     tiles = b.js("""const t = (k) => { document.querySelector(`[data-ref=${k}]`)?.click(); return Object.fromEntries([...document.querySelectorAll('.cmp-tile')].map((x) => [x.querySelector('small').innerText, x.querySelector(':scope > span').innerText.replace(/\\s+/g, ' ') + (x.classList.contains('good') ? ' [gut]' : x.classList.contains('bad') ? ' [schlecht]' : '')])); };
       return { refs: [...document.querySelectorAll('[data-ref]')].map((x) => x.innerText.trim()), prev: t('prev'), best: t('best'), worst: t('worst'),
@@ -148,6 +159,7 @@ with Browser(width=420, height=900) as b:
     checks['7. Doppelklick: Lauf 1 ist der aktuelle („zum nächsten Mal“), Zurück wieder Lauf 3'] = first == 'zum nächsten Mal'
     checks['7. ← führt zurück in den Weg'] = back == ['?id=cmp3', True]
 
+    b.d.execute_async_script("const done = arguments[0]; import('./js/data/tracks.js').then(async ({ tracks }) => { await tracks.remove('cmpw'); done(1); })")
     # 8. Zurück-Taste mit offenem Dialog
     depth = b.js("return history.length")
     b.js("document.querySelector('[data-do=delete]').click()")
@@ -164,6 +176,39 @@ with Browser(width=420, height=900) as b:
     print('Dialog:', depth, opened, after, clean)
     checks['8. Zurück-Taste schließt den Dialog, der Weg bleibt'] = opened[0] and after == [False, '?id=cmp3', True]
     checks['8. Per Knopf geschlossen: kein Eintrag bleibt'] = clean == [False, False, '?id=cmp3']
+
+    # 9. Sechs Läufe: oben Farbpunkte, Liste klappt auf; Tooltip am Handy schiebt nichts seitlich
+    more = b.d.execute_async_script("""const done = arguments[0]; (async () => {
+      const { buildTrack, tracks } = await import('./js/data/tracks.js');
+      for (let k = 4; k <= 6; k++) { const pts = []; let lon = 9.90, ms = Date.UTC(2026, 9, k * 3, 8);
+        while ((lon - 9.90) * 69500 < 5000) { pts.push([lon, 51.53, ms, 150 + k, 170, 250]); lon += 3.1 * 10 / 69500; ms += 10000; }
+        await tracks.put({ ...buildTrack(pts, { kind: 'gpx', profile: 'foot', name: 'Lauf ' + k }), id: 'cmp' + k, sport: 'running' }); }
+      return 1; })().then(done, (e) => done(String(e)))""")
+    b.open('wege.html?compare=cmp1,cmp2,cmp3,cmp4,cmp5,cmp6', wait=6)
+    who = b.js("const d = document.querySelector('.cmp-who'); return [!!d, d?.open, [...document.querySelectorAll('.cmp-dots i')].map((i) => i.textContent).join(''), d?.querySelector('summary')?.innerText.replace(/\\s+/g, ' ').trim(), d?.querySelectorAll('.cmp-list li').length]")
+    print('Sechs:', who)
+    checks['9. Sechs Läufe: oben Farbpunkte mit Datum, Liste zugeklappt, klappt auf'] = who[0] and not who[1] and who[2] == '1.9.15.9.29.9.12.10.15.10.18.10.' and who[4] == 6
+    from selenium.webdriver.common.action_chains import ActionChains
+    el = b.css('.cmp-along .dg_canvas')
+    b.d.execute_script('arguments[0].scrollIntoView({block: "center"})', el)
+    time.sleep(.5)
+    for fx in (-0.4, 0.4, 0):
+        ActionChains(b.d).move_to_element_with_offset(el, int(el.size['width'] * fx), 0).perform()
+        time.sleep(.2)
+        ActionChains(b.d).move_by_offset(3, 0).perform()
+        time.sleep(.6)
+    wide = b.js("""const tip = [...document.querySelectorAll('div')].find((d) => /z-index: 9999999/.test(d.style.cssText) && d.style.display !== 'none' && d.innerText.trim());
+      const r = tip?.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+      const panel = document.querySelector('.wege-content');
+      return [!!tip, r && Math.round(r.left), r && Math.round(r.right), vw, document.documentElement.scrollWidth, panel.scrollWidth, panel.clientWidth]""")
+    print('Tooltip am Handy:', wide)
+    checks['9. Tooltip im Bild, nichts lässt sich seitlich schieben'] = wide[0] and wide[1] >= 0 and wide[2] <= wide[3] and wide[4] <= wide[3] and wide[5] <= wide[6] + 1
+    tipc = b.js("""const tip = [...document.querySelectorAll('div')].find((d) => /z-index: 9999999/.test(d.style.cssText) && d.style.display !== 'none' && d.innerText.trim());
+      return [...(tip?.querySelectorAll('.cmp-tip-row') ?? [])].map((r) => [r.querySelector('.cmp-tip-kind')?.textContent, r.querySelector('b i')?.textContent, [...r.querySelectorAll('.cmp-tip-others i')].map((i) => i.textContent).join(',')])""")
+    print('Tooltip-Zeilen:', tipc)
+    checks['9. Tooltip je Größe eine Zeile: vorn das aktuelle (18.10.), dahinter nur die letzten vier und bestes/schlechtestes'] = bool(tipc) and all(r[1] == '18.10.' and r[2] and len(r[2].split(',')) <= 6 for r in tipc)
+    b.shot('vergleich_sechs')
+    b.d.execute_async_script("const done = arguments[0]; import('./js/data/tracks.js').then(async ({ tracks }) => { for (const id of ['cmp4', 'cmp5', 'cmp6']) await tracks.remove(id).catch(() => {}); done(1); })")
 
     for k, v in checks.items():
         print(('ok    ' if v else 'FALSCH') + ' ' + k)

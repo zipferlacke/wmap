@@ -23,6 +23,15 @@ const GREEN = 'light-dark(hsl(142 62% 36%), hsl(142 55% 52%))';
 const MAX_POINTS = 600;
 
 /** Für die Anzeige ausdünnen – mehr Punkte als Pixel bringen nichts. */
+/** Wert einer Reihe [[x, y] …] (nach x sortiert) an der Stelle x – zwischen zwei Punkten gerechnet; außerhalb null */
+function valueAt(points, x) {
+  if (!points?.length || x < points[0][0] || x > points.at(-1)[0]) return null;
+  let lo = 0, hi = points.length - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (points[mid][0] <= x) lo = mid; else hi = mid; }
+  const [x0, y0] = points[lo], [x1, y1] = points[hi];
+  return x1 === x0 ? y0 : y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+}
+
 function thin(points) {
   if (points.length <= MAX_POINTS) return points;
   const step = points.length / MAX_POINTS;
@@ -40,14 +49,20 @@ function axisRange(min, max) {
 }
 
 export class ElevationProfile {
-  #diagram; #points = []; #host;
+  #diagram; #points = []; #host; #around;
   #xLabels = null;                 // showSeries mit x.labels: Beschriftung je ganzer Zahl (1, 2, 3 …)
   #emph = null;                    // emphasize: { focus, hover } – Reihe kräftig bzw. hervorgehoben, der Rest blass
   #mark = null;                    // showSeries mit x.mark: { x, color } – dieser Punkt der ersten Reihe groß
   #groups = null;                  // showCompare: je Reihe ihr Training – Hervorheben gilt dem ganzen Training
+  #tip = null;                     // showCompare mit tip: eigener, kompakter Tooltip (#compareTip)
 
-  constructor(host, { onHover } = {}) {
+  /**
+   * `around`: Element(e) neben dem Diagramm, die der Tooltip außerhalb mit frei lässt (Funktion oder Element) –
+   * ohne Angabe nur das Diagramm; die Umschalter darüber (Tempo, Puls …) darf er verdecken
+   */
+  constructor(host, { onHover, around = null } = {}) {
     this.#host = host;
+    this.#around = around;
     // Mehrere Reihen: jede hat ihre eigene Achse. Die Bibliothek stellt die erste links, die zweite rechts und
     // jede weitere wieder links darüber – die ab der dritten bleiben unsichtbar (Werte im Tooltip); die
     // Beschriftung der Achse in der Farbe ihrer Reihe
@@ -76,6 +91,7 @@ export class ElevationProfile {
             itemStyle: { color: mark.color, borderColor: '#fff', borderWidth: 2 }, data: [{ coord: [mark.x, y] }] } }, ...option.series.slice(1)];
         }
       }
+      if (this.#tip && option?.tooltip) option.tooltip = { ...option.tooltip, formatter: (params) => this.#compareTip(params) };
       if (this.#emph && Array.isArray(option?.series)) {
         const st = this.#emphStyles(option.series.length);
         option.series = option.series.map((x, i) => ({ ...x, z: st[i].z, lineStyle: { ...x.lineStyle, ...st[i].lineStyle } }));
@@ -113,7 +129,7 @@ export class ElevationProfile {
   #config(cfg, mark) {
     // Zoomen nur im Vollbild – im Blatt nähme es dem Finger das Scrollen
     // Tooltip außerhalb (über/unter dem Diagramm, sonst daneben) – Kurve und Werte zugleich sichtbar
-    this.#diagram.setConfig({ ...cfg, zoom: 'fullscreen', tooltip_outside: true });
+    this.#diagram.setConfig({ ...cfg, zoom: 'fullscreen', tooltip_outside: true, tooltip_around: this.#around });
     const el = Object.assign(document.createElement('span'), { className: 'msr elev-mountain', textContent: mark.icon, title: mark.title });
     if (mark.color) el.style.color = mark.color;
     this.#host.querySelector('.dg_tools')?.prepend(el);
@@ -256,9 +272,10 @@ export class ElevationProfile {
    * @param o { kinds: [{ name, unit, color, decimals? }], series: [{ name, kind (Index), group (Training), points }],
    *            length (m), icon, title }
    */
-  showCompare({ kinds, series, length, icon, title }) {
+  showCompare({ kinds, series, length, icon, title, tip = null }) {
     this.#xLabels = null;
     this.#mark = null;
+    this.#tip = null;
     const list = series.filter((m) => m.points?.length);
     this.#host.hidden = !list.length;
     if (!list.length) return;
@@ -266,6 +283,7 @@ export class ElevationProfile {
     this.#points = thinned[0].points;
     this.#groups = thinned.map((m) => m.group);
     const used = [...new Set(thinned.map((m) => m.kind))];
+    if (tip) this.#tip = { ...tip, kinds, used, byName: new Map(thinned.map((m) => [m.name, m])) };
     const range = (k) => {
       const vals = thinned.filter((m) => m.kind === k).flatMap((m) => m.points.map(([, v]) => v));
       const lo = Math.min(...vals), hi = Math.max(...vals), pad = Math.max(1, (hi - lo) * 0.1);
@@ -282,6 +300,35 @@ export class ElevationProfile {
         return { key: `r${i}`, name: m.name, data: m.points, color: k.color, y_axis: used.indexOf(m.kind), smooth: true, decimals: k.decimals ?? 0, unit: k.unit };
       }),
     }, { icon, title });
+  }
+
+  /**
+   * Tooltip im Vergleich: je Größe eine Zeile – vorn groß der Wert des aktuellen Trainings, dahinter die gewählten
+   * anderen mit ihrem Datum (grau, die Werte schwarz), umbrechend („1.9. 11,2 · 15.9. 11,5 · 29.9. ▲ 12,0“). Welche, sagt `tip.groups`
+   * (pages/wege-compare.js: die letzten vier, das beste, das schlechteste); ▲ bestes, ▼ schlechtestes.
+   */
+  #compareTip(params) {
+    const { kinds, used, byName, focus, groups, label, best, worst } = this.#tip;
+    const list = [params].flat();
+    const x = Array.isArray(list[0]?.value) ? list[0].value[0] : null;
+    // ECharts gibt nur die Reihen mit einem Punkt genau hier – die Werte darum selbst ablesen (zwischen zwei Punkten)
+    const val = new Map();                   // "Größe:Training" → Wert
+    for (const m of Number.isFinite(x) ? byName.values() : []) {
+      const v = valueAt(m.points, x);
+      if (v != null) val.set(`${m.kind}:${m.group}`, v);
+    }
+    const num = (v, k) => v.toLocaleString('de-DE', { minimumFractionDigits: k.decimals ?? 0, maximumFractionDigits: k.decimals ?? 0 });
+    const tag = (g) => `<i>${label(g)}</i>${g === best ? '▲' : g === worst ? '▼' : ''}`;
+    const rows = used.map((ki) => {
+      const k = kinds[ki], own = val.get(`${ki}:${focus}`);
+      const others = groups.filter((g) => g !== focus && val.has(`${ki}:${g}`))
+        .map((g) => `<span>${tag(g)} ${num(val.get(`${ki}:${g}`), k)}</span>`).join('');
+      if (own == null && !others) return '';
+      return `<div class="cmp-tip-row"><span class="cmp-tip-kind" style="color:${k.color}">${k.name}</span>
+        ${own != null ? `<b>${tag(focus)} ${num(own, k)} <small>${k.unit}</small></b>` : ''}<span class="cmp-tip-others">${others}</span></div>`;
+    }).join('');
+    const km = Number.isFinite(x) ? `${x.toLocaleString('de-DE', { maximumFractionDigits: 1 })} km` : '';
+    return `<div class="cmp-tip"><strong>${km}</strong>${rows}</div>`;
   }
 
   /**
