@@ -1,5 +1,6 @@
 /**
- * „Link öffnen“ (pages/wege.js): einen geteilten WMap-Link in der App öffnen – Tour, Mitplanen, Aufzeichnung.
+ * „Link öffnen“: einen geteilten WMap-Link in der App öffnen – Tour, Mitplanen, Aufzeichnung. In Meine Touren
+ * (pages/wege.js) einfach in die Suche einfügen: darunter steht dann „Link öffnen“ (openLinkText).
  * In der App gehen solche Links nicht von selbst auf (sie öffnen den Browser); so muss man nicht erst dorthin.
  * Steht ein Link in der Zwischenablage, steht er gleich im Feld.
  *
@@ -26,6 +27,11 @@ export async function askOpenLink() {
     buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'go', label: 'Öffnen', icon: 'open_in_new', primary: true }],
   });
   if (!v || v === 'no') return;
+  await openLinkText(v);
+}
+
+/** Geteilten WMap-Link öffnen (auch aus der Suche in Meine Touren) – sonst ein Hinweis */
+export async function openLinkText(v) {
   const to = linkTarget(v);
   if (!to) { toast('Das ist kein geteilter WMap-Link'); return; }
   // Der Dialog nimmt beim Schließen seinen Eintrag im Verlauf zurück (core/back.js) – erst danach wechseln,

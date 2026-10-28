@@ -55,7 +55,7 @@ with Browser(width=1300, height=900) as b:
     b.open('wege.html', wait=4)
     years = b.js(YEARS)
     ids = sorted(f[0] for f in b.js(MAPF))
-    print('365 Tage:', years, ids, b.js("return document.querySelector('.wege-period')?.innerText.replace(/\\s+/g, ' ')"))
+    print('365 Tage:', years, ids, b.js("return document.querySelector('.tab-hint')?.innerText.replace(/\\s+/g, ' ')"))
     old_year = [y for y in years if not y[1]]
     checks['3. letzte 365 Tage: nur die auf der Karte, ältere Jahre zugeklappt mit durchgestrichenem Auge'] = ids == ['look1', 'look4'] and len(old_year) >= 1 and all(y[2] == 'visibility_off' for y in old_year)
     b.js("document.querySelector('.wege-year:not([open]) .year-eye').click()")

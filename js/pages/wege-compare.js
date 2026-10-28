@@ -21,7 +21,7 @@ import { ElevationProfile } from '../ui/elevation.js';
 import { paceOf, cadName, sportIcon, sportOf } from '../data/track-look.js';
 import { metrics } from '../data/track-stats.js';
 import { local } from '../data/store.js';
-import { fmtDistance, fmtDuration, esc } from '../core/geo.js';
+import { fmtDistance, fmtTime, esc } from '../core/geo.js';
 
 const FEW = 4;                 // so viele stehen oben als Liste, mehr nur als Farbpunkte
 const COLORS = ['#1a73e8', '#e8590c', '#2f9e44', '#ae3ec9', '#f59f00', '#0c8599', '#e64980', '#5c940d'];
@@ -65,7 +65,7 @@ function rows(ref) {
   const speed = (v) => (pace ? `${clock(pace.per / v)} ${pace.unit}` : `${num(v * 3.6, 1)} km/h`);
   const sign = (v) => (v > 0 ? '+' : v < 0 ? '−' : '±');
   return [
-    ['time', 'Zeit in Bewegung', fmtDuration, (a, b) => `${sign(b - a)}${clock(b - a)}`, -1],
+    ['time', 'Zeit in Bewegung', fmtTime, (a, b) => `${sign(b - a)}${clock(b - a)}`, -1],
     ['dist', 'Strecke', fmtDistance, (a, b) => (Math.abs(b - a) < 5 ? '±0 m' : `${sign(b - a)}${fmtDistance(Math.abs(b - a))}`), 1],
     ['speed', pace ? `Ø Tempo` : 'Ø Geschwindigkeit', speed,
       (a, b) => (pace ? `${sign(pace.per / b - pace.per / a)}${clock(pace.per / b - pace.per / a)} ${pace.unit}` : `${sign(b - a)}${num(Math.abs(b - a) * 3.6, 1)} km/h`), 1,
@@ -169,7 +169,7 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
   // Wer ist dabei: bis vier als Liste, mehr nur als Farbpunkte – die Liste klappt auf
   const who = `<ol class="cmp-list">${items.map(({ t, color }, i) => `
       <li style="--c:${color}" data-cmp-id="${esc(t.id)}"${cls(i)} tabindex="0"><span class="msr">${sportIcon(sportOf(t))}</span>
-        <span><strong>${esc(t.name || 'Weg')}${i === fi ? ' <em>aktuell</em>' : ''}</strong><small>${LONG.format(t.start)} · ${fmtDistance(t.length)} · ${fmtDuration(moving(t))}</small></span></li>`).join('')}</ol>`;
+        <span><strong>${esc(t.name || 'Weg')}${i === fi ? ' <em>aktuell</em>' : ''}</strong><small>${LONG.format(t.start)} · ${fmtDistance(t.length)} · ${fmtTime(moving(t))}</small></span></li>`).join('')}</ol>`;
   box.innerHTML = `
     <p class="muted">${fi < 0 ? `${items.length} Trainings, das älteste zuerst. Veränderung: vom ersten zum letzten`
       : `Dieselbe Strecke, ${items.length}-mal – das aktuelle kräftig`} –

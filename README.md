@@ -886,8 +886,27 @@ Die ersten zwei:
   oder Name (der Pfeil daneben dreht um) und filtern nach Art, Tag und
   Zeitraum (letzte 30/90 Tage, letztes Jahr, dieses Jahr), „Alle“ setzt
   zurück; gemerkt (`wmap.wegeView`). Nach Datum bleiben die Jahre, sonst eine
-  Liste mit der Summe oben. Im Modus „Vergleichen“ kreuzt **Alle auswählen**
-  alle sichtbaren an – erst filtern, dann alle vergleichen.
+  Liste mit der Summe oben. Im Auswahlmodus kreuzt **Alle auswählen**
+  alle sichtbaren an – erst filtern, dann alle vergleichen. Der Hinweis
+  „Aufgezeichnet: …“ und „Auf der Karte: … Ändern“ stehen in einer Zeile ganz
+  oben (mehr Platz für die Touren).
+- **Auswählen per langem Tippen:** lange auf eine Zeile (Maus halten) wählt
+  sie aus statt sie zu öffnen – die Liste geht in den Auswahlmodus, weitere
+  kreuzt ein kurzer Tipp an; wer beim Halten scrollt, wählt nichts. Die
+  Liste springt dabei nicht nach oben – die Zeile bleibt unter dem Finger. Die
+  Leiste („2 gewählt“, Abbrechen) steht unter der Kopfzeile mit Sortieren und
+  Filtern: **Vergleichen** (ab zwei) und **Tag** – gibt allen ausgewählten
+  einen Tag (vorhandene zum Antippen; Abbrechen setzt keinen). Die Suche
+  findet Touren auch über ihre Tags.
+- **Immer aktuell:** Kommen im Hintergrund Touren dazu oder ändern sich
+  (Health Connect, Abgleich im Service Worker, Aufzeichnung, Import), zieht
+  die Übersicht nach knapp einer Sekunde nach, ohne die Ansicht zu wechseln.
+  Ist gerade ein Weg offen, bleibt er offen; beim Zurück steht der neue in der
+  Liste (`listSoon` in `js/pages/wege.js`).
+- **Dauer** gemessener Touren (Liste, Summen, Weg, Vergleich, Teilen): unter
+  einer Stunde auf die Sekunde („35 min 12 s“), ab einer Stunde auf die
+  Minute („1 h 23 min“) – `fmtTime` in `js/core/geo.js`. Geschätzte Zeiten
+  (Route, geplante Tour, Verbindung) bleiben auf die Minute.
 - **Namen** (`js/data/auto-name.js`): Touren, die nur nach Datei, App oder
   Datum heißen („Zepp20240503181502“, „Activity_1234.fit“, „Morning Run“,
   „Lauf 1“), bekommen einen Namen aus Art, Gegend und Tageszeit: „Lauf in
@@ -897,12 +916,13 @@ Die ersten zwei:
   jede fremde Datei so einen Namen – von WMap exportierte behalten ihren.
   Selbst Aufgezeichnetes nie. Benannt wird jede Tour einmal (`nameAuto`);
   ändert man den Namen selbst, bleibt er.
-- **Tags:** im Weg unter „Art, Farbe, Tags und Anzeige“ – z. B. „Rennen“,
+- **Tags:** im Weg direkt unter dem Datum (Chips, „+ Tag“) – z. B. „Rennen“,
   „Vorbereitung“; vorhandene werden vorgeschlagen. Sie stehen an der Zeile,
   filtern die Liste und stehen in der GPX-Datei (`<wmap:track tags="…"/>`).
-- **Oben:** Tour planen bzw. Aufzeichnen und GPX/FIT importieren (mehrere
+- **Oben:** nur Tour planen bzw. Aufzeichnen und GPX/FIT importieren (mehrere
   Dateien bzw. solche, die es als Tour schon gibt: mit der Rückfrage aus
-  [15](#mehrere-dateien-eine-frage-für-alle)), darunter die Suche (Name, Ort, Jahr, Monat, Profil …),
+  [15](#mehrere-dateien-eine-frage-für-alle)), darunter die Suche (Name, Ort, Jahr, Monat, Profil, Tag …;
+  steht ein WMap-Link darin, erscheint „Link öffnen“, Enter öffnet ihn),
   dann je Gruppe eine Tabelle – Jahre bzw. Gruppen als Aufklapp-Zeile mit
   Pfeil. Überfahren einer Zeile hebt die Linie auf der Karte hervor.
   **GPX- und FIT-Dateien lassen sich auf die Seite ziehen** (Drag & Drop, eine
@@ -1031,7 +1051,7 @@ Die ersten zwei:
     zugeklappt; die **Entwicklung** zeigt die Gesamtzeit (oder Ø Tempo, Puls …)
     über die Tage, der aktuelle als großer Punkt.
     **Vergleichen** (`js/pages/wege-compare.js`, `wege.html?compare=id,id,…`):
-    in Aufgezeichnet „Vergleichen“, dann Zeilen (oder Linien auf der Karte)
+    in Aufgezeichnet lange auf eine Zeile tippen, dann weitere Zeilen (oder Linien auf der Karte)
     ankreuzen – oben eine Leiste mit der Anzahl, ab zwei geht es los. Jedes
     Training hat eine Farbe und eine Nummer (das älteste zuerst), auf der
     Karte jede Linie in ihrer Farbe. Eine **Tabelle**: Zeit in Bewegung,
@@ -1078,9 +1098,9 @@ Die ersten zwei:
   von Anna · noch 28 Tage“, darunter „zuletzt geändert von …“; der Name kommt
   aus derselben Frage wie bei Standort-Anfragen (einmal, bleibt auf dem Gerät).
 - **Link öffnen** (Meine Touren, Geplant und Aufgezeichnet): einen geteilten
-  WMap-Link in der App öffnen, ohne Umweg über den Browser – steht einer in
-  der Zwischenablage, steht er gleich im Feld; Text drumherum (aus dem Chat)
-  stört nicht (`ui/open-link.js`).
+  WMap-Link einfach in die Suche einfügen – „Link öffnen“ neben dem Feld bzw.
+  Enter öffnet ihn in der App, ohne Umweg über den Browser; Text drumherum
+  (aus dem Chat) stört nicht (`openLinkText` in `ui/open-link.js`).
 
 - **Aufbau:** Panel wie bei Meine Touren und Entdecken – am Rechner links in
   voller Höhe (Breite ziehen, ganz einklappen), am Handy unten. Kopf: ← zu

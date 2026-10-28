@@ -1,5 +1,5 @@
 """Meine Touren → Aufgezeichnet: Wege vergleichen (pages/wege-compare.js), Kopf eines Wegs, Antippen mit Spielraum.
-1. „Vergleichen“ in der Liste: Kästchen statt Auge, Leiste oben – vergleichen geht erst ab zwei angekreuzten.
+1. Lange auf eine Zeile gedrückt: Kästchen statt Auge, Leiste – vergleichen geht erst ab zwei angekreuzten.
 2. Zwei Läufe (der neuere schneller, mit weniger Puls): Spalten nach Datum (1.9., 15.9.), Veränderung – Tempo und Herzschläge je km
    grün, Puls −5 grün; Verlauf über die Strecke: alle Größen in einem Diagramm, Tempo abwählbar; auf der Karte beide in ihrer Farbe.
 3. ?compare= mit drei: drei Spalten und das Diagramm „Entwicklung“.
@@ -43,12 +43,11 @@ with Browser(width=420, height=900) as b:
 
     # 1. Liste im Modus „Vergleichen“
     b.open('wege.html', wait=4)
-    b.js("document.querySelector('[data-list=compare]').click()")
-    time.sleep(.5)
+    b.long_press('tr[data-id=cmp1] .w-name')
     bar = b.js("return [document.querySelector('.compare-count')?.innerText, document.querySelector('[data-list=compare-go]')?.disabled, document.querySelectorAll('.row-pick').length, document.querySelectorAll('.row-eye').length]")
     print('Leiste:', bar)
-    checks['1. Vergleichen: Leiste, drei Kästchen statt Augen, Knopf noch aus'] = bar == ['Wege ankreuzen', True, 3, 0]
-    b.js("document.querySelector('tr[data-id=cmp1]').click(); document.querySelector('tr[data-id=cmp2] .row-pick').click()")
+    checks['1. Lang gedrückt: Leiste, drei Kästchen statt Augen, Vergleichen noch aus'] = bar == ['1 gewählt', True, 3, 0]
+    b.js("document.querySelector('tr[data-id=cmp2] .row-pick').click()")
     time.sleep(.3)
     bar = b.js("return [document.querySelector('.compare-count')?.innerText, document.querySelector('[data-list=compare-go]')?.disabled, location.search]")
     print('Zwei angekreuzt:', bar)

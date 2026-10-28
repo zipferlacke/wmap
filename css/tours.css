@@ -429,6 +429,7 @@ body.wege-page { overflow: hidden; }
         .uD-bar-btn { width: 2.5rem; height: 2.5rem; .msr { font-size: 1.5rem; } }
     }
     .wege-bar .uD-title { text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .wege-bar .uD-title.panel-title-edit { text-overflow: clip; }
     .wege-bar [hidden] { visibility: hidden; display: inline-grid !important; }
     .wege-content { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: .75rem; padding: 0 .25rem .5rem; }
     .muted { color: var(--muted); font-size: var(--fs-200); }
@@ -483,7 +484,8 @@ body.wege-page { overflow: hidden; }
     .panel-title-icon { flex-shrink: 0; font-size: 1.5rem; }
     .panel-title-input {
         flex: 1; min-width: 0; padding: .3rem .5rem; border: 0; border-radius: .6rem;
-        background: none; font: inherit; color: inherit; text-overflow: ellipsis;
+        /* Ohne „…“: das Feld scrollt, ein abgeschnittener Name sah aus, als ginge er dort zu Ende */
+        background: none; font: inherit; color: inherit; text-overflow: clip;
         &:hover { background: var(--surface-2); }
         &:focus { background: var(--surface-2); outline: 2px solid var(--route); outline-offset: -2px; }
     }
@@ -754,10 +756,15 @@ body.stage-mode #map canvas { cursor: crosshair; }
     &:hover { background: color-mix(in srgb, var(--route) 14%, transparent); }
     &[aria-pressed="false"] { color: var(--muted); }
 }
-.wege-period {
-    display: flex; align-items: flex-start; gap: .4rem; margin: 0;
-    > .msr { font-size: 1.1rem; flex-shrink: 0; }
-    a { color: var(--route); }
+/* Hinweis oben samt „Auf der Karte“ in einem Absatz */
+.wege-panel .tab-hint { .msr { font-size: 1.05rem; vertical-align: -.2rem; margin-left: .2rem; } a { color: var(--route); } }
+/* Geteilter Link in der Suche: darunter „Link öffnen“ */
+.wege-open-link {
+    display: flex; align-items: center; gap: .6rem; width: 100%; padding: .55rem .75rem; border: 0; border-radius: .9rem;
+    background: color-mix(in srgb, var(--route) 10%, var(--surface-2)); color: inherit; font: inherit; font-weight: 600; cursor: pointer;
+    > .msr:first-child { color: var(--route); }
+    > span:nth-child(2) { flex: 1; text-align: left; }
+    &[hidden] { display: none; }
 }
 .weg-note { display: flex; align-items: flex-start; gap: .4rem; margin: 0; .msr { font-size: 1.1rem; flex-shrink: 0; } }
 
@@ -821,7 +828,6 @@ body.stage-mode #map canvas { cursor: crosshair; }
 
 /* ── Wege vergleichen (pages/wege-compare.js) ───────────────────────────── */
 
-.wege-tools [data-list="compare"][aria-pressed="true"] { background: var(--route); color: #fff; }
 .compare-bar {
     position: sticky; top: 0; z-index: 3;
     display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;

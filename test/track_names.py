@@ -3,7 +3,7 @@
 2. Fremde Wege mit solchen Namen heißen nach dem Öffnen „<Art> in <Ort> am <Tag><Zeit>“ (Photon); „Morgenrunde“ bleibt.
 3. Kopfzeile: nach Länge sortiert die längste zuerst, der Pfeil dreht um; Tag „Rennen“ filtert auf einen Weg.
 4. „Vergleichen“ → „Alle auswählen“ kreuzt alle sichtbaren an.
-5. Im Weg: Gleiche Strecke mit Genau / Ähnlich / Grob – Grob findet mehr; Tag hinzufügen speichert ihn."""
+5. Gleiche Strecke: im Vergleich oben Genau / Ähnlich / Grob – Grob findet mehr; Tag hinzufügen speichert ihn."""
 import sys
 import time
 from common import Browser
@@ -53,8 +53,7 @@ with Browser(width=420, height=900) as b:
     b.js("document.querySelector('[data-view-reset]').click()")
     time.sleep(.3)
     b.js("const s = document.querySelector('[data-view=sort]'); s.value = 'date'; s.dispatchEvent(new Event('change', { bubbles: true }))")
-    b.js("document.querySelector('[data-list=compare]').click()")
-    time.sleep(.4)
+    b.long_press('.wege-table tr[data-id] .w-name')
     b.js("document.querySelector('[data-list=pick-all]').click()")
     time.sleep(.3)
     count = b.js("return document.querySelector('.compare-count')?.innerText")
@@ -63,10 +62,14 @@ with Browser(width=420, height=900) as b:
     b.js("document.querySelector('[data-list=compare-cancel]').click()")
     b.js("localStorage.removeItem('wmap.sameLevel')")
     b.open('wege.html?id=n3', wait=4)
+    # Im Weg nur die Zeile zum Vergleich – die Stufen stehen im Vergleich oben
+    b.js("document.querySelector('[data-do=same]').click()")
+    b.wait("return document.querySelector('.same-level')", 20)
     levels = b.js("return [...document.querySelectorAll('[data-same-level]')].map((x) => [x.dataset.sameLevel, Number(x.querySelector('small').innerText)])")
     print('Stufen:', levels)
     lv = dict(levels)
     checks['5. Genau / Ähnlich / Grob, Grob findet mehr'] = list(lv) == ['exact', 'close', 'rough'] and lv['rough'] > lv['exact']
+    b.open('wege.html?id=n3', wait=4)
     b.js("document.querySelector('.weg-look').open = true; document.querySelector('[data-tag-add]').click()")
     time.sleep(.6)
     b.js("const i = document.querySelector('dialog[open] input[name=tag]'); i.value = 'Vorbereitung'; [...document.querySelectorAll('dialog[open] button')].find((x) => /Hinzufügen/.test(x.innerText)).click()")

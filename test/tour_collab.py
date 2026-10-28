@@ -128,10 +128,12 @@ with Browser(500, 800) as a, Browser(500, 800) as b:
         cb.open('tour.html', 3)
         cb.js("localStorage.clear(); localStorage.setItem('wmap.myname', JSON.stringify('Carla')); return import('./js/data/store.js').then(({ tours }) => tours.save({ id: 'own1', name: 'Meine Runde', description: '', profile: 'hike', points: [[9.930, 51.530], [9.940, 51.536]] }))")
         cb.d.get(f'{BASE}wege.html?tab=geplant'); time.sleep(4)
-        cb.js("document.querySelectorAll('dialog[open]').forEach((d) => d.close()); document.querySelector('[data-list=open-link]').click()")
-        time.sleep(3)
+        cb.js("document.querySelectorAll('dialog[open]').forEach((d) => d.close())")
         url = f"Schau mal: {BASE}tour.html#k={c['id']}.{c['key']}.{c['token']} – bis morgen"
-        cb.js("const i = document.querySelector('.open-link-input'); i.value = arguments[0]; [...document.querySelectorAll('dialog[open] button')].find((x) => /Öffnen/.test(x.innerText)).click()", url)
+        # Link in die Suche – darunter steht „Link öffnen“
+        cb.js("const i = document.querySelector('.wege-search input'); i.value = arguments[0]; i.dispatchEvent(new Event('input', { bubbles: true }))", url)
+        time.sleep(.5)
+        cb.js("const x = document.querySelector('.wege-open-link'); if (!x.hidden) x.click()")
         time.sleep(6)
         q = cb.js("return [...document.querySelectorAll('dialog[open]')].map((d) => d.innerText + ' ' + [...d.querySelectorAll('option')].map((o) => o.textContent).join(' ')).join(' ')")
         cb.js("const d = [...document.querySelectorAll('dialog[open]')].pop(); d.querySelector('.collab-into select').value = 'own1'; [...d.querySelectorAll('button')].find((x) => /verbinden/.test(x.innerText)).click()")

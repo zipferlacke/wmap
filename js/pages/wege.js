@@ -19,7 +19,7 @@
  * Tabelle je Gruppe – oder eine Tour/einen Weg im Detail. Kopfzeile siehe
  * ui/map-page.js: ← Übersicht bzw. Liste, ✕ zur Karte, Griff zum Einklappen.
  *
- * Vergleichen: in Aufgezeichnet „Vergleichen“, Wege ankreuzen – Zahlen, Verläufe und Entwicklung
+ * Vergleichen: in Aufgezeichnet lange auf eine Zeile tippen, weitere ankreuzen – Zahlen, Verläufe und Entwicklung
  * (pages/wege-compare.js), auf der Karte jeder in seiner Farbe.
  *
  * Aufruf: wege.html · ?tab=geplant · ?tab=bahn · ?tour=… (geplante Tour) · ?id=… (Weg) · ?conn=… (Verbindung)
@@ -44,12 +44,13 @@ import { PROFILES } from '../core/config.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { share, pageUrl, canShareFiles, shareFile } from '../ui/share.js';
 import { shortLink, resolveShort, collabState } from '../data/short-link.js';
-import { askOpenLink } from '../ui/open-link.js';
+import { openLinkText } from '../ui/open-link.js';
+import { linkTarget } from '../core/map-links.js';
 import { folder } from '../data/folder.js';
 import { autoSync } from '../data/auto-sync.js';
 import { mapPage } from '../ui/map-page.js';
 import { carLink, sendToCar } from '../data/car-link.js';
-import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, esc, bbox } from '../core/geo.js';
+import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, fmtTime, esc, bbox } from '../core/geo.js';
 import { connections, places, DEFAULT_LIST, PLACE_KINDS } from '../data/saved.js';
 import { packJson, unpackJson } from '../data/store.js';
 import { legBadge, changesText, transitLegsHtml } from '../ui/transit-legs.js';
@@ -220,6 +221,7 @@ function backToList() {
 }
 
 function showList({ push = false } = {}) {
+  if (listStale) { listStale = false; listSoon(); }
   selected = null;
   comparing = null;
   compareFocus = null;
@@ -255,33 +257,30 @@ function showList({ push = false } = {}) {
     <p class="muted tab-hint">${isOrte ? 'Orte: deine Lesezeichen in Listen – je Liste teilbar, alles auf der Karte.'
       : isBahn ? 'Bus & Bahn: gemerkte Verbindungen – kommende oben, vergangene zugeklappt darunter.'
       : isPlan ? 'Geplant: Touren, die du noch fahren oder laufen willst – aus dem Planer, übernommen oder importiert.'
-        : 'Aufgezeichnet: Wege, die du wirklich gefahren oder gelaufen bist – mit Zeit, Tempo und Puls.'}</p>
+        : `Aufgezeichnet: Wege, die du wirklich gefahren oder gelaufen bist.${all.length ? ` <span class="msr">visibility</span> Auf der Karte:
+          <strong>${esc(trackShow.label())}</strong> – das Auge am Jahr blendet ein und aus. <a href="./settings.html">Ändern</a>` : ''}`}</p>
     ${isBahn || isOrte ? '' : `<div class="wege-tools">${isPlan ? `
       <a class="button" href="./tour.html"><span class="msr">add_road</span> Tour planen</a>
-      <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>
-      <button type="button" class="button" data-list="open-link"><span class="msr">link</span> Link öffnen</button>` : `
+      <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>` : `
       <a class="button" href="./index.html?action=record"><span class="msr">radio_button_checked</span> Aufzeichnen</a>
-      <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx"></label>
-      <button type="button" class="button" data-list="open-link"><span class="msr">link</span> Link öffnen</button>
-      ${all.length > 1 ? `<button type="button" class="button" data-list="compare" aria-pressed="${!!picking}"><span class="msr">compare_arrows</span> Vergleichen</button>` : ''}`}
+      <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx"></label>`}
     </div>`}
-    ${tab === 'wege' && picking ? `<div class="compare-bar" role="region" aria-label="Vergleichen">
-      <span class="msr">compare_arrows</span><span class="compare-count"></span>
-      <button type="button" class="button" data-list="compare-cancel">Abbrechen</button>
-      <button type="button" class="button primary" data-list="compare-go"><span class="msr">compare_arrows</span> Vergleichen</button>
-    </div>` : ''}
-    <form class="wege-search tour-search" role="search" onsubmit="return false">
+    <form class="wege-search tour-search" role="search">
       <span class="msr">search</span>
-      <input type="search" placeholder="${isOrte ? 'Suchen – Name, Liste, Ort …' : isBahn ? 'Suchen – Ort, Linie, Datum …' : isPlan ? 'Suchen – Name, Beschreibung, Rad, Wandern …' : 'Suchen – Name, Ort, Jahr, Monat …'}" value="${esc(query[tab])}" aria-label="Suchen">
+      <input type="search" placeholder="${isOrte ? 'Suchen – Name, Liste, Ort …' : isBahn ? 'Suchen – Ort, Linie, Datum …' : isPlan ? 'Suchen – Name, Beschreibung, Link …' : 'Suchen – Name, Ort, Tag, Link …'}" value="${esc(query[tab])}" aria-label="Suchen">
     </form>
+    <button type="button" class="wege-open-link" data-list="open-typed" hidden><span class="msr">link</span><span>Link öffnen</span><span class="msr">chevron_right</span></button>
     ${(isOrte ? (ownPlaces.length || sharedList ? [1] : []) : isBahn ? conns : isPlan ? planned : all).length ? '' : empty}
     ${isBahn || isOrte ? '' : `<a class="wege-sync-hint wege-dup-hint" href="./sync.html#doppelt" hidden>
       <span class="msr">content_copy</span><span></span><span class="msr">chevron_right</span>
     </a>`}
     ${tab === 'wege' && all.length ? '<div class="wege-head-box"></div>' : ''}
-    ${tab === 'wege' && all.length ? `<p class="muted wege-period"><span class="msr">visibility</span>
-      <span>Auf der Karte: <strong>${esc(trackShow.label())}</strong>${trackShow.get() === 'all' ? '' : ' – Älteres ist ausgeblendet'}. Das Auge am Jahr blendet ein und aus.
-      <a href="./settings.html">Ändern</a></span></p>` : ''}
+    ${tab === 'wege' && picking ? `<div class="compare-bar" role="region" aria-label="Ausgewählt">
+      <span class="compare-count"></span>
+      <button type="button" class="button" data-list="compare-cancel">Abbrechen</button>
+      <button type="button" class="button" data-list="pick-tag"><span class="msr">sell</span> Tag</button>
+      <button type="button" class="button primary" data-list="compare-go"><span class="msr">compare_arrows</span> Vergleichen</button>
+    </div>` : ''}
     <div class="wege-groups"></div>
     <a class="wege-sync-hint" href="./sync.html">
       <span class="msr">sync</span>
@@ -290,6 +289,7 @@ function showList({ push = false } = {}) {
       <span class="msr">chevron_right</span>
     </a>`;
   paintGroups();
+  paintLinkHit();
   // Dieselbe Tour aus zwei Quellen (Uhr und Handy, Health Connect und Ordner): hier Bescheid sagen
   const dup = content.querySelector('.wege-dup-hint');
   if (dup) {
@@ -454,7 +454,7 @@ function paintGroups() {
             <td class="w-name"><strong>${esc(t.name || 'Weg')}</strong><small>${esc([view.sort === 'date' ? DATE.format(t.start) : SHORT.format(t.start), originOf(t)].filter(Boolean).join(' · '))}${
               hasValues(t) ? mark('monitor_heart', 'Mit Gesundheitsdaten (Puls, Frequenz, Leistung)') : ''}${t.pin ? mark('offline_pin', 'Offline verfügbar') : ''}${
               t.stub ? mark('folder', 'Liegt im Ordner – wird beim Öffnen geholt') : ''}</small>${tagLine(t)}</td>
-            <td class="w-num">${view.sort === 'speed' ? tempo(t, moving(t) > 0 ? t.length / moving(t) : 0) : fmtDistance(t.length)}<small>${fmtDuration(moving(t))}</small></td>
+            <td class="w-num">${view.sort === 'speed' ? tempo(t, moving(t) > 0 ? t.length / moving(t) : 0) : fmtDistance(t.length)}<small>${fmtTime(moving(t))}</small></td>
             <td class="w-eye">${picking ? `<input type="checkbox" class="row-pick" data-pick="${esc(t.id)}" ${picking.has(t.id) ? 'checked' : ''} aria-label="Zum Vergleich">`
               : `<button type="button" class="row-eye" data-eye="${esc(t.id)}" aria-pressed="${shownOnMap(t)}"
               title="${shownOnMap(t) ? 'Auf der Karte ausblenden' : 'Auf der Karte zeigen'}"><span class="msr">${shownOnMap(t) ? 'visibility' : 'visibility_off'}</span></button>`}</td>
@@ -462,7 +462,7 @@ function paintGroups() {
     // Nicht nach Datum: eine Liste, oben die Summe
     if (view.sort !== 'date') {
       const sum = list.reduce((a, t) => a + t.length, 0), time = list.reduce((a, t) => a + moving(t), 0);
-      box.innerHTML = list.length ? `<p class="muted wege-sum">${list.length} ${list.length === 1 ? 'Weg' : 'Wege'} · ${km(sum)} · ${fmtDuration(time)}</p>
+      box.innerHTML = list.length ? `<p class="muted wege-sum">${list.length} ${list.length === 1 ? 'Weg' : 'Wege'} · ${km(sum)} · ${fmtTime(time)}</p>
         <table class="wege-table"><tbody>${list.map(rowOf).join('')}</tbody></table>`
         : all.length ? '<p class="muted">Nichts gefunden – Filter oder Suche ändern.</p>' : '';
       paintPicking();
@@ -476,7 +476,7 @@ function paintGroups() {
         <summary><button type="button" class="year-eye" data-year="${y}" aria-pressed="${shown > 0}"
             title="${shown ? `${y} auf der Karte ausblenden` : `${y} auf der Karte zeigen`}"><span class="msr">${shown ? 'visibility' : 'visibility_off'}</span></button>
           <strong>${y}</strong>
-          <small>${ts.length} ${ts.length === 1 ? 'Weg' : 'Wege'} · ${km(sum)} · ${fmtDuration(time)}${shown && shown < ts.length ? ` · ${shown} auf der Karte` : ''}</small></summary>
+          <small>${ts.length} ${ts.length === 1 ? 'Weg' : 'Wege'} · ${km(sum)} · ${fmtTime(time)}${shown && shown < ts.length ? ` · ${shown} auf der Karte` : ''}</small></summary>
         <table class="wege-table"><tbody>${ts.map(rowOf).join('')}</tbody></table>
       </details>`;
     }).join('') + (all.length && !list.length ? '<p class="muted">Nichts gefunden – Filter oder Suche ändern.</p>' : '');
@@ -498,7 +498,18 @@ content.addEventListener('change', (e) => {
 content.addEventListener('input', (e) => {
   if (!e.target.matches('.wege-search input')) return;
   query[tab] = e.target.value;
+  paintLinkHit();
   paintGroups();
+});
+/* Ein geteilter WMap-Link in der Suche (Tour, gemeinsam planen, Aufzeichnung): „Link öffnen“ darunter, Enter öffnet */
+function paintLinkHit() {
+  const b = $('.wege-open-link', content);
+  if (b) b.hidden = !linkTarget(query[tab] ?? '');
+}
+content.addEventListener('submit', (e) => {
+  if (!e.target.matches('.wege-search')) return;
+  e.preventDefault();
+  if (linkTarget(query[tab] ?? '')) openLinkText(query[tab]);
 });
 content.addEventListener('click', (e) => {
   // Auge am Jahr: alle Wege des Jahres auf der Karte ein- bzw. ausblenden (klappt das Jahr nicht zu)
@@ -534,11 +545,13 @@ content.addEventListener('click', (e) => {
     paintGroups();
     return;
   }
-  if (listDo === 'open-link') { askOpenLink(); return; }
-  if (listDo === 'compare') { picking = picking ? null : new Set(); showList(); return; }
+  if (listDo === 'open-typed') { openLinkText(query[tab]); return; }
   if (listDo === 'compare-cancel') { picking = null; showList(); return; }
   if (listDo === 'compare-go' && picking?.size > 1) { openCompare([...picking], { push: true }); return; }
+  if (listDo === 'pick-tag' && picking?.size) { tagPicked(); return; }
   const row = e.target.closest('tr[data-id]');
+  // Nach langem Tippen kommt beim Loslassen oft noch ein Klick – der wählt nicht gleich wieder ab
+  if (row && longPressed && Date.now() - longPressed < 400) { longPressed = 0; return; }
   // Vergleichen: die Zeile kreuzt an, statt den Weg zu öffnen
   if (row && picking) {
     const id = row.dataset.id;
@@ -581,13 +594,72 @@ content.addEventListener('mouseover', (e) => {
   const tr = e.target.closest('tr[data-id], tr[data-tour], tr[data-conn]');
   hover(tr?.dataset.id ?? tr?.dataset.tour ?? tr?.dataset.conn ?? null);
 });
-/** Leiste „Vergleichen“: wie viele angekreuzt sind – vergleichen geht ab zwei */
+/** Leiste „Vergleichen“: wie viele angekreuzt sind – vergleichen geht ab zwei, ein Tag ab einem */
 function paintPicking() {
   const bar = $('.compare-bar', content);
   if (!bar || !picking) return;
   const n = picking.size;
-  $('.compare-count', bar).textContent = n ? `${n} gewählt${n < 2 ? ' – noch einen ankreuzen' : ''}` : 'Wege zum Vergleichen ankreuzen';
+  $('.compare-count', bar).textContent = n ? `${n} gewählt` : 'Wege ankreuzen';
   $('[data-list="compare-go"]', bar).disabled = n < 2;
+  $('[data-list="pick-tag"]', bar).disabled = n < 1;
+}
+
+/*
+ * Lange auf eine Zeile tippen (oder die Maus halten): auswählen statt öffnen – die Liste geht in den Modus
+ * „Vergleichen“ mit dieser Zeile angekreuzt; weitere kreuzt ein kurzer Tipp an. Bewegt sich der Finger (scrollen),
+ * zählt es nicht.
+ */
+const LONG_MS = 500;
+let longPressed = 0;                  // Zeit des Loslassens nach langem Tippen (0: keins)
+let pressTimer = null, pressAt = null;
+content.addEventListener('pointerdown', (e) => {
+  const row = e.target.closest('.wege-table tr[data-id]');
+  if (!row || tab !== 'wege' || selected || e.button > 0 || e.target.closest('button, input, a')) return;
+  pressAt = [e.clientX, e.clientY];
+  longPressed = 0;
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => {
+    pressTimer = null;
+    longPressed = -1;                 // läuft – beim Loslassen die Zeit
+    navigator.vibrate?.(15);
+    const id = row.dataset.id;
+    if (!picking) {
+      // Die Leiste kommt über der Liste dazu – die gedrückte Zeile bleibt, wo der Finger ist
+      const at = row.getBoundingClientRect().top, y = content.scrollTop;
+      picking = new Set([id]);
+      showList();
+      const now = content.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+      content.scrollTop = y + (now ? now.getBoundingClientRect().top - at : 0);
+      return;
+    }
+    if (picking.has(id)) picking.delete(id); else picking.add(id);
+    const box = $(`.row-pick[data-pick="${CSS.escape(id)}"]`, row);
+    if (box) box.checked = picking.has(id);
+    paintPicking();
+  }, LONG_MS);
+});
+const pressEnd = () => { clearTimeout(pressTimer); pressTimer = null; };
+content.addEventListener('pointermove', (e) => { if (pressTimer && pressAt && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) > 10) pressEnd(); });
+content.addEventListener('pointerup', () => { pressEnd(); if (longPressed === -1) longPressed = Date.now(); });
+content.addEventListener('pointercancel', pressEnd);
+// Langes Tippen öffnet am Handy sonst das Kontextmenü (Link kopieren …)
+content.addEventListener('contextmenu', (e) => { if (e.target.closest('.wege-table tr[data-id]') && tab === 'wege') e.preventDefault(); });
+
+/** Allen angekreuzten einen Tag geben – gespeichert wie im Weg selbst (auch in der GPX-Datei) */
+async function tagPicked() {
+  const ids = [...picking];
+  const tag = await askTag(allTags());
+  if (!tag) return;
+  let n = 0;
+  for (const id of ids) {
+    const t = await tracks.get(id).catch(() => null);
+    if (!t || tagsOf(t).includes(tag)) continue;
+    await tracks.put({ ...t, tags: [...tagsOf(t), tag], updated: Date.now() });
+    n += 1;
+  }
+  await load();
+  paintGroups();
+  toast(n ? `Tag „${tag}“ an ${n} ${n === 1 ? 'Weg' : 'Wegen'}` : `Alle hatten „${tag}“ schon`);
 }
 
 /**
@@ -869,11 +941,14 @@ function paintTrack(t, note = '') {
     <p class="weg-when">${LONG.format(t.start)}, ${TIME.format(t.start)}–${TIME.format(t.end)} Uhr
       <br><span class="muted">${esc(originOf(t))}${t.kind === 'health' ? ' · aus Health Connect' : ''}</span>
       ${t.from || t.to ? `<br><span class="muted">${esc([t.from, t.to].filter(Boolean).map((x) => x.split(',')[0]).join(' → '))}</span>` : ''}</p>
+    ${t.imported || t.shared ? '' : `<div class="chip-row weg-tags" role="group" aria-label="Tags"><span class="msr">sell</span>
+      ${tagsOf(t).map((x) => `<button type="button" class="chip" data-tag-del="${esc(x)}" aria-pressed="true" title="Tag entfernen">${esc(x)} <span class="msr">close</span></button>`).join('')}
+      <button type="button" class="chip" data-tag-add><span class="msr">add</span> Tag</button></div>`}
     ${t.imported ? '<p class="muted weg-note"><span class="msr">upload_file</span> Geöffnete Datei – noch nicht gespeichert.</p>' : t.shared ? '<p class="muted weg-note"><span class="msr">share</span> Geteilte Aufzeichnung – noch nicht gespeichert.</p>' : ''}
     ${note ? `<p class="muted weg-note weg-folder"><span class="msr">folder</span><span>${esc(note)}</span></p>` : ''}
     <div class="weg-same" hidden></div>
     <div class="weg-stats">
-      <div><strong>${fmtDuration(mv)}</strong><small>in Bewegung</small></div>
+      <div><strong>${fmtTime(mv)}</strong><small>in Bewegung</small></div>
       <div><strong>${fmtDistance(t.length)}</strong><small>Strecke</small></div>
       ${pace ? `<div><strong>${mv ? clock(pace.per / (t.length / mv)) : '–'}</strong><small>Ø ${esc(pace.unit)}</small></div>` : ''}
       <div><strong>${mv ? (t.length / mv * 3.6).toFixed(1).replace('.', ',') : '–'}</strong><small>Ø km/h</small></div>
@@ -889,8 +964,8 @@ function paintTrack(t, note = '') {
     <div class="elevation"></div>
     <section class="weg-laps" hidden></section>
     <details class="weg-look" ${lookOpen ? 'open' : ''} ${t.shared ? 'hidden' : ''}>
-      <summary><span class="msr">palette</span><span class="weg-look-title">Art, Farbe, Tags und Anzeige</span>
-        <small><i class="weg-look-dot" style="--c:${esc(color)}"></i>${esc([sportName(sport), ...tagsOf(t), shown ? '' : 'ausgeblendet', t.pin ? 'offline verfügbar' : ''].filter(Boolean).join(' · '))}</small>
+      <summary><span class="msr">palette</span><span class="weg-look-title">Art, Farbe und Anzeige</span>
+        <small><i class="weg-look-dot" style="--c:${esc(color)}"></i>${esc([sportName(sport), shown ? '' : 'ausgeblendet', t.pin ? 'offline verfügbar' : ''].filter(Boolean).join(' · '))}</small>
         <span class="msr weg-look-arrow">expand_more</span></summary>
       <label class="weg-sport"><span>Art</span>
         <select name="sport" aria-label="Art der Tour">
@@ -908,10 +983,6 @@ function paintTrack(t, note = '') {
       <div class="chip-row weg-flags">
         <button type="button" class="chip" data-flag="map" aria-pressed="${shown}"><span class="msr">${shown ? 'visibility' : 'visibility_off'}</span> Auf der Karte</button>
         ${folderOn ? `<button type="button" class="chip" data-flag="pin" aria-pressed="${!!t.pin}" title="Bleibt ganz in der App – auch ohne den Ordner"><span class="msr">offline_pin</span> Offline verfügbar</button>` : ''}
-      </div>
-      <div class="chip-row weg-tags" role="group" aria-label="Tags"><span>Tags</span>
-        ${tagsOf(t).map((x) => `<button type="button" class="chip" data-tag-del="${esc(x)}" aria-pressed="true" title="Tag entfernen">${esc(x)} <span class="msr">close</span></button>`).join('')}
-        <button type="button" class="chip" data-tag-add><span class="msr">add</span> Tag</button>
       </div>
     </details>
     <div class="weg-actions">${t.imported ? `
@@ -942,23 +1013,28 @@ function withShown(t, want) {
 }
 
 async function addTag(t) {
-  const known = allTags().filter((x) => !tagsOf(t).includes(x));
+  const tag = await askTag(allTags().filter((x) => !tagsOf(t).includes(x)));
+  if (!tag || tagsOf(t).includes(tag)) return;
+  await saveLook({ tags: [...tagsOf(t), tag] });
+}
+
+/** Tag erfragen – vorhandene (`known`) zum Antippen → Text oder '' */
+async function askTag(known) {
   const v = await ask({
     icon: 'sell', title: 'Tag hinzufügen',
     html: `<label>Tag<input type="text" name="tag" list="tag-list" maxlength="30" placeholder="z. B. Rennen"></label>
       <datalist id="tag-list">${known.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
       ${known.length ? `<div class="chip-row">${known.map((x) => `<button type="button" class="chip" data-pick-tag="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}`,
-    buttons: [{ value: null, label: 'Abbrechen' }, { value: 'ok', label: 'Hinzufügen', icon: 'add', primary: true }],
-    read: (dlg) => dlg.querySelector('input').value.trim(),
+    buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'ok', label: 'Hinzufügen', icon: 'add', primary: true }],
+    // Nur „Hinzufügen“ liest das Feld – Abbrechen (oder Esc) gibt nichts, nicht den Text „null“
+    read: (dlg) => ({ tag: dlg.querySelector('input').value.trim() }),
     setup: (dlg) => {
       const input = dlg.querySelector('input');
       input.focus();
       dlg.addEventListener('click', (e) => { const x = e.target.closest('[data-pick-tag]'); if (x) { input.value = x.dataset.pickTag; input.focus(); } });
     },
   });
-  const tag = typeof v === 'string' ? v.replace(/\|/g, '/').trim() : '';
-  if (!tag || tagsOf(t).includes(tag)) return;
-  await saveLook({ tags: [...tagsOf(t), tag] });
+  return typeof v?.tag === 'string' ? v.tag.replace(/\|/g, '/').trim() : '';
 }
 
 /** Art, Farbe, Sichtbarkeit, „offline verfügbar“ speichern und neu zeichnen */
@@ -1245,7 +1321,7 @@ async function shareTrack(t) {
   });
   if (how === 'file' || how === 'send') { await downloadTrack(without(t, keep), how === 'send'); return; }
   if (how !== 'link' && how !== 'short') return;
-  const facts = [fmtDistance(t.length), fmtDuration(moving(t))].join(' · ');
+  const facts = [fmtDistance(t.length), fmtTime(moving(t))].join(' · ');
   const title = t.name || 'Tour', text = `${title} – ${facts}`;
   const code = await encodeTrack(t, keep);
   if (how === 'short') {
@@ -1687,6 +1763,30 @@ addEventListener('wmap:folder', async () => {
   if (selected) { if (!list.some((t) => t.id === selected.id)) showList(); } else showList();
   autoNames();
 });
+
+/*
+ * Im Hintergrund kamen Touren dazu oder änderten sich – Health Connect, Abgleich im Service Worker, Aufzeichnung,
+ * Import, Teilen (wmap:data mit Art „track“/„tour“, wmap:health): Die Übersicht zieht nach, ohne die Ansicht zu
+ * wechseln. Gesammelt (viele Meldungen beim Import), offen bleibt ein geöffneter Weg; angekreuzte bleiben angekreuzt.
+ */
+let freshList = null;
+let listStale = false;                            // kam etwas, während ein Weg offen war → beim Zurück nachziehen
+function listSoon() {
+  clearTimeout(freshList);
+  freshList = setTimeout(async () => {
+    freshList = null;
+    if (selected || comparing) { listStale = true; return; }
+    const before = all.length;
+    await load();
+    if (selected || comparing) { listStale = true; return; }
+    const y = content.scrollTop;
+    showList();
+    content.scrollTop = y;
+    if (all.length !== before) autoNames();
+  }, 800);
+}
+addEventListener('wmap:data', (e) => { if (['track', 'tour'].includes(e.detail?.kind)) listSoon(); });
+addEventListener('wmap:health', (e) => { if (e.detail?.added) listSoon(); });
 
 /*
  * Namen vergeben (data/auto-name.js): frisch importierte Wege und solche, die nur nach Datei, App oder Datum

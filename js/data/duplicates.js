@@ -21,7 +21,7 @@
  */
 import { tracks, sameActivity, trackEnd } from './tracks.js';
 import { tours } from './store.js';
-import { fmtDistance, fmtDuration } from '../core/geo.js';
+import { fmtDistance, fmtTime } from '../core/geo.js';
 
 const VALUES = ['hr', 'cad', 'pow'];
 // Karteikarte (Weg liegt nur im Ordner): sie weiß, welche Messwerte die Datei hat
@@ -146,7 +146,7 @@ export function enrich(keep, file, { shape = false, values = false } = {}) {
  * Je Angabe auch, wie sie auf beiden Seiten aussieht (`old`: was bisher da ist, `new`: was die Datei bzw. die
  * doppelte Aufzeichnung hat) – für die Wahl „Neu“ oder „Bisher“ in ui/merge-ask.js
  */
-const shapeText = (t, n) => [t.length > 0 && fmtDistance(t.length), (t.moving || (t.end - t.start) / 1000) > 0 && fmtDuration(t.moving || (t.end - t.start) / 1000), `${n} Punkte`].filter(Boolean).join(' · ');
+const shapeText = (t, n) => [t.length > 0 && fmtDistance(t.length), (t.moving || (t.end - t.start) / 1000) > 0 && fmtTime(t.moving || (t.end - t.start) / 1000), `${n} Punkte`].filter(Boolean).join(' · ');
 const unit = { hr: ' bpm', cad: '/min', pow: ' W' };
 export function choices(keep, file) {
   const [here, there] = [pointCount(keep), pointCount(file)];

@@ -48,6 +48,14 @@ class Browser:
             time.sleep(.5)
         return None
 
+    def long_press(self, selector, seconds=0.7):
+        """Lange auf ein Element drücken (Maus halten) – etwa eine Zeile in Meine Touren auswählen"""
+        from selenium.webdriver.common.action_chains import ActionChains
+        el = self.css(selector)
+        self.d.execute_script('arguments[0].scrollIntoView({block: "center"})', el)
+        ActionChains(self.d).click_and_hold(el).pause(seconds).release().perform()
+        time.sleep(.4)
+
     def css(self, selector):
         return self.d.find_element('css selector', selector)
 
