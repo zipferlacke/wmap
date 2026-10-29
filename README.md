@@ -1025,25 +1025,32 @@ Die ersten zwei:
     **Abweichung** wählt man im Vergleich oben: Genau (so), Ähnlich (150 m,
     Länge ±30 %, 75 %) oder Grob (400 m, ±50 %, 60 %, Start und Ziel 1,5 km) –
     je mit der Zahl der weiteren Touren, gemerkt (`wmap.sameLevel`); findet
-    die gemerkte Stufe nichts, gilt die strengste, die etwas findet. Der
-    Vergleich geht dann **vom aktuellen aus** (`?compare=…&focus=id`): er
-    kräftig, die anderen schmal und blass (Liste, Diagramme, Karte); Maus über
-    einem anderen (Liste oder Linie) hebt ihn überall hervor, **Doppelklick**
-    macht ihn zum aktuellen (am Handy: erster Tipp hebt hervor, zweiter
-    wechselt) – als neuer Eintrag im Verlauf, Zurück führt zum vorigen.
+    die gemerkte Stufe nichts, gilt die strengste, die etwas findet
+    (`?compare=…&focus=id&same=id`; ein Tipp auf eine Stufe füllt den
+    Vergleich neu). Die gefundenen Touren sind nur der Anfang: in „Im
+    Vergleich“ nimmt man weitere dazu oder wirft welche raus.
     **Tooltip im Verlauf:** je Größe eine Zeile – vorn groß das aktuelle
     Training, dahinter in derselben Zeile (umbrechend) die anderen mit ihrem
     Datum (grau, die Werte schwarz); nur die letzten vier, das schnellste (▲) und das
     langsamste (▼), nicht alle. Die Werte liest WMap selbst zwischen den
     Punkten jeder Reihe ab (ECharts nennt nur Reihen mit einem Punkt genau dort).
     **Datum statt Nummer:** jedes Training heißt im Vergleich nach seinem Tag
-    („29.9.“, am selben Tag mit Uhrzeit) – Tabellenspalten, Farbpunkte, Tooltip.
+    („29.9.“, am selben Tag mit Uhrzeit) – Tabellenspalten, Tooltip.
     Der Tooltip darf die Umschalter (Tempo, Puls …) verdecken, nur das Diagramm
     hält er frei.
-    **Oben:** bis vier Touren als Liste, ab fünf nur Farbpunkte mit Datum
-    und „n Trainings“ – die Liste klappt auf (sonst stand eine lange Liste vor
-    allem anderen).
-    **Kacheln** „Dieser Lauf im Vergleich“ (ohne gleiche Strecke: der neueste):
+    **Oben zwei Auswahlfelder** (wuefl-libs selectpicker): **Im Vergleich**
+    – eine Mehrfachauswahl, die zu nur zählt („40 Touren“); aufgeklappt
+    stehen die gewählten angehakt oben, darunter alle anderen Aufzeichnungen
+    (neueste zuerst), die Suche geht über Datum, Name, Tags und Art.
+    Speichern vergleicht neu (mindestens zwei). Daneben **Aktuell**: welche
+    davon die aktuelle ist (ohne Wahl die neueste), auch mit Suche – sie ist
+    kräftig, die anderen blass; ein Wechsel ist ein neuer Eintrag im Verlauf,
+    Zurück führt zur vorigen. Auf der Karte auch **Doppelklick** auf eine
+    andere Linie (am Handy: erster Tipp hebt hervor, zweiter wechselt).
+    **Keine Farbe je Tour:** auf der Karte die aktuelle in der Farbe ihrer
+    Art, die anderen grau, die unter der Maus dunkelgrau; im Verlauf gehört
+    die Farbe der Größe.
+    **Kacheln** zur aktuellen:
     zum vorigen Mal, zu den letzten 5, zum Durchschnitt, zum besten bzw.
     schlechtesten (umschaltbar, gemerkt) – groß der Wert, darunter in einer
     Zeile ± absolut und Prozent, grün besser, rot schlechter (weniger Zeit,
@@ -1052,12 +1059,11 @@ Die ersten zwei:
     über die Tage, der aktuelle als großer Punkt.
     **Vergleichen** (`js/pages/wege-compare.js`, `wege.html?compare=id,id,…`):
     in Aufgezeichnet lange auf eine Zeile tippen, dann weitere Zeilen (oder Linien auf der Karte)
-    ankreuzen – oben eine Leiste mit der Anzahl, ab zwei geht es los. Jedes
-    Training hat eine Farbe und eine Nummer (das älteste zuerst), auf der
-    Karte jede Linie in ihrer Farbe. Eine **Tabelle**: Zeit in Bewegung,
+    ankreuzen – oben eine Leiste mit der Anzahl, ab zwei geht es los. Die
+    Trainings stehen nach Datum, das älteste zuerst. Eine **Tabelle**: Zeit in Bewegung,
     Strecke, Ø Tempo, Ø/max. Puls, Herzschläge je km (Ø Puls × Zeit ÷
     Strecke – gleich schnell mit weniger Schlägen heißt fitter), Ø Frequenz,
-    Ø Leistung; rechts die **Veränderung** vom ältesten zum neuesten, mit
+    Ø Leistung; rechts die **Veränderung** der aktuellen zum vorigen Mal (bei der ersten: zum nächsten), mit
     Prozent: grün besser, rot schlechter (Tempo, Strecke, Leistung, Frequenz
     mehr; Zeit, Puls, Herzschläge je km weniger; unter 0,5 % zählt nicht). Darunter der **Verlauf über die Strecke** – Tempo, Puls,
     Frequenz und Leistung aller Trainings in **einem** Diagramm: die Farbe

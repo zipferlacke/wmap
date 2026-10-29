@@ -55,7 +55,7 @@ import { connections, places, DEFAULT_LIST, PLACE_KINDS } from '../data/saved.js
 import { packJson, unpackJson } from '../data/store.js';
 import { legBadge, changesText, transitLegsHtml } from '../ui/transit-legs.js';
 import { healthAvailable, refreshHealthValues, appName } from '../services/health.js';
-import { paintCompare, compareColors } from './wege-compare.js';
+import { paintCompare } from './wege-compare.js';
 import { sameRoutes, SAME_LEVELS } from '../data/same-route.js';
 import { nameAll } from '../data/auto-name.js';
 
@@ -97,7 +97,8 @@ const query = { wege: '', geplant: '', bahn: '', orte: '' };
 let sharedList = null;             // geöffneter Link „?liste=“: { name, items: [{ name, label, point }] }
 let selected = null;               // gewählter Weg oder Tour
 let comparing = null;              // Wege im Vergleich (ganz geladen)
-let compareFocus = null;           // gleiche Strecke: ID des aktuellen Wegs im Vergleich
+let compareFocus = null;           // ID des aktuellen Wegs im Vergleich (ohne Wahl der neueste)
+let compareSame = null;            // gleiche Strecke: ID des Wegs, von dem aus verglichen wird
 let compareView = null;            // paintCompare: { hover(id) }
 let picking = null;                // Liste im Modus „Vergleichen“: Set der angekreuzten IDs
 let folderOn = false;              // Ordner verbunden: „offline verfügbar“ anbieten
@@ -225,6 +226,7 @@ function showList({ push = false } = {}) {
   selected = null;
   comparing = null;
   compareFocus = null;
+  compareSame = null;
   compareView = null;
   if (tab !== 'wege') picking = null;
   if (push) history.pushState({ wege: 1 }, '', `./wege.html${tab === 'wege' ? '' : `?tab=${tab}`}`);
@@ -663,18 +665,19 @@ async function tagPicked() {
 }
 
 /**
- * Wege vergleichen (pages/wege-compare.js) – liegen sie nur im Ordner, erst ganz holen. `focus`: gleiche Strecke
- * vom aktuellen Weg aus; Doppelklick auf einen anderen (Liste, Karte) macht ihn zum aktuellen – als neuer Eintrag
- * im Verlauf, Zurück führt wieder zum vorigen.
+ * Wege vergleichen (pages/wege-compare.js) – liegen sie nur im Ordner, erst ganz holen. `focus`: der aktuelle (sonst
+ * der neueste); `same`: gleiche Strecke vom Weg aus (Stufen oben). Ein anderer als aktueller (Auswahl, Doppelklick
+ * auf der Karte) ist ein neuer Eintrag im Verlauf, Zurück führt wieder zum vorigen; andere Touren im Vergleich
+ * (Mehrfachauswahl) ersetzen den Eintrag.
  */
-async function openCompare(ids, { push = false, replace = false, focus = null } = {}) {
+async function openCompare(ids, { push = false, replace = false, focus = null, same = null } = {}) {
   tab = 'wege';
   selected = null;
-  const url = `./wege.html?compare=${ids.map(encodeURIComponent).join(',')}${focus ? `&focus=${encodeURIComponent(focus)}` : ''}`;
-  if (push) history.pushState({ wege: 1, compare: ids, focus }, '', url);
-  else if (replace) history.replaceState({ ...history.state, compare: ids, focus }, '', url);
+  const url = `./wege.html?compare=${ids.map(encodeURIComponent).join(',')}${focus ? `&focus=${encodeURIComponent(focus)}` : ''}${same ? `&same=${encodeURIComponent(same)}` : ''}`;
+  if (push) history.pushState({ wege: 1, compare: ids, focus, same }, '', url);
+  else if (replace) history.replaceState({ ...history.state, compare: ids, focus, same }, '', url);
   const cards = ids.map((id) => all.find((t) => t.id === id)).filter(Boolean);
-  const own = focus && cards.find((t) => t.id === focus);
+  const own = same && all.find((t) => t.id === same);
   document.title = `${own ? 'Gleiche Strecke' : 'Vergleich'} – WMap`;
   if (own) page.header(own.name || 'Gleiche Strecke', backToList, { icon: 'compare_arrows', color: colorOf(own) });
   else page.header('Vergleich', backToList);
@@ -687,19 +690,25 @@ async function openCompare(ids, { push = false, replace = false, focus = null } 
   }
   if (list.length < 2) { showList(); return; }
   comparing = list;
-  compareFocus = own ? focus : null;
+  compareFocus = list.some((t) => t.id === focus) ? focus : list.reduce((a, b) => (b.start > a.start ? b : a)).id;
+  compareSame = own ? same : null;
   picking = null;
   compareView = paintCompare(content, list, {
-    focus: compareFocus,
+    focus: compareFocus, same: !!own, pool: all,
     onHover: (id) => compareHover(id),
-    onSwitch: (id) => openCompare(ids, { push: true, focus: id }),
+    onSwitch: (id) => openCompare(ids, { push: true, focus: id, same: compareSame }),
+    onSet: (next) => {
+      if (next.length < 2) toast('Zum Vergleichen braucht es mindestens zwei Wege');
+      openCompare(next.length < 2 ? ids : next, { replace: true, focus: compareFocus, same: compareSame });
+    },
   });
-  if (compareFocus) paintSameLevels(own);
+  if (own) paintSameLevels(own);
   paintMap();
   fitView();
 }
 
-/* Karte im Vergleich: der aktuelle Weg kräftig, die anderen schmal und blass, der unter der Maus dazwischen */
+/* Karte im Vergleich: der aktuelle Weg kräftig in seiner Farbe, die anderen schmal und grau, der unter der Maus dunkler */
+const CMP_GREY = '#868e96', CMP_HOT = '#343a40';
 const SEL_WIDTH = ['interpolate', ['linear'], ['zoom'], 6, 3.5, 14, 7];
 const SEL_CASING = ['interpolate', ['linear'], ['zoom'], 6, 6, 14, 12];
 let compareHot = null;              // Weg, der gerade hervorgehoben ist
@@ -707,10 +716,11 @@ function compareHover(id) {
   compareHot = id;
   if (!map.getLayer('weg-sel') || !comparing) return;
   const hot = ['==', ['get', 'id'], id ?? ''];
-  const strong = compareFocus ? ['any', hot, ['==', ['get', 'id'], compareFocus]] : true;
-  map.setPaintProperty('weg-sel', 'line-width', compareFocus ? ['case', hot, 6, ['==', ['get', 'id'], compareFocus], 6, 3] : SEL_WIDTH);
-  map.setPaintProperty('weg-sel', 'line-opacity', compareFocus ? ['case', strong, 1, 0.5] : 1);
-  map.setPaintProperty('weg-sel-casing', 'line-width', compareFocus ? ['case', strong, 10, 5] : SEL_CASING);
+  const strong = ['any', hot, ['==', ['get', 'id'], compareFocus ?? '']];
+  map.setPaintProperty('weg-sel', 'line-width', ['case', hot, 6, ['==', ['get', 'id'], compareFocus ?? ''], 6, 3]);
+  map.setPaintProperty('weg-sel', 'line-color', ['case', hot, CMP_HOT, ['get', 'color']]);
+  map.setPaintProperty('weg-sel', 'line-opacity', ['case', strong, 1, 0.6]);
+  map.setPaintProperty('weg-sel-casing', 'line-width', ['case', strong, 10, 5]);
   // Die hervorgehobene obenauf
   map.setLayoutProperty('weg-sel', 'line-sort-key', ['case', hot, 2, ['==', ['get', 'id'], compareFocus ?? ''], 1, 0]);
 }
@@ -919,11 +929,12 @@ function paintSameLevels(own) {
 }
 content.addEventListener('click', (e) => {
   const lv = e.target.closest('[data-same-level]')?.dataset.sameLevel;
-  const own = compareFocus && all.find((t) => t.id === compareFocus);
+  const own = compareSame && all.find((t) => t.id === compareSame);
   if (!lv || !own) return;
   local.set(SAME_KEY, lv);
   const { same } = sameFor(own);
-  if (same.length) openCompare([own.id, ...same.map((x) => x.id)], { focus: own.id, replace: true });
+  const ids = [own.id, ...same.map((x) => x.id)];
+  if (same.length) openCompare(ids, { focus: ids.includes(compareFocus) ? compareFocus : own.id, same: own.id, replace: true });
 });
 
 /** Kopf, Zahlen, Aussehen und Knöpfe eines Wegs; `note`: Hinweis, solange bzw. weil die Punkte fehlen */
@@ -1260,7 +1271,7 @@ content.addEventListener('click', async (e) => {
   const t = selected;
   if (!act || !t) return;
   if (act === 'car') { sendToCar({ type: 'tour', id: t.id }, toast); return; }
-  if (act === 'same') { openCompare($('.weg-same', content).dataset.ids.split(','), { push: true, focus: t.id }); return; }
+  if (act === 'same') { openCompare($('.weg-same', content).dataset.ids.split(','), { push: true, focus: t.id, same: t.id }); return; }
   if (act === 'compare') { picking = new Set([t.id]); showList({ push: true }); toast('Weitere Wege zum Vergleichen ankreuzen'); return; }
   if (t.stub && act !== 'delete') { toast('Dafür braucht es die Tour aus dem Ordner – der ist gerade nicht erreichbar'); return; }
   if (act === 'plan') {
@@ -1616,7 +1627,7 @@ async function paintMap() {
       elevation.showAt(p.along / 1000 * chartScale);
     });
     map.on('mouseleave', 'weg-sel', () => { showHover(map, null); elevation?.showAt(null); if (comparing) { compareHover(null); compareView?.hover(null); } });
-    // Vergleich: Maus über einer Linie hebt sie hervor (auch in Liste und Diagramm), Doppelklick macht sie zur aktuellen
+    // Vergleich: Maus über einer Linie hebt sie hervor (auch im Diagramm), Doppelklick macht sie zur aktuellen
     map.on('mousemove', 'weg-sel', (e) => {
       if (!comparing) return;
       const id = e.features[0]?.properties.id ?? null;
@@ -1627,7 +1638,7 @@ async function paintMap() {
       if (!comparing || !compareFocus || !matchMedia('(pointer: coarse)').matches) return;
       const id = e.features[0]?.properties.id;
       if (!id || id === compareFocus) return;
-      if (compareHot === id) { openCompare(comparing.map((t) => t.id), { push: true, focus: id }); return; }
+      if (compareHot === id) { openCompare(comparing.map((t) => t.id), { push: true, focus: id, same: compareSame }); return; }
       compareHover(id);
       compareView?.hover(id);
     });
@@ -1635,7 +1646,7 @@ async function paintMap() {
       const id = e.features[0]?.properties.id;
       if (!comparing || !compareFocus || !id || id === compareFocus) return;
       e.preventDefault();
-      openCompare(comparing.map((t) => t.id), { push: true, focus: id });
+      openCompare(comparing.map((t) => t.id), { push: true, focus: id, same: compareSame });
     });
   } else { map.getSource('wege').setData(fc); map.getSource('wege-pts').setData(startsOf(fc)); }
   // Orte: Punkte mit Namen, in der Farbe ihrer Liste (geteilte rot)
@@ -1696,11 +1707,10 @@ async function paintMap() {
       markers.push(new maplibregl.Marker({ element: el }).setLngLat(p).addTo(map));
     }
   } else if (comparing) {
-    map.getSource('weg-sel').setData({ type: 'FeatureCollection', features: compareColors(comparing).map(({ t, color }) => ({
-      type: 'Feature', properties: { id: t.id, color }, geometry: { type: 'LineString', coordinates: trackCoords(t) },
+    map.getSource('weg-sel').setData({ type: 'FeatureCollection', features: comparing.map((t) => ({
+      type: 'Feature', properties: { id: t.id, color: t.id === compareFocus ? colorOf(t) : CMP_GREY }, geometry: { type: 'LineString', coordinates: trackCoords(t) },
     })) });
     map.setPaintProperty('weg-sel', 'line-gradient', undefined);
-    map.setPaintProperty('weg-sel', 'line-color', ['get', 'color']);
     compareHover(null);
   } else {
     map.getSource('weg-sel').setData({ type: 'FeatureCollection', features: [] });
@@ -1741,7 +1751,7 @@ function route() {
   else if (p.get('id')) select(p.get('id'));
   else if (p.get('conn')) selectConn(p.get('conn'));
   else if (p.get('tour')) selectTour(p.get('tour'));
-  else if (p.get('compare')) openCompare(p.get('compare').split(',').filter(Boolean), { focus: p.get('focus') });
+  else if (p.get('compare')) openCompare(p.get('compare').split(',').filter(Boolean), { focus: p.get('focus'), same: p.get('same') });
   else showList();
 }
 addEventListener('popstate', () => { route(); fitView(); });

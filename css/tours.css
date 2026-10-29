@@ -836,14 +836,15 @@ body.stage-mode #map canvas { cursor: crosshair; }
     .compare-count { flex: 1; min-width: 8rem; font-weight: 600; }
 }
 .row-pick { width: 1.3rem; height: 1.3rem; accent-color: var(--route); }
-.cmp-list {
-    display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; counter-reset: cmp;
-    li { display: flex; align-items: center; gap: .5rem; counter-increment: cmp; }
-    li::before { content: ''; flex-shrink: 0; width: .8rem; height: .8rem; border-radius: 50%; background: var(--c); }
-    .msr { color: var(--c); }
-    span:last-child { display: grid; min-width: 0; }
-    strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    small { color: var(--muted); font-size: var(--fs-100); }
+/* Vergleich oben: welche Touren dabei sind (Mehrfachauswahl, zu nur die Zahl) und welche die aktuelle ist */
+.cmp-pick {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .5rem;
+    .cmp-field { display: grid; gap: .2rem; min-width: 0; }
+    .cmp-field sp-picker { display: block; min-width: 0; }
+    /* eine Zeile: lange Namen enden mit „…“, der Pfeil bleibt daneben */
+    .cmp-field .sp_trigger { box-sizing: border-box; width: 100%; flex-wrap: nowrap; justify-content: space-between; }
+    .cmp-field .sp_single_value { min-width: 0; span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+    .cmp-field > span { display: flex; align-items: center; gap: .3rem; color: var(--muted); font-size: var(--fs-200); .msr { font-size: 1.1rem; color: var(--route); } }
 }
 .cmp-scroll { overflow-x: auto; }
 .cmp-table {
@@ -851,7 +852,6 @@ body.stage-mode #map canvas { cursor: crosshair; }
     th, td { padding: .4rem .45rem; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
     th[scope="row"] { text-align: left; font-weight: 500; color: var(--muted); white-space: normal; }
     thead th { font-weight: 700; }
-    thead th i { display: inline-block; width: .7rem; height: .7rem; margin-right: .25rem; border-radius: 50%; background: var(--c); }
     .cmp-delta { font-weight: 700; small { display: block; font-weight: 400; color: var(--muted); font-size: var(--fs-100); } }
     thead th { white-space: normal; vertical-align: bottom; }
     th[scope="row"] { min-width: 6.5rem; }
@@ -861,11 +861,6 @@ body.stage-mode #map canvas { cursor: crosshair; }
 .cmp-delta.good, .cmp-good { color: light-dark(#2b8a3e, #69db7c); }
 .cmp-delta.bad, .cmp-bad { color: light-dark(#c92a2a, #ff8787); }
 .cmp-h { display: flex; align-items: center; gap: .4rem; margin: .5rem 0 0; font-size: var(--fs-300); .msr { color: var(--route); } }
-.cmp-list li { padding: .2rem .3rem; border-radius: .6rem; cursor: default; }
-.cmp-list li[data-cmp-id]:not(.focus) { cursor: pointer; }
-.cmp-list li.focus { background: color-mix(in srgb, var(--c) 14%, transparent); }
-.cmp-list li.hover { background: var(--surface-2); outline: 2px solid var(--c); outline-offset: -2px; }
-.cmp-list em { font-style: normal; font-size: var(--fs-100); font-weight: 700; color: var(--c); margin-left: .3rem; }
 .cmp-table .focus { font-weight: 700; background: color-mix(in srgb, var(--route) 8%, transparent); }
 /* Im Weg: dieselbe Strecke gibt es öfter – eine Zeile zum Vergleich */
 .weg-same-go {
@@ -879,19 +874,6 @@ body.stage-mode #map canvas { cursor: crosshair; }
 }
 /* Vergleich der gleichen Strecke: wie streng gleich */
 .same-level small { margin-left: .2rem; color: inherit; opacity: .75; }
-/* Viele im Vergleich: oben nur Farbpunkte, die Liste klappt auf */
-.cmp-who {
-    > summary { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; cursor: pointer; color: var(--muted); font-size: var(--fs-200); }
-    &[open] > summary { margin-bottom: .4rem; }
-}
-.cmp-dots {
-    display: flex; flex-wrap: wrap; gap: .2rem;
-    i {
-        display: grid; place-items: center; height: 1.35rem; padding: 0 .4rem; border-radius: .7rem;
-        background: var(--c); color: #fff; font-style: normal; font-weight: 700; font-size: var(--fs-100); white-space: nowrap;
-    }
-    i.focus { outline: 2px solid var(--c); outline-offset: 2px; }
-}
 /* Dieser Lauf im Vergleich: Kacheln je Kennzahl */
 .cmp-tiles {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: .4rem;

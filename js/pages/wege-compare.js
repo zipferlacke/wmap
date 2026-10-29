@@ -2,34 +2,37 @@
  * Trainings vergleichen (Meine Touren → Aufgezeichnet → „Vergleichen“, wege.html?compare=id,id,…; gleiche Strecke
  * vom aktuellen Weg aus: …&focus=id).
  *
- *   Kacheln     vom aktuellen aus (gleiche Strecke: der gewählte, sonst der neueste): zum vorigen, zu den letzten 5,
+ *   Auswahl     oben: welche Touren im Vergleich sind (Mehrfachauswahl mit Suche über Name, Datum, Tags – zu zählt sie
+ *               nur, „40 Touren“), darunter welche davon die aktuelle ist (Auswahl mit Suche) – wuefl-libs selectpicker
+ *   Kacheln     von der aktuellen aus (ohne Wahl die neueste): zum vorigen, zu den letzten 5,
  *               zum Durchschnitt, zum besten bzw. schlechtesten der anderen (umschaltbar, gemerkt) – groß der Wert,
  *               darunter in einer Zeile ± absolut und in Prozent, immer grün (besser) oder rot (schlechter)
  *   Tabelle     je Training Zeit, Strecke, Ø Tempo, max. Geschwindigkeit, Puls, Herzschläge je km, Frequenz,
- *               Leistung und die Veränderung (ohne aktuellen: vom ältesten zum neuesten; mit: zum vorigen Mal)
+ *               Leistung und die Veränderung der aktuellen zum vorigen Mal (bei der ersten: zum nächsten)
  *   Verlauf     Tempo, Puls, Frequenz, Leistung über die Strecke in einem Diagramm: die Farbe gehört der Größe
  *               (alle Pulse rot …), das aktuelle Training kräftig, die anderen blass; jede Größe ihre Skala
  *   Entwicklung Gesamtzeit (bzw. Ø Tempo, Puls …) je Training über die Tage, der aktuelle als großer Punkt
  *
- * Jedes Training hat seine Farbe in der Liste und auf der Karte (pages/wege.js) – im Verlauf zählt die Größe.
+ * Die Trainings haben keine eigenen Farben: das aktuelle ist kräftig, die anderen grau (Karte in pages/wege.js) – im
+ * Verlauf zählt die Farbe der Größe.
  *
- *   paintCompare(box, list, { focus, onHover, onSwitch })  list: Wege (ganz, nicht nur die Karteikarte), beliebig
- *                            sortiert; `focus`: gleiche Strecke vom aktuellen Weg aus (er kräftig, die anderen blass)
- *   compareColors(list)      → [{ t, color }] – nach Datum, das älteste zuerst
+ *   paintCompare(box, list, { focus, same, pool, onHover, onSwitch, onSet })  list: Wege (ganz, nicht nur die
+ *                            Karteikarte), beliebig sortiert; `focus`: die aktuelle (sonst die neueste); `same`: gleiche
+ *                            Strecke; `pool`: alle Aufzeichnungen (Karteikarten) zum Dazunehmen
  */
 import { ElevationProfile } from '../ui/elevation.js';
-import { paceOf, cadName, sportIcon, sportOf } from '../data/track-look.js';
+import { paceOf, cadName, sportName, sportOf } from '../data/track-look.js';
 import { metrics } from '../data/track-stats.js';
 import { local } from '../data/store.js';
 import { fmtDistance, fmtTime, esc } from '../core/geo.js';
+// Auswahl mit Suche für <select data-sp-picker> (legt sich selbst an)
+import '../../libs/wuefl-libs/selectpicker/selectpicker.js';
 
-const FEW = 4;                 // so viele stehen oben als Liste, mehr nur als Farbpunkte
-const COLORS = ['#1a73e8', '#e8590c', '#2f9e44', '#ae3ec9', '#f59f00', '#0c8599', '#e64980', '#5c940d'];
 const DAY = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short', year: '2-digit' });
 const SHORT = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short' });
 const DM = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'numeric' });
 const HM = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
-const LONG = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+const FULL = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
 const moving = (t) => t.moving || (t.end - t.start) / 1000;
 const values = (a) => (a ?? []).filter((x) => x > 0);
@@ -41,9 +44,9 @@ const clock = (sec) => {
   return h ? `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}` : `${m}:${String(r).padStart(2, '0')}`;
 };
 
-export function compareColors(list) {
-  return [...list].sort((a, b) => a.start - b.start).map((t, i) => ({ t, color: COLORS[i % COLORS.length] }));
-}
+/** Eintrag einer Auswahl: „18.10.2026 · Morgenrunde · 5,2 km“, gesucht auch über Tags und Art */
+const option = (t, on) => `<option value="${esc(t.id)}" ${on ? 'selected' : ''} data-search="${esc([...(t.tags ?? []), sportName(sportOf(t))].join(' '))}"
+  >${esc(`${FULL.format(t.start)} · ${t.name || 'Weg'} · ${fmtDistance(t.length)}`)}</option>`;
 
 /** Kennzahlen eines Trainings – null, wo es nichts gibt */
 function figures(t) {
@@ -119,27 +122,31 @@ const KEY = 'wmap.compareChart';      // Verlauf: Liste der gezeigten Größen
 const TREND_KEY = 'wmap.compareTrend'; // Entwicklung: eine Größe
 
 /**
- * @param focus    ID des aktuellen Wegs (gleiche Strecke): er ist kräftig, die anderen blass; Kacheln vergleichen ihn
- *                 mit den anderen, die Tabelle zeigt die Veränderung zum vorigen Mal (beim ersten: zum nächsten).
- *                 Ohne: Tabelle vom ältesten zum neuesten.
- * @param onHover  (id | null) – Maus über einem anderen: Karte hebt ihn hervor
- * @param onSwitch (id) – Doppelklick auf einen anderen: der wird der aktuelle
+ * @param focus    ID des aktuellen Wegs (ohne bzw. nicht dabei: der neueste): er ist kräftig, die anderen blass;
+ *                 Kacheln vergleichen ihn mit den anderen, die Tabelle zeigt die Veränderung zum vorigen Mal (beim
+ *                 ersten: zum nächsten)
+ * @param same     gleiche Strecke (vom Weg aus): Gesamtzeit in der Entwicklung, Text dazu
+ * @param pool     alle Aufzeichnungen, aus denen die Mehrfachauswahl wählt
+ * @param onHover  (id | null) – Maus über einem anderen im Diagramm: Karte hebt ihn hervor
+ * @param onSwitch (id) – eine andere ist die aktuelle (Auswahl)
+ * @param onSet    (ids) – andere Touren im Vergleich (Mehrfachauswahl, mindestens zwei)
  * → { hover(id | null) } – von der Karte aus hervorheben
  */
-export function paintCompare(box, list, { focus = null, onHover = () => {}, onSwitch = () => {} } = {}) {
-  const items = compareColors(list);
-  const fi = items.findIndex(({ t }) => t.id === focus);
-  const ref = items[fi >= 0 ? fi : items.length - 1].t;
+export function paintCompare(box, list, { focus = null, same = false, pool = [], onHover = () => {}, onSwitch = () => {}, onSet = () => {} } = {}) {
+  const items = [...list].sort((a, b) => a.start - b.start).map((t) => ({ t }));
+  let fi = items.findIndex(({ t }) => t.id === focus);
+  if (fi < 0) fi = items.length - 1;
+  focus = items[fi].t.id;
+  const ref = items[fi].t;
   const figs = items.map(({ t }) => figures(t));
   const ROWS = rows(ref).filter(([k]) => figs.some((f) => f[k] != null));
   // Von wo nach wo die Veränderung in der Tabelle gilt
-  const [ai, bi, label] = fi < 0 ? [0, items.length - 1, 'Veränderung']
-    : fi > 0 ? [fi - 1, fi, 'zum vorigen Mal'] : [1, 0, 'zum nächsten Mal'];
+  const [ai, bi, label] = fi > 0 ? [fi - 1, fi, 'zum vorigen Mal'] : [1, 0, 'zum nächsten Mal'];
   const cls = (i) => (i === fi ? ' class="focus"' : '');
   // Jedes Training heißt nach seinem Tag („29.9.“), am selben Tag mit Uhrzeit – statt einer Nummer
   const tags = items.map(({ t }) => DM.format(t.start));
   const dayOf = items.map(({ t }, i) => (tags.filter((x) => x === tags[i]).length > 1 ? `${tags[i]} ${HM.format(t.start)}` : tags[i]));
-  const head = items.map(({ color }, i) => `<th scope="col" style="--c:${color}"${cls(i)}><i></i>${esc(dayOf[i])}</th>`).join('');
+  const head = items.map((x, i) => `<th scope="col"${cls(i)}>${esc(dayOf[i])}</th>`).join('');
   const table = ROWS.map((row) => {
     const [k, name, show] = row;
     const a = figs[ai][k], b = figs[bi][k];
@@ -151,8 +158,8 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
     return `<tr><th scope="row">${esc(name)}</th>${figs.map((f, i) => `<td${cls(i)}>${f[k] == null ? '–' : esc(show(f[k]))}</td>`).join('')}${cell}</tr>`;
   }).join('');
 
-  // Kacheln: der aktuelle (gleiche Strecke) bzw. der neueste – womit er verglichen werden kann
-  const ci = fi >= 0 ? fi : items.length - 1;
+  // Kacheln: der aktuelle – womit er verglichen werden kann
+  const ci = fi;
   const cur = items.length > 1 ? { t: items[ci].t, f: figs[ci] } : null;
   const others = items.map(({ t }, i) => ({ t, f: figs[i] })).filter((x, i) => i !== ci);
   const refs = cur ? Object.entries(REFS).map(([k, [name, pick]]) => [k, name, pick(cur, others)]).filter(([, , r]) => r) : [];
@@ -162,22 +169,23 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
   let shown = (Array.isArray(wanted) ? wanted : [wanted]).filter((k) => kinds.includes(k));
   if (!shown.length) shown = kinds;            // ohne eigene Wahl alles in einem Diagramm
   // Entwicklung: Gesamtzeit nur auf gleicher Strecke sinnvoll – sonst das Tempo zuerst
-  const trends = [...(fi >= 0 ? ['time'] : []), 'speed', ...['hr', 'cad', 'pow'].filter((k) => figs.some((f) => f[k] != null))];
+  const trends = [...(same ? ['time'] : []), 'speed', ...['hr', 'cad', 'pow'].filter((k) => figs.some((f) => f[k] != null))];
   const trendKind = trends.includes(local.get(TREND_KEY)) ? local.get(TREND_KEY) : trends[0];
-  const withTrend = items.length > 2 || (fi >= 0 && items.length > 1);
+  const withTrend = items.length > 2 || (same && items.length > 1);
 
-  // Wer ist dabei: bis vier als Liste, mehr nur als Farbpunkte – die Liste klappt auf
-  const who = `<ol class="cmp-list">${items.map(({ t, color }, i) => `
-      <li style="--c:${color}" data-cmp-id="${esc(t.id)}"${cls(i)} tabindex="0"><span class="msr">${sportIcon(sportOf(t))}</span>
-        <span><strong>${esc(t.name || 'Weg')}${i === fi ? ' <em>aktuell</em>' : ''}</strong><small>${LONG.format(t.start)} · ${fmtDistance(t.length)} · ${fmtTime(moving(t))}</small></span></li>`).join('')}</ol>`;
+  // Welche im Vergleich sind (die gewählten zuerst, dann die neuesten) und welche davon die aktuelle ist
+  const inSet = new Set(items.map(({ t }) => t.id));
+  const choices = [...items.map(({ t }) => t).reverse(), ...[...pool].filter((t) => !inSet.has(t.id)).sort((a, b) => b.start - a.start)];
   box.innerHTML = `
-    <p class="muted">${fi < 0 ? `${items.length} Trainings, das älteste zuerst. Veränderung: vom ersten zum letzten`
-      : `Dieselbe Strecke, ${items.length}-mal – das aktuelle kräftig`} –
-      <span class="cmp-good">grün</span> besser, <span class="cmp-bad">rot</span> schlechter.${fi < 0 ? '' : ' Doppelklick auf ein anderes macht es zum aktuellen.'}</p>
-    ${items.length > FEW ? `<details class="cmp-who"><summary><span class="cmp-dots">${items.map(({ color }, i) => `<i style="--c:${color}"${cls(i)}>${esc(dayOf[i])}</i>`).join('')}</span>
-      <span>${items.length} Trainings${fi >= 0 ? ` · aktuell ${esc(dayOf[fi])}` : ''} – Liste</span></summary>${who}</details>` : who}
+    <div class="cmp-pick">
+      <label class="cmp-field"><span><span class="msr">checklist</span> Im Vergleich</span>
+        <select class="cmp-set" multiple data-sp-picker="Touren im Vergleich" data-sp-save data-sp-summary="{n} Touren">${choices.map((t) => option(t, inSet.has(t.id))).join('')}</select></label>
+      <label class="cmp-field"><span><span class="msr">leaderboard</span> Aktuell</span>
+        <select class="cmp-focus" data-sp-picker="Welche ist die aktuelle?">${items.map(({ t }) => t).reverse().map((t) => option(t, t.id === focus)).join('')}</select></label>
+    </div>
+    <p class="muted">${same ? `Dieselbe Strecke, ${items.length}-mal` : `${items.length} Trainings`} – die aktuelle kräftig, mit den anderen verglichen:
+      <span class="cmp-good">grün</span> besser, <span class="cmp-bad">rot</span> schlechter.</p>
     ${refs.length ? `
-      <h3 class="cmp-h"><span class="msr">leaderboard</span> ${fi >= 0 ? 'Dieser Lauf' : `Der neueste (${esc(SHORT.format(cur.t.start))})`} im Vergleich</h3>
       <div class="chip-row cmp-refs" role="group" aria-label="Vergleichen mit">${refs.map(([k, name]) => `
         <button type="button" class="chip" data-ref="${k}">${esc(name)}</button>`).join('')}</div>
       <div class="cmp-tiles"></div>` : ''}
@@ -194,7 +202,7 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
     ${withTrend ? `<h3 class="cmp-h"><span class="msr">trending_up</span> Entwicklung</h3>
       <div class="chip-row cmp-trends" role="group" aria-label="Größe der Entwicklung">${trends.map((k) => `
         <button type="button" class="chip" data-trend="${k}" aria-pressed="${k === trendKind}">${esc(TREND[k](ref).name)}</button>`).join('')}</div>
-      <p class="muted">Je Training, das älteste links${fi >= 0 ? ' – der große Punkt ist das aktuelle' : ''}.</p>
+      <p class="muted">Je Training, das älteste links – der große Punkt ist das aktuelle.</p>
       <div class="elevation cmp-trend"></div>` : ''}`;
 
   // Kacheln
@@ -230,7 +238,6 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
     if (id === focus) id = null;
     if (id === hovered) return;
     hovered = id;
-    box.querySelectorAll('.cmp-list li').forEach((li) => li.classList.toggle('hover', li.dataset.cmpId === id));
     for (const c of charts) c.emphasize(ci, id ? index(id) : null);
   };
   // Verlauf: ein Diagramm mit allen gewählten Größen aller Trainings – Farbe je Größe, das aktuelle kräftig
@@ -239,7 +246,7 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
   const best = speeds[0]?.[0], worst = speeds.length > 1 ? speeds.at(-1)[0] : null;
   const recent = items.map((x, i) => i).filter((i) => i !== ci).slice(-4);
   const tip = {
-    focus: ci, best, worst, label: (g) => esc(dayOf[g]), color: (g) => items[g].color,
+    focus: ci, best, worst, label: (g) => esc(dayOf[g]),
     groups: [...new Set([...recent, best, worst].filter((g) => g != null))].sort((a, b) => a - b),
   };
   const paintCharts = () => {
@@ -281,7 +288,7 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
     box.querySelectorAll('[data-trend]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.trend === k)));
     trend.showSeries({
       unit: d.unit, decimals: d.decimals ?? 0, icon: 'trending_up', title: d.name, smooth: false,
-      x: { unit: '', decimals: 0, labels: items.map(({ t }) => SHORT.format(t.start)), ...(fi >= 0 ? { mark: { x: fi + 1, color: items[fi].color } } : {}) },
+      x: { unit: '', decimals: 0, labels: items.map(({ t }) => SHORT.format(t.start)), mark: { x: fi + 1, color: '#1a73e8' } },
       series: [{ name: d.name, color: 'light-dark(#1a73e8, #74a7f5)',
         points: figs.map((f, i) => [i + 1, d.value(f)]).filter(([, v]) => v != null) }],
     });
@@ -294,18 +301,13 @@ export function paintCompare(box, list, { focus = null, onHover = () => {}, onSw
     paintTrend(k);
   });
 
-  // Liste: Maus darüber hebt hervor, Doppelklick (am Handy doppelt tippen, Enter) wechselt
-  const list_ = box.querySelector('.cmp-list');
-  list_.addEventListener('mouseover', (e) => { const id = e.target.closest('[data-cmp-id]')?.dataset.cmpId ?? null; hover(id); onHover(id === focus ? null : id); });
-  list_.addEventListener('mouseleave', () => { hover(null); onHover(null); });
-  // Am Handy gibt es kein Darüberfahren: der erste Tipp hebt hervor, der zweite wechselt
-  list_.addEventListener('click', (e) => {
-    const id = e.target.closest('[data-cmp-id]')?.dataset.cmpId;
-    if (!id || !focus || id === focus || !matchMedia('(pointer: coarse)').matches) return;
-    if (hovered === id) onSwitch(id); else { hover(id); onHover(id); }
+  // Auswahl: andere Touren im Vergleich (mindestens zwei), eine andere als aktuelle
+  box.querySelector('.cmp-set').addEventListener('change', (e) => {
+    const ids = [...e.target.selectedOptions].map((o) => o.value);
+    if (ids.length === inSet.size && ids.every((id) => inSet.has(id))) return;
+    onSet(ids);
   });
-  list_.addEventListener('dblclick', (e) => { const id = e.target.closest('[data-cmp-id]')?.dataset.cmpId; if (id && focus && id !== focus) onSwitch(id); });
-  list_.addEventListener('keydown', (e) => { const id = e.target.closest('[data-cmp-id]')?.dataset.cmpId; if (e.key === 'Enter' && id && focus && id !== focus) onSwitch(id); });
+  box.querySelector('.cmp-focus').addEventListener('change', (e) => { if (e.target.value !== focus) onSwitch(e.target.value); });
   return { hover };
 }
 
