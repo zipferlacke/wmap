@@ -10,23 +10,18 @@
     "changelog": [
         {
             "version": "3.0.0",
-            "date": "2026-10-17",
+            "date": "2026-10-30",
             "appVersion": "2.3.1",
             "changes": [
-                "Neu: Street View – auf Augenhöhe durch die Straßen gehen, die Straßen in echter Breite, oben die Namen der Geschäfte vor dir. Am Rechner umsehen mit der Maus und gehen mit W/A/S/D, am Handy drehen mit einem Finger und mit der Zoomgeste vor und zurück. Zu finden im Ebenen-Menü, im Menü und bei jedem Ort unter „Umsehen“; die Ansicht lässt sich als Link teilen. Geschäfte mit farbigem Erdgeschoss und Namen an der Fassade – schaust du eins an, geht unten sein Dialog auf; Bushaltestellen mit Wartehäuschen. Häuser mit echten Dachformen und -farben, Gleise mit Schotter und Schienen, Bilder aus OpenStreetMap in den Schildern",
-                "Karte: neue Symbole für Orte – Parkplatz, Fahrradständer, Mülleimer, Haltestelle, Bäckerei, Supermarkt, Trinkwasser und viele mehr im selben Stil wie in den Dialogen. Geneigte Karte ruhiger: kein Hinausfliegen und kein Ruck mehr nach dem Loslassen, Schieben im Maßstab des Vordergrunds, Neigen zoomt mit. 3D-Häuser zeichnet die Karte jetzt selbst – schneller und sparsamer; nah heran stehen dezent die Hausnummern",
-                "Orte: Öffnungszeiten mit Saison als Wochentabelle, Ausstattung (Außenplätze, Toiletten, WLAN …) als Chips",
-                "In der Nähe und entlang der Route: private Parkplätze und gerade Geschlossenes erst auf Wunsch (dann grau), Kundenparkplätze mit Hinweis. Suche nach Namen wie „Rewe“ oder „Aldi“ zeigt alle in der Nähe; Enter direkt nach dem Tippen findet jetzt zuverlässig",
-                "Meine Touren: Trainings vergleichen und sehen, wie du dich steigerst – läufst du dieselbe Strecke öfter, schlägt WMap das selbst vor. Diagramme frei kombinierbar, der Name oben änderbar. Die Zurück-Taste schließt offene Dialoge. Touren mit Datei- oder App-Namen heißen jetzt nach Art, Gegend und Tageszeit; oben sortieren und filtern (Art, Tag, Zeitraum), Tags wie „Rennen“, „Alle auswählen“ zum Vergleichen und eine einstellbare Abweichung für dieselbe Strecke. Beim Zusammenführen steht jetzt je Angabe „Neu“ gegen „Bisher“",
-                "Touren gemeinsam planen: Teilen → „Gemeinsam planen“ – wer den Link hat, plant mit, Änderungen sehen alle. Ändern zwei gleichzeitig, wird zusammengeführt; gefragt wird nur, wo beide dieselbe Stelle geändert haben – mit beiden Fassungen auf der Karte. Ein Chip zeigt, mit wem geteilt und wie lange noch; „Link öffnen“ holt geteilte Links ohne Umweg über den Browser in die App. Kurze Links liegen jetzt verschlüsselt auf dem Server",
-                "Aufzeichnen: Die Karte folgt dir, ohne ständig umzuspringen – frei umsehen, „Mitführen“ holt sie zurück, „Zum Start“ führt zurück zum Anfang. Satellit: Luftbild auf den Dächern ist viel schneller da",
-                "Ordner und Health Connect gleichen jetzt im Hintergrund ab und brechen beim Seitenwechsel nicht mehr ab – neue Touren erscheinen sofort, ohne Neuladen",
-                "Verbundener Ordner: Für neue Dateien gibt es jetzt eine eigene Frage – alle übernehmen, auswählen, was mitkommt (z. B. nur Strecke und Puls), oder nicht importieren. Danach kommen die Dateien zu Touren, die es schon gibt. Die Frage kommt nicht mehr mehrfach",
-                "Standort: Die App fragt beim Start danach, und ein Tipp auf den Standort-Knopf holt ihn immer frisch – auch wenn er unterwegs (Zug, Tunnel) hängen geblieben war",
-                "Orte teilen als Karten-Link (geo:), den jede Karten-App öffnet – der WMap-Link steht darunter",
-                "Karte: Gelände auf jeder Zoomstufe gleich hoch, genauer und mit Relief auch nah heran; Häuser stehen auf ihrem eigenen Boden, ohne Flackern und ohne Ruckeln. Neu in den Einstellungen ganz unten: „Schärfe der Karte“",
-                "Karte ohne Straßen und Namen nach einem Start ohne Netz: WMap lädt sie jetzt von selbst nach",
-                "Weniger Speicher: Kartenkacheln liegen nur noch einmal auf dem Gerät"
+                "Karte: neue Symbole für Orte, nah heran mit Hausnummern. 3D-Häuser schneller und sparsamer, Gelände genauer und mit Relief, die geneigte Karte läuft ruhiger. Neu in den Einstellungen ganz unten: „Schärfe der Karte“",
+                "Meine Touren: Trainings vergleichen und sehen, wie du dich steigerst – läufst du dieselbe Strecke öfter, schlägt WMap das selbst vor. Welche Touren im Vergleich sind, wählst du oben, auch mit Suche",
+                "Meine Touren: sortieren und filtern (Art, Tag, Zeitraum), Tags vergeben, mehrere Touren per langem Tippen auswählen. Touren mit Datei- oder App-Namen heißen jetzt nach Art, Gegend und Tageszeit",
+                "Touren gemeinsam planen: Teilen → „Gemeinsam planen“ – wer den Link hat, plant mit, Änderungen sehen alle. Kurze Links liegen jetzt verschlüsselt auf dem Server",
+                "Aufzeichnen: Die Karte folgt dir, ohne ständig umzuspringen – „Mitführen“ holt sie zurück, „Zum Start“ führt zurück zum Anfang",
+                "Orte: Öffnungszeiten mit Saison als Wochentabelle, Ausstattung als Chips, teilen als Karten-Link (geo:), den jede Karten-App öffnet",
+                "Suche: versteht Koordinaten in jedem Format und Links aus anderen Karten. In der Nähe: private Parkplätze und gerade Geschlossenes erst auf Wunsch",
+                "Verbundener Ordner und Health Connect: Abgleich im Hintergrund, neue Touren erscheinen sofort. Für neue Dateien im Ordner gibt es eine eigene Frage – alle übernehmen, auswählen oder nicht importieren",
+                "Fix: Standort blieb unterwegs hängen (Zug, Tunnel); Karte ohne Straßen und Namen nach einem Start ohne Netz; weniger Speicher, Kartenkacheln liegen nur noch einmal auf dem Gerät"
             ]
         },
         {

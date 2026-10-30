@@ -30,6 +30,7 @@ Touren
 • Bekannte Wege übernehmen und neu planen, dabei liegt das Original im Hintergrund
 • Wege aufzeichnen mit Zeit, Strecke, Tempo und Höhenmetern, dazu Jahresübersicht – auch bei ausgeschaltetem Bildschirm
 • Auswerten: Diagramme für Höhe, Tempo, Puls, Frequenz und Leistung, Runden mit schnellster und langsamster
+• Trainings vergleichen und sehen, wie Sie sich steigern
 • Trainings mit Route aus Health Connect übernehmen, etwa von der Uhr
 • GPX- und FIT-Dateien öffnen, als GPX oder FIT speichern, Touren per Link teilen oder veröffentlichen
 
