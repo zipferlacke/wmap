@@ -13,7 +13,7 @@ import { $, $$, CAR, afterLayout, current, debounce, map, markerEl, state } from
 import { placeWaypoint, removePlaceMarker } from './place.js';
 import { clearReach } from './reach.js';
 import { clearRoutes, computeRoutes, fitRoute, routeCtl } from './route-results.js';
-import { cancelSuggestions, keyNav, placeSuggestions, recentItems, savedItems, suggest, withSaved } from './search.js';
+import { cancelSuggestions, keyNav, mapPlaces, placeSuggestions, recentItems, savedItems, suggest, withSaved } from './search.js';
 import { back, closeAll, closeSheet, openSheet, remember, stack } from './views.js';
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -272,7 +272,10 @@ wpList.addEventListener('keydown', async (e) => {
   try {
     const [f] = await geocode.search(text, { center: map.getCenter().toArray(), zoom: map.getZoom(), limit: 1 });
     if (f) setWaypoint(i, placeWaypoint(f)); else toast(`„${text}“ nicht gefunden`);
-  } catch (err) { toast(err.message); }
+  } catch (err) {
+    const [f] = err.unreachable ? mapPlaces(text, { limit: 1 }) : [];
+    if (f) setWaypoint(i, placeWaypoint(f)); else toast(err.message);
+  }
 });
 wpList.addEventListener('click', (e) => {
   const rm = e.target.closest('.wp-remove');

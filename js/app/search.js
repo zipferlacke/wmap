@@ -123,6 +123,32 @@ function searchCenter() {
   return p && map.getBounds().contains(p) ? p : map.getCenter().toArray();
 }
 
+/* Ebenen der Grundkarte mit Namen – was man auch im Suchfeld meinen könnte */
+const NAMED = ['place', 'poi', 'transportation_name', 'water_name', 'aerodrome_label'];
+
+/**
+ * Suchdienst nicht erreichbar: was die Karte schon geladen hat, nach Namen → Treffer wie von Photon, das Nächste zuerst.
+ * Läuft nur dann – beim normalen Suchen kostet es nichts. Mehr als der geladene Ausschnitt ist es nicht.
+ */
+export function mapPlaces(text, { limit = 6 } = {}) {
+  const words = fold(text).split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const source = map.getStyle()?.layers?.find((l) => l['source-layer'] === 'place')?.source;
+  if (!source) return [];
+  const center = searchCenter();
+  const found = new Map();
+  for (const sourceLayer of NAMED) {
+    for (const f of map.querySourceFeatures(source, { sourceLayer })) {
+      const name = f.properties['name:de'] ?? f.properties.name;
+      if (!name || found.has(name) || !words.every((w) => fold(name).includes(w))) continue;
+      const c = f.geometry.coordinates;
+      const point = f.geometry.type === 'Point' ? c : f.geometry.type === 'LineString' ? c[c.length >> 1] : f.geometry.type === 'MultiLineString' ? c[0][0] : null;
+      if (point) found.set(name, { type: 'Feature', geometry: { type: 'Point', coordinates: point }, properties: { name, _point: true } });
+    }
+  }
+  return [...found.values()].sort((a, b) => distance(center, a.geometry.coordinates) - distance(center, b.geometry.coordinates)).slice(0, limit);
+}
+
 export async function placeSuggestions(text, onPick, { withCategory = true, extra = [] } = {}) {
   const seq = ++searchSeq;
   let query = text.trim();
@@ -142,7 +168,12 @@ export async function placeSuggestions(text, onPick, { withCategory = true, extr
     results = await geocode.search(query, { center: searchCenter(), zoom: map.getZoom(), signal: searchCtl.signal });
   } catch (err) {
     if (err.name === 'AbortError') return null;
-    toast(err.message);
+    if (seq !== searchSeq) return null;
+    if (!err.unreachable) { toast(err.message); return extra; }
+    // Statt einer Meldung bei jedem Tastendruck: Treffer aus der Karte, darunter ein Hinweis
+    const local = mapPlaces(query);
+    return [...extra, ...local.map((f) => ({ icon: 'map', title: f.properties.name, subtitle: 'aus der Karte', type: 'Karte', point: f.geometry.coordinates, run: () => onPick(f) })),
+      { icon: 'cloud_off', title: 'Suche gerade nicht erreichbar', subtitle: local.length ? 'Nur Namen aus dem geladenen Kartenausschnitt' : err.message, type: '', run: () => {} }];
   }
   if (seq !== searchSeq) return null;
 

@@ -20,9 +20,32 @@ async function photon(q, { center, zoom, limit, signal, bbox, tag } = {}) {
     if (zoom !== undefined) u.searchParams.set('zoom', String(Math.round(Math.max(4, Math.min(16, zoom)))));
   }
   if (bbox) u.searchParams.set('bbox', bbox.map((v) => v.toFixed(5)).join(','));
-  const res = await fetch(u, { signal });
-  if (!res.ok) throw new Error(`Suche fehlgeschlagen (${res.status})`);
-  return (await res.json()).features ?? [];
+  return (await ask(u, signal)).features ?? [];
+}
+
+/*
+ * Photon ist ein Gemeinschaftsdienst – ab und zu nicht erreichbar oder überlastet. Der Browser meldet dann nur
+ * „Failed to fetch“; damit kann niemand etwas anfangen. Darum einmal von selbst wiederholen, danach eine Meldung,
+ * die sagt, was los ist – mit `unreachable`, damit die Suche auf das ausweichen kann, was die Karte kennt.
+ */
+const RETRY_MS = 800;
+async function ask(url, signal) {
+  for (let again = true; ; again = false) {
+    try {
+      const res = await fetch(url, { signal });
+      // Anfrage falsch: Wiederholen hilft nicht
+      if (res.ok) return await res.json();
+      if (res.status < 429 || res.status === 501) throw Object.assign(new Error(`Suche fehlgeschlagen (${res.status})`), { final: true });
+    } catch (err) {
+      if (err.name === 'AbortError' || err.final) throw err;
+    }
+    if (!again) break;
+    await new Promise((ok) => { setTimeout(ok, RETRY_MS); });
+    if (signal?.aborted) throw new DOMException('Abgebrochen', 'AbortError');
+  }
+  const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  throw Object.assign(new Error(offline ? 'Keine Verbindung zum Netz – die Suche braucht das Internet'
+    : 'Die Suche ist gerade nicht erreichbar – Punkt auf der Karte antippen oder gleich noch einmal versuchen'), { unreachable: true });
 }
 
 /** So weit um die Kartenmitte gilt ein Treffer als „um die Ecke“ und steht vor Treffern von weiter weg */
@@ -48,10 +71,14 @@ export async function search(q, { center, zoom, limit = 7, signal, bbox } = {}) 
     jobs.unshift(Promise.all(['railway:station', 'railway:halt'].map((tag) => photon(place, { center, zoom, limit: 2, signal, bbox, tag })))
       .then((r) => r.flat()).catch(() => []));
   }
+  // Nur die Hauptsuche kann scheitern: Hat die Umgebung Treffer, reichen die
+  let failed = null;
+  jobs[jobs.length - 1] = jobs.at(-1).catch((err) => { if (err.name === 'AbortError') throw err; failed = err; return []; });
   const lists = await Promise.all(jobs);
   const main = lists.at(-1);
   const stations = lists.length > 1 ? lists[0] : [];
   const local = await near;
+  if (failed && !local.length && !stations.length) throw failed;
   if (!center || bbox) return dedupe([...stations, ...main]).slice(0, limit);
   const isNear = (f) => kmBetween(center, f.geometry.coordinates) <= NEAR_KM;
   const top = main[0] && PROMINENT.has(main[0].properties.type) && !isNear(main[0]) ? [main[0]] : [];
@@ -65,9 +92,7 @@ export async function reverse([lon, lat], { signal } = {}) {
   u.searchParams.set('lat', lat.toFixed(6));
   u.searchParams.set('lang', 'de');
   u.searchParams.set('limit', '1');
-  const res = await fetch(u, { signal });
-  if (!res.ok) return null;
-  return (await res.json()).features?.[0] ?? null;
+  return (await ask(u, signal)).features?.[0] ?? null;
 }
 
 /** Statistik- und Verwaltungsflächen („Bahnhof-Ost, statistical“) sucht niemand. */

@@ -198,6 +198,10 @@ zur zuvor besuchten Seite zu gehen.
     in der Routenplanung mit Bus & Bahn steht sie dann ganz oben.
   - Ein eigenes Liniennetz wird nie gezeichnet.
 
+- **Suchdienst nicht erreichbar:** Photon wird einmal wiederholt; danach zeigt die Suche statt
+  einer Fehlermeldung Namen aus dem geladenen Kartenausschnitt (`mapPlaces` in `js/app/search.js` –
+  Orte, POIs, Straßen, Gewässer) und darunter einen Hinweis. Enter in Start oder Ziel nimmt den ersten
+  davon. Kostet beim normalen Suchen nichts.
 - **Linie suchen:** „Bus 11“, „Linie9“, „Göttingen Linie 11“, „Darmstadt Bus L“, „S3“ – in der
   Suche steht die Linie als erster Vorschlag (ohne Anfrage, `js/app/lines.js`). Antippen sucht sie
   in OSM im Umkreis von 30 km um den genannten Ort, sonst um den Standort bzw. die Kartenmitte,
