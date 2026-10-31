@@ -50,6 +50,9 @@ with Browser(width=420, height=900) as b:
     with_pow = b.js(VIEW)
     print('mit Leistung:', json.dumps(with_pow, ensure_ascii=False))
     b.js("[...document.querySelectorAll('.weg-chart-tabs .chip')].find((c) => c.dataset.chart === 'pow')?.click()")
+    time.sleep(1)
+    # Die Chips schalten dazu: die Höhe (falls an) wieder weg – dann steht die Leistung allein
+    b.js("document.querySelector('.weg-chart-tabs [data-chart=ele][aria-pressed=true]')?.click()")
     time.sleep(1.5)
     chosen = b.js(VIEW)
     print('Diagramm Leistung:', json.dumps(chosen, ensure_ascii=False))

@@ -6,18 +6,135 @@
  * Supabase; bis dahin reicht der Browser.
  */
 import { encodePolyline, decodePolyline } from '../core/geo.js';
+import { store } from './db.js';
+
+/*
+ * Gemeinsam mit dem Service Worker: Der Abgleich (data/folder.js, services/health.js) läuft dort weiter, auch wenn
+ * man die Seite wechselt (js/sw/sync.js) – localStorage gibt es dort nicht. Was er liest und schreibt (SHARED), liegt
+ * darum zusätzlich in IndexedDB („local“: { id: Schlüssel, raw: Text wie im localStorage oder null, at }):
+ *   Seite      schreibt localStorage und die Kopie, sagt es dem Service Worker; beim Laden gleicht sie ab – je
+ *              Schlüssel gilt das Neuere (Zeitstempel in „wmap~at“), Fehlendes kommt in die Kopie
+ *   Service Worker  liest und schreibt nur die Kopie (im Speicher, vor jedem Abgleich neu geladen) und meldet jede
+ *              Änderung den offenen Seiten („local“), die sie in ihren localStorage übernehmen
+ */
+export const inSw = typeof ServiceWorkerGlobalScope !== 'undefined' && globalThis instanceof ServiceWorkerGlobalScope;
+const SHARED = new Set([
+  'wmap.tours', 'wmap.saved', 'wmap.folder.deleted', 'wmap.folder.revived', 'wmap.tracks.keep', 'wmap.sync.auto',
+  'wmap.health.sync', 'wmap.health.auto', 'wmap.health.gone', 'wmap.health.asked', 'wmap.history',
+  // Einstellungen, die der Ordner zwischen Geräten abgleicht (data/folder.js SETTINGS)
+  'wmap.theme', 'wmap.nav.zoom', 'wmap.nav.3d', 'wmap.voice', 'wmap.muted', 'wmap.offline', 'wmap.datasaver',
+  'wmap.contribute', 'wmap.osm.anon', 'wmap.routePrefs', 'wmap.profile', 'wmap.myname', 'wmap.lapsize', 'wmap.chart',
+  'wmap.tankerkoenig',
+]);
+const AT = 'wmap~at';
+const copy = store('local');
+const mem = new Map();          // Service Worker: die Kopie im Speicher
+let lastAt = 0;
+const nextAt = () => (lastAt = Math.max(Date.now(), lastAt + 1));
+
+function readRaw(key) {
+  if (inSw) return mem.get(key)?.raw ?? null;
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+const stamps = () => { try { return JSON.parse(localStorage.getItem(AT)) ?? {}; } catch { return {}; } };
+function stamp(key, at) {
+  const s = stamps();
+  s[key] = at;
+  try { localStorage.setItem(AT, JSON.stringify(s)); } catch { /* gesperrt */ }
+}
+
+/** Geschrieben: in die Kopie und zur anderen Seite (Service Worker bzw. offene Seiten) */
+function share(key, raw) {
+  if (!SHARED.has(key)) return;
+  const row = { id: key, raw, at: nextAt() };
+  if (inSw) {
+    mem.set(key, row);
+    copy.put(row).catch(() => {});
+    tellPages({ type: 'local', row });
+    return;
+  }
+  stamp(key, row.at);
+  copy.put(row).catch(() => {});
+  try { navigator.serviceWorker?.controller?.postMessage({ type: 'local', row }); } catch { /* ohne Service Worker */ }
+}
+
+function writeRaw(key, raw) {
+  if (inSw) { share(key, raw); return true; }
+  try {
+    if (raw === null) localStorage.removeItem(key); else localStorage.setItem(key, raw);
+  } catch { return false; }
+  share(key, raw);
+  return true;
+}
 
 export const local = {
   get(key, fallback = null) {
     try {
-      const v = localStorage.getItem(key);
+      const v = readRaw(key);
       return v === null ? fallback : JSON.parse(v);
     } catch { return fallback; }
   },
-  set(key, value) {
-    try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; }
-  },
+  set(key, value) { return writeRaw(key, JSON.stringify(value)); },
+  /** Roh wie im localStorage (Text) – für den Abgleich der Einstellungen */
+  raw: (key) => readRaw(key),
+  setRaw: (key, raw) => writeRaw(key, raw),
 };
+
+/** Service Worker: an alle offenen Seiten */
+export function tellPages(msg) {
+  if (!inSw) return;
+  self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => list.forEach((c) => c.postMessage(msg))).catch(() => {});
+}
+
+/**
+ * Service Worker: die Kopie neu laden (vor jedem Abgleich – die Seiten schreiben dazwischen).
+ * Seite: abgleichen – Neueres aus der Kopie übernehmen, Neueres von hier hineinschreiben. → geänderte Schlüssel
+ */
+export async function localReady() {
+  const rows = await copy.all().catch(() => []);
+  if (inSw) {
+    for (const r of rows) if ((mem.get(r.id)?.at ?? 0) <= r.at) mem.set(r.id, r);
+    return [];
+  }
+  const s = stamps(), by = new Map(rows.map((r) => [r.id, r])), took = [];
+  for (const r of rows) if (SHARED.has(r.id) && r.at > (s[r.id] ?? 0) && takeRow(r, s)) took.push(r.id);
+  for (const key of SHARED) {
+    const r = by.get(key), raw = readRaw(key);
+    // Noch nie kopiert (erster Start mit dieser Fassung): mit Stand 1 – alles aus dem Service Worker ist neuer
+    if (!r) { if (raw !== null) copy.put({ id: key, raw, at: s[key] ?? 1 }).catch(() => {}); continue; }
+    if (took.includes(key) || raw === r.raw) continue;
+    // Hier anders: neuer gespeichert – oder an `local` vorbei direkt in den localStorage (Stimme, Thema …)
+    const at = (s[key] ?? 0) > r.at ? s[key] : nextAt();
+    s[key] = at;
+    copy.put({ id: key, raw, at }).catch(() => {});
+  }
+  try { localStorage.setItem(AT, JSON.stringify(s)); } catch { /* gesperrt */ }
+  return took;
+}
+
+/** Eine Zeile aus der Kopie in den localStorage (`s`: Zeitstempel, werden mitgeführt) */
+function takeRow(r, s) {
+  try {
+    if (r.raw === null) localStorage.removeItem(r.id); else localStorage.setItem(r.id, r.raw);
+  } catch { return false; }
+  s[r.id] = r.at;
+  return true;
+}
+
+/** Eine Änderung von der anderen Seite: Seite → localStorage, Service Worker → Speicher. → übernommen? */
+export function takeShared(row) {
+  if (!row?.id || !SHARED.has(row.id)) return false;
+  if (inSw) {
+    if ((mem.get(row.id)?.at ?? 0) >= row.at) return false;
+    mem.set(row.id, row);
+    return true;
+  }
+  const s = stamps();
+  if ((s[row.id] ?? 0) >= row.at) return false;
+  if (!takeRow(row, s)) return false;
+  try { localStorage.setItem(AT, JSON.stringify(s)); } catch { /* gesperrt */ }
+  return true;
+}
 
 /* ── Zuletzt genutzt ──────────────────────────────────────────────────────── */
 

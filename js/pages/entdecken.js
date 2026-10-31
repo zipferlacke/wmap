@@ -20,6 +20,7 @@ import { KINDS, toursInBox, findTours, toursAt, searchTours, tourLine, tourLink 
 import { encodeShare, local, coordsOf } from '../data/store.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { mapPage } from '../ui/map-page.js';
+import { trapBack } from '../core/back.js';
 import { bbox as bboxOf, simplifyTo, fmtDistance, esc } from '../core/geo.js';
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -43,6 +44,9 @@ panel.addEventListener('click', (e) => {
   const t = e.target.closest('[role="tab"]');
   if (t) { e.preventDefault(); showTab(t.dataset.tab); }
 });
+
+// Zurück-Taste (Handy, Browser) wie ← der Detailansicht; in der Liste verlässt sie die Seite
+trapBack(() => page.pressBack());
 
 function header(title, back = null) {
   page.header(title, back);

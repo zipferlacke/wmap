@@ -24,7 +24,7 @@ export const CATEGORIES = [
     terms: ['baeckerei', 'baecker', 'backerei', 'backer', 'broetchen', 'backwaren'],
     filters: ['["shop"="bakery"]'], kind: 'point', route: ['car', 'bike', 'foot'] },
   { id: 'supermarket', label: 'Supermärkte', one: 'Supermarkt', icon: 'shopping_cart', color: '#2f9e44',
-    terms: ['supermarkt', 'supermaerkte', 'einkaufen', 'lebensmittel', 'discounter', 'edeka', 'rewe', 'aldi', 'lidl'],
+    terms: ['supermarkt', 'supermaerkte', 'einkaufen', 'lebensmittel', 'discounter'],
     filters: ['["shop"="supermarket"]', '["shop"="convenience"]'], kind: 'point', route: ['car', 'bike', 'foot'] },
   { id: 'restaurant', label: 'Restaurants', one: 'Restaurant', icon: 'restaurant', color: '#c2255c',
     terms: ['restaurant', 'essen', 'gaststaette', 'gasthaus', 'gasthof', 'wirtshaus'],
@@ -143,7 +143,23 @@ export const CATEGORIES = [
     filters: ['["amenity"="police"]'], kind: 'point' },
 ];
 
-export const byId = (id) => CATEGORIES.find((c) => c.id === id);
+export const byId = (id) => (String(id).startsWith('name:') ? nameCategory(id.slice(5)) : CATEGORIES.find((c) => c.id === id));
+
+/*
+ * Suche nach einem Namen oder einer Marke („Rewe“, „Aldi“, „dm“) wie nach einer Kategorie: alle in der Gegend,
+ * deren Name oder Marke den Text enthält – nur Geschäfte, Lokale und dergleichen (keine Straßen gleichen Namens).
+ * `byName`: der Text; Kachel-Treffer prüfen den Namen statt der Art (app/category.js).
+ */
+const PLACE_KEYS = '^(shop|amenity|tourism|leisure|craft|office|healthcare)$';
+export function nameCategory(text) {
+  const q = String(text).trim();
+  // Overpass nimmt einen regulären Ausdruck: Sonderzeichen werden zu „beliebiges Zeichen“
+  const re = q.replace(/[^\p{L}\p{N} &'-]/gu, '.');
+  return {
+    id: `name:${q}`, label: q, one: q, icon: 'storefront', color: '#e8590c', kind: 'point', byName: q,
+    filters: [`["name"~"${re}",i][~"${PLACE_KEYS}"~"."]`, `["brand"~"${re}",i]`],
+  };
+}
 
 /** Kategorien für die Leiste „Entlang der Route“ je Profil. */
 export const routeCategories = (profile) => CATEGORIES.filter((c) => c.route?.includes(profile));

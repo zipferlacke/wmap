@@ -58,12 +58,14 @@ REF = [
     re.compile(r'''@import\s+(?:url\()?\s*['"]?([^'")\s;]+)'''),           # @import
     re.compile(r'''url\(\s*['"]?([^'")]+)['"]?\s*\)'''),                    # url(…)
     re.compile(r'''(?:src|href)\s*=\s*["']([^"'#]+)["']'''),                # src=, href=
+    re.compile(r'''new URL\(\s*['"]([^'"]+)['"]\s*,\s*import\.meta\.url'''),  # new URL('…', import.meta.url)
 ]
 
 
 def app_files():
     """Alle Dateien, die von den Seiten aus erreichbar sind – relativ zu sw.js"""
-    todo = sorted(ROOT.glob('*.html'))
+    # dazu der Service Worker als Modul (sw-app.js → js/sw/sync.js)
+    todo = sorted(ROOT.glob('*.html')) + [ROOT / 'sw-app.js']
     seen = set()
     while todo:
         f = todo.pop()
@@ -83,7 +85,8 @@ def app_files():
                 if target.is_file() and ROOT in target.parents:
                     todo.append(target)
     files = sorted(str(p.relative_to(ROOT)) for p in seen)
-    files = [x for x in files if not x.startswith(('test/', 'src-tauri/', 'bEnd/'))]
+    # sw.js selbst nicht: Es trägt BUILD, die Prüfsumme über diese Liste
+    files = [x for x in files if not x.startswith(('test/', 'src-tauri/', 'bEnd/')) and x != 'sw.js']
     return EXTRA + [x for x in files if x not in EXTRA]
 
 

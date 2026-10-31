@@ -14,11 +14,10 @@
  * Die Wahl bleibt gespeichert (localStorage „wmap.layers“).
  */
 import { local } from '../data/store.js';
-import { firstRoadLayer } from '../map/map.js';
+import { firstRoadLayer, RELIEF, RELIEF_FOCUS } from '../map/map.js';
 import { layers as ownLayers, showLayer, hideLayer } from '../map/layers.js';
 import { wms } from './own-source.js';
 import { esc } from '../core/geo.js';
-import { mountSatBuildings } from '../map/sat-buildings.js';
 
 const KEY = 'wmap.layers';
 const DEFAULT = { base: 'map', focus: false, relief: true, hiking: false, cycling: false, mtb: false };
@@ -74,7 +73,6 @@ const WMT_ATTR = 'Wege: <a href="https://waymarkedtrails.org" target="_blank" re
 const BIG_ROADS = /(motorway|trunk|primary|secondary)/;
 
 export function mountLayerMenu(map, { toast = () => {} } = {}) {
-  const satBuildings = mountSatBuildings(map, { sources: SAT });
   let state = { ...DEFAULT, ...local.get(KEY, {}) };
   let shown = [];                       // eigene Ebenen auf der Karte
   let own = [];
@@ -101,8 +99,8 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
       if (sat) map.moveLayer(l.id, firstRoadLayer(map)); else if (map.getLayer('water')) map.moveLayer(l.id, 'water');
       map.setPaintProperty(l.id, 'line-opacity', sat ? 0.75 : 1);
     }
-    // Häuser: graue Wände, das Luftbild auf dem Dach (map/sat-buildings.js)
-    satBuildings.set(sat);
+    // Häuser: graue Wände, das Luftbild auf dem Dach (map/buildings.js)
+    map.wmapBuildings?.setSat(sat, SAT);
     document.body.classList.toggle('base-sat', sat);
   }
 
@@ -121,9 +119,7 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
   function applyFocus() {
     if (map.getLayer('hillshade')) {
       map.setLayoutProperty('hillshade', 'visibility', state.relief || state.focus ? 'visible' : 'none');
-      map.setPaintProperty('hillshade', 'hillshade-exaggeration', state.focus
-        ? ['interpolate', ['linear'], ['zoom'], 5, 0.8, 14, 0.7, 16, 0.45, 17.5, 0.25]
-        : ['interpolate', ['linear'], ['zoom'], 5, 0.6, 12, 0.55, 14.5, 0.4, 16, 0.25, 17.5, 0.1]);
+      map.setPaintProperty('hillshade', 'hillshade-exaggeration', state.focus ? RELIEF_FOCUS : RELIEF);
     }
     // Auf dem Luftbild alle Straßen etwas zurückgenommen, im Schwerpunkt
     // „Wandern & Rad“ die großen noch mehr
@@ -185,6 +181,7 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
       <div class="layer-bases">
         <button type="button" data-base="map" aria-pressed="${state.base === 'map'}"><span class="layer-thumb thumb-map"></span>Karte</button>
         <button type="button" data-base="sat" aria-pressed="${state.base === 'sat'}"><span class="layer-thumb thumb-sat"></span>Satellit</button>
+        <!-- Street View: vorerst nicht im Menü (Umsehen am Ort und Menü bleiben) -->
       </div>
       ${check('focus', state.focus, 'hiking', 'Wandern & Rad', 'Große Straßen treten zurück, Wanderwege und Relief hervor')}
       <h4>Ebenen</h4>
@@ -202,6 +199,7 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
     if (base) { state.base = base; save(); applyBase(); applyFocus(); paint(); return; }
     const act = e.target.closest('[data-l]')?.dataset.l;
     if (act === 'close') toggle(false);
+    if (act === 'street') { toggle(false); dispatchEvent(new CustomEvent('wmap:street')); }
   });
   box.addEventListener('change', async (e) => {
     const t = e.target;
@@ -228,5 +226,13 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
     /** Eigene Ebenen, die gerade auf der Karte liegen (für Klicks) */
     shown: () => shown,
     open: () => toggle(true),
+    /** Grundkarte ('map' | 'sat') – Street View schaltet das Luftbild nur für sich an (`save: false`) */
+    base: () => state.base,
+    setBase(b, { save: keep = true } = {}) {
+      state.base = b;
+      if (keep) save();
+      applyBase(); applyFocus();
+      if (!box.hidden) paint();
+    },
   };
 }

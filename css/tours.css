@@ -429,6 +429,7 @@ body.wege-page { overflow: hidden; }
         .uD-bar-btn { width: 2.5rem; height: 2.5rem; .msr { font-size: 1.5rem; } }
     }
     .wege-bar .uD-title { text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .wege-bar .uD-title.panel-title-edit { text-overflow: clip; }
     .wege-bar [hidden] { visibility: hidden; display: inline-grid !important; }
     .wege-content { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: .75rem; padding: 0 .25rem .5rem; }
     .muted { color: var(--muted); font-size: var(--fs-200); }
@@ -477,18 +478,35 @@ body.wege-page { overflow: hidden; }
     small { display: block; color: var(--muted); font-size: var(--fs-100); }
 }
 
-.weg-name {
-    display: flex; align-items: center; gap: .4rem;
-    padding: 0 .6rem; border-radius: .6rem; background: var(--surface-2);
-    .msr { color: var(--muted); font-size: 1.1rem; }
-    input { flex: 1; min-width: 0; padding: .5rem 0; border: 0; background: none; font: inherit; font-weight: 600; color: inherit; text-align: left; outline: none; }
+/* Kopf eines Wegs (ui/map-page.js header): Symbol der Art, der Name als Feld zwischen ← und ✕ */
+.wege-bar .uD-title.panel-title-edit {
+    display: flex; align-items: center; gap: .35rem; min-width: 0; overflow: visible;
+    .panel-title-icon { flex-shrink: 0; font-size: 1.5rem; }
+    .panel-title-input {
+        flex: 1; min-width: 0; padding: .3rem .5rem; border: 0; border-radius: .6rem;
+        /* Ohne „…“: das Feld scrollt, ein abgeschnittener Name sah aus, als ginge er dort zu Ende */
+        background: none; font: inherit; color: inherit; text-overflow: clip;
+        &:hover { background: var(--surface-2); }
+        &:focus { background: var(--surface-2); outline: 2px solid var(--route); outline-offset: -2px; }
+    }
 }
 .weg-when { line-height: 1.5; .msr { vertical-align: -.25rem; } .muted { font-size: var(--fs-200); } }
+/* Zahlen eines Wegs: die ersten drei (Zeit, Strecke, Tempo) groß nebeneinander, der Rest kompakt in zwei
+   Spalten „Bezeichnung … Wert“ – vorher neun gleich große Kacheln, die den halben Bildschirm füllten */
 .weg-stats {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); gap: .5rem;
-    div { display: grid; padding: .5rem; border-radius: .6rem; background: var(--surface-2); text-align: center; }
-    strong { font-size: var(--fs-500); }
-    small { color: var(--muted); font-size: var(--fs-100); }
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: .1rem 1rem;
+    div {
+        grid-column: span 3; display: flex; flex-direction: row-reverse; justify-content: space-between; align-items: baseline;
+        gap: .5rem; padding: .3rem 0; border-bottom: 1px solid var(--line); min-width: 0;
+    }
+    strong { font-size: var(--fs-300); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    small { color: var(--muted); font-size: var(--fs-200); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    div:nth-child(-n+3) {
+        grid-column: span 2; flex-direction: column-reverse; align-items: center; justify-content: flex-start; gap: 0;
+        margin-bottom: .4rem; padding: .45rem .3rem; border: 0; border-radius: .6rem; background: var(--surface-2);
+        strong { font-size: var(--fs-500); }
+        small { font-size: var(--fs-100); }
+    }
 }
 .weg-actions { display: flex; flex-wrap: wrap; gap: .5rem; .button { background: var(--surface-2); } .button.primary { background: var(--route); color: #fff; } }
 .wege-page .track-legend {
@@ -738,10 +756,15 @@ body.stage-mode #map canvas { cursor: crosshair; }
     &:hover { background: color-mix(in srgb, var(--route) 14%, transparent); }
     &[aria-pressed="false"] { color: var(--muted); }
 }
-.wege-period {
-    display: flex; align-items: flex-start; gap: .4rem; margin: 0;
-    > .msr { font-size: 1.1rem; flex-shrink: 0; }
-    a { color: var(--route); }
+/* Hinweis oben samt „Auf der Karte“ in einem Absatz */
+.wege-panel .tab-hint { .msr { font-size: 1.05rem; vertical-align: -.2rem; margin-left: .2rem; } a { color: var(--route); } }
+/* Geteilter Link in der Suche: darunter „Link öffnen“ */
+.wege-open-link {
+    display: flex; align-items: center; gap: .6rem; width: 100%; padding: .55rem .75rem; border: 0; border-radius: .9rem;
+    background: color-mix(in srgb, var(--route) 10%, var(--surface-2)); color: inherit; font: inherit; font-weight: 600; cursor: pointer;
+    > .msr:first-child { color: var(--route); }
+    > span:nth-child(2) { flex: 1; text-align: left; }
+    &[hidden] { display: none; }
 }
 .weg-note { display: flex; align-items: flex-start; gap: .4rem; margin: 0; .msr { font-size: 1.1rem; flex-shrink: 0; } }
 
@@ -801,4 +824,141 @@ body.stage-mode #map canvas { cursor: crosshair; }
         .msr { font-size: 2.2rem; color: var(--route); }
         small { color: var(--muted); }
     }
+}
+
+/* ── Wege vergleichen (pages/wege-compare.js) ───────────────────────────── */
+
+.compare-bar {
+    position: sticky; top: 0; z-index: 3;
+    display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+    padding: .5rem .75rem; border-radius: .9rem;
+    background: var(--surface-2); box-shadow: 0 0 0 .4rem var(--surface);
+    .compare-count { flex: 1; min-width: 8rem; font-weight: 600; }
+}
+.row-pick { width: 1.3rem; height: 1.3rem; accent-color: var(--route); }
+/* Vergleich oben: welche Touren dabei sind (Mehrfachauswahl, zu nur die Zahl) und welche die aktuelle ist */
+.cmp-pick {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .5rem;
+    .cmp-field { display: grid; gap: .2rem; min-width: 0; }
+    .cmp-field sp-picker { display: block; min-width: 0; }
+    /* eine Zeile: lange Namen enden mit „…“, der Pfeil bleibt daneben */
+    .cmp-field .sp_trigger { box-sizing: border-box; width: 100%; flex-wrap: nowrap; justify-content: space-between; }
+    .cmp-field .sp_single_value { min-width: 0; span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+    .cmp-field > span { display: flex; align-items: center; gap: .3rem; color: var(--muted); font-size: var(--fs-200); .msr { font-size: 1.1rem; color: var(--route); } }
+}
+.cmp-scroll { overflow-x: auto; }
+.cmp-table {
+    width: 100%; border-collapse: collapse; font-size: var(--fs-200); font-variant-numeric: tabular-nums;
+    th, td { padding: .4rem .45rem; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+    th[scope="row"] { text-align: left; font-weight: 500; color: var(--muted); white-space: normal; }
+    thead th { font-weight: 700; }
+    .cmp-delta { font-weight: 700; small { display: block; font-weight: 400; color: var(--muted); font-size: var(--fs-100); } }
+    thead th { white-space: normal; vertical-align: bottom; }
+    th[scope="row"] { min-width: 6.5rem; }
+    /* Die Veränderung bleibt rechts stehen – bei vielen Läufen scrollen die Spalten darunter durch */
+    tr > :last-child { position: sticky; right: 0; background: var(--surface); box-shadow: -6px 0 6px -6px rgb(0 0 0 / .25); max-width: 6.5rem; }
+}
+.cmp-delta.good, .cmp-good { color: light-dark(#2b8a3e, #69db7c); }
+.cmp-delta.bad, .cmp-bad { color: light-dark(#c92a2a, #ff8787); }
+.cmp-h { display: flex; align-items: center; gap: .4rem; margin: .5rem 0 0; font-size: var(--fs-300); .msr { color: var(--route); } }
+.cmp-table .focus { font-weight: 700; background: color-mix(in srgb, var(--route) 8%, transparent); }
+/* Im Weg: dieselbe Strecke gibt es öfter – eine Zeile zum Vergleich */
+.weg-same-go {
+    display: flex; align-items: center; gap: .6rem; width: 100%; padding: .6rem .75rem; border: 0; border-radius: .9rem;
+    background: color-mix(in srgb, var(--route) 10%, var(--surface-2)); color: inherit; font: inherit; font-weight: 600;
+    text-align: left; cursor: pointer;
+    > .msr:first-child { color: var(--route); font-size: 1.5rem; }
+    > span:nth-child(2) { flex: 1; }
+    > .msr:last-child { color: var(--muted); }
+    &:hover { background: color-mix(in srgb, var(--route) 16%, var(--surface-2)); }
+}
+/* Vergleich der gleichen Strecke: wie streng gleich */
+.same-level small { margin-left: .2rem; color: inherit; opacity: .75; }
+/* Dieser Lauf im Vergleich: Kacheln je Kennzahl */
+.cmp-tiles {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: .4rem;
+}
+/* Groß der Wert, darunter eine Zeile: ± absolut und in Prozent – grün besser, rot schlechter */
+.cmp-tile {
+    display: grid; gap: 0; padding: .45rem .6rem; border-radius: .7rem; background: var(--surface-2);
+    font-variant-numeric: tabular-nums; text-align: center;
+    > small:first-child { color: var(--muted); font-size: var(--fs-100); }
+    strong { font-size: var(--fs-500); line-height: 1.2; }
+    > span { font-weight: 700; font-size: var(--fs-200); white-space: nowrap; }
+    .cmp-pct { margin-left: .3rem; font-weight: 600; }
+    &.good > span { color: light-dark(#2b8a3e, #69db7c); }
+    &.bad > span { color: light-dark(#c92a2a, #ff8787); }
+}
+.cmp-all summary { display: flex; align-items: center; gap: .4rem; cursor: pointer; font-weight: 600; .msr { color: var(--route); } }
+.cmp-charts { display: grid; gap: .75rem; }
+
+/* Aufgezeichnet: Kopfzeile zum Sortieren und Filtern (Auswahlfelder als Chips) */
+.wege-head {
+    display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; margin: .4rem 0;
+    .chip { min-height: 2rem; }
+}
+.wege-head .head-pick {
+    display: inline-flex; width: auto; flex: none; margin: 0; align-items: center; gap: .2rem; padding: 0 .2rem 0 .5rem; min-height: 2rem;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: var(--fs-200);
+    > .msr { font-size: 1.1rem; color: var(--muted); }
+    select { width: auto; min-height: 0; height: auto; border: 0; background: transparent; color: inherit; font: inherit; padding: .2rem .1rem; max-width: 11rem; }
+    &.on { border-color: var(--route); background: color-mix(in srgb, var(--route) 12%, var(--surface)); > .msr { color: var(--route); } }
+}
+.wege-sum { margin: .2rem 0 .4rem; }
+/* Tags an der Zeile und im Weg */
+.w-tags { display: flex; flex-wrap: wrap; gap: .2rem; margin-top: .15rem;
+    i { font-style: normal; font-size: var(--fs-100); padding: 0 .4rem; border-radius: 999px;
+        background: color-mix(in srgb, var(--route) 14%, transparent); color: var(--route); } }
+.weg-tags { align-items: center; > span:first-child { color: var(--muted); font-size: var(--fs-200); margin-right: .2rem; }
+    .chip .msr { font-size: 1rem; } }
+
+/* Gemeinsam planen: Hinweis im Planer */
+.tour-collab { display: flex; align-items: center; gap: .4rem; margin: 0; padding: .4rem .6rem; border-radius: .7rem;
+    background: color-mix(in srgb, var(--route) 10%, var(--surface-2)); font-size: var(--fs-200);
+    &[hidden] { display: none; } > .msr { color: var(--route); } }
+/* Chip „Geteilt / Eingeladen · noch 28 Tage“ (data/short-link.js collabState) – im Planer und in der Liste */
+.collab-chip { display: inline-flex; align-items: center; gap: .2rem; padding: .05rem .5rem; border-radius: 1rem; white-space: nowrap;
+    background: color-mix(in srgb, var(--route) 14%, transparent); color: var(--route); font-size: var(--fs-100, .78rem); font-weight: 600;
+    .msr { font-size: 1em; }
+    &.gone { background: var(--surface-2); color: var(--muted); } }
+.tour-collab > span:last-child { display: flex; flex-wrap: wrap; align-items: center; gap: .1rem .4rem;
+    small { flex-basis: 100%; color: var(--muted); } }
+.wege-table .collab-chip { justify-self: start; width: max-content; max-width: 100%; margin: .15rem 0; }
+.collab-into { display: grid; gap: .3rem; margin: .2rem 0 .6rem;
+    span { color: var(--muted); font-size: var(--fs-200); }
+    select { font: inherit; padding: .45rem .5rem; border-radius: .6rem; border: 1px solid var(--line); background: var(--surface); color: inherit; } }
+/* Zusammenführen (pages/tour.js askConflict): Karte dahinter nicht abdunkeln – dort stehen beide Fassungen */
+dialog.collab-pick .confirm-actions button:first-child .msr { color: #1a73e8; }
+dialog.collab-pick .confirm-actions button:nth-child(2) .msr { color: #e8590c; }
+/* Dieselben Punkte geändert: Leiste unten, die Karte bleibt frei zum Antippen (pages/tour.js pickOnMap) */
+.collab-pickbar { position: fixed; z-index: 60; left: 50%; bottom: calc(.75rem + var(--safe-bottom, 0px)); transform: translateX(-50%);
+    width: min(30rem, calc(100vw - 1.5rem)); box-sizing: border-box; padding: .8rem .9rem; border-radius: 1rem;
+    background: var(--surface); color: inherit; border: 1px solid var(--line); box-shadow: var(--shadow); display: grid; gap: .6rem;
+    p { margin: 0; font-size: var(--fs-200); } b { display: block; margin-bottom: .15rem; }
+    .pick-sides { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .pick-side { display: flex; align-items: center; gap: .45rem; padding: .55rem .6rem; border-radius: .7rem; font: inherit; cursor: pointer;
+        border: 2px solid var(--line); background: var(--surface-2); color: inherit; text-align: left;
+        i { flex: none; width: 1.4rem; height: .35rem; border-radius: 1rem; }
+        &[aria-pressed="true"] { border-color: currentColor; font-weight: 600; } }
+    .pick-side[data-side="mine"][aria-pressed="true"] { color: #1a73e8; }
+    .pick-side[data-side="theirs"][aria-pressed="true"] { color: #e8590c; }
+    .pick-go { display: flex; justify-content: flex-end; gap: .5rem; }
+    .pick-go .primary:disabled { opacity: .45; } }
+/* „Link öffnen“ (ui/open-link.js) */
+.open-link-input { width: 100%; box-sizing: border-box; font: inherit; padding: .55rem .6rem; border-radius: .6rem;
+    border: 1px solid var(--line); background: var(--surface); color: inherit; }
+/* Tooltip im Vergleich: je Größe eine Zeile – vorn das aktuelle, dahinter die anderen mit Nummer, umbrechend */
+.cmp-tip {
+    display: grid; gap: .3rem; font-size: var(--fs-200); line-height: 1.3; white-space: normal; min-width: 11rem;
+    /* Datum grau, Wert in Schrift-Farbe – die Farben der Trainings sind im Tooltip nur Ablenkung */
+    i { font-style: normal; color: var(--muted); font-size: var(--fs-100); white-space: nowrap; }
+}
+.cmp-tip-row {
+    display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .5rem; row-gap: .15rem;
+    b { white-space: nowrap; small { font-weight: 400; color: var(--muted); } }
+}
+.cmp-tip-kind { flex-basis: 100%; font-weight: 600; font-size: var(--fs-100); }
+.cmp-tip-others {
+    display: flex; flex-wrap: wrap; column-gap: .7rem; row-gap: .1rem; color: var(--clr-neutral-900);
+    span { white-space: nowrap; }
 }

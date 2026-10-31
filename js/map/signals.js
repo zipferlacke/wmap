@@ -10,7 +10,12 @@
  * Hintergrund-Modus von Overpass: ein Server nach dem anderen, keine
  * parallelen Nachfragen, bei Überlastung Pause statt Wiederholung.
  *
- * Symbol: eine kleine Ampel (Gehäuse, drei Lichter), immer sichtbar.
+ * Symbol: eine kleine Ampel (Gehäuse, drei Lichter), immer sichtbar – außer geneigt hinter einem Haus. MapLibre
+ * zeichnet Symbole immer über die 3D-Häuser. Darum ein Sichtstrahl von der Kamera zur Ampel (2 m über dem Boden):
+ * Steht auf dem Weg dorthin ein Haus der Kacheln, das höher ist als der Strahl an dieser Stelle, ist sie verdeckt.
+ * (MapLibres queryRenderedFeatures trifft geneigt die nahen Häuser nicht – darum selbst gerechnet.) Die Grundrisse
+ * werden nach jeder Bewegung einmal in ein Raster gelegt; der Strahl selbst ist billig und wird während einer
+ * Bewegung höchstens alle 250 ms neu geprüft. Flach ist nichts verdeckt – dann wird gar nicht gerechnet.
  */
 import { run } from '../services/overpass.js';
 
@@ -19,6 +24,76 @@ const SRC = 'signals';
 const ICON = 'wmap-ampel';
 const CELL = 0.01;                  // Grad je Feld (≈ 1,1 km × 0,7 km)
 const MAX_CELLS = 800;
+const HOUSES = 'building-3d';      // Ebene der 3D-Häuser (map.js) – Quelle und Filter wie dort
+const HIDE_FROM = 25;               // ab dieser Neigung können Häuser Ampeln verdecken
+const HIDE_EVERY = 250;             // ms – während einer Bewegung nicht öfter prüfen
+const EYE = 2;                      // m – diese Höhe der Ampel muss frei zu sehen sein
+const GRID = 25;                    // m – Raster der Grundrisse
+const M_LAT = 111320;
+
+/** Grundrisse der 3D-Häuser im Blick: [{ ring: [[x, y] …] in m um o, h }] und ein Raster darüber */
+function houseIndex(map, o) {
+  const layer = map.getLayer(HOUSES);
+  if (!layer || map.getLayoutProperty(HOUSES, 'visibility') === 'none') return null;
+  const kx = M_LAT * Math.cos((o[1] * Math.PI) / 180);
+  const xy = ([lon, lat]) => [(lon - o[0]) * kx, (lat - o[1]) * M_LAT];
+  const houses = [], grid = new Map();
+  for (const f of map.querySourceFeatures(layer.source, { sourceLayer: layer.sourceLayer })) {
+    const p = f.properties;
+    const h = p.render_height ?? 0;
+    if (p.hide_3d || h <= EYE || (p.render_min_height ?? 0) > EYE) continue;
+    const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [];
+    for (const poly of polys) {
+      const ring = poly[0].map(xy);
+      const i = houses.push({ ring, h }) - 1;
+      const xs = ring.map((q) => q[0]), ys = ring.map((q) => q[1]);
+      for (let gx = Math.floor(Math.min(...xs) / GRID); gx <= Math.floor(Math.max(...xs) / GRID); gx += 1) {
+        for (let gy = Math.floor(Math.min(...ys) / GRID); gy <= Math.floor(Math.max(...ys) / GRID); gy += 1) {
+          const k = `${gx},${gy}`;
+          if (!grid.has(k)) grid.set(k, []);
+          grid.get(k).push(i);
+        }
+      }
+    }
+  }
+  return { o, kx, xy, houses, grid };
+}
+
+/** Kleinster Anteil t (0 … 1) der Strecke a→b, an dem sie im Ring liegt; null, wenn nie */
+function enter(ring, a, b) {
+  let inside = false, best = null;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+    const [px, py] = ring[i], [qx, qy] = ring[j];
+    if ((py > a[1]) !== (qy > a[1]) && a[0] < ((qx - px) * (a[1] - py)) / (qy - py) + px) inside = !inside;
+    const dx = b[0] - a[0], dy = b[1] - a[1], ex = qx - px, ey = qy - py;
+    const den = dx * ey - dy * ex;
+    if (!den) continue;
+    const t = ((px - a[0]) * ey - (py - a[1]) * ex) / den, u = ((px - a[0]) * dy - (py - a[1]) * dx) / den;
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1 && (best === null || t < best)) best = t;
+  }
+  return inside ? 0 : best;
+}
+
+/** Verdeckt ein Haus den Blick von der Kamera (cam: [x, y] in m, alt über dem Boden) auf die Ampel bei s? */
+function hiddenBy(idx, s, cam, alt) {
+  const dx = cam[0] - s[0], dy = cam[1] - s[1], d = Math.hypot(dx, dy);
+  if (alt <= EYE || d < 1) return false;
+  // Weiter weg ist der Strahl über jedem Haus (höchstens 150 m hoch)
+  const reach = Math.min(d, ((150 - EYE) * d) / (alt - EYE));
+  const end = [s[0] + (dx / d) * reach, s[1] + (dy / d) * reach];
+  const seen = new Set();
+  for (let w = 0; w <= reach + GRID; w += GRID / 2) {
+    const r = Math.min(w, reach);
+    const k = `${Math.floor((s[0] + (dx / d) * r) / GRID)},${Math.floor((s[1] + (dy / d) * r) / GRID)}`;
+    for (const i of idx.grid.get(k) ?? []) {
+      if (seen.has(i)) continue;
+      seen.add(i);
+      const t = enter(idx.houses[i].ring, s, end);
+      if (t !== null && EYE + ((alt - EYE) * t * reach) / d < idx.houses[i].h) return true;
+    }
+  }
+  return false;
+}
 
 /** Kleine Ampel: dunkles Gehäuse mit weißem Rand, Rot–Gelb–Grün, kurzer Mast */
 function drawIcon() {
@@ -61,14 +136,46 @@ export function mountSignals(map, { before = () => undefined } = {}) {
         // Immer zeigen – sonst verdrängen Namen und POIs die kleine Ampel
         'icon-allow-overlap': true, 'icon-ignore-placement': true,
       },
+      paint: { 'icon-opacity': ['case', ['boolean', ['feature-state', 'hidden'], false], 0, 1] },
     }, before());
   }
 
   function paint() {
     ensure();
     const features = [];
-    for (const pts of cells.values()) for (const c of pts) features.push({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: c } });
+    for (const pts of cells.values()) for (const c of pts) features.push({ type: 'Feature', id: features.length, properties: {}, geometry: { type: 'Point', coordinates: c } });
+    shown = features;
+    hidden = new Set();
     map.getSource(SRC).setData({ type: 'FeatureCollection', features });
+    occlude({ fresh: true });
+  }
+
+  // Hinter einem Haus? Sichtstrahl Kamera → Ampel gegen die Grundrisse (houseIndex, neu nach jeder Bewegung)
+  let shown = [], hidden = new Set(), lastCheck = 0, idx = null;
+  function occlude({ fresh = false } = {}) {
+    lastCheck = performance.now();
+    if (!map.getLayer(SRC)) return;
+    const now = new Set();
+    if (map.getPitch() >= HIDE_FROM && map.getZoom() >= MIN_ZOOM) {
+      const c = map.getCenter().toArray();
+      if (fresh || !idx || Math.abs(idx.o[0] - c[0]) * idx.kx > 2000 || Math.abs(idx.o[1] - c[1]) * M_LAT > 2000) idx = houseIndex(map, c);
+      // Kamera: MapLibre 6 hat keine öffentliche Abfrage mehr (getFreeCameraOptions fehlt) – Interna wie tilt-gestures.js
+      const tr = map._camera?.transform ?? map.transform;
+      const ll = tr?.getCameraLngLat?.();
+      if (idx && ll) {
+        const cam = idx.xy([ll.lng, ll.lat]);
+        const alt = tr.getCameraAltitude() - (map.queryTerrainElevation?.(ll) ?? 0);
+        const { clientWidth: w, clientHeight: h } = map.getCanvas();
+        for (const f of shown) {
+          const p = map.project(f.geometry.coordinates);
+          if (p.x < -20 || p.y < -40 || p.x > w + 20 || p.y > h + 40) continue;
+          if (hiddenBy(idx, idx.xy(f.geometry.coordinates), cam, alt)) now.add(f.id);
+        }
+      }
+    }
+    for (const id of hidden) if (!now.has(id)) map.setFeatureState({ source: SRC, id }, { hidden: false });
+    for (const id of now) if (!hidden.has(id)) map.setFeatureState({ source: SRC, id }, { hidden: true });
+    hidden = now;
   }
 
   async function load() {
@@ -104,6 +211,9 @@ export function mountSignals(map, { before = () => undefined } = {}) {
 
   const schedule = (ms = 800) => { clearTimeout(timer); timer = setTimeout(load, ms); };
   map.on('moveend', () => schedule());
+  map.on('move', () => { if (shown.length && performance.now() - lastCheck > HIDE_EVERY) occlude(); });
+  // Nach dem Laden neuer Häuser-Kacheln (und am Ende jeder Bewegung) das endgültige Bild prüfen
+  map.on('idle', () => { if (shown.length) occlude({ fresh: true }); });
   // Neuer Kartenstil (z. B. Satellit): Gemerktes gleich wieder zeigen
   map.on('style.load', () => { if (cells.size) paint(); });
   if (map.loaded()) schedule(); else map.once('load', () => schedule());

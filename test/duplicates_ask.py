@@ -66,7 +66,7 @@ with Browser() as b:
     time.sleep(1.2)
     one = b.js(DLG)
     print('erste:', one and one[:3], one and one[3][:160])
-    checks['3. Haken je doppelter Aufzeichnung: 1 von 2, Strecke vorgeschlagen (mehr Punkte), Text nennt die doppelte'] = bool(one) and one[0] == 'Zusammenführen (1 von 2)' and one[2] == [['shape', True]] and 'gibt es doppelt. Was willst du von der doppelten Aufzeichnung „Handy' in one[3] and 'Punkte mehr in der doppelten' in one[3] and one[1][0] == 'Weiter'
+    checks['3. Neu/Bisher je doppelter Aufzeichnung: 1 von 2, Strecke vorgeschlagen (mehr Punkte), Text nennt die doppelte'] = bool(one) and one[0] == 'Zusammenführen (1 von 2)' and one[2] == [['shape', True]] and 'gibt es doppelt' in one[3] and 'die doppelte Aufzeichnung „Handy' in one[3] and 'Punkte' in one[3] and 'Bisher' in one[3] and one[1][0] == 'Weiter'
     b.js("document.querySelector('dialog.confirm[open] [data-pick=shape]').checked = false")
     b.js(PRESS, 'Weiter')
     time.sleep(1.2)

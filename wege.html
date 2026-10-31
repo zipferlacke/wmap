@@ -23,7 +23,7 @@
     <link rel="stylesheet" href="./css/index.css">
     <link rel="stylesheet" href="./libs/wuefl-libs/userDialog/userDialog.css">
     <link rel="stylesheet" href="./css/tours.css">
-    <script src="./libs/maplibre-gl/maplibre-gl.js"></script>
+    <script type="module" src="./js/core/maplibre.js"></script>
 </head>
 
 <!--
@@ -40,6 +40,10 @@
         <div class="wege-content"></div>
     </div>
 
+    <!-- Zurück-Taste: zuerst geladen (js/core/back.js) -->
+    <script type="module" src="./js/core/back.js"></script>
+    <!-- Abgleich im Service Worker: Bote und Meldungen (js/core/sw-link.js) -->
+    <script type="module" src="./js/core/sw-link.js"></script>
     <script type="module" src="./js/pages/wege.js"></script>
 </body>
 

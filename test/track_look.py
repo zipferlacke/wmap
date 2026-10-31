@@ -55,7 +55,7 @@ with Browser(width=1300, height=900) as b:
     b.open('wege.html', wait=4)
     years = b.js(YEARS)
     ids = sorted(f[0] for f in b.js(MAPF))
-    print('365 Tage:', years, ids, b.js("return document.querySelector('.wege-period')?.innerText.replace(/\\s+/g, ' ')"))
+    print('365 Tage:', years, ids, b.js("return document.querySelector('.tab-hint')?.innerText.replace(/\\s+/g, ' ')"))
     old_year = [y for y in years if not y[1]]
     checks['3. letzte 365 Tage: nur die auf der Karte, ältere Jahre zugeklappt mit durchgestrichenem Auge'] = ids == ['look1', 'look4'] and len(old_year) >= 1 and all(y[2] == 'visibility_off' for y in old_year)
     b.js("document.querySelector('.wege-year:not([open]) .year-eye').click()")
@@ -85,7 +85,7 @@ with Browser(width=1300, height=900) as b:
         look[0] is False and look[2] is True and 'Art, Farbe und Anzeige' in look[1] and look_after[0] is True and 'Rudern' in look_after[1] and 'ausgeblendet' in look_after[1])
     saved = call(b, "const { tracks, trackGpx, parseGpx } = await import('./js/data/tracks.js'); const t = await tracks.get('look3'); const back = parseGpx(trackGpx(t))[0]; return { sport: t.sport, color: t.color, hidden: t.hidden, updated: !!t.updated, back: [back.sport, back.color, back.hidden, back.times.length === t.times.length] };")
     print('gespeichert:', saved, before, after)
-    icon = b.js("return document.querySelector('.weg-when .msr').textContent + ' ' + document.querySelector('.weg-when .msr').style.color")
+    icon = b.js("const i = document.querySelector('.wege-bar .panel-title-icon'); return i.textContent + ' ' + i.style.color")
     checks['4. Art gewählt: Rudern-Symbol, Tempo je 500 m'] = saved['sport'] == 'rowing' and 'Ø /500 m' in after and 'Ø /500 m' not in before and icon.startswith('rowing')
     checks['4. eigene Farbe und ausgeblendet gespeichert – auch in der GPX-Datei'] = saved['color'] == '#ae3ec9' and saved['hidden'] is True and saved['back'] == ['rowing', '#ae3ec9', True, True] and 'rgb(174, 62, 201)' in icon
     b.open('wege.html', wait=4)

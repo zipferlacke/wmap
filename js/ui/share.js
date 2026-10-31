@@ -4,11 +4,19 @@
  *
  *   ?ort=lon,lat&name=…&zeit=…    ein Ort oder „hier bin ich“ (mit Uhrzeit)
  *   ?route=…                       Route mit Profil und Wegpunkten (gepackt)
+ *   ?street=lon,lat,richtung,blick Street View genau so, wie man gerade steht und schaut
  *   ?anfrage=Name                  „Name möchte wissen, wo du bist“ – wer den
  *                                  Link öffnet, schickt seinen Standort zurück
  *
  * Beim Teilen fragt ein Dialog: Teilen-Menü des Geräts (wo es das gibt), Text
  * mit Link kopieren oder nur den Link kopieren.
+ *
+ * Ein Ort (Ort, „hier bin ich“, unterwegs) geht als Karten-Link „geo:“ – den
+ * öffnet jede Karten-App –, darunter in Klammern der Link zu WMap:
+ *
+ *   Gänseliesel
+ *   geo:51.53194,9.93554?q=51.53194,9.93554(Gänseliesel)
+ *   (WMap: https://app.wuefl.de/wmap/index.html?ort=9.93554,51.53194&name=Gänseliesel)
  */
 import { packJson, unpackJson, local } from '../data/store.js';
 import { ask } from './dialogs.js';
@@ -41,6 +49,13 @@ export const placeUrl = ([lon, lat], name = '', { at = null } = {}) => {
   return url;
 };
 
+/** Karten-Link für jede App: geo:Breite,Länge?q=Breite,Länge(Name) – nur was stört, wird kodiert */
+export const geoUri = ([lon, lat], name = '') => {
+  const at = `${r5(lat)},${r5(lon)}`;
+  const label = String(name ?? '').trim().replace(/[\s()+&#%?]/g, (c) => encodeURIComponent(c));
+  return `geo:${at}?q=${at}${label ? `(${label})` : ''}`;
+};
+
 /** Wegpunkte [{ label, point }] und Profil → Link */
 export async function routeUrl({ profile, waypoints }) {
   const w = waypoints.filter((x) => x.point).map((x) => [r5(x.point[0]), r5(x.point[1]), x.me ? '' : x.label ?? '']);
@@ -52,6 +67,10 @@ export async function readRoute(code) {
   return { profile: o.p, waypoints: (o.w ?? []).map(([lon, lat, label]) => ({ label: label || 'Geteilter Punkt', point: [lon, lat], me: false })) };
 }
 
+/** Street View: Standpunkt, Blickrichtung und Neigung → Link */
+export const streetUrl = ({ point: [lon, lat], bearing, look }) =>
+  `${base()}?street=${r5(lon)},${r5(lat)},${Math.round((bearing % 360 + 360) % 360)},${+look.toFixed(1)}`;
+
 export const requestUrl = (name) => `${base()}?anfrage=${encodeURIComponent(name)}`;
 
 /**
@@ -59,16 +78,20 @@ export const requestUrl = (name) => `${base()}?anfrage=${encodeURIComponent(name
  * Link kopieren. `url` darf eine Funktion sein (auch async) – Fehler dabei
  * landen als Hinweis. `short` (async → Adresse): Ist der Link lang, gibt es dazu
  * „Kurzen Link erstellen“ (data/short-link.js – der Inhalt liegt dann 30 Tage
- * auf dem Server). → 'shared' | 'copied' | null
+ * auf dem Server). `geo` ({ point, name }): ein Ort – der Link ist dann der geo:-Link, der zu WMap steht in
+ * Klammern darunter. → 'shared' | 'copied' | null
  */
-export async function share({ title, text = '', url: make, short = null, note = '' }, toast) {
+export async function share({ title, text = '', url: make, short = null, note = '', geo = null }, toast) {
   let url;
   try { url = typeof make === 'function' ? await make() : make; } catch (err) { toast?.(err.message); return null; }
+  const wmap = url;
+  if (geo?.point) url = `${geoUri(geo.point, geo.name)}\n(WMap: ${wmap})`;
   const full = text ? `${text}\n${url}` : url;
   const system = androidApp || !!navigator.share;
+  const shown = geo?.point ? `<span class="share-url">${esc(geoUri(geo.point, geo.name))}</span><span class="share-url share-wmap">(WMap: ${esc(wmap)})</span>` : `<span class="share-url">${esc(url)}</span>`;
   const choice = await ask({
     icon: 'share', title, className: 'stacked',
-    html: `<div class="share-preview">${text ? `<p>${esc(text)}</p>` : ''}<span class="share-url">${esc(url)}</span></div>${note ? `<p class="muted share-note">${esc(note)}</p>` : ''}`,
+    html: `<div class="share-preview">${text ? `<p>${esc(text)}</p>` : ''}${shown}</div>${note ? `<p class="muted share-note">${esc(note)}</p>` : ''}`,
     buttons: [
       ...(system ? [{ value: 'share', label: 'Teilen …', icon: 'share', primary: true }] : []),
       ...(text ? [{ value: 'text', label: 'Text mit Link kopieren', icon: 'content_copy', primary: !system }] : []),
@@ -85,7 +108,8 @@ export async function share({ title, text = '', url: make, short = null, note = 
   if (choice === 'share') {
     try {
       if (androidApp) await core.invoke('plugin:browser|share', { title, text: full });
-      else await navigator.share({ title, text, url });
+      // Mit geo:-Link alles als Text – das Feld `url` nimmt nur http(s)
+      else await navigator.share(geo?.point ? { title, text: full } : { title, text, url });
       return 'shared';
     } catch (err) {
       if (err.name === 'AbortError') return null;             // selbst abgebrochen

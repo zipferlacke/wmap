@@ -23,7 +23,7 @@ export const mobile = () => matchMedia('(max-width: 700px)').matches;
 
 /**
  * @param src  Element der Seite mit dem Inhalt des Panels (zieht in den Dialog um)
- * → { panel (der Dialog), header(), open(), collapse(), padding(), map }
+ * → { panel (der Dialog), header(), pressBack(), open(), collapse(), padding(), map }
  */
 export function mapPage(src, { map, title = '', onFit = () => {}, key = 'wmap.panel' } = {}) {
   let backTo = null;                 // Detail: wohin ← führt; null: Liste
@@ -46,14 +46,33 @@ export function mapPage(src, { map, title = '', onFit = () => {}, key = 'wmap.pa
   const back = side.left.querySelector('button');
 
   return {
-    /** Kopfzeile: Titel und – für eine Detailansicht – wohin ← führt */
-    header(text, onBack = null) {
-      side.title.textContent = text;
+    /**
+     * Kopfzeile: Titel und – für eine Detailansicht – wohin ← führt. `icon`/`color`: Symbol vor dem Titel;
+     * `onRename(name)`: der Titel ist ein Eingabefeld (Enter oder Verlassen speichert)
+     */
+    header(text, onBack = null, { icon = null, color = null, onRename = null, placeholder = 'Name' } = {}) {
+      const parts = [];
+      if (icon) {
+        const el = Object.assign(document.createElement('span'), { className: 'msr panel-title-icon', textContent: icon });
+        if (color) el.style.color = color;
+        parts.push(el);
+      }
+      if (onRename) {
+        const input = Object.assign(document.createElement('input'), { type: 'text', className: 'panel-title-input', value: text, placeholder });
+        input.setAttribute('aria-label', placeholder);
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { input.value = text; input.blur(); e.stopPropagation(); } });
+        input.addEventListener('change', () => { const v = input.value.trim(); if (v !== text) { text = v; onRename(v); } });
+        parts.push(input);
+      } else parts.push(document.createTextNode(text));
+      side.title.replaceChildren(...parts);
+      side.title.classList.toggle('panel-title-edit', !!(icon || onRename));
       backTo = onBack;
       back.title = onBack ? 'Zurück zur Liste' : 'Zurück zur Übersicht';
       panel.classList.toggle('detail', !!onBack);
     },
     get detail() { return !!backTo; },
+    /** Zurück-Taste (core/back.js trapBack): ← der Detailansicht drücken → ob es einen gab */
+    pressBack() { if (!backTo) return false; backTo(); return true; },
     open() { if (side.collapsed) side.collapse(false); },
     collapse: (on) => side.collapse(on),
     /** Freier Kartenausschnitt neben bzw. über dem Panel */

@@ -29,6 +29,11 @@ aufgerufen von `tauri-android wmap` (wuefl_products/tools) vor jedem Bauen:
   Name der Debug-Fassung   → app/src/debug/res/values/strings.xml: „wmap-Debug“
                              (Startbildschirm, App-Liste, Android Auto) – so
                              ist sie neben der App aus dem Play Store zu erkennen
+  Links der Debug-Fassung  → app/src/debug/AndroidManifest.xml: zusätzlich
+                             https://dev.wuefl.de/wmap… als App-Link (die
+                             Testversion auf dev öffnet in wmap-Debug; Android
+                             mischt das Manifest nur in den Debug-Build –
+                             die Store-App bleibt bei app.wuefl.de)
 
 Mehrfach aufrufbar: alles wird nur einmal eingetragen.
 
@@ -196,6 +201,32 @@ def debug_name() -> None:
         "</resources>\n", encoding="utf-8")
 
 
+DEBUG_LINKS = """<?xml version="1.0" encoding="utf-8"?>
+<!-- Nur die Debug-Fassung (tools/android-einbinden.py): dev.wuefl.de/wmap als App-Link, zusätzlich zu app.wuefl.de -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="dev.wuefl.de" />
+                <data android:pathPrefix="/wmap" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+"""
+
+
+def debug_links() -> None:
+    """dev.wuefl.de/wmap öffnet in der Debug-Fassung – Manifeste unter src/debug gelten nur für sie."""
+    ziel = APP / "src/debug"
+    ziel.mkdir(parents=True, exist_ok=True)
+    (ziel / "AndroidManifest.xml").write_text(DEBUG_LINKS, encoding="utf-8")
+
+
 def min_sdk() -> None:
     import json
     conf = json.loads((PROJEKT / "src-tauri/tauri.conf.json").read_text(encoding="utf-8"))
@@ -244,6 +275,7 @@ def main() -> int:
         shutil.copyfile(PROJEKT / "tools/android/MainActivity.kt", ziel)
     auto()
     debug_name()
+    debug_links()
     min_sdk()
     signatur()
     print("==> WMap-Teile eingesetzt (Symbol, Standort, Bild in Bild, Sprachausgabe, GPX öffnen, Android Auto"

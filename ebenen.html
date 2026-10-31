@@ -22,12 +22,12 @@
     <meta name="theme-color" content="#1a73e8">
     <link rel="stylesheet" href="./css/index.css">
     <link rel="stylesheet" href="./css/tours.css">
-    <script src="./libs/maplibre-gl/maplibre-gl.js"></script>
+    <script type="module" src="./js/core/maplibre.js"></script>
 </head>
 
 <body class="tour-page ebenen-page">
     <header class="tour-head panel">
-        <a class="button" data-shape="round no-background" href="./index.html" title="Zur Karte">
+        <a class="button" data-back data-shape="round no-background" href="./index.html" title="Zur Karte">
             <span class="msr">arrow_back</span>
         </a>
         <h1 class="tour-name">Eigene Ebenen</h1>
@@ -53,6 +53,10 @@
         </dialog>
     </main>
 
+    <!-- Zurück-Taste: zuerst geladen (js/core/back.js) -->
+    <script type="module" src="./js/core/back.js"></script>
+    <!-- Abgleich im Service Worker: Bote und Meldungen (js/core/sw-link.js) -->
+    <script type="module" src="./js/core/sw-link.js"></script>
     <script type="module" src="./js/pages/ebenen.js"></script>
 </body>
 

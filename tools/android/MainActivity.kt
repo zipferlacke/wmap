@@ -3,6 +3,7 @@ package de.wuefl.wmap
 // Von tools/android-einbinden.py nach src-tauri/gen/android kopiert – hier ändern, nicht dort.
 
 import android.app.PictureInPictureParams
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -47,6 +48,11 @@ import de.wuefl.wmap.car.CarLink
  * meldet die Seite das (WMapAndroid.carConnected, Ereignis „wmap:car“) und
  * kann einen Ort, eine Route oder eine Tour hinüberschicken (carSend →
  * car/CarLink.kt) – js/data/car-link.js.
+ *
+ * Links der Testversion (https://dev.wuefl.de/wmap…): Für sie meldet sich nur die Debug-Fassung
+ * (src/debug/AndroidManifest.xml, tools/android-einbinden.py). Das Deep-Link-Plugin nimmt nur Adressen aus
+ * tauri.conf.json an – dort steht app.wuefl.de, sonst bekäme auch die Store-App dev. Darum hier vorher auf
+ * app.wuefl.de umschreiben: Die App nimmt vom Link ohnehin nur Seite, ?… und #… (link_target in lib.rs).
  */
 class MainActivity : TauriActivity() {
   private var web: WebView? = null
@@ -68,7 +74,20 @@ class MainActivity : TauriActivity() {
   @Volatile private var insetsJson = "null"
   @Volatile private var carConnected = false
 
+  private fun devToApp(intent: Intent?) {
+    val d = intent?.data ?: return
+    if (d.scheme == "https" && d.host.equals("dev.wuefl.de", ignoreCase = true)) {
+      intent.data = d.buildUpon().authority("app.wuefl.de").build()
+    }
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    devToApp(intent)
+    super.onNewIntent(intent)
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
+    devToApp(intent)
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
     CarConnection(applicationContext).type.observe(this) { type ->

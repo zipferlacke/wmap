@@ -16,7 +16,8 @@
  */
 import { trustedSpeed } from './smooth.js';
 
-const core = window.__TAURI__?.core;
+// (Auch im Service Worker geladen – über data/tracks.js; dort ohne Fenster)
+const core = globalThis.window?.__TAURI__?.core;
 // Das Plugin gibt es nur in den Handy-Apps (siehe src-tauri/Cargo.toml)
 let nativeGeo = !!core && /Android|iPhone|iPad/i.test(navigator.userAgent);
 const notAllowed = (err) => /not allowed/i.test(String(err));
@@ -37,13 +38,15 @@ const allowed = async (options) => {
  * als Abstand zwischen zwei Meldungen – 10 s wären für die Navigation viel zu
  * selten. Darum hier eine gemeinsame Abfrage für alle, so oft, wie der
  * Eifrigste es braucht: Navigation und Aufzeichnung jede Sekunde, der Punkt
- * auf der Karte je nach Bewegung jede Sekunde bis alle 30 s (`interval` in
+ * auf der Karte je nach Bewegung jede Sekunde bis alle 10 s (`interval` in
  * den Optionen, `geo.retime`).
  */
 const INTERVAL_MS = 1000;
 const listeners = new Set();
 let shared = null;        // { channel, interval } der laufenden Abfrage
 let stopTimer = null;
+let lastOptions = {};     // die der letzten Abfrage – für den Neustart (geo.wake)
+const pacers = new Set(); // Punkte auf der Karte (paced) – geo.wake setzt sie auf „in Bewegung“
 /*
  * Beantwortet die App „watch_position“? Bis App 2.1.0 tat das Plugin das nie –
  * und jeder offene Aufruf hielt einen Arbeits-Thread der App fest; nach acht
@@ -54,11 +57,12 @@ let stopTimer = null;
 let answers = false;
 const wanted = () => Math.min(...[...listeners].map((l) => l.interval));
 
-function startShared(options) {
+function startShared(options, force = false) {
   clearTimeout(stopTimer);
+  lastOptions = options;
   const interval = wanted();
-  if (shared?.interval === interval) return;
-  if (shared && !answers && interval > shared.interval) return;
+  if (!force && shared?.interval === interval) return;
+  if (!force && shared && !answers && interval > shared.interval) return;
   // Anderer Abstand gebraucht: die alte Abfrage beenden, eine neue starten
   if (shared) core.invoke('plugin:geolocation|clear_watch', { channelId: shared.channel.id }).catch(() => {});
   const channel = new core.Channel();
@@ -112,6 +116,15 @@ export const geo = {
       startShared(options);
     });
     return id;
+  },
+
+  /**
+   * Tipp auf den Standort-Knopf (app/core.js locateNow): Der Punkt auf der Karte fragt wieder jede Sekunde, und die
+   * gemeinsame Abfrage startet neu – auch wenn sie nach einem Fehler weg war oder nichts mehr meldete
+   */
+  wake() {
+    for (const p of pacers) p.wake();
+    if (nativeGeo && listeners.size) startShared(shared?.options ?? lastOptions, true);
   },
 
   /** Anderer Abstand für eine laufende Abfrage (nur App; im Browser bestimmt ihn der Browser) */
@@ -202,14 +215,15 @@ export function geolocationApi() {
 
 /*
  * Wie oft der Punkt auf der Karte fragt: in Bewegung jede Sekunde, wer steht,
- * nach 15 s alle 5 s, nach einer Minute alle 30 s – das GPS ruht dazwischen.
+ * nach 15 s alle 5 s, nach einer Minute alle 10 s – so fällt das Losfahren
+ * (Zug, Auto) spätestens nach 10 s auf, auch wenn der Sensor nichts meldet.
  * Bewegung: das GPS misst Tempo (dem man trauen kann, core/smooth.js) oder man ist weiter weg als die Ungenauigkeit
- * (mindestens 10 m). Damit man beim Losgehen nicht bis zu 30 s wartet, meldet
+ * (mindestens 10 m). Damit man beim Losgehen nicht bis zu 10 s wartet, meldet
  * der Beschleunigungssensor Schritte oder Fahrt gleich (devicemotion) – dann
  * sofort wieder jede Sekunde. Navigation und Aufzeichnen fragen ohnehin jede
  * Sekunde (gemeinsame Abfrage: der Eifrigste zählt).
  */
-const PACE = [1000, 5000, 30000];
+const PACE = [1000, 5000, 10000];
 const PACE_AFTER = [0, 15000, 60000];
 
 function paced() {
@@ -232,9 +246,10 @@ function paced() {
     shakes.push(now);
     if (shakes.length >= 6) { shakes = []; moved(); }
   };
-  return {
-    start(watchId) { id = watchId; },
-    stop() { removeEventListener('devicemotion', motion); },
+  const self = {
+    start(watchId) { id = watchId; pacers.add(self); },
+    stop() { removeEventListener('devicemotion', motion); pacers.delete(self); },
+    wake: moved,
     fix(pos) {
       const c = pos.coords;
       const p = [c.longitude, c.latitude];
@@ -244,6 +259,7 @@ function paced() {
       set(still >= PACE_AFTER[2] ? 2 : still >= PACE_AFTER[1] ? 1 : 0);
     },
   };
+  return self;
 }
 
 const toNative = ({ enableHighAccuracy = true, timeout = 10000, maximumAge = 0 } = {}) => ({ enableHighAccuracy, timeout, maximumAge });

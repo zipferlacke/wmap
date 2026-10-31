@@ -9,6 +9,22 @@
     "messages": [],
     "changelog": [
         {
+            "version": "3.0.0",
+            "date": "2026-10-30",
+            "appVersion": "2.3.1",
+            "changes": [
+                "Karte: neue Symbole für Orte, nah heran mit Hausnummern. 3D-Häuser schneller und sparsamer, Gelände genauer und mit Relief, die geneigte Karte läuft ruhiger. Neu in den Einstellungen ganz unten: „Schärfe der Karte“",
+                "Meine Touren: Trainings vergleichen und sehen, wie du dich steigerst – läufst du dieselbe Strecke öfter, schlägt WMap das selbst vor. Welche Touren im Vergleich sind, wählst du oben, auch mit Suche",
+                "Meine Touren: sortieren und filtern (Art, Tag, Zeitraum), Tags vergeben, mehrere Touren per langem Tippen auswählen. Touren mit Datei- oder App-Namen heißen jetzt nach Art, Gegend und Tageszeit",
+                "Touren gemeinsam planen: Teilen → „Gemeinsam planen“ – wer den Link hat, plant mit, Änderungen sehen alle. Kurze Links liegen jetzt verschlüsselt auf dem Server",
+                "Aufzeichnen: Die Karte folgt dir, ohne ständig umzuspringen – „Mitführen“ holt sie zurück, „Zum Start“ führt zurück zum Anfang",
+                "Orte: Öffnungszeiten mit Saison als Wochentabelle, Ausstattung als Chips, teilen als Karten-Link (geo:), den jede Karten-App öffnet",
+                "Suche: versteht Koordinaten in jedem Format und Links aus anderen Karten. In der Nähe: private Parkplätze und gerade Geschlossenes erst auf Wunsch",
+                "Verbundener Ordner und Health Connect: Abgleich im Hintergrund, neue Touren erscheinen sofort. Für neue Dateien im Ordner gibt es eine eigene Frage – alle übernehmen, auswählen oder nicht importieren",
+                "Fix: Standort blieb unterwegs hängen (Zug, Tunnel); Karte ohne Straßen und Namen nach einem Start ohne Netz; weniger Speicher, Kartenkacheln liegen nur noch einmal auf dem Gerät"
+            ]
+        },
+        {
             "version": "2.3.1",
             "date": "2026-10-09",
             "appVersion": "2.3.1",

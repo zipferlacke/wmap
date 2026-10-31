@@ -218,9 +218,9 @@ with Browser(width=420, height=900) as b:
     b.open('sync.html', wait=2)
     i = b.d.execute_async_script(GPS_INTERVAL)
     print('Abstand:', i)
-    ok = i == ['watch_position:1000', 'clear_watch:1', 'watch_position:5000', 'clear_watch:2', 'watch_position:30000',
-               'clear_watch:3', 'watch_position:1000', 'clear_watch:4', 'watch_position:30000', 'clear_watch:5', 'watch_position:1000', 'clear_watch:6']
-    print('Karte je nach Bewegung 1/5/30 s, Navigation 1 s stimmt:', ok)
+    ok = i == ['watch_position:1000', 'clear_watch:1', 'watch_position:5000', 'clear_watch:2', 'watch_position:10000',
+               'clear_watch:3', 'watch_position:1000', 'clear_watch:4', 'watch_position:10000', 'clear_watch:5', 'watch_position:1000', 'clear_watch:6']
+    print('Karte je nach Bewegung 1/5/10 s, Navigation 1 s stimmt:', ok)
     if not ok:
         b.errors.append(('abstand', 'Ergebnis falsch'))
 

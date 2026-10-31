@@ -9,13 +9,17 @@
 4. Zweiter Abgleich: nichts zu tun, nichts gelesen.
 5. FIT-Tour umbenannt: Der Name steht im Verzeichnis – ein zweites Gerät bekommt dieselbe Kennung und den Namen,
    ohne Rückfrage; die FIT-Datei bleibt unverändert.
-6. Seite „Sicherung & Synchronisation“: Die Frage „Neue Datei im Ordner“ kommt von selbst (ja, überall die
-   genaueren / selbst einstellen / später – dieselbe wie beim Wählen und Hineinziehen, ui/import-ask.js); „Später“
-   lässt alles liegen, der Hinweis mit „Neue Dateien ansehen“ bleibt; „Selbst einstellen“: Eine neue Tour kommt
-   ohne weitere Frage. Unbekannte Dateien stehen mit Hinweis da.
-8. Datei zu einer Tour, die es schon gibt: „Selbst einstellen“ → die Haken; Strecke abgewählt, Frequenz kommt dazu.
+6. Seite „Sicherung & Synchronisation“: Die Frage „Neue Datei im Ordner“ kommt von selbst (alle übernehmen /
+   auswählen / nicht importieren / später, ui/import-ask.js askNewFiles); „Später“ lässt alles liegen, der Hinweis
+   mit „Neue Dateien ansehen“ bleibt; „Auswählen“: je Datei, was mitkommt. Unbekannte Dateien stehen mit Hinweis da.
+8. Datei zu einer Tour, die es schon gibt: eigene Frage danach (wie beim Zusammenführen, dazu „Nicht importieren“),
+   „Selbst einstellen“ → die Haken; Strecke abgewählt, Frequenz kommt dazu.
 9. Andere Dateien (Bild, Text): einmal fragen; „Liegen lassen“ → Hinweis mit „Aufräumen“; danach liegen sie unter
    „Unbekannte Dateien/“, die nächste geht ohne Frage dorthin.
+10. Neue Datei mit Puls und Frequenz: „Auswählen“, Puls abgewählt → die Tour hat nur die Frequenz.
+11. „Nicht importieren“: keine Tour, die Datei liegt unter „Unbekannte Dateien/“.
+12. Entschieden, dann bricht der Abgleich ab (Seite gewechselt): Der nächste übernimmt, ohne noch einmal zu fragen.
+13. Zwei Dateien derselben Tour: erst als neue gefragt, danach die zweite als Datei zu einer vorhandenen Tour.
 7. Export als ZIP: aufgezeichnete Touren als GPX oder als FIT."""
 import json
 import sys
@@ -162,7 +166,7 @@ UI = r"""
     let clock = 1000;
     const be = {
       permission: async () => 'granted',
-      list: async () => [...files].map(([path, f]) => ({ path, lastModified: f.modified })),
+      list: async () => { if (be.fail) throw new Error('Ordner gerade weg'); return [...files].map(([path, f]) => ({ path, lastModified: f.modified })); },
       read: async (p) => files.get(p).text,
       write: async (p, text) => { clock += 1000; files.set(p, { text, modified: clock }); return clock; },
       remove: async (p) => { files.delete(p); },
@@ -190,8 +194,11 @@ UI = r"""
     out.broken = document.querySelector('.folder-broken')?.innerText.replace(/\s+/g, ' ').trim() ?? null;
     document.querySelector('.folder-inbox [data-act=inbox]').click();
     await wait(800);
-    // Selbst einstellen: Eine neue Tour kommt ohne weitere Frage dazu
-    press(/Selbst einstellen/);
+    // Auswählen: je Datei, was mitkommt – hier nur die Strecke
+    press(/Auswählen/);
+    await wait(800);
+    out.eachOne = dlg() ? [dlg().querySelector('.uD-title').innerText.replace(/^\S+\s+/, '').trim(), dlg().querySelectorAll('[data-pick]').length, buttons()] : null;
+    press(/Übernehmen/);
     await wait(1800);
     out.eachOpen = !!dlg();
     out.names = await names();
@@ -234,8 +241,56 @@ UI = r"""
     await folder.sync();
     await wait(1200);
     out.othersQuiet = [!!dlg(), files.has('notiz.txt'), files.has('Unbekannte Dateien/notiz.txt')];
+    // Neue Datei mit Puls und Frequenz: Auswählen, Puls abwählen – nur die Frequenz kommt mit
+    const fresh = (day, name, hr = 130) => { const p = []; for (let i = 0; i < 200; i += 1) p.push([9.7 + i * 0.0004, 51.4 + day * 0.01, Date.UTC(2026, 6, day, 9, 0, i * 6), hr, 80, 0]); return trackGpx({ ...buildTrack(p, { kind: 'gpx', profile: 'foot', name, keepAll: true }), id: 'f' + day }).replace(/<keywords>[^<]*<\/keywords>/, '').replace(/<wmap:track[^>]*\/>/, ''); };
+    sessionStorage.removeItem('wmap.folder.inbox.later');
+    files.set('Uhr/mitpuls.gpx', { text: fresh(1, 'Mit Puls'), modified: clock += 1000 });
+    await folder.sync();
+    await wait(1200);
+    out.pickAsk = dlg() ? [dlg().querySelector('.uD-title').innerText.replace(/^\S+\s+/, '').trim(), buttons()] : null;
+    press(/Auswählen/);
+    await wait(800);
+    out.pickOne = dlg() ? [dlg().querySelector('.uD-title').innerText.replace(/^\S+\s+/, '').trim(), [...dlg().querySelectorAll('[data-pick]')].map((x) => [x.dataset.pick, x.checked]), buttons()] : null;
+    dlg().querySelector('[data-pick=hr]').checked = false;
+    press(/Übernehmen/);
+    await wait(1800);
+    const picked = (await tracks.all()).find((t) => t.name === 'Mit Puls');
+    const pickedFull = picked ? await tracks.full(picked) : null;
+    out.picked = pickedFull ? { hr: !!pickedFull.hr?.some((v) => v > 0), cad: Math.round(pickedFull.cad?.find((v) => v > 0) ?? 0), pts: pickedFull.times.length, fileGone: !files.has('Uhr/mitpuls.gpx') } : null;
+    // Nicht importieren: nach „Unbekannte Dateien/“, keine Tour
+    sessionStorage.removeItem('wmap.folder.inbox.later');
+    files.set('Uhr/weg.gpx', { text: fresh(2, 'Weg damit'), modified: clock += 1000 });
+    await folder.sync();
+    await wait(1200);
+    press(/Nicht importieren/);
+    await wait(1800);
+    out.skipped = [(await tracks.all()).some((t) => t.name === 'Weg damit'), files.has('Uhr/weg.gpx'), files.has('Unbekannte Dateien/weg.gpx'), !!dlg()];
+    // Entschieden, dann bricht der Abgleich ab: Der nächste macht damit weiter, ohne noch einmal zu fragen
+    files.set('Uhr/spaet.gpx', { text: fresh(3, 'Nach Abbruch'), modified: clock += 1000 });
+    be.fail = true;
+    await folder.sync({ decide: { fresh: 'take' } }).catch(() => null);
+    be.fail = false;
+    sessionStorage.removeItem('wmap.folder.inbox.later');
+    await folder.sync();
+    await wait(1200);
+    out.resumed = [!!dlg(), (await tracks.all()).some((t) => t.name === 'Nach Abbruch'), files.has('Uhr/spaet.gpx')];
+    // Zwei Dateien derselben Tour auf einmal: erst als neue gefragt und übernommen, dann die zweite als Datei zu einer
+    // Tour, die es schon gibt
+    sessionStorage.removeItem('wmap.folder.inbox.later');
+    files.set('Uhr/a1.gpx', { text: fresh(5, 'Doppelt'), modified: clock += 1000 });
+    files.set('Uhr/a2.gpx', { text: fresh(5, 'Doppelt', 150), modified: clock += 1000 });
+    await folder.sync();
+    await wait(1200);
+    out.twoAsk = dlg() ? dlg().querySelector('.uD-title').innerText.replace(/^\S+\s+/, '').trim() : null;
+    press(/Alle übernehmen/);
+    await wait(2000);
+    out.twoThen = dlg() ? [dlg().querySelector('.uD-title').innerText.replace(/^\S+\s+/, '').trim(), buttons()] : null;
+    out.twoBetween = (await tracks.all()).filter((t) => t.name === 'Doppelt').length;
+    press(/genaueren/);
+    await wait(2000);
+    out.twoDone = [(await tracks.all()).filter((t) => t.name === 'Doppelt').length, files.has('Uhr/a1.gpx'), files.has('Uhr/a2.gpx'), !!dlg()];
     await tracks.removeQuiet('inApp');
-    for (const t of await tracks.all()) if (t.name === 'Aus der Uhr') await tracks.removeQuiet(t.id);
+    for (const t of await tracks.all()) if (['Aus der Uhr', 'Mit Puls', 'Weg damit', 'Nach Abbruch', 'Doppelt'].includes(t.name)) await tracks.removeQuiet(t.id);
     sessionStorage.removeItem('wmap.folder.inbox.later');
     await folder.disconnect();
     done(out);
@@ -275,14 +330,21 @@ with Browser() as b:
     print(json.dumps(u, ensure_ascii=False, indent=1))
     b.shot('folder-drop')
     checks.update({
-        '6. Frage kommt von selbst: ja, überall die genaueren / selbst einstellen / später': u['title'] == 'Neue Datei im Ordner' and u['buttons'] == ['Ja, überall die genaueren Daten', 'Selbst einstellen', 'Später'],
+        '6. Frage kommt von selbst: alle übernehmen / auswählen / nicht importieren / später': u['title'] == 'Neue Datei im Ordner' and u['buttons'] == ['Alle übernehmen', 'Auswählen', 'Nicht importieren', 'Später'],
         '6. „Später“: nichts übernommen, Datei bleibt, Hinweis mit „Neue Dateien ansehen“': u['laterNames'] == [] and u['laterFile'] and u['hint'] and 'uhr.gpx' in u['hint'] and 'Neue Dateien ansehen' in u['hint'],
         '6. unbekannte Datei steht mit Hinweis da': bool(u['broken']) and 'murks.gpx' in u['broken'] and 'Unbekannte Dateien' in u['broken'] and '30 Tage' in u['broken'],
-        '6. selbst einstellen, neue Tour: ohne weitere Frage da, Datei einsortiert, Hinweis weg': not u['eachOpen'] and u['names'] == ['Aus der Uhr'] and u['fileGone'] and len(u['sorted']) == 1 and u['sorted'][0].startswith('Aufgezeichnete Touren/2026/06 Juni/') and not u['hintAfter'],
-        '8. Datei zu vorhandener Tour: dieselbe Frage, dann die Haken (Strecke und Frequenz vorgeschlagen)': u['mergeAsk'] == ['Ja, überall die genaueren Daten', 'Selbst einstellen', 'Später'] and bool(u['mergeOne']) and u['mergeOne'][0] == 'Zusammenführen' and ['shape', True] in u['mergeOne'][1] and ['cad', True] in u['mergeOne'][1] and u['mergeOne'][2] == ['Zusammenführen', 'Später weitermachen'],
+        '6. auswählen: die Datei für sich (ohne Messwerte keine Schalter), Übernehmen / nicht importieren / später weitermachen': u['eachOne'] == ['Neue Datei', 0, ['Übernehmen', 'Nicht importieren', 'Später weitermachen']],
+        '6. übernommen: da, Datei einsortiert, Hinweis weg': not u['eachOpen'] and u['names'] == ['Aus der Uhr'] and u['fileGone'] and len(u['sorted']) == 1 and u['sorted'][0].startswith('Aufgezeichnete Touren/2026/06 Juni/') and not u['hintAfter'],
+        '8. Datei zu vorhandener Tour: eigene Frage (mit „Nicht importieren“), dann die Haken (Strecke und Frequenz vorgeschlagen)': u['mergeAsk'] == ['Ja, überall die genaueren Daten', 'Selbst einstellen', 'Nicht importieren', 'Später'] and bool(u['mergeOne']) and u['mergeOne'][0] == 'Zusammenführen' and ['shape', True] in u['mergeOne'][1] and ['cad', True] in u['mergeOne'][1] and u['mergeOne'][2] == ['Zusammenführen', 'Später weitermachen'],
         '8. Strecke abgewählt: nur die Frequenz kommt dazu, Name bleibt, die hineingelegte Datei ist weg': u['merged'] == {'pts': 41, 'cad': 26, 'name': 'Schon in der App', 'fileGone': True},
         '9. andere Datei (Bild): einmal fragen; „Liegen lassen“ → bleibt, Hinweis mit „Aufräumen“': u['othersAsk'] == ['Eine andere Datei im Ordner', ['Nach „Unbekannte Dateien“', 'Liegen lassen']] and u['othersKept'][0] and 'foto.jpg' in (u['othersKept'][1] or '') and 'Aufräumen' in (u['othersKept'][1] or ''),
         '9. „Aufräumen“: liegt unter „Unbekannte Dateien/“ und steht dort im Hinweis; die nächste geht ohne Frage dorthin': u['othersMoved'] == [False, True, False, True] and u['othersQuiet'] == [False, False, True],
+        '10. auswählen bei Puls und Frequenz: beide Schalter an': bool(u['pickAsk']) and u['pickAsk'][0] == 'Neue Datei im Ordner' and bool(u['pickOne']) and u['pickOne'][1] == [['hr', True], ['cad', True]] and u['pickOne'][2] == ['Übernehmen', 'Nicht importieren', 'Später weitermachen'],
+        '10. Puls abgewählt: Tour ohne Puls, mit Frequenz; Datei einsortiert': bool(u['picked']) and u['picked']['hr'] is False and u['picked']['cad'] == 80 and u['picked']['pts'] > 30 and u['picked']['fileGone'],
+        '11. nicht importieren: keine Tour, die Datei liegt unter „Unbekannte Dateien/“': u['skipped'] == [False, False, True, False],
+        '12. Abgleich nach der Entscheidung abgebrochen: der nächste übernimmt, ohne zu fragen': u['resumed'] == [False, True, False],
+        '13. zwei Dateien derselben Tour: erst „2 neue Dateien“, nach dem Übernehmen die Frage zur vorhandenen Tour': u['twoAsk'] == '2 neue Dateien im Ordner' and bool(u['twoThen']) and u['twoThen'][0] == 'Datei zu einer Tour, die es schon gibt' and u['twoThen'][1] == ['Ja, überall die genaueren Daten', 'Selbst einstellen', 'Nicht importieren', 'Später'] and u['twoBetween'] == 1,
+        '13. genauere übernommen: eine Tour, beide Dateien einsortiert bzw. weg, keine Frage mehr': u['twoDone'] == [1, False, False, False],
     })
     for k, v in checks.items():
         print(('ok    ' if v else 'FALSCH') + ' ' + k)

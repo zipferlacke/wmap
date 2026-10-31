@@ -5,9 +5,13 @@
  *   tracks   { id, start, … }
  *   layers   { id, name, data (GeoJSON), … }
  *   kv       { id, … } – Einzelnes, z. B. der verbundene Ordner (data/folder.js)
+ *   local    { id, raw, at } – Kopie von Einstellungen und Touren aus dem localStorage für den Service Worker
+ *            (data/store.js local)
+ *
+ * Läuft auch im Service Worker (js/sw/sync.js).
  */
 const NAME = 'wmap';
-const VERSION = 3;
+const VERSION = 4;
 
 let dbp = null;
 function open() {
@@ -18,6 +22,7 @@ function open() {
       if (!db.objectStoreNames.contains('tracks')) db.createObjectStore('tracks', { keyPath: 'id' }).createIndex('start', 'start');
       if (!db.objectStoreNames.contains('layers')) db.createObjectStore('layers', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('local')) db.createObjectStore('local', { keyPath: 'id' });
     };
     req.onsuccess = () => {
       // Ein anderer Tab mit neuerer Version will umbauen: loslassen, beim nächsten Zugriff neu öffnen

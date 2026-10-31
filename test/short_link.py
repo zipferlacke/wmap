@@ -57,14 +57,14 @@ with Browser(width=420, height=900) as b:
     seen = None
     if '#k=' in short:
         b.open('wege.html#k=' + short.split('#k=')[1], wait=3)
-        seen = b.wait("return document.querySelector('.weg-note') && [document.querySelector('.weg-name input').value, location.hash.slice(0, 5), document.querySelector('.weg-note').innerText.trim()]", 20)
+        seen = b.wait("return document.querySelector('.weg-note') && [[...document.querySelector('.wege-bar .uD-title').childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim(), location.hash.slice(0, 5), document.querySelector('.weg-note').innerText.trim()]", 20)
     print('Geöffnet:', seen)
     b.open('wege.html#k=gibtesnicht1', wait=3)
     gone = b.wait("return [...document.querySelectorAll('.toast, .wmap-toast, [role=status]')].map((x) => x.innerText).join(' ') || document.body.innerText.includes('gibt es nicht mehr')", 10)
     print('Unbekannt:', gone)
     checks = {
         '1. langer Link: „Kurzen Link erstellen“ steht dabei': len(r['long']) > 100 and 'Kurzen Link erstellen' in r['buttons'],
-        '2. kurzer Link wege.html#k=… mit Hinweis auf die 30 Tage': '#k=' in short and len(short) < 80 and bool(r['note']) and '30 Tage' in r['note'],
+        '2. kurzer Link wege.html#k=<Kennung>.<Schlüssel> mit Hinweis auf die 30 Tage': '#k=' in short and '.' in short.split('#k=')[1] and len(short) < 110 and bool(r['note']) and '30 Tage' in r['note'],
         '3. kurzer Link geöffnet: dieselbe Aufzeichnung, noch nicht gespeichert': bool(seen) and seen[0] == 'Kurzlink-Runde' and seen[1] == '#weg=' and 'Geteilte Aufzeichnung' in seen[2],
         '4. unbekannter kurzer Link: Meldung': bool(gone) and (gone is True or 'gibt es nicht mehr' in str(gone)),
         '5. Server lehnt falsche Art, falschen Inhalt und unbekannte Kennung ab': r['badKind'] == 'Unbekannte Art' and r['badCode'] == 'Der Inhalt passt nicht' and 'gibt es nicht mehr' in (r['badId'] or ''),

@@ -111,14 +111,26 @@ export const TANKERKOENIG_KEY = '';
 export const MAX_ROUTES = 5;
 
 /** Steht im Changeset (created_by) – bei neuen Versionen mitziehen. */
-export const APP_VERSION = '2.3.1';
+export const APP_VERSION = '3.0.0';
 
 /**
  * Öffentliche Adresse der Web-App (mit / am Ende). Geteilte Links zeigen im
  * Browser auf die aktuelle Seite; in der Desktop-App (tauri://…) auf diese
  * Adresse – leer: dort wird das Teilen abgelehnt.
  */
-export const PUBLIC_URL = 'https://app.wuefl.de/wmap/';
+export const PUBLIC_URL = testServer() ?? 'https://app.wuefl.de/wmap/';
+
+/*
+ * Zum Testen der App gegen einen anderen Server (z. B. https://dev.wuefl.de/wmap/): im Speicher der App
+ * localStorage „wmap.testServer“ – nur Adressen unter wuefl.de. Server-Abrufe (services/api.js) und geteilte
+ * Links gehen dann dorthin. Ohne Eintrag wie immer
+ */
+function testServer() {
+  try {
+    const v = globalThis.localStorage?.getItem('wmap.testServer');
+    return v && /^https:\/\/[\w.-]+\.wuefl\.de\/[\w/-]*\/$/.test(v) ? v : null;
+  } catch { return null; }
+}
 
 /**
  * OpenStreetMap-Konto zum Hochladen der Antworten (OAuth 2.0 mit PKCE, ohne

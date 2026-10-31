@@ -27,7 +27,8 @@ const carStart = Array.isArray(carAt) && carAt.length >= 2 && carAt.slice(0, 2).
 export const { map, geolocate } = createMap('map', carStart ? {
   center: [carAt[0], carAt[1]], zoom: 16.5, pitch: 50, bearing: Number.isFinite(carAt[2]) ? carAt[2] : 0,
 } : lastView ? {
-  center: lastView.center, zoom: lastView.zoom, pitch: lastView.pitch ?? 0, bearing: lastView.bearing ?? 0,
+  // Neigung höchstens 85 – über 85 (gespeichert aus Street View, Version 3.0.0 vor der Korrektur) brach der Start ab
+  center: lastView.center, zoom: lastView.zoom, pitch: Math.min(lastView.pitch ?? 0, 85), bearing: lastView.bearing ?? 0,
 } : {});
 
 export const state = {
@@ -55,9 +56,12 @@ window.__wmap = { map, state };
    Hilfen
    ══════════════════════════════════════════════════════════════════════════ */
 
+/** Erst nach `ms` Ruhe aufrufen; `.cancel()` verwirft einen noch ausstehenden Aufruf */
 export const debounce = (fn, ms) => {
   let t;
-  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+  const call = (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+  call.cancel = () => clearTimeout(t);
+  return call;
 };
 
 /** Nach dem nächsten Layout – erst dann haben Sheet und Leiste ihre echte Größe. */
@@ -68,7 +72,8 @@ geolocate.on('geolocate', (pos) => { state.position = [pos.coords.longitude, pos
 /*
  * Der eigene Standort steht von Anfang an auf der Karte – auch in der Routenansicht, wo „Mein Standort“
  * keinen eigenen Startpunkt hat. Bisher erschien der Punkt erst nach einem Tipp auf den Standort-Knopf.
- * Nur mit schon erteilter Freigabe (gefragt wird hier nicht), und die Karte bleibt, wo sie ist: MapLibres
+ * In der App fragt Android beim Start nach der Freigabe (einmal je Sitzung, ui/permissions.js
+ * locationAtStart); im Browser nur mit schon erteilter Freigabe. Die Karte bleibt, wo sie ist: MapLibres
  * Knopf startet im Zustand „im Hintergrund“ (Punkt folgt, Kamera nicht) – ein Tipp darauf springt wie
  * gewohnt hin. Greift dafür wie map/location-dot.js auf Interna von MapLibre 5.x zu.
  */
@@ -76,7 +81,7 @@ async function showDot() {
   if (CAR || geolocate._watchState !== 'OFF') return;
   let granted = false;
   try {
-    if (geo.native) granted = await (await import('../ui/permissions.js')).locationAccess({ ask: false });
+    if (geo.native) granted = await (await import('../ui/permissions.js')).locationAtStart();
     else granted = (await navigator.permissions?.query({ name: 'geolocation' }))?.state === 'granted';
   } catch { granted = false; }
   if (!granted || geolocate._watchState !== 'OFF' || !geolocate.trigger()) return;
@@ -86,6 +91,37 @@ async function showDot() {
   btn?.classList.add('maplibregl-ctrl-geolocate-background');
 }
 map.once('load', () => setTimeout(showDot, 300));
+
+/*
+ * Tipp auf den Standort-Knopf: Der Standort wird auf jeden Fall frisch geholt. MapLibre selbst nimmt nur, was die
+ * laufende Abfrage als Nächstes meldet – stand man lange still, kam die erst nach dem langen Abstand, und war die
+ * Abfrage unterwegs eingeschlafen (Zug, Tunnel), kam nie etwas. Darum: Abfrage wieder jede Sekunde und neu
+ * gestartet (geo.wake), dazu eine eigene Anfrage. Kommt nichts, steht es unten.
+ */
+let locating = null;
+export function locateNow() {
+  if (CAR || locating) return;
+  geo.wake();
+  let answered = false;
+  const say = (text) => import('../ui/dialogs.js').then(({ toast }) => toast(text));
+  const slow = setTimeout(() => { if (!answered) say('Noch kein Standort – WMap sucht weiter (kein GPS-Empfang?)'); }, 12000);
+  locating = slow;
+  const end = () => { answered = true; clearTimeout(slow); locating = null; };
+  geo.once((p) => {
+    end();
+    state.position = [p.coords.longitude, p.coords.latitude];
+    if (geolocate._watchState !== 'OFF') geolocate._onSuccess?.(p);
+  }, (err) => {
+    end();
+    if (err?.code === 1) return;   // nicht erlaubt: das sagt schon der Dialog
+    say(/disabled/i.test(String(err?.message)) ? 'Der Standort ist am Handy ausgeschaltet' : 'Kein Standort gefunden – WMap sucht weiter');
+  }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+}
+// Nach MapLibres eigenem Klick (Blase): Hat der Tipp den Standort ausgeschaltet, nichts holen
+map.getContainer().addEventListener('click', (e) => {
+  if (e.target.closest?.('.maplibregl-ctrl-geolocate') && geolocate._watchState !== 'OFF') locateNow();
+});
+addEventListener('wmap:locate', () => locateNow());
 
 /*
  * Die Karte geht von selbst woanders hin (Route einpassen, Ort zeigen): Der Standort-Knopf lässt los.

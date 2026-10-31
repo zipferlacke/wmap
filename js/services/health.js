@@ -22,12 +22,14 @@
  * fragt der Import für den Rest nicht mehr und zählt sie nur.
  */
 import { tracks, buildTrack, guessProfile, sameTrack, defaultName, healthGone, healthTrackId, bulk } from '../data/tracks.js';
-import { local } from '../data/store.js';
+import { local, inSw } from '../data/store.js';
+import { tauri } from '../core/tauri.js';
 
-const core = window.__TAURI__?.core;
-export const healthAvailable = !!core && /Android/i.test(navigator.userAgent);
+// Im Service Worker über die Brücke der App (core/tauri.js) – dort erst nach tauri.ready() bekannt
+const available = () => tauri.here && /Android/i.test(navigator.userAgent);
+export const healthAvailable = available();
 
-const call = (cmd, args = {}) => core.invoke(`plugin:health|${cmd}`, args);
+const call = (cmd, args = {}) => tauri.invoke(`plugin:health|${cmd}`, args);
 const READ = 'android.permission.health.READ_EXERCISE';
 const ROUTES = 'android.permission.health.READ_EXERCISE_ROUTES';
 const VALUES = 'android.permission.health.READ_HEART_RATE';
@@ -94,7 +96,7 @@ export const appName = (pkg) => APP_NAME[pkg] ?? pkg?.split('.').slice(-2).join(
 
 /** Was freigegeben ist: read (Trainings), routes (Routen immer erlaubt) */
 export async function healthStatus() {
-  if (!healthAvailable) return { available: false, reason: 'Nur in der Android-App' };
+  if (!available()) return { available: false, reason: 'Nur in der Android-App' };
   const st = await call('status');
   if (!st.available) {
     return { available: false, reason: st.sdkStatus === 2 ? 'Health Connect muss erst aktualisiert werden' : 'Health Connect gibt es auf diesem Gerät nicht' };
@@ -111,11 +113,8 @@ export async function healthRequest() {
 
 /** Beim ersten Aufruf true (gemerkt in localStorage) */
 function once(key) {
-  try {
-    if (localStorage.getItem(key) === '2') return false;
-    localStorage.setItem(key, '2');
-    return true;
-  } catch { return false; }
+  if (local.raw(key) === '2') return false;
+  return local.setRaw(key, '2');
 }
 
 export const healthSettings = (target = 'health') => call('open_settings', { target });
@@ -301,10 +300,25 @@ let running = null;
  * bleiben liegen). onProgress(i, n). → { added, denied, values }
  */
 export function syncHealth(opts = {}) {
-  running ??= runSync(opts).finally(() => { running = null; });
+  running ??= (inSw ? runSync(opts) : hostSync(opts)).finally(() => { running = null; });
   return running;
 }
-export const healthSyncing = () => !!running;
+// Seite: läuft es im Service Worker? (aus seinen Meldungen)
+let remoteBusy = false;
+export const healthSyncing = () => !!running || remoteBusy;
+if (!inSw) {
+  addEventListener('wmap:health-progress', (e) => { if (e.detail?.remote) remoteBusy = true; });
+  addEventListener('wmap:health', (e) => { if (e.detail?.remote) remoteBusy = false; });
+}
+
+/** Seite: den Abgleich dem Service Worker geben (js/sw/sync.js) – ohne ihn hier */
+async function hostSync(opts) {
+  const { swSync, swCall } = await import('../core/sw-link.js');
+  if (!(await swSync())?.health) return runSync(opts);
+  const step = (e) => { if (e.detail?.remote) opts.onProgress?.(e.detail.i, e.detail.n); };
+  addEventListener('wmap:health-progress', step);
+  try { return await swCall('sync:health', { quiet: !!opts.quiet }); } finally { removeEventListener('wmap:health-progress', step); }
+}
 
 async function runSync({ quiet = false, onProgress } = {}) {
   bulk.active += 1;
@@ -336,7 +350,7 @@ async function runSync({ quiet = false, onProgress } = {}) {
  */
 export async function autoHealthSync({ periodic = false } = {}) {
   const mode = healthSync.auto;
-  if (!healthAvailable || mode === 'off' || (periodic && mode !== 'every30')) return null;
+  if (!available() || mode === 'off' || (periodic && mode !== 'every30')) return null;
   if (!periodic && Date.now() - (healthSync.last()?.at ?? 0) < 5 * 60000) return null;
   // Noch nicht freigegeben: still bleiben (kein Fehler bei jedem Öffnen)
   const st = await healthStatus().catch(() => null);

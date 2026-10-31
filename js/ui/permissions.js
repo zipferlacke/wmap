@@ -53,6 +53,20 @@ export async function locationAccess({ ask: prompt = true } = {}) {
   return ['granted', 'coarse'].includes(await locationState());
 }
 
+/**
+ * Beim Start der Karte in der App: gleich das Fenster von Android (ohne den Dialog davor), einmal je Sitzung –
+ * wer ablehnt, wird erst beim Tipp auf den Standort-Knopf wieder gefragt. → erlaubt?
+ */
+export async function locationAtStart() {
+  if (!permissionsHere) return true;
+  const st = await locationState();
+  if (st === 'granted' || st === 'coarse') return true;
+  if (st !== 'prompt') return false;
+  try { if (sessionStorage.getItem('wmap.location.asked')) return false; sessionStorage.setItem('wmap.location.asked', '1'); } catch { /* ohne Speicher: fragen */ }
+  await requestLocation();
+  return ['granted', 'coarse'].includes(await locationState());
+}
+
 /* ── Benachrichtigung beim Aufzeichnen ────────────────────────────────────── */
 
 /** → 'granted' | 'prompt' | 'none' (App kennt die Abfrage nicht – vor 2.2.0) */

@@ -1,5 +1,6 @@
-"""Weg mit Puls und Frequenz: Diagramm-Umschalter, Diagramm im Vollbild, Runden (1/2/5 km), schnellste/langsamste, GPX mit Messwerten."""
+"""Weg mit Puls und Frequenz: Diagramm-Reihen frei kombinierbar (Chip schaltet dazu/weg, je Reihe eine Skala), Diagramm im Vollbild, Runden (1/2/5 km), schnellste/langsamste, GPX mit Messwerten."""
 import sys
+import time
 from common import Browser
 
 # 6,3 km nach Osten, alle 10 s ein Punkt; km 2–3 schnell, km 4–5 langsam
@@ -38,14 +39,26 @@ with Browser(width=420, height=900) as b:
     b.open('wege.html?id=wtest1', wait=5)
     tabs = b.js("return [...document.querySelectorAll('.weg-chart-tabs .chip')].map(c => c.innerText.trim() + (c.getAttribute('aria-pressed') === 'true' ? ' *' : ''))")
     print('Diagramme:', tabs)
-    for kind in ['hr', 'speed', 'cad']:
+    print('ok    ' if tabs and all(x.endswith(' *') for x in tabs) else 'FALSCH', 'Ohne eigene Wahl alle Reihen in einem Diagramm')
+    b.js("localStorage.setItem('wmap.chart', JSON.stringify(['ele']))")
+    b.open('wege.html?id=wtest1', wait=5)
+    # Chips schalten Reihen dazu und weg – mindestens eine bleibt; der Titel nennt, was gezeigt wird
+    b.js("localStorage.setItem('wmap.chart', JSON.stringify(['ele'])); document.querySelector('[data-chart=speed]').click(); document.querySelector('[data-chart=speed]').click()")
+    shown = []
+    for kind in ['hr', 'ele', 'speed', 'hr', 'cad', 'speed', 'cad']:
         b.js(f"document.querySelector('[data-chart={kind}]').click()")
-        b.wait("return document.querySelector('.elevation .dg_tools')")
-        print(' ', kind, '→', b.js("return document.querySelector('.elevation .elev-mountain')?.textContent + ' | ' + [...document.querySelectorAll('.elevation .dg_chip, .elevation [class*=chip]')].map(x => x.innerText.replace(/\\s+/g, ' ')).slice(0, 3).join(' / ')"))
+        time.sleep(.4)
+        shown.append(b.js("return [document.querySelector('.elevation .elev-mountain')?.title, [...document.querySelectorAll('.weg-chart-tabs [aria-pressed=true]')].map(c => c.dataset.chart).join('+'), document.querySelectorAll('.elevation .dg_chip, .elevation [class*=chip]').length]"))
+    print('Kombiniert:', shown)
+    want = [['Höhe + Puls', 'ele+hr'], ['Puls', 'hr'], ['Puls + Tempo', 'speed+hr'], ['Tempo', 'speed'], ['Tempo + Schrittfrequenz', 'speed+cad'], ['Schrittfrequenz', 'cad'], ['Schrittfrequenz', 'cad']]
+    for name, ok in {
+        'Reihen kombinieren: Puls zur Höhe, Höhe weg, Tempo dazu …, die letzte bleibt': [x[:2] for x in shown] == want,
+        'Zwei Reihen: je ein Chip mit dem Durchschnitt in ihrer Farbe': shown[2][2] >= 2,
+    }.items():
+        print('ok    ' if ok else 'FALSCH', name)
     b.shot('weg-diagramm')
     # Vollbild: dasselbe Diagramm im Dialog, die Umschalter ziehen mit; zu per Knopf und per Esc, danach wieder zu öffnen
-    import time
-    state = "const d = document.querySelector('dialog.dg_fs'), bar = document.querySelector('.weg-chart-tabs'); return [!!d?.open, !!bar?.closest('dialog.dg_fs'), bar?.querySelector('[aria-pressed=true]')?.dataset.chart, document.querySelector('.dg_fsbtn')?.title, document.querySelector('.elev-mountain')?.title, document.querySelector('.elevation').offsetHeight > 400]"
+    state = "const d = document.querySelector('dialog.dg_fs'), bar = document.querySelector('.weg-chart-tabs'); return [!!d?.open, !!bar?.closest('dialog.dg_fs'), [...(bar?.querySelectorAll('[aria-pressed=true]') ?? [])].map(c => c.dataset.chart).join('+'), document.querySelector('.dg_fsbtn')?.title, document.querySelector('.elev-mountain')?.title, document.querySelector('.elevation').offsetHeight > 400]"
     b.js("document.querySelector('.elevation .dg_fsbtn').click()"); time.sleep(1)
     full = b.js(state)
     b.js("document.querySelector('dialog.dg_fs [data-chart=hr]').click()"); time.sleep(1)
@@ -60,8 +73,8 @@ with Browser(width=420, height=900) as b:
     print('Vollbild:', full, switched, closed, again, esc)
     for name, ok in {
         'Vollbild: Diagramm füllt den Dialog, Umschalter sind dabei': full == [True, True, 'cad', 'Vollbild verlassen', 'Schrittfrequenz', True],
-        'Vollbild: umschalten auf Puls, Knopf bleibt „verlassen“': switched == [True, True, 'hr', 'Vollbild verlassen', 'Puls', True],
-        'Vollbild: zu per Knopf – Diagramm und Umschalter zurück im Blatt, Auswahl bleibt': closed == [False, False, 'hr', 'Vollbild', 'Puls', False],
+        'Vollbild: Puls dazu, Knopf bleibt „verlassen“': switched == [True, True, 'hr+cad', 'Vollbild verlassen', 'Schrittfrequenz + Puls', True],
+        'Vollbild: zu per Knopf – Diagramm und Umschalter zurück im Blatt, Auswahl bleibt': closed == [False, False, 'hr+cad', 'Vollbild', 'Schrittfrequenz + Puls', False],
         'Vollbild: geht danach wieder auf, zu per Esc': again[:2] == [True, True] and esc == closed,
     }.items():
         print('ok    ' if ok else 'FALSCH', name)

@@ -19,6 +19,35 @@ export const offlineSetting = {
   set: (on) => local.set(SETTING, !!on),
 };
 
+/*
+ * Neue Fassung gleich beim Öffnen: Bei gleicher Versionsnummer (nur geänderte Dateien) wartete sie still, bis alle
+ * WMap-Tabs zu waren – Neu laden reichte nicht, auf dev sah man lange die alte. Jetzt: Wartet beim Öffnen eine
+ * (oder wird sie in den ersten 20 s fertig) und hat man noch nichts angefasst, wird sie aktiv und die Seite lädt
+ * einmal neu. Danach wie bisher (sw.js): Mitten im Arbeiten springt nichts.
+ */
+const FRESH_MS = 20000;
+let touched = false;
+for (const t of ['pointerdown', 'keydown', 'wheel']) addEventListener(t, () => { touched = true; }, { once: true, capture: true, passive: true });
+
+async function freshOnOpen() {
+  // Nicht im Kreis: höchstens einmal je Minute
+  try { if (Date.now() - Number(sessionStorage.getItem('wmap.fresh') ?? 0) < 60000) return; } catch { return; }
+  const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
+  // Allererster Besuch: Die erste Fassung wird ohnehin sofort aktiv
+  if (!reg?.active) return;
+  const take = (w) => {
+    if (!w || touched || performance.now() > FRESH_MS) return;
+    try { sessionStorage.setItem('wmap.fresh', String(Date.now())); } catch { return; }
+    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+    w.postMessage({ type: 'skip-waiting' });
+  };
+  if (reg.waiting) { take(reg.waiting); return; }
+  reg.addEventListener('updatefound', () => {
+    const w = reg.installing;
+    w?.addEventListener('statechange', () => { if (w.state === 'installed') take(w); });
+  });
+}
+
 export async function registerOffline() {
   if (!('serviceWorker' in navigator)) return;
   // Ein neuer Service Worker fragt vor dem Installieren, wie alt die App (Tauri-Teil) ist (sw.js appCurrent) –
@@ -35,7 +64,11 @@ export async function registerOffline() {
     await new Promise((r) => setTimeout(r, 1500));
   }
   try {
-    await navigator.serviceWorker.register('./sw.js');
+    // Als Modul mit dem Abgleich (sw-app.js); kann der Browser das nicht, sw.js allein. `updateViaCache: 'none'`:
+    // auch die eingebundenen Dateien beim Prüfen auf Updates frisch holen, nicht aus dem HTTP-Cache
+    await navigator.serviceWorker.register('./sw-app.js', { type: 'module', updateViaCache: 'none' })
+      .catch(() => navigator.serviceWorker.register('./sw.js'));
+    freshOnOpen();
     const reg = await navigator.serviceWorker.ready;
     // Was schon geladen ist, bevor der Service Worker mitlesen konnte
     const urls = performance.getEntriesByType('resource').map((e) => e.name)

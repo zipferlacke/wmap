@@ -28,7 +28,7 @@ import { countOsm } from './stats.js';
 import { esc } from '../core/geo.js';
 import { hoursField, mountHours } from './hours-editor.js';
 import { openLink } from '../core/links.js';
-import { TRAITS, editFields, EDIT_SOCKETS } from '../ui/poi-info.js';
+import { TRAITS, EQUIPMENT, editFields, EDIT_SOCKETS } from '../ui/poi-info.js';
 // Auswahl mit Suche für <select data-sp-picker> (legt sich selbst an)
 import '../../libs/wuefl-libs/selectpicker/selectpicker.js';
 
@@ -132,9 +132,11 @@ const field = ([k, label, type, ph], v = '', { tag = true } = {}) => `<label cla
 // Wie in der Ortskarte (ui/poi-info.js), dazu Rollstuhl; je Wert ein Wort
 const EDIT_TRAITS = [
   ...TRAITS.map(([k, label, txt]) => [k, label, k === 'internet_access' ? ['wlan'] : Object.keys(txt)]),
+  ...EQUIPMENT.filter(([k]) => k !== 'wheelchair').map(([k, label]) => [k, label, k === 'internet_access' ? ['wlan'] : ['yes']]),
+  ['toilets:access', 'Toiletten für alle', ['yes', 'customers']],
   ['wheelchair', 'Rollstuhlgerecht', ['yes', 'limited']],
 ];
-const WORD = { yes: 'Ja', only: 'Nur', limited: 'Teilweise', wlan: 'Ja', no: 'Nein' };
+const WORD = { yes: 'Ja', only: 'Nur', limited: 'Teilweise', wlan: 'Ja', no: 'Nein', customers: 'Nur Gäste' };
 
 /** Merkmale als Zeilen mit Auswahl (leer, wenn keine) */
 const traitsBlock = (list, tags = {}) => (list.length ? `<div class="osm-traits"><h4 class="osm-sub"><span class="msr">checklist</span> Merkmale</h4>${list.map(([k, label, vals]) => {

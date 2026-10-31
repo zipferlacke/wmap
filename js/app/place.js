@@ -14,6 +14,8 @@ import { share, placeUrl } from '../ui/share.js';
 import { toast } from '../ui/dialogs.js';
 import { editPlace, addPlace } from '../osm/edit.js';
 import { bboxAround, esc } from '../core/geo.js';
+import { fmtDms, fmtLatLon, fmtMgrs, fmtPlus, fmtUtm } from '../core/coords.js';
+import { local } from '../data/store.js';
 import { clearCategory, runCategory } from './category.js';
 import { $, afterLayout, chipHtml, current, extentToBounds, fitTo, lastHl, map, markerEl, parseTags, q, releaseLock, sheet, showHl, state, viewPadding } from './core.js';
 import { isPoi } from './drive-target.js';
@@ -27,6 +29,40 @@ import { TRAFFIC_ICON, TRAFFIC_LABEL } from './traffic-along.js';
 import { back, closeAll, openSheet, remember, replaceTop, stack } from './views.js';
 
 /* ── Ort ──────────────────────────────────────────────────────────────────── */
+
+/**
+ * Koordinaten jedes Orts, gleich unter dem Namen: Breite/Länge und MGRS (UTMREF – das Gitter von NATO, Bundeswehr,
+ * Feuerwehr, THW) immer, aufgeklappt dazu UTM, Plus Code und Grad/Minuten/Sekunden. Ein Tipp kopiert. Ob
+ * aufgeklappt, merkt sich WMap.
+ */
+const MORE_FORMATS = [['UTM', fmtUtm], ['Plus Code', fmtPlus], ['Grad, Minuten, Sekunden', fmtDms]];
+const COORDS_OPEN = 'wmap.coordsOpen';
+function paintCoords(box, p) {
+  const open = !!local.get(COORDS_OPEN, false);
+  const btn = (text, icon = 'content_copy') => `<button type="button" class="coord" data-copy="${esc(text)}" title="Kopieren"><span class="msr">${icon}</span>${esc(text)}</button>`;
+  const mgrs = fmtMgrs(p);
+  box.innerHTML = `<div class="coord-main">${btn(fmtLatLon(p), 'my_location')}${mgrs ? btn(mgrs, 'grid_4x4') : ''}
+      <button type="button" class="coord-more" aria-expanded="${open}" title="Weitere Formate"><span class="msr">expand_more</span></button></div>
+    <dl class="coord-list"${open ? '' : ' hidden'}>${MORE_FORMATS.map(([label, fmt]) => [label, fmt(p)]).filter(([, v]) => v)
+      .map(([label, v]) => `<div><dt>${esc(label)}</dt><dd>${btn(v)}</dd></div>`).join('')}</dl>`;
+}
+{
+  const box = $('[data-view="place"] .place-coords');
+  box.addEventListener('click', (e) => {
+    const copy = e.target.closest('[data-copy]');
+    if (copy) {
+      const text = copy.dataset.copy;
+      navigator.clipboard?.writeText(text).then(() => toast(`Kopiert: ${text}`), () => toast('Kopieren ging nicht'));
+      return;
+    }
+    const more = e.target.closest('.coord-more');
+    if (!more) return;
+    const open = more.getAttribute('aria-expanded') !== 'true';
+    more.setAttribute('aria-expanded', String(open));
+    box.querySelector('.coord-list').hidden = !open;
+    local.set(COORDS_OPEN, open);
+  });
+}
 
 let placeMarker = null;
 let placeCtl = null;
@@ -101,6 +137,7 @@ export async function showPlace(f, { push = true, fly = true, over = false } = {
   paintPlaceActions();
   const facts = $('.place-facts', view);
   facts.innerHTML = '';
+  paintCoords($('.place-coords', view), p);
   $('.place-layers', view).innerHTML = '';
   resetStop();
   $('.place-transit', view).innerHTML = '';
@@ -116,9 +153,17 @@ export async function showPlace(f, { push = true, fly = true, over = false } = {
     else afterLayout(() => { releaseLock(); map.flyTo({ center: p, zoom: Math.max(map.getZoom(), 16), padding: viewPadding(), duration: 1200 }); });
   }
 
+  // Ohne Namen (Parkplatz, Bank, Toilette …) steht groß, was es ist – nicht „Ort“; die Art klein darunter bleibt
+  const unnamed = !f.properties.name && !f.properties._point && !f.properties.street;
   const show = (tags) => {
-    const info = describePoi(tags, { name: d.title, fallbackType: d.type });
+    const info = describePoi(tags, { name: unnamed ? '' : d.title, fallbackType: d.type });
     facts.innerHTML = info.facts.length || info.status || info.website ? poiCard(info) : '';
+    const title = unnamed && (tags.name || tags.brand || info.type);
+    if (title) {
+      f.properties.name = title;
+      $('.place-title', view).textContent = title;
+      if (!over) q.value = title;
+    }
     if (!d.type && info.type) $('.place-sub', view).textContent = [info.type, d.subtitle].filter(Boolean).join(' · ');
   };
 
@@ -182,7 +227,9 @@ export function paintPlaceActions() {
   const f = state.place;
   if (!f) return;
   const point = f.geometry.coordinates;
-  const label = f.properties._point ? 'Punkt auf der Karte' : geocode.describe(f).title;
+  // Freier Punkt: „Punkt auf der Karte“ (als Wegpunkt später nach der Adresse benannt) – ein geteilter Ort oder
+  // geo:-Link behält seinen Namen
+  const label = f.properties._point ? (f.properties.name || 'Punkt auf der Karte') : geocode.describe(f).title;
   const wp = { label, point, me: false, ...(isPoi(f) ? { poi: true } : {}) };
   const toRoute = (fn) => () => { if (stack.at(-1)?.view === 'place') back(); fn(); };
   let list;
@@ -200,8 +247,9 @@ export function paintPlaceActions() {
       ['directions', 'Route', true, () => enterRoute({ to: wp })],
       // Mit Android Auto verbunden: der Ort geht ans Auto – dort Route, Parkplatz davor und „Los“
       carLink.connected && ['directions_car', 'Ans Auto', false, () => sendToCar({ type: 'place', point, label, poi: !!wp.poi }, toast)],
-      ['share', 'Teilen', false, () => share({ title: label, text: label, url: () => placeUrl(point, label) }, toast)],
+      ['share', 'Teilen', false, () => share({ title: label, text: label, url: () => placeUrl(point, label), geo: { point, name: label } }, toast)],
       ['radar', 'Erreichbar', false, () => openReach({ origin: point, label })],
+      ['streetview', 'Umsehen', false, () => { closeAll(); dispatchEvent(new CustomEvent('wmap:street', { detail: point })); }],
       [places.find(point) ? 'bookmark_added' : 'bookmark_add', places.find(point) ? 'Gemerkt' : 'Merken', false,
         () => togglePlace(f, point, label, f.properties._point ? '' : geocode.describe(f).subtitle)],
       // OpenStreetMap: Ort aus OSM bearbeiten, am freien Punkt einen neuen eintragen
@@ -221,19 +269,22 @@ export function paintPlaceActions() {
   }));
 }
 
-/** Langes Drücken / Rechtsklick: der Punkt als Ort, Name per Rückwärtssuche. */
-export function showPoint(point) {
-  const f = { type: 'Feature', geometry: { type: 'Point', coordinates: point }, properties: { name: 'Punkt auf der Karte', _point: true } };
-  showPlace(f, { over: overContext(), fly: false });
-  $('[data-view="place"] .place-sub').textContent = `${point[1].toFixed(5)}, ${point[0].toFixed(5)}`;
+/** Langes Drücken / Rechtsklick (oder Koordinate in der Suche): der Punkt als Ort, Adresse per Rückwärtssuche. */
+export function showPoint(point, { fly = false, name = '', zoom = null } = {}) {
+  const f = { type: 'Feature', geometry: { type: 'Point', coordinates: point }, properties: { name: name || 'Punkt auf der Karte', _point: true } };
+  showPlace(f, { over: overContext(), fly: fly && !zoom });
+  if (fly && zoom) map.flyTo({ center: point, zoom, padding: viewPadding(), duration: 1200 });
+  $('[data-view="place"] .place-sub').textContent = 'Adresse wird gesucht …';
   showLayerInfo(point, $('[data-view="place"] .place-layers'));
+  const sub = (text) => { if (state.place === f) $('[data-view="place"] .place-sub').textContent = text; };
   geocode.reverse(point).then((r) => {
-    if (state.place !== f || !r) return;
+    if (state.place !== f) return;
+    if (!r) { sub(''); return; }
     // Adresse als Vorschlag, falls hier ein Ort eingetragen wird
     f.properties._address = r.properties;
     const d = geocode.describe(r);
-    $('[data-view="place"] .place-sub').textContent = `bei ${[d.title, d.subtitle].filter(Boolean).join(', ')}`;
-  }).catch(() => {});
+    sub(`bei ${[d.title, d.subtitle].filter(Boolean).join(', ')}`);
+  }).catch(() => sub(''));
 }
 
 /**

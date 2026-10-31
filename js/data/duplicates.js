@@ -21,6 +21,7 @@
  */
 import { tracks, sameActivity, trackEnd } from './tracks.js';
 import { tours } from './store.js';
+import { fmtDistance, fmtTime } from '../core/geo.js';
 
 const VALUES = ['hr', 'cad', 'pow'];
 // Karteikarte (Weg liegt nur im Ordner): sie weiß, welche Messwerte die Datei hat
@@ -141,20 +142,42 @@ export function enrich(keep, file, { shape = false, values = false } = {}) {
  * [{ key: 'shape' | 'hr' | 'cad' | 'pow' | 'marks', detail, on }] – `on`: vorgeschlagen. Es gewinnen erst einmal
  * die genaueren Daten: was hier fehlt, kommt dazu; Abweichendes von der Seite mit mehr Punkten.
  */
+/*
+ * Je Angabe auch, wie sie auf beiden Seiten aussieht (`old`: was bisher da ist, `new`: was die Datei bzw. die
+ * doppelte Aufzeichnung hat) – für die Wahl „Neu“ oder „Bisher“ in ui/merge-ask.js
+ */
+const shapeText = (t, n) => [t.length > 0 && fmtDistance(t.length), (t.moving || (t.end - t.start) / 1000) > 0 && fmtTime(t.moving || (t.end - t.start) / 1000), `${n} Punkte`].filter(Boolean).join(' · ');
+const unit = { hr: ' bpm', cad: '/min', pow: ' W' };
 export function choices(keep, file) {
   const [here, there] = [pointCount(keep), pointCount(file)];
   const out = [];
-  if (here !== there) out.push({ key: 'shape', detail: `${Math.abs(there - here)} Punkte ${there > here ? 'mehr' : 'weniger'} in der Datei (${there} statt ${here})`, on: there > here });
+  if (here !== there) out.push({ key: 'shape', detail: `${Math.abs(there - here)} Punkte ${there > here ? 'mehr' : 'weniger'} in der Datei (${there} statt ${here})`, on: there > here,
+    old: shapeText(keep, here), new: shapeText(file, there) });
   for (const k of VALUES) {
     if (!hasValues(file, k)) continue;
     const [a, b] = [meanOf(keep, k), meanOf(file, k)];
-    if (!hasValues(keep, k)) out.push({ key: k, detail: `fehlt hier – in der Datei Ø ${Math.round(b)}`, on: true });
-    else if (Math.abs(a - b) > Math.max(a, b) * 0.03) out.push({ key: k, detail: `Ø ${Math.round(b)} in der Datei, Ø ${Math.round(a)} hier`, on: there > here });
+    if (!hasValues(keep, k)) out.push({ key: k, detail: `fehlt hier – in der Datei Ø ${Math.round(b)}`, on: true, old: 'keine', new: `Ø ${Math.round(b)}${unit[k]}` });
+    else if (Math.abs(a - b) > Math.max(a, b) * 0.03) out.push({ key: k, detail: `Ø ${Math.round(b)} in der Datei, Ø ${Math.round(a)} hier`, on: there > here, old: `Ø ${Math.round(a)}${unit[k]}`, new: `Ø ${Math.round(b)}${unit[k]}` });
   }
   if (file.marks?.length) {
-    if (!keep.marks?.length) out.push({ key: 'marks', detail: `${file.marks.length + 1} Runden in der Datei, hier keine`, on: true });
-    else if (JSON.stringify(keep.marks) !== JSON.stringify(file.marks)) out.push({ key: 'marks', detail: `${file.marks.length + 1} Runden in der Datei, ${keep.marks.length + 1} hier`, on: false });
+    if (!keep.marks?.length) out.push({ key: 'marks', detail: `${file.marks.length + 1} Runden in der Datei, hier keine`, on: true, old: 'keine', new: `${file.marks.length + 1} Runden` });
+    else if (JSON.stringify(keep.marks) !== JSON.stringify(file.marks)) out.push({ key: 'marks', detail: `${file.marks.length + 1} Runden in der Datei, ${keep.marks.length + 1} hier`, on: false, old: `${keep.marks.length + 1} Runden`, new: `${file.marks.length + 1} Runden` });
   }
+  return out;
+}
+
+/** Neue Datei: welche Messwerte sie hat → [{ key: 'hr' | 'cad' | 'pow' | 'marks', detail, on: true }] (Rückfrage „Auswählen“) */
+export function dataOf(t) {
+  const out = VALUES.filter((k) => hasValues(t, k)).map((k) => ({ key: k, detail: `Ø ${Math.round(meanOf(t, k))}${k === 'pow' ? ' W' : ''} in der Datei`, on: true }));
+  if (t.marks?.length) out.push({ key: 'marks', detail: `${t.marks.length + 1} Runden in der Datei`, on: true });
+  return out;
+}
+
+/** Ohne das, was abgewählt ist (`picks`: { hr, cad, pow, marks } – false bleibt weg) */
+export function withoutData(t, picks) {
+  if (!picks || typeof picks !== 'object') return t;
+  const out = { ...t };
+  for (const k of [...VALUES, 'marks']) if (picks[k] === false) delete out[k];
   return out;
 }
 

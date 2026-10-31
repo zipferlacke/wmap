@@ -35,6 +35,7 @@ export async function readFiles(list) {
         const [t] = parseFit(bytes, f.name);
         if (!t) throw new Error('Keine Strecke in der Datei');
         f.text = text = trackGpx(t);
+        f.fit = true;
       }
       f.tour = tourFromGpx(text, f.name);
       if (!f.tour) throw new Error('Keine Strecke in der Datei');
@@ -79,6 +80,8 @@ export async function takeFile(f, choice = null) {
   const dup = (await tracks.all()).find((t) => t.id === f.id || sameTrack(t, f.track)) ?? null;
   if (!dup) {
     const t = { ...f.track, id: f.id ?? f.track.id, updated: Date.now() };
+    // Fremde Datei: bekommt einen Namen aus Art, Gegend und Tageszeit (data/auto-name.js)
+    if (f.fit || !/<keywords>[^<]*\bwmap:/.test(f.text)) t.nameAuto = 'pending';
     await tracks.put(t);
     f.saved = t.id;
     return true;

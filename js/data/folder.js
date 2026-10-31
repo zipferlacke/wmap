@@ -39,6 +39,9 @@
  *                        choices/combine): Die WMap-Datei des Wegs trägt das
  *                        Ergebnis, GPX geht, FIT bleibt und steht für den Weg.
  *                        Hat die Datei nichts anderes, ohne Frage
+ *   nicht importieren    nach „Unbekannte Dateien/“
+ * Gefragt wird erst nach den neuen, danach nach denen zu vorhandenen Touren;
+ * die Antwort gilt, bis ein Abgleich durch ist (c.decide).
  * Lesbar, aber keine Tour darin: nach „Unbekannte Dateien/“ – nach 30 Tagen
  * gelöscht, bis dahin auf „Sicherung & Synchronisation“ genannt. Leere und
  * gerade nicht lesbare Dateien (Cloud-Ordner hakt) bleiben liegen.
@@ -100,13 +103,35 @@
  */
 import { store } from './db.js';
 import { tracks, trackGpx, parseGpx, sameTrack, backup, restore, bulk, stubOf, fromFile, unstub, hasValues } from './tracks.js';
-import { merge, offers, picksFor, combine } from './duplicates.js';
+import { merge, offers, picksFor, combine, dataOf, withoutData } from './duplicates.js';
 import { parseFit, trackFit } from './fit.js';
 import { makeZip, readZip } from './zip.js';
 import { tours, toGpx, coordsOf, shapeOf, local } from './store.js';
 import { simplifyTo, distance } from '../core/geo.js';
 import { connections, mergePlaces, mergeSaved } from './saved.js';
 import { devLog } from '../core/devlog.js';
+import { tauri } from '../core/tauri.js';
+import { parseXml } from '../core/xml.js';
+import { inSw } from './store.js';
+// Seite: Gleicht der Service Worker ab (js/sw/sync.js)? Dann geht die Arbeit dorthin – ein Seitenwechsel bricht sie
+// nicht ab. Ohne ihn (erster Besuch, alter Browser, Tests mit _useBackend) wie früher hier
+const link = inSw ? null : import('../core/sw-link.js');
+async function viaSw() {
+  if (inSw || testBackend) return null;
+  const { swSync, swCall } = await link;
+  return (await swSync())?.folder ? swCall : null;
+}
+// Seite: Stand des Abgleichs im Service Worker (aus seinen Meldungen)
+let remote = { busy: false, progress: null };
+if (!inSw) {
+  addEventListener('wmap:folder-progress', (e) => {
+    const d = e.detail ?? {};
+    if (!d.remote) return;
+    if (d.done) remote = { busy: false, progress: null };
+    else if (d.busy && !Number.isFinite(d.n)) remote = { busy: true, progress: remote.progress };
+    else remote = { busy: true, progress: { i: d.i, n: d.n, since: d.since, what: d.what } };
+  });
+}
 
 const kv = store('kv');
 const KEY = 'folder';
@@ -118,10 +143,12 @@ const DAY_MS = 24 * 3600 * 1000;
 const AUTO_EVERY_MS = 5 * 60000;          // beim Öffnen einer Seite höchstens so oft
 const AUTO = 'wmap.sync.auto';            // 'off' | 'start' (beim Öffnen und nach Änderungen) | 'every30' (dazu alle 30 min)
 
-const core = typeof window !== 'undefined' ? window.__TAURI__?.core : null;
-const nativeHere = !!core;
-const browserHere = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+// App: Plugin „folder“ – im Service Worker über die Brücke (core/tauri.js, erst nach tauri.ready() bekannt)
+const nativeHere = () => tauri.here;
+// Browser: Ordner wählen geht nur in der Seite, ein gewählter Ordner geht auch im Service Worker
+const browserHere = typeof window !== 'undefined' ? 'showDirectoryPicker' in window : typeof FileSystemDirectoryHandle !== 'undefined';
 
+let supportedSet = null;  // von Hand gesetzt (Tests)
 let conf = null;          // { id, native?, handle?, name, index: { pfad: { id, kind, at, hash, rev } }, last, result, error, pending }
 let syncing = null;
 let progress = null;      // { i, n, since } während des Abgleichs
@@ -138,8 +165,8 @@ async function load() {
   conf = (await kv.get(KEY).catch(() => null)) ?? null;
   // App: Ordner im Plugin gewählt, aber hier nie angekommen (die Antwort des
   // Ordnerdialogs ging unterwegs verloren) – dann jetzt übernehmen
-  if (!conf && nativeHere) {
-    const i = await core.invoke('plugin:folder|info').catch(() => null);
+  if (!conf && nativeHere()) {
+    const i = await call('info').catch(() => null);
     if (i?.connected) {
       conf = { id: KEY, native: true, name: i.name ?? 'Ordner', index: {}, last: null, result: null, error: null };
       await kv.put(conf).catch(() => {});
@@ -157,7 +184,7 @@ const persist = () => (testBackend ? null : kv.put(conf));
 
 /* ── Zugang: Browser-API oder App-Plugin ──────────────────────────────────── */
 
-const call = (cmd, args = {}) => core.invoke(`plugin:folder|${cmd}`, args);
+const call = (cmd, args = {}) => tauri.invoke(`plugin:folder|${cmd}`, args);
 
 /** In der App: das Plugin „folder“ */
 const nativeBackend = {
@@ -244,7 +271,8 @@ const backendOf = (c) => testBackend ?? (c.native ? nativeBackend : handleBacken
 
 export const folder = {
   /** Geht hier ein Ordner? (App immer, Browser nur Chrome/Edge) */
-  supported: nativeHere || browserHere,
+  get supported() { return supportedSet ?? (nativeHere() || browserHere); },
+  set supported(v) { supportedSet = v; },
 
   /** Selbst abgleichen: 'off', 'start' (beim Öffnen und nach Änderungen, Standard), 'every30' (dazu alle 30 min) */
   get auto() { const v = local.get(AUTO, 'start'); return v === true ? 'start' : v === false ? 'off' : v; },
@@ -258,11 +286,11 @@ export const folder = {
   get keep() { const v = String(local.get(KEEP, '30')); return v === 'all' || Number(v) > 0 ? v : '30'; },
   set keep(v) { local.set(KEEP, String(v)); },
 
-  /** Läuft gerade ein Abgleich? */
-  get busy() { return !!syncing; },
+  /** Läuft gerade ein Abgleich? (hier oder im Service Worker) */
+  get busy() { return !!syncing || remote.busy; },
 
   /** Wie weit? { i, n, since } – Dateien bzw. Einträge, seit wann (ms) – oder null */
-  get progress() { return progress; },
+  get progress() { return progress ?? remote.progress; },
 
   /** Stand für die Anzeige: { connected, name, permission, last, result, error, pending } */
   async info() {
@@ -277,7 +305,7 @@ export const folder = {
   async connect() {
     // Ordner wechseln: erst holen, was nur im alten lag
     if (await load()) await this.fillAll().catch(() => {});
-    if (nativeHere) {
+    if (nativeHere()) {
       let r;
       try { r = await call('pick'); } catch (err) {
         if (/abgebrochen|cancel/i.test(String(err))) throw Object.assign(new Error('abgebrochen'), { name: 'AbortError' });
@@ -298,6 +326,8 @@ export const folder = {
    * Wechseln des Ordners). → Anzahl, die nicht zu holen war
    */
   async fillAll() {
+    const sw = await viaSw();
+    if (sw) return sw('sync:fill');
     let missing = 0;
     for (const t of await tracks.all()) {
       if (!t.stub) continue;
@@ -315,8 +345,10 @@ export const folder = {
 
   /** Trennen – vorher kommt alles, was nur im Ordner lag, in die App. `keepStubs`: ohne das (Ordner ist weg) */
   async disconnect({ keepStubs = false } = {}) {
+    const sw = await viaSw();
+    if (sw) { await sw('sync:disconnect', { opts: { keepStubs } }); conf = null; return; }
     if (!keepStubs && conf) await this.fillAll().catch(() => {});
-    if (conf?.native || nativeHere) await call('disconnect').catch(() => {});
+    if (conf?.native || nativeHere()) await call('disconnect').catch(() => {});
     conf = null;
     await kv.remove(KEY);
     local.set(DELETED, []);
@@ -329,10 +361,24 @@ export const folder = {
    * → { imported, written, removed, moved, inbox } oder null (nicht verbunden)
    *
    * `decide`: was mit neu entdeckten Dateien geschieht (siehe Kopf, „Neue Dateien“) –
-   * { rest: 'best' | 'later', files: { Pfad: 'take' | 'later' | { shape, hr, cad, pow, marks } } }.
-   * Ohne das bleiben sie liegen und stehen in `inbox`.
+   *   neue        { fresh: 'take' | 'skip' | 'later' | { hr, cad, pow, marks }, news: { Pfad: dasselbe } }
+   *   zu Touren, die es schon gibt   { merge: 'best' | 'skip' | 'later' | { shape, hr, … }, merges: { Pfad: … } }
+   *   beide (bis 2.3.1)              { rest, files }
+   * 'skip': nach „Unbekannte Dateien/“; Haken mit false: bleibt weg. Gemerkt (c.decide), bis ein Abgleich
+   * durch ist. Ohne Entscheidung bleiben sie liegen und stehen in `inbox`. `others`: siehe folder-inbox.js.
    */
   async sync({ interactive = false, decide = null } = {}) {
+    const sw = await viaSw();
+    if (sw) {
+      // Im Browser fragt nur die Seite nach dem Recht (braucht den Klick) – danach darf er es auch
+      const c = interactive ? await load() : null;
+      const ask = c && !c.native ? await backendOf(c).permission(true).catch(() => 'denied') : null;
+      const r = await sw('sync:folder', { opts: { decide } });
+      // Er darf den Ordner nicht (Browser ohne dauerhafte Freigabe), die Seite schon: dann hier
+      if (!r?.needsPermission) return r;
+      const here = await load();
+      if (!here || (ask ?? await backendOf(here).permission(false).catch(() => 'denied')) !== 'granted') return r;
+    }
     // Mit Entscheidung: einen laufenden Abgleich erst zu Ende, dann eigens noch einmal
     if (syncing && decide) await syncing.catch(() => {});
     if (syncing) return syncing;
@@ -421,9 +467,18 @@ async function run(interactive, decide = null) {
   try {
     // Bis zum Ende „angefangen“: bricht er ab, macht die nächste Seite weiter
     if (!c.pending && !testBackend) { c.pending = true; await persist(); }
+    // Über neue Dateien entschieden: gilt, bis ein Abgleich durch ist – auch wenn dieser abbricht (Seite gewechselt),
+    // macht der nächste damit weiter, statt noch einmal zu fragen
+    const { others: _o, ...choice } = decide ?? {};
+    if (Object.keys(choice).length) {
+      c.decide = choice;
+      c.inbox = (c.inbox ?? []).filter((x) => (x.kind === 'merge' ? !(choice.merge || choice.merges?.[x.path] || choice.rest || choice.files?.[x.path]) : !(choice.fresh || choice.news?.[x.path] || choice.rest || choice.files?.[x.path])));
+      await persist();
+    }
     const watch = clocked(be);
     devLog('Abgleich beginnt');
     const out = await syncAll(c, watch.be, decide);
+    c.decide = null;
     out.times = watch.done();
     devLog('Abgleich fertig:', syncSummary(out), '·', syncTimes(out));
     c.last = Date.now();
@@ -514,9 +569,14 @@ async function syncAll(c, be, decide = null) {
   const next = {};
   const seen = new Set();
   const used = new Set([...files, ...listed.filter((f) => f.path.startsWith(BROKEN_DIR))].map((f) => f.path.toLowerCase()));
-  const out = { imported: 0, written: 0, removed: 0, moved: 0, merged: 0, inbox: [], broken, others: [] };
+  const out = { imported: 0, written: 0, removed: 0, moved: 0, merged: 0, skipped: 0, inbox: [], broken, others: [] };
   const waiting = {};         // neu entdeckt, noch nicht entschieden: Pfad → { at, item }
-  const choiceFor = (path) => decide?.files?.[path] ?? decide?.rest ?? null;
+  // Entscheidung: neue Dateien (fresh, je Datei news) und Dateien zu vorhandenen Touren (merge, je Datei merges) –
+  // `files`/`rest` gelten für beide (so fragte WMap bis 2.3.1). Gemerkt in c.decide, bis ein Abgleich durch ist
+  const chosen = c.decide ?? null;
+  const choiceFor = (path, kind = 'new') => (kind === 'merge'
+    ? chosen?.merges?.[path] ?? chosen?.files?.[path] ?? chosen?.merge ?? chosen?.rest
+    : chosen?.news?.[path] ?? chosen?.files?.[path] ?? chosen?.fresh ?? chosen?.rest) ?? null;
   const first = new Map();    // ID → erste Datei dazu { path, ours }
   const blocked = new Set();  // nicht lesbare, unbekannte Dateien (Pfad ohne „ (2)“)
   syncTracks = [...locals.values()].filter((e) => e.kind === 'track').map((e) => e.item);
@@ -602,7 +662,7 @@ async function syncAll(c, be, decide = null) {
     return reading.get(path);
   };
   // Wartet auf eine Entscheidung und ist unverändert: nicht noch einmal lesen
-  const parked = (f) => { const w = c.waiting?.[f.path]; return w && !index[f.path] && f.lastModified && w.at === f.lastModified && !choiceFor(f.path) ? w : null; };
+  const parked = (f) => { const w = c.waiting?.[f.path]; return w && !index[f.path] && f.lastModified && w.at === f.lastModified && !choiceFor(f.path, w.item?.kind) ? w : null; };
   const toRead = files.filter((f) => !unread(f) && !parked(f)).map((f) => f.path);
   let ahead = 0;
   const textOf = async (path) => {
@@ -672,13 +732,16 @@ async function syncAll(c, be, decide = null) {
    */
   const take = async (f, text, what) => {
     const fit = isFit(f.path), name = f.path.slice(f.path.lastIndexOf('/') + 1);
-    const choice = choiceFor(f.path);
+    let choice = choiceFor(f.path);
     const park = (item) => { out.inbox.push(item); waiting[f.path] = { at: f.lastModified, item }; };
-    const go = choice && choice !== 'later';
+    let go = choice && choice !== 'later' && choice !== 'skip';
+    // „Nicht importieren“: nach „Unbekannte Dateien/“ – dort löscht WMap sie nach 30 Tagen
+    const skip = async () => { await toBroken(f); out.skipped += 1; };
     if (what === 'tour') {
       const t = tourFromGpx(text, name);
       if (tours.all().some((x) => x.shape === t.shape && x.name === t.name)) { await be.remove(f.path); out.moved += 1; return; }
-      if (!go) { park({ path: f.path, file: name, name: t.name, length: t.stats?.length ?? 0, kind: 'tour' }); return; }
+      if (choice === 'skip') { await skip(); return; }
+      if (!go) { park({ path: f.path, file: name, name: t.name, length: t.stats?.length ?? 0, kind: 'tour', has: [] }); return; }
       const got = await importFile({ ...f, text, path: `Geplante Touren/${name}` }, null, null);
       const entry = got && await entryOf(got.id);
       if (!entry) return;
@@ -692,13 +755,21 @@ async function syncAll(c, be, decide = null) {
     const [t] = parseGpx(text);
     const twin = (syncTracks ?? []).find((x) => sameTrack(x, t));
     if (!twin) {
-      if (!go) { park({ path: f.path, file: name, name: t.name, start: t.start, length: t.length, kind: 'new' }); return; }
-      const got = await importFile({ ...f, text, path: `Aufgezeichnete Touren/${name}` }, null, null);
+      if (choice === 'skip') { await skip(); return; }
+      if (!go) { park({ path: f.path, file: name, name: t.name, start: t.start, length: t.length, kind: 'new', has: dataOf(t), look: { sport: t.sport ?? null, profile: t.profile ?? null } }); return; }
+      // Abgewählte Messwerte (Haken aus „Auswählen“) kommen nicht mit
+      const less = typeof choice === 'object' && Object.values(choice).includes(false) ? choice : null;
+      const got = await importFile({ ...f, text, path: `Aufgezeichnete Touren/${name}` }, null, null, less);
       const entry = got && await entryOf(got.id);
       if (!entry) return;
       seen.add(got.id);
       out.imported += 1;
-      if (fit) first.set(got.id, { path: await stand(f, entry.item, text, null, dataKey(entry.item)), ours: false });
+      // FIT mit weniger als in der Datei: Den Weg trägt eine WMap-Datei – die FIT-Datei bleibt daneben, ohne dass
+      // aus ihr später wieder geholt wird, was abgewählt war
+      if (fit && less) {
+        first.set(got.id, { path: await put(null, entry, null), ours: true });
+        await stand(f, entry.item, text);
+      } else if (fit) first.set(got.id, { path: await stand(f, entry.item, text, null, dataKey(entry.item)), ours: false });
       else {
         first.set(got.id, { path: await put(null, entry, null), ours: true });
         await be.remove(f.path);
@@ -706,7 +777,11 @@ async function syncAll(c, be, decide = null) {
       }
       return;
     }
-    // Gibt es schon. Karteikarte: erst ganz holen – geht das gerade nicht, nächstes Mal
+    // Gibt es schon – darüber wird für sich entschieden (nach den neuen, ui/folder-inbox.js)
+    choice = choiceFor(f.path, 'merge');
+    go = choice && choice !== 'later' && choice !== 'skip';
+    if (choice === 'skip') { await skip(); return; }
+    // Karteikarte: erst ganz holen – geht das gerade nicht, nächstes Mal
     const keep = twin.stub ? await fullFrom(twin, null) : twin;
     if (!keep) return;
     // Hat die Datei nur die gröbere Strecke und sonst nichts anderes, gibt es nichts zu fragen
@@ -1128,7 +1203,8 @@ const SETTINGS = [
 function snapshot() {
   const v = {};
   for (const k of SETTINGS) {
-    try { const raw = localStorage.getItem(k); if (raw !== null) v[k] = raw; } catch { /* gesperrt */ }
+    const raw = local.raw(k);
+    if (raw !== null) v[k] = raw;
   }
   return v;
 }
@@ -1171,7 +1247,7 @@ async function syncSettings(c, be, file, path) {
       if (m === undefined) delete merged[k]; else merged[k] = m;
     } else {
       took = true;
-      try { if (t === undefined) localStorage.removeItem(k); else localStorage.setItem(k, t); } catch { /* gesperrt */ }
+      local.setRaw(k, t === undefined ? null : t);
     }
   }
   const sorted = (o) => JSON.stringify(Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]])));
@@ -1309,7 +1385,7 @@ function serialize({ kind, item }) {
  * Weg, unter „Geplante Touren/“ eine Tour, unter „Bus & Bahn/“ eine
  * Verbindung, sonst: mit Zeitstempeln ein Weg. → { id, kind, rev } oder null
  */
-async function importFile(f, id, before = null) {
+async function importFile(f, id, before = null, less = null) {
   try {
     if (CONN_DIR.test(f.path)) {
       const c = JSON.parse(f.text);
@@ -1331,8 +1407,9 @@ async function importFile(f, id, before = null) {
       tours.put(tour);
       return { id: tour.id, kind: 'tour', rev: tour.updated };
     }
-    const [t] = parseGpx(f.text);
-    if (!t) return null;
+    const [read] = parseGpx(f.text);
+    if (!read) return null;
+    const t = withoutData(read, less);
     // Fremde Datei (ohne Kennung) zu einem Weg, den es schon gibt: bleibt der Weg.
     // Eine Datei mit Kennung wird immer ihr eigener Eintrag – dieselbe Aufzeichnung
     // unter zwei Kennungen legt der Abgleich danach zusammen (sameRecordings)
@@ -1341,6 +1418,8 @@ async function importFile(f, id, before = null) {
     if (twin) return { id: twin.id, kind: 'track', rev: rev(twin), file: t };
     const source = before?.source || t.source ? { ...before?.source, ...t.source } : undefined;
     const track = { ...unstub(before), ...t, id: id ?? before?.id ?? t.id, ...(source ? { source } : {}), updated: f.lastModified || Date.now() };
+    // Neue fremde Datei (Uhr, App): bekommt einen Namen aus Art, Gegend und Tageszeit (data/auto-name.js)
+    if (!before && !id && (isFit(f.path ?? '') || !/<keywords>[^<]*\bwmap:/.test(f.text))) track.nameAuto = 'pending';
     await tracks.putQuiet(track);
     syncTracks?.push(track);
     return { id: track.id, kind: 'track', rev: track.updated };
@@ -1349,7 +1428,7 @@ async function importFile(f, id, before = null) {
 
 /** GPX → Tour: Verlauf aus dem Track, die gesetzten Punkte aus den Wegpunkten */
 export function tourFromGpx(text, path = '') {
-  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  const doc = parseXml(text);
   if (doc.querySelector('parsererror')) return null;
   const pts = [...doc.querySelectorAll('trkpt, rtept')];
   if (pts.length < 2) return null;
@@ -1382,7 +1461,10 @@ export function tourFromGpx(text, path = '') {
 /* ── Automatisch: nach Änderungen kurz warten, dann abgleichen ────────────── */
 
 let timer = null;
+let soonDone = [];
 addEventListener('wmap:data', (e) => {
+  // Vom Service Worker gemeldet: dort schon vermerkt und abgeglichen
+  if (e.detail?.remote) return;
   const id = e.detail?.id;
   if (id && e.detail.removed) local.set(DELETED, [...new Set([...local.get(DELETED, []), id])]);
   // Wieder angelegt (ZIP einspielen, Import, Bearbeiten): nicht mehr als gelöscht führen
@@ -1390,7 +1472,8 @@ addEventListener('wmap:data', (e) => {
     local.set(DELETED, (local.get(DELETED, []) ?? []).filter((x) => x !== id));
     local.set(REVIVED, [...new Set([...(local.get(REVIVED, []) ?? []), id])].slice(-500));
   }
-  later();
+  // Gleicht der Service Worker ab: gleich ihm sagen – er wartet selbst kurz, und ein Seitenwechsel verliert nichts
+  viaSw().then((sw) => (sw ? sw('sync:soon') : later())).catch(() => {});
 });
 function later() {
   clearTimeout(timer);
@@ -1398,9 +1481,18 @@ function later() {
     // Health Connect holt gerade viele Wege: erst danach, einmal für alle
     if (bulk.active) { later(); return; }
     await syncing?.catch(() => {});
-    if (!await load()) { local.set(DELETED, []); return; }
-    if (folder.auto !== 'off') folder.sync().catch(() => { /* steht als Fehler auf der Seite „Sicherung & Synchronisation“ */ });
+    const done = soonDone;
+    soonDone = [];
+    try {
+      if (!await load()) { local.set(DELETED, []); return; }
+      if (folder.auto !== 'off') await folder.sync().catch(() => { /* steht als Fehler auf der Seite „Sicherung & Synchronisation“ */ });
+    } finally { done.forEach((r) => r()); }
   }, 2500);
+}
+
+/** Nach einer Änderung (Service Worker, „sync:soon“): kurz warten, dann abgleichen – fertig, wenn er durch ist */
+export function syncSoon() {
+  return new Promise((resolve) => { soonDone.push(resolve); later(); });
 }
 
 /* ── Ohne Ordner-Zugriff (Firefox, Safari): Dateien laden und teilen ──────── */
@@ -1411,6 +1503,10 @@ function later() {
  * → { imported, skipped }
  */
 export async function importLoose(fileList) {
+  const sw = await viaSw();
+  const list = [...fileList];
+  // Echte Dateien (<input>) gehen an den Service Worker – den Pfad im Ordner extra, er geht beim Übergeben verloren
+  if (sw && list.every((f) => f instanceof File)) return sw('sync:import', { files: list.map((file) => ({ file, path: file.webkitRelativePath })) });
   const known = new Set([...(await tracks.all()).map((t) => t.id), ...tours.all().map((t) => t.id)]);
   const all = await tracks.all();
   const out = { imported: 0, skipped: 0 };
@@ -1437,17 +1533,29 @@ export async function importLoose(fileList) {
  * daraus, sonst die GPX-Dateien. → { imported, skipped }
  */
 export async function importFolder(fileList = null) {
-  if (fileList) return importFrom([...fileList]);
+  const sw = await viaSw();
+  if (fileList) {
+    const list = [...fileList];
+    if (sw && list.every((f) => f instanceof File)) return sw('sync:import', { files: list.map((file) => ({ file, path: file.webkitRelativePath })) });
+    return importFiles(list);
+  }
   let picked;
   try { picked = await call('pick', { slot: 'import' }); } catch (err) {
     if (/abgebrochen|cancel/i.test(String(err))) throw Object.assign(new Error('abgebrochen'), { name: 'AbortError' });
     throw new Error(String(err?.message ?? err));
   }
+  // Gewählt wird hier, eingelesen im Service Worker (die Dateien holt er über die Seite, core/tauri.js)
+  if (sw) return sw('sync:import-slot', { name: picked.name ?? 'Ordner' });
+  return importSlot(picked.name ?? 'Ordner');
+}
+
+/** App: den eben gewählten Ordner (Platz „import“) einlesen, danach freigeben */
+export async function importSlot(name) {
   try {
     const { files } = await call('list', { slot: 'import' });
-    return await importFrom(files.map((f) => ({
+    return await importFiles(files.map((f) => ({
       name: f.path.split('/').pop(),
-      webkitRelativePath: `${picked.name ?? 'Ordner'}/${f.path}`,
+      webkitRelativePath: `${name}/${f.path}`,
       lastModified: f.modified || Date.now(),
       text: async () => (await call('read', { slot: 'import', path: f.path })).text,
     })));
@@ -1456,7 +1564,8 @@ export async function importFolder(fileList = null) {
   }
 }
 
-async function importFrom(files) {
+/** Dateien einlesen – mit wmap-sicherung.json alles daraus, sonst die GPX-Dateien */
+export async function importFiles(files) {
   const full = files.find((f) => /^wmap-sicherung[^/]*\.json$/i.test(f.name));
   if (full) {
     const n = await restore(await full.text());
@@ -1499,6 +1608,8 @@ export async function zipBackup({ format = 'gpx' } = {}) {
  * (auch ein gezippter Ordner von woanders). → Anzahl übernommen
  */
 export async function restoreZip(file) {
+  const sw = await viaSw();
+  if (sw && file instanceof Blob) return sw('sync:restore-zip', { file });
   const entries = await readZip(file);
   const json = entries.find((e) => /(^|\/)wmap-sicherung[^/]*\.json$/i.test(e.path));
   if (json) return restore(await json.text());
@@ -1514,7 +1625,7 @@ export function syncSummary(r) {
   if (!r) return '';
   // (Wie viele nur noch als Karteikarte in der App liegen, steht auf der Seite – nicht in jeder Meldung)
   const parts = [r.imported && `${r.imported} übernommen`, r.written && `${r.written} gespeichert`, r.removed && `${r.removed} gelöscht`,
-    r.moved && `${r.moved} umgezogen`, r.merged && `${r.merged} doppelte zusammengelegt`, r.settings === 'imported' && 'Einstellungen übernommen'].filter(Boolean);
+    r.moved && `${r.moved} umgezogen`, r.merged && `${r.merged} doppelte zusammengelegt`, r.skipped && `${r.skipped} nicht importiert`, r.settings === 'imported' && 'Einstellungen übernommen'].filter(Boolean);
   return parts.length ? parts.join(', ') : 'alles aktuell';
 }
 

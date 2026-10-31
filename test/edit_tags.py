@@ -41,7 +41,7 @@ with Browser(width=420, height=900) as b:
     print('Felder:', b.js("return [...document.querySelectorAll('dialog .osm-field > span, dialog .osm-more > summary')].map((s) => s.innerText.split('\\n')[0].trim())"))
     order = b.js(ORDER)
     print('Aufbau:', order)
-    ok_order = order['top'] == ['name', ['Angaben', ['opening_hours', 'cuisine', 'outdoor_seating', 'wheelchair', 'phone']], 'description', 'website', 'Merkmale', 'Weiteres'] \
+    ok_order = order['top'] == ['name', ['Angaben', ['opening_hours', 'cuisine', 'phone']], 'description', 'website', 'Merkmale', 'Weiteres'] \
         and order['more'][-1] == '_raw' and 'organic' in order['more'] and 'delivery' not in order['more'] and 'addr:street' in order['more'] and not order['open']
     print('Aufbau stimmt:', ok_order)
     if not ok_order:

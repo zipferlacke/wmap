@@ -1,6 +1,6 @@
 Health Connect – Texte für die Erklärung in der Play Console
-(App-Inhalte → Health Connect; je Datentyp ein Feld. Erst alle Texte auf Englisch – die Prüfung läuft
-englisch –, darunter dieselben auf Deutsch.
+(App-Inhalte → Health Connect; je Datentyp ein Feld. Je Feld erst Deutsch, darunter nach „---“ dasselbe
+auf Englisch – so, wie es ins Feld kopiert wird.
 Stand: WMap 2.3.1. Geschwindigkeit/Speed wird nicht mehr angefordert – in der Console abwählen.)
 
 Was die App anfordert (src-tauri/plugins/health/android/src/main/AndroidManifest.xml):
@@ -9,116 +9,93 @@ READ_EXERCISE, READ_EXERCISE_ROUTES, READ_HEALTH_DATA_HISTORY, READ_HEART_RATE, 
 
 == Allgemein (App-Funktion / core feature) ==
 
-WMap is a map and navigation app that also keeps the user's own tours. With Health Connect switched on (optional, off by default, under "Übersicht" > "Sicherung & Synchronisation" > "Health Connect"), WMap imports workouts that were recorded with a watch or another app and shows them under "Meine Touren" > "Aufgezeichnet": the route on the map, and charts along the route. WMap only reads. Nothing is written to Health Connect, nothing is uploaded; the data stays on the device (or in a folder the user chose). No account, no ads, no analytics.
+Wird verwendet, um in der App abgeschlossene Touren zusammen mit den aufgenommenen Gesundheitsdaten optisch aufbereitet anzuzeigen. Die Daten werden aus Health Connect bezogen.
+Beim Laufen, Wandern, Radfahren, Rudern usw. wird die aufgezeichnete GPS-Strecke auf der Karte angezeigt und dazu Tempo, Höhe, Puls, Schritt- bzw. Schlagfrequenz und Leistung im Diagramm dargestellt. Zusätzlich werden die Zeiten pro Streckenabschnitt sowie Durchschnitts- und Höchstwerte in Kacheln angezeigt, siehe auch Screenshots der App.
+Die App liest nur. Es wird nichts in Health Connect geschrieben und nichts hochgeladen, die Daten bleiben auf dem Gerät. Die Funktion ist freiwillig und ab Werk ausgeschaltet.
+
+---
+
+Used to display completed tours in the app, along with the recorded health data, in a visually organized format. The data is retrieved from Health Connect.
+When running, hiking, cycling, rowing, etc., the recorded GPS route is displayed on the map, along with pace, elevation, heart rate, step or stroke cadence and power shown in a graph. In addition, the times for each section of the route, as well as average and maximum values, are displayed in tiles; see also the app screenshots.
+The app only reads. Nothing is written to Health Connect and nothing is uploaded; the data stays on the device. The feature is optional and switched off by default.
 
 
-== Exercise (READ_EXERCISE) ==
+== Training / Exercise (READ_EXERCISE) ==
 
-Purpose: find the user's recorded workouts (walk, run, hike, bike ride, rowing ...) so they can be imported as recorded tours. WMap reads start, end, type and title of each exercise session, and the pedalling cadence of bike rides.
-Where in the app: "Meine Touren" > "Aufgezeichnet" – each imported workout is one entry with date, activity type, distance and duration.
-Benefit: workouts recorded with a watch appear on the map next to the tours recorded with WMap itself, without exporting files by hand.
+Wird verwendet, um die aufgezeichneten Trainings des Nutzers zu finden und in der App als aufgezeichnete Touren anzuzeigen. Gelesen werden Beginn, Ende, Art und Titel des Trainings, bei Radfahrten auch die Trittfrequenz.
+Beim Laufen, Wandern, Radfahren, Rudern usw. erscheint jedes Training unter „Meine Touren“ > „Aufgezeichnet“ als Eintrag mit Datum, Art, Strecke und Dauer. So stehen die mit einer Uhr aufgezeichneten Trainings neben den Touren, die mit der App selbst aufgezeichnet wurden, ohne Dateien von Hand zu exportieren, siehe auch Screenshots der App.
 
+---
 
-== Exercise routes (READ_EXERCISE_ROUTES) ==
-
-Purpose: read the GPS route of an imported workout.
-Where in the app: the route is drawn on the map under "Meine Touren" > "Aufgezeichnet", with distance, speed along the route, laps and elevation profile. A recorded tour can be navigated again ("Erneut navigieren").
-Benefit: without the route a workout cannot be shown on a map at all – the route is the core of the feature.
+Used to find the user's recorded workouts and display them in the app as recorded tours. The app reads the start, end, type and title of the workout, and for bike rides also the pedalling cadence.
+When running, hiking, cycling, rowing, etc., each workout appears under "Meine Touren" > "Aufgezeichnet" as an entry with date, type, distance and duration. This way, workouts recorded with a watch are shown next to the tours recorded with the app itself, without exporting files by hand; see also the app screenshots.
 
 
-== Health data history (READ_HEALTH_DATA_HISTORY) ==
+== Trainingsroute / Exercise route (READ_EXERCISE_ROUTES) ==
 
-Purpose: import workouts that were recorded more than 30 days before the user granted access.
-Where in the app: "Sicherung & Synchronisation" > "Health Connect" > import; the older workouts then appear under "Meine Touren" > "Aufgezeichnet", grouped by year.
-Benefit: users get their complete tour history from past years, not only the last 30 days.
+Wird verwendet, um die aufgezeichnete GPS-Strecke eines Trainings auf der Karte anzuzeigen. Die Daten werden aus Health Connect bezogen.
+Beim Laufen, Wandern, Radfahren, Rudern usw. wird die Strecke unter „Meine Touren“ > „Aufgezeichnet“ auf der Karte dargestellt und dazu das Tempo entlang der Strecke, die Runden und das Höhenprofil angezeigt. Eine aufgezeichnete Tour lässt sich außerdem erneut navigieren. Ohne die Strecke kann ein Training nicht auf der Karte gezeigt werden, sie ist der Kern der Funktion, siehe auch Screenshots der App.
 
+---
 
-== Heart rate (READ_HEART_RATE) ==
-
-Purpose: show the heart rate during an imported workout.
-Where in the app: "Meine Touren" > "Aufgezeichnet" > open a workout: chart "Puls" along the route (average and maximum) and the average heart rate per lap.
-Benefit: the user sees where on the route the effort was high or low.
-Read only for the time span of an imported workout.
+Used to display the recorded GPS route of a workout on the map. The data is retrieved from Health Connect.
+When running, hiking, cycling, rowing, etc., the route is displayed on the map under "Meine Touren" > "Aufgezeichnet", along with the pace along the route, the laps and the elevation profile. A recorded tour can also be navigated again. Without the route, a workout cannot be shown on the map at all; it is the core of the feature; see also the app screenshots.
 
 
-== Steps cadence (READ_STEPS – data type StepsCadence) ==
+== Verlauf der Gesundheitsdaten / Health data history (READ_HEALTH_DATA_HISTORY) ==
 
-Purpose: show the step cadence (steps per minute) during an imported walk, run or hike.
-Where in the app: "Meine Touren" > "Aufgezeichnet" > open a workout: chart "Schrittfrequenz" along the route (for rowing workouts the same chart is labelled "Schlagfrequenz").
-Benefit: the user sees how the cadence changed over the route, e.g. uphill or towards the end of a run.
-WMap reads the cadence samples only for the time span of an imported workout. It does not read or show daily step counts.
+Wird verwendet, um auch Trainings anzuzeigen, die mehr als 30 Tage vor der Freigabe aufgezeichnet wurden. Die Daten werden aus Health Connect bezogen.
+Nach dem Übernehmen stehen die älteren Trainings unter „Meine Touren“ > „Aufgezeichnet“, nach Jahren gruppiert, mit Strecke auf der Karte und Diagrammen. So sieht der Nutzer seine ganze Tourengeschichte der letzten Jahre und nicht nur die letzten 30 Tage.
+
+---
+
+Used to also display workouts that were recorded more than 30 days before access was granted. The data is retrieved from Health Connect.
+After the import, the older workouts appear under "Meine Touren" > "Aufgezeichnet", grouped by year, with the route on the map and graphs. This way, the user sees their complete tour history from past years and not only the last 30 days.
 
 
-== Power (READ_POWER) ==
+== Herzfrequenz / Heart rate (READ_HEART_RATE) ==
 
-Purpose: show the power output in watts during an imported workout that was recorded with a power meter (bike with power meter, rowing machine, running power).
-Where in the app: "Meine Touren" > "Aufgezeichnet" > open such a workout: the figure "Ø Leistung" (average watts) and the chart "Leistung" along the route, with average and maximum.
-Benefit: cyclists and rowers see where on the route they produced how much power.
-Note for review: figure and chart only appear if the workout in Health Connect contains power samples. A workout without power data shows neither – the test device needs a workout with route and power data (e.g. a bike ride recorded with a power meter).
-Read only for the time span of an imported workout.
+Wird verwendet, um den Puls während eines aufgezeichneten Trainings optisch aufbereitet anzuzeigen. Die Daten werden aus Health Connect bezogen.
+Beim Laufen, Wandern, Radfahren, Rudern usw. wird der Puls unter „Meine Touren“ > „Aufgezeichnet“ als Diagramm entlang der Strecke dargestellt. Zusätzlich werden Durchschnitts- und Höchstwert in Kacheln sowie der Durchschnittspuls pro Runde angezeigt. So sieht der Nutzer, wo auf der Strecke die Belastung hoch oder niedrig war, siehe auch Screenshots der App.
+Gelesen wird nur für die Zeit eines übernommenen Trainings.
+
+---
+
+Used to display the heart rate during a recorded workout in a visually organized format. The data is retrieved from Health Connect.
+When running, hiking, cycling, rowing, etc., the heart rate is shown under "Meine Touren" > "Aufgezeichnet" as a graph along the route. In addition, the average and maximum values are displayed in tiles, as well as the average heart rate per lap. This way, the user sees where on the route the effort was high or low; see also the app screenshots.
+The data is only read for the time span of an imported workout.
+
+
+== Schritte / Steps (READ_STEPS – Datentyp StepsCadence) ==
+
+Wird verwendet, um die Schrittfrequenz (Schritte pro Minute) während eines aufgezeichneten Trainings optisch aufbereitet anzuzeigen. Die Daten werden aus Health Connect bezogen.
+Beim Gehen, Laufen und Wandern wird die Schrittfrequenz unter „Meine Touren“ > „Aufgezeichnet“ als Diagramm „Schrittfrequenz“ entlang der Strecke dargestellt, beim Rudern als „Schlagfrequenz“. Zusätzlich werden Durchschnitts- und Höchstwert angezeigt. So sieht der Nutzer, wie sich die Frequenz über die Strecke verändert hat, etwa bergauf oder gegen Ende eines Laufs, siehe auch Screenshots der App.
+Gelesen werden nur die Frequenzwerte für die Zeit eines übernommenen Trainings. Tägliche Schrittzahlen werden weder gelesen noch angezeigt.
+
+---
+
+Used to display the step cadence (steps per minute) during a recorded workout in a visually organized format. The data is retrieved from Health Connect.
+When walking, running and hiking, the step cadence is shown under "Meine Touren" > "Aufgezeichnet" as the graph "Schrittfrequenz" along the route; for rowing it is labelled "Schlagfrequenz" (stroke rate). In addition, the average and maximum values are displayed. This way, the user sees how the cadence changed over the route, for example uphill or towards the end of a run; see also the app screenshots.
+Only the cadence values for the time span of an imported workout are read. Daily step counts are neither read nor displayed.
+
+
+== Leistung / Power (READ_POWER) ==
+
+Wird verwendet, um die Leistung in Watt während eines aufgezeichneten Trainings optisch aufbereitet anzuzeigen. Die Daten werden aus Health Connect bezogen.
+Beim Radfahren mit Leistungsmesser, beim Rudern auf dem Rudergerät oder beim Laufen mit Leistungsmessung wird die Leistung unter „Meine Touren“ > „Aufgezeichnet“ als Diagramm „Leistung“ entlang der Strecke dargestellt. Zusätzlich werden die Durchschnittsleistung („Ø Leistung“) in einer Kachel sowie der Höchstwert angezeigt. So sieht der Nutzer, wo auf der Strecke er wie viel Leistung gebracht hat.
+Kachel und Diagramm erscheinen nur, wenn das Training in Health Connect Leistungswerte enthält. Gelesen wird nur für die Zeit eines übernommenen Trainings.
+
+---
+
+Used to display the power output in watts during a recorded workout in a visually organized format. The data is retrieved from Health Connect.
+When cycling with a power meter, rowing on a rowing machine or running with power measurement, the power is shown under "Meine Touren" > "Aufgezeichnet" as the graph "Leistung" along the route. In addition, the average power ("Ø Leistung") is displayed in a tile, as well as the maximum value. This way, the user sees where on the route they produced how much power.
+Tile and graph only appear if the workout in Health Connect contains power values. The data is only read for the time span of an imported workout.
 
 
 == Hinweis an die Prüfung (falls ein Freitextfeld da ist) ==
 
-All charts are under "Meine Touren" > "Aufgezeichnet" > open an imported workout. A chart is only offered when the workout contains that kind of data, so the test device needs a workout with a GPS route plus heart rate, cadence and power samples in Health Connect. Speed is no longer requested as of version 2.3.1.
+Alle Diagramme stehen unter „Meine Touren“ > „Aufgezeichnet“, wenn man ein übernommenes Training öffnet. Ein Diagramm wird nur angeboten, wenn das Training diese Art von Daten enthält. Das Testgerät braucht also in Health Connect ein Training mit GPS-Strecke sowie Puls-, Frequenz- und Leistungswerten. Geschwindigkeit wird ab Version 2.3.1 nicht mehr angefordert.
 
+---
 
-======================================================================
-DEUTSCH – dieselben Texte
-======================================================================
-
-
-== Allgemein (App-Funktion) ==
-
-WMap ist eine Karten- und Navigations-App, die auch die eigenen Touren des Nutzers verwaltet. Ist Health Connect eingeschaltet (freiwillig, ab Werk aus, unter „Übersicht“ > „Sicherung & Synchronisation“ > „Health Connect“), übernimmt WMap Trainings, die mit einer Uhr oder einer anderen App aufgezeichnet wurden, und zeigt sie unter „Meine Touren“ > „Aufgezeichnet“: die Strecke auf der Karte und Diagramme entlang der Strecke. WMap liest nur. Es wird nichts in Health Connect geschrieben und nichts hochgeladen; die Daten bleiben auf dem Gerät (oder in einem Ordner, den der Nutzer selbst gewählt hat). Kein Konto, keine Werbung, keine Analyse.
-
-
-== Trainings (READ_EXERCISE) ==
-
-Zweck: die aufgezeichneten Trainings des Nutzers finden (Gehen, Laufen, Wandern, Radfahren, Rudern …), damit sie als aufgezeichnete Touren übernommen werden können. WMap liest Beginn, Ende, Art und Titel jedes Trainings und die Trittfrequenz von Radfahrten.
-Wo in der App: „Meine Touren“ > „Aufgezeichnet“ – jedes übernommene Training ist ein Eintrag mit Datum, Art, Strecke und Dauer.
-Nutzen: Mit der Uhr aufgezeichnete Trainings stehen auf der Karte neben den Touren, die mit WMap selbst aufgezeichnet wurden – ohne Dateien von Hand zu exportieren.
-
-
-== Trainingsrouten (READ_EXERCISE_ROUTES) ==
-
-Zweck: die GPS-Strecke eines übernommenen Trainings lesen.
-Wo in der App: Die Strecke liegt auf der Karte unter „Meine Touren“ > „Aufgezeichnet“, mit Kilometern, Tempo entlang der Strecke, Runden und Höhenprofil. Eine aufgezeichnete Tour lässt sich erneut navigieren („Erneut navigieren“).
-Nutzen: Ohne die Strecke lässt sich ein Training gar nicht auf einer Karte zeigen – sie ist der Kern der Funktion.
-
-
-== Verlauf der Gesundheitsdaten (READ_HEALTH_DATA_HISTORY) ==
-
-Zweck: auch Trainings übernehmen, die mehr als 30 Tage vor der Freigabe aufgezeichnet wurden.
-Wo in der App: „Sicherung & Synchronisation“ > „Health Connect“ > übernehmen; die älteren Trainings stehen danach unter „Meine Touren“ > „Aufgezeichnet“, nach Jahren gruppiert.
-Nutzen: Nutzer bekommen ihre ganze Tourengeschichte der letzten Jahre, nicht nur die letzten 30 Tage.
-
-
-== Herzfrequenz (READ_HEART_RATE) ==
-
-Zweck: den Puls während eines übernommenen Trainings zeigen.
-Wo in der App: „Meine Touren“ > „Aufgezeichnet“ > ein Training öffnen: Diagramm „Puls“ entlang der Strecke (Schnitt und Höchstwert) und der Durchschnittspuls je Runde.
-Nutzen: Der Nutzer sieht, wo auf der Strecke die Belastung hoch oder niedrig war.
-Gelesen wird nur für die Zeit eines übernommenen Trainings.
-
-
-== Schrittfrequenz (READ_STEPS – Datentyp StepsCadence) ==
-
-Zweck: die Schrittfrequenz (Schritte je Minute) während eines übernommenen Gehens, Laufs oder einer Wanderung zeigen.
-Wo in der App: „Meine Touren“ > „Aufgezeichnet“ > ein Training öffnen: Diagramm „Schrittfrequenz“ entlang der Strecke (beim Rudern heißt dasselbe Diagramm „Schlagfrequenz“).
-Nutzen: Der Nutzer sieht, wie sich die Frequenz über die Strecke verändert hat, etwa bergauf oder gegen Ende eines Laufs.
-WMap liest die Frequenzwerte nur für die Zeit eines übernommenen Trainings. Tägliche Schrittzahlen werden weder gelesen noch angezeigt.
-
-
-== Leistung (READ_POWER) ==
-
-Zweck: die Leistung in Watt während eines übernommenen Trainings zeigen, das mit einem Leistungsmesser aufgezeichnet wurde (Rad mit Leistungsmesser, Rudergerät, Laufleistung).
-Wo in der App: „Meine Touren“ > „Aufgezeichnet“ > ein solches Training öffnen: die Kennzahl „Ø Leistung“ (Watt im Schnitt) und das Diagramm „Leistung“ entlang der Strecke, mit Schnitt und Höchstwert.
-Nutzen: Radfahrer und Ruderer sehen, wo auf der Strecke sie wie viel Leistung gebracht haben.
-Hinweis für die Prüfung: Kennzahl und Diagramm erscheinen nur, wenn das Training in Health Connect Leistungswerte enthält. Ein Training ohne Leistungsdaten zeigt beides nicht – das Testgerät braucht ein Training mit Strecke und Leistungswerten (z. B. eine Radfahrt mit Leistungsmesser).
-Gelesen wird nur für die Zeit eines übernommenen Trainings.
-
-
-== Hinweis an die Prüfung (falls ein Freitextfeld da ist) ==
-
-Alle Diagramme stehen unter „Meine Touren“ > „Aufgezeichnet“ > ein übernommenes Training öffnen. Ein Diagramm wird nur angeboten, wenn das Training diese Art von Daten enthält – das Testgerät braucht also in Health Connect ein Training mit GPS-Strecke sowie Puls-, Frequenz- und Leistungswerten. Geschwindigkeit wird ab Version 2.3.1 nicht mehr angefordert.
+All graphs are under "Meine Touren" > "Aufgezeichnet" when an imported workout is opened. A graph is only offered if the workout contains that kind of data. The test device therefore needs a workout in Health Connect with a GPS route as well as heart rate, cadence and power values. Speed is no longer requested as of version 2.3.1.

@@ -15,6 +15,13 @@ import { distance } from '../core/geo.js';
 const WIDTH = 640;
 const filePath = (name) => `${API.commons}/${encodeURIComponent(name.replace(/^File:/i, '').trim())}?width=${WIDTH}`;
 
+/** Kleines Bild direkt aus den Tags (image, wikimedia_commons) – ohne weiteren Abruf; sonst null */
+export function thumbOf(tags = {}, width = 160) {
+  if (/^https?:\/\/.+\.(jpe?g|png|webp)(\?.*)?$/i.test(tags.image ?? '')) return tags.image;
+  const file = [tags.image, tags.wikimedia_commons].find((v) => /^File:/i.test(v ?? ''));
+  return file ? `${API.commons}/${encodeURIComponent(file.replace(/^File:/i, '').trim())}?width=${width}` : null;
+}
+
 async function json(url, signal) {
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(String(res.status));

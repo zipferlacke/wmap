@@ -8,7 +8,7 @@ import * as overpass from '../services/overpass.js';
 import { byId } from '../core/categories.js';
 import { reportsIn, reportsShared } from '../nav/reports.js';
 import { nearestOnLine, simplifyTo, bbox, fmtDistance, fmtClock, esc } from '../core/geo.js';
-import { numberHits, renderResultList, tilePointsAlong } from './category.js';
+import { filterHits, numberHits, renderResultList, tilePointsAlong } from './category.js';
 import { $, $$, afterLayout, current, map, state, viewPadding } from './core.js';
 import { showTrafficItem } from './place.js';
 import { computeRoutes } from './route-results.js';
@@ -100,15 +100,17 @@ export async function runAlong(cat) {
   const radius = PROFILES[state.profile].radius;
   const still = () => state.along === cat && current() === r && !signal.aborted;
   const render = (points, final) => {
-    const near = points.sort((a, b) => a.properties.along - b.properties.along);
+    // Private und gerade Geschlossene erst auf Wunsch (category.js filterHits)
+    const f = filterHits(points.sort((a, b) => a.properties.along - b.properties.along));
+    const near = f.points;
     numberHits(near);
     showPois(map, near);
-    if (!near.length) {
-      list.innerHTML = `<li class="muted">${final ? `Keine ${esc(cat.label)} entlang der Route` : `Suche ${esc(cat.label)} entlang der Route …`}</li>`;
-      return;
-    }
     renderResultList(list, near.slice(0, 80), cat,
-      (p) => `bei ${fmtDistance(p.properties.along)} · ${fmtDistance(p.properties.offset)} abseits`);
+      (p) => `bei ${fmtDistance(p.properties.along)} · ${fmtDistance(p.properties.offset)} abseits`,
+      { filter: f, redo: () => { if (state.along === cat) render(points, final); } });
+    if (!near.length) {
+      list.insertAdjacentHTML('beforeend', `<li class="muted">${final ? `Keine ${esc(cat.label)} entlang der Route${points.length ? ' – nur ausgeblendete' : ''}` : `Suche ${esc(cat.label)} entlang der Route …`}</li>`);
+    }
   };
   // Sofort aus den Kacheln, Overpass ergänzt
   let fromTiles = [];

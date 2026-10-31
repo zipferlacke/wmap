@@ -19,7 +19,11 @@
  * Tabelle je Gruppe – oder eine Tour/einen Weg im Detail. Kopfzeile siehe
  * ui/map-page.js: ← Übersicht bzw. Liste, ✕ zur Karte, Griff zum Einklappen.
  *
+ * Vergleichen: in Aufgezeichnet lange auf eine Zeile tippen, weitere ankreuzen – Zahlen, Verläufe und Entwicklung
+ * (pages/wege-compare.js), auf der Karte jeder in seiner Farbe.
+ *
  * Aufruf: wege.html · ?tab=geplant · ?tab=bahn · ?tour=… (geplante Tour) · ?id=… (Weg) · ?conn=… (Verbindung)
+ *         · ?compare=id,id,… (Wege vergleichen)
  *         · #weg=… (geteilte Aufzeichnung, data/track-share.js)
  *         · #datei (geöffnete GPX-/FIT-Datei als Vorschau, pages/import.js)
  */
@@ -39,16 +43,21 @@ import { metrics, laps, lapLine } from '../data/track-stats.js';
 import { PROFILES } from '../core/config.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { share, pageUrl, canShareFiles, shareFile } from '../ui/share.js';
-import { shortLink, resolveShort } from '../data/short-link.js';
+import { shortLink, resolveShort, collabState } from '../data/short-link.js';
+import { openLinkText } from '../ui/open-link.js';
+import { linkTarget } from '../core/map-links.js';
 import { folder } from '../data/folder.js';
 import { autoSync } from '../data/auto-sync.js';
 import { mapPage } from '../ui/map-page.js';
 import { carLink, sendToCar } from '../data/car-link.js';
-import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, esc, bbox } from '../core/geo.js';
+import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, fmtTime, esc, bbox } from '../core/geo.js';
 import { connections, places, DEFAULT_LIST, PLACE_KINDS } from '../data/saved.js';
 import { packJson, unpackJson } from '../data/store.js';
 import { legBadge, changesText, transitLegsHtml } from '../ui/transit-legs.js';
 import { healthAvailable, refreshHealthValues, appName } from '../services/health.js';
+import { paintCompare } from './wege-compare.js';
+import { sameRoutes, SAME_LEVELS } from '../data/same-route.js';
+import { nameAll } from '../data/auto-name.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 
@@ -79,11 +88,19 @@ const tabOf = (p) => (p.get('tab') === 'bahn' || p.has('conn') ? 'bahn' : p.get(
   : p.get('tab') === 'orte' || p.has('liste') ? 'orte' : 'wege');
 let tab = tabOf(params);
 let all = [];                      // aufgezeichnete Wege
+const COLLAB_BLUE = '#1a73e8';
+/** Chip „Geteilt / Eingeladen von … · noch 28 Tage“ an gemeinsam geplanten Touren */
+const collabChip = (c) => { const st = collabState(c); return `<span class="collab-chip${st.gone ? ' gone' : ''}"><span class="msr">${st.icon}</span>${esc(st.text)}</span>`; };
 let planned = [];                  // geplante Touren
 let conns = [];                    // gemerkte Verbindungen mit Bus & Bahn
 const query = { wege: '', geplant: '', bahn: '', orte: '' };
 let sharedList = null;             // geöffneter Link „?liste=“: { name, items: [{ name, label, point }] }
 let selected = null;               // gewählter Weg oder Tour
+let comparing = null;              // Wege im Vergleich (ganz geladen)
+let compareFocus = null;           // ID des aktuellen Wegs im Vergleich (ohne Wahl der neueste)
+let compareSame = null;            // gleiche Strecke: ID des Wegs, von dem aus verglichen wird
+let compareView = null;            // paintCompare: { hover(id) }
+let picking = null;                // Liste im Modus „Vergleichen“: Set der angekreuzten IDs
 let folderOn = false;              // Ordner verbunden: „offline verfügbar“ anbieten
 let lookOpen = false;              // Tour: Block „Art, Farbe und Anzeige“ aufgeklappt (bleibt es beim Neuzeichnen)
 
@@ -102,7 +119,7 @@ function fitView() {
     map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: page.padding(), maxZoom: 15, duration: 600 });
     return;
   }
-  const list = selected ? [selected] : tab === 'geplant' ? visiblePlanned() : tab === 'bahn' ? visibleConns() : onMap();
+  const list = selected ? [selected] : comparing ?? (tab === 'geplant' ? visiblePlanned() : tab === 'bahn' ? visibleConns() : onMap());
   const boxes = list.map((t) => (t.legs ? bbox(connCoords(t)) : t.bbox ?? bboxOfTour(t))).filter(Boolean);
   if (!boxes.length) return;
   const b = boxes.reduce((a, x) => [Math.min(a[0], x[0]), Math.min(a[1], x[1]), Math.max(a[2], x[2]), Math.max(a[3], x[3])], [180, 90, -180, -90]);
@@ -122,10 +139,59 @@ function bboxOfTour(t) {
 /* ── Liste ────────────────────────────────────────────────────────────────── */
 
 const norm = (s) => String(s ?? '').toLowerCase();
+
+/*
+ * Kopfzeile über den Aufzeichnungen: sortieren (Datum, Länge, Dauer, Tempo, Name – nochmal tippen dreht um) und
+ * filtern (Art, Tag, Zeitraum). Gemerkt in wmap.wegeView. Nach Datum bleiben die Jahre, sonst eine Liste
+ */
+const VIEW_KEY = 'wmap.wegeView';
+const SORTS = {
+  date: ['Datum', (t) => t.start],
+  length: ['Länge', (t) => t.length ?? 0],
+  time: ['Dauer', (t) => moving(t)],
+  speed: ['Tempo', (t) => (moving(t) > 0 ? (t.length ?? 0) / moving(t) : 0)],
+  name: ['Name', (t) => norm(t.name)],
+};
+const SINCE = { '': 'Jederzeit', 30: 'Letzte 30 Tage', 90: 'Letzte 90 Tage', 365: 'Letztes Jahr', year: 'Dieses Jahr' };
+const view = { sort: 'date', dir: -1, sport: '', tag: '', since: '', ...(local.get(VIEW_KEY) ?? {}) };
+const saveView = () => local.set(VIEW_KEY, view);
+const tagsOf = (t) => t.tags ?? [];
+const allTags = () => [...new Set(all.flatMap(tagsOf))].sort((a, b) => a.localeCompare(b, 'de'));
+const sportKey = (t) => sportOf(t) ?? '';
+function sinceOk(t) {
+  if (!view.since) return true;
+  if (view.since === 'year') return yearOf(t) === new Date().getFullYear();
+  return t.start >= Date.now() - Number(view.since) * 864e5;
+}
+const filtered = () => !!(view.sport || view.tag || view.since);
+
 function visible() {
   const q = norm(query.wege).trim();
-  if (!q) return all;
-  return all.filter((t) => [t.name, t.from, t.to, yearOf(t), DATE.format(t.start), LONG.format(t.start), groupOf(t).label, originOf(t)].some((x) => norm(x).includes(q)));
+  const list = all.filter((t) => (!view.sport || sportKey(t) === view.sport) && (!view.tag || tagsOf(t).includes(view.tag)) && sinceOk(t)
+    && (!q || [t.name, t.from, t.to, yearOf(t), DATE.format(t.start), LONG.format(t.start), groupOf(t).label, originOf(t), ...tagsOf(t)].some((x) => norm(x).includes(q))));
+  const key = SORTS[view.sort]?.[1] ?? SORTS.date[1];
+  return list.sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : 0) * view.dir; });
+}
+
+/** Kopfzeile: Sortieren und Filtern – nur die Arten und Tags, die es gibt */
+function viewHead() {
+  const sports = [...new Set(all.map(sportKey))];
+  const tags = allTags();
+  const opt = (v, label, cur) => `<option value="${esc(v)}" ${String(cur) === String(v) ? 'selected' : ''}>${esc(label)}</option>`;
+  return `<div class="wege-head" role="toolbar" aria-label="Sortieren und Filtern">
+    <label class="head-pick"><span class="msr">sort</span><select data-view="sort" aria-label="Sortieren nach">
+      ${Object.entries(SORTS).map(([k, [label]]) => opt(k, label, view.sort)).join('')}</select></label>
+    <button type="button" class="chip head-dir" data-view-dir title="${view.dir < 0 ? 'Absteigend – tippen für aufsteigend' : 'Aufsteigend – tippen für absteigend'}">
+      <span class="msr">${view.dir < 0 ? 'arrow_downward' : 'arrow_upward'}</span></button>
+    <label class="head-pick${view.sport ? ' on' : ''}"><span class="msr">directions_run</span><select data-view="sport" aria-label="Art">
+      ${opt('', 'Alle Arten', view.sport)}${sports.map((k) => opt(k, sportName(k || null), view.sport)).join('')}</select></label>
+    ${tags.length || view.tag ? `<label class="head-pick${view.tag ? ' on' : ''}"><span class="msr">sell</span><select data-view="tag" aria-label="Tag">
+      ${opt('', 'Alle Tags', view.tag)}${tags.map((k) => opt(k, k, view.tag)).join('')}</select></label>` : ''}
+    <label class="head-pick${view.since ? ' on' : ''}"><span class="msr">date_range</span><select data-view="since" aria-label="Zeitraum">
+      ${Object.entries(SINCE).map(([k, label]) => opt(k, label, view.since)).join('')}</select></label>
+    ${filtered() ? '<button type="button" class="chip" data-view-reset><span class="msr">filter_alt_off</span> Alle</button>' : ''}
+    ${picking ? '<button type="button" class="chip" data-list="pick-all"><span class="msr">select_all</span> Alle auswählen</button>' : ''}
+  </div>`;
 }
 /** Was davon auf der Karte liegt (Zeitraum, Auge am Jahr und am Weg); mit Suche: alle Treffer */
 const onMap = () => (norm(query.wege).trim() ? visible() : visible().filter((t) => shownOnMap(t)));
@@ -143,9 +209,27 @@ function visibleConns() {
   return conns.filter((c) => [connName(c), DATE.format(c.dep), LONG.format(c.dep), ...c.legs.map((l) => l.line)].some((x) => norm(x).includes(q)));
 }
 
+/*
+ * ← in einer Ansicht (Weg, Tour, Verbindung, Vergleich): im Verlauf zurück, wenn man innerhalb der Seite
+ * hierher kam (Einträge mit `wege`) – dann führen ← und die Zurück-Taste (Handy, Browser) an dieselbe Stelle,
+ * auch durch mehrere Wechsel hindurch. Direkt geöffnet (Link, Lesezeichen): zur Liste, ohne neuen Eintrag.
+ */
+function backToList() {
+  if (history.state?.wege) { history.back(); return; }
+  showList();
+  history.replaceState(null, '', `./wege.html${tab === 'wege' ? '' : `?tab=${tab}`}`);
+  fitView();
+}
+
 function showList({ push = false } = {}) {
+  if (listStale) { listStale = false; listSoon(); }
   selected = null;
-  if (push) history.pushState(null, '', `./wege.html${tab === 'wege' ? '' : `?tab=${tab}`}`);
+  comparing = null;
+  compareFocus = null;
+  compareSame = null;
+  compareView = null;
+  if (tab !== 'wege') picking = null;
+  if (push) history.pushState({ wege: 1 }, '', `./wege.html${tab === 'wege' ? '' : `?tab=${tab}`}`);
   document.title = 'Meine Touren – WMap';
   page.header('Meine Touren');
   const isPlan = tab === 'geplant', isBahn = tab === 'bahn', isOrte = tab === 'orte';
@@ -175,24 +259,30 @@ function showList({ push = false } = {}) {
     <p class="muted tab-hint">${isOrte ? 'Orte: deine Lesezeichen in Listen – je Liste teilbar, alles auf der Karte.'
       : isBahn ? 'Bus & Bahn: gemerkte Verbindungen – kommende oben, vergangene zugeklappt darunter.'
       : isPlan ? 'Geplant: Touren, die du noch fahren oder laufen willst – aus dem Planer, übernommen oder importiert.'
-        : 'Aufgezeichnet: Wege, die du wirklich gefahren oder gelaufen bist – mit Zeit, Tempo und Puls.'}</p>
+        : `Aufgezeichnet: Wege, die du wirklich gefahren oder gelaufen bist.${all.length ? ` <span class="msr">visibility</span> Auf der Karte:
+          <strong>${esc(trackShow.label())}</strong> – das Auge am Jahr blendet ein und aus. <a href="./settings.html">Ändern</a>` : ''}`}</p>
     ${isBahn || isOrte ? '' : `<div class="wege-tools">${isPlan ? `
       <a class="button" href="./tour.html"><span class="msr">add_road</span> Tour planen</a>
       <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx-tour"></label>` : `
       <a class="button" href="./index.html?action=record"><span class="msr">radio_button_checked</span> Aufzeichnen</a>
       <label class="button"><span class="msr">upload_file</span> GPX/FIT importieren<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx"></label>`}
     </div>`}
-    <form class="wege-search tour-search" role="search" onsubmit="return false">
+    <form class="wege-search tour-search" role="search">
       <span class="msr">search</span>
-      <input type="search" placeholder="${isOrte ? 'Suchen – Name, Liste, Ort …' : isBahn ? 'Suchen – Ort, Linie, Datum …' : isPlan ? 'Suchen – Name, Beschreibung, Rad, Wandern …' : 'Suchen – Name, Ort, Jahr, Monat …'}" value="${esc(query[tab])}" aria-label="Suchen">
+      <input type="search" placeholder="${isOrte ? 'Suchen – Name, Liste, Ort …' : isBahn ? 'Suchen – Ort, Linie, Datum …' : isPlan ? 'Suchen – Name, Beschreibung, Link …' : 'Suchen – Name, Ort, Tag, Link …'}" value="${esc(query[tab])}" aria-label="Suchen">
     </form>
+    <button type="button" class="wege-open-link" data-list="open-typed" hidden><span class="msr">link</span><span>Link öffnen</span><span class="msr">chevron_right</span></button>
     ${(isOrte ? (ownPlaces.length || sharedList ? [1] : []) : isBahn ? conns : isPlan ? planned : all).length ? '' : empty}
     ${isBahn || isOrte ? '' : `<a class="wege-sync-hint wege-dup-hint" href="./sync.html#doppelt" hidden>
       <span class="msr">content_copy</span><span></span><span class="msr">chevron_right</span>
     </a>`}
-    ${tab === 'wege' && all.length ? `<p class="muted wege-period"><span class="msr">visibility</span>
-      <span>Auf der Karte: <strong>${esc(trackShow.label())}</strong>${trackShow.get() === 'all' ? '' : ' – Älteres ist ausgeblendet'}. Das Auge am Jahr blendet ein und aus.
-      <a href="./settings.html">Ändern</a></span></p>` : ''}
+    ${tab === 'wege' && all.length ? '<div class="wege-head-box"></div>' : ''}
+    ${tab === 'wege' && picking ? `<div class="compare-bar" role="region" aria-label="Ausgewählt">
+      <span class="compare-count"></span>
+      <button type="button" class="button" data-list="compare-cancel">Abbrechen</button>
+      <button type="button" class="button" data-list="pick-tag"><span class="msr">sell</span> Tag</button>
+      <button type="button" class="button primary" data-list="compare-go"><span class="msr">compare_arrows</span> Vergleichen</button>
+    </div>` : ''}
     <div class="wege-groups"></div>
     <a class="wege-sync-hint" href="./sync.html">
       <span class="msr">sync</span>
@@ -201,6 +291,7 @@ function showList({ push = false } = {}) {
       <span class="msr">chevron_right</span>
     </a>`;
   paintGroups();
+  paintLinkHit();
   // Dieselbe Tour aus zwei Quellen (Uhr und Handy, Health Connect und Ordner): hier Bescheid sagen
   const dup = content.querySelector('.wege-dup-hint');
   if (dup) {
@@ -344,18 +435,42 @@ function paintGroups() {
           <small>${ts.length} ${ts.length === 1 ? 'Tour' : 'Touren'} · ${km(sum)}</small></summary>
         <table class="wege-table"><tbody>${ts.map((t) => `
           <tr data-tour="${esc(t.id)}" tabindex="0">
-            <td class="w-icon"><span class="msr" style="color:${g.color}">${PROFILES[t.profile]?.icon ?? g.icon}</span></td>
-            <td class="w-name"><strong>${esc(t.name || 'Tour')}</strong><small>${esc([PROFILES[t.profile]?.label, t.fixed ? 'fester Verlauf' : '', t.updated ? SHORT.format(t.updated) : ''].filter(Boolean).join(' · '))}</small></td>
+            <td class="w-icon"><span class="msr" style="color:${t.collab ? COLLAB_BLUE : g.color}">${PROFILES[t.profile]?.icon ?? g.icon}</span></td>
+            <td class="w-name"><strong>${esc(t.name || 'Tour')}</strong>${t.collab ? collabChip(t.collab) : ''}<small>${esc([PROFILES[t.profile]?.label, t.fixed ? 'fester Verlauf' : '', t.updated ? SHORT.format(t.updated) : ''].filter(Boolean).join(' · '))}</small></td>
             <td class="w-num">${t.stats?.length ? fmtDistance(t.stats.length) : '–'}<small>${t.stats?.ascent ? `↗ ${t.stats.ascent} m` : ''}</small></td>
           </tr>`).join('')}</tbody></table>
       </details>`;
     }).join('') + (planned.length && !list.length ? `<p class="muted">Nichts gefunden für „${esc(query.geplant)}“.</p>` : '');
   } else {
     const list = visible();
-    const searching = !!norm(query.wege).trim();
+    const searching = !!norm(query.wege).trim() || filtered();
+    const head = $('.wege-head-box', content);
+    if (head) head.innerHTML = viewHead();
     const byYear = new Map();
     for (const t of list) { const y = yearOf(t); if (!byYear.has(y)) byYear.set(y, []); byYear.get(y).push(t); }
     const mark = (icon, title) => `<span class="msr w-mark" title="${title}">${icon}</span>`;
+    const tagLine = (t) => (tagsOf(t).length ? `<span class="w-tags">${tagsOf(t).map((x) => `<i>${esc(x)}</i>`).join('')}</span>` : '');
+    const rowOf = (t) => `
+          <tr data-id="${esc(t.id)}" tabindex="0" class="${shownOnMap(t) ? '' : 'off-map'}">
+            <td class="w-icon"><span class="msr" style="color:${colorOf(t)}">${iconOf(t)}</span></td>
+            <td class="w-name"><strong>${esc(t.name || 'Weg')}</strong><small>${esc([view.sort === 'date' ? DATE.format(t.start) : SHORT.format(t.start), originOf(t)].filter(Boolean).join(' · '))}${
+              hasValues(t) ? mark('monitor_heart', 'Mit Gesundheitsdaten (Puls, Frequenz, Leistung)') : ''}${t.pin ? mark('offline_pin', 'Offline verfügbar') : ''}${
+              t.stub ? mark('folder', 'Liegt im Ordner – wird beim Öffnen geholt') : ''}</small>${tagLine(t)}</td>
+            <td class="w-num">${view.sort === 'speed' ? tempo(t, moving(t) > 0 ? t.length / moving(t) : 0) : fmtDistance(t.length)}<small>${fmtTime(moving(t))}</small></td>
+            <td class="w-eye">${picking ? `<input type="checkbox" class="row-pick" data-pick="${esc(t.id)}" ${picking.has(t.id) ? 'checked' : ''} aria-label="Zum Vergleich">`
+              : `<button type="button" class="row-eye" data-eye="${esc(t.id)}" aria-pressed="${shownOnMap(t)}"
+              title="${shownOnMap(t) ? 'Auf der Karte ausblenden' : 'Auf der Karte zeigen'}"><span class="msr">${shownOnMap(t) ? 'visibility' : 'visibility_off'}</span></button>`}</td>
+          </tr>`;
+    // Nicht nach Datum: eine Liste, oben die Summe
+    if (view.sort !== 'date') {
+      const sum = list.reduce((a, t) => a + t.length, 0), time = list.reduce((a, t) => a + moving(t), 0);
+      box.innerHTML = list.length ? `<p class="muted wege-sum">${list.length} ${list.length === 1 ? 'Weg' : 'Wege'} · ${km(sum)} · ${fmtTime(time)}</p>
+        <table class="wege-table"><tbody>${list.map(rowOf).join('')}</tbody></table>`
+        : all.length ? '<p class="muted">Nichts gefunden – Filter oder Suche ändern.</p>' : '';
+      paintPicking();
+      paintMap();
+      return;
+    }
     box.innerHTML = [...byYear].map(([y, ts]) => {
       const sum = ts.reduce((a, t) => a + t.length, 0), time = ts.reduce((a, t) => a + moving(t), 0);
       const shown = ts.filter((t) => shownOnMap(t)).length;
@@ -363,27 +478,40 @@ function paintGroups() {
         <summary><button type="button" class="year-eye" data-year="${y}" aria-pressed="${shown > 0}"
             title="${shown ? `${y} auf der Karte ausblenden` : `${y} auf der Karte zeigen`}"><span class="msr">${shown ? 'visibility' : 'visibility_off'}</span></button>
           <strong>${y}</strong>
-          <small>${ts.length} ${ts.length === 1 ? 'Weg' : 'Wege'} · ${km(sum)} · ${fmtDuration(time)}${shown && shown < ts.length ? ` · ${shown} auf der Karte` : ''}</small></summary>
-        <table class="wege-table"><tbody>${ts.map((t) => `
-          <tr data-id="${esc(t.id)}" tabindex="0" class="${shownOnMap(t) ? '' : 'off-map'}">
-            <td class="w-icon"><span class="msr" style="color:${colorOf(t)}">${iconOf(t)}</span></td>
-            <td class="w-name"><strong>${esc(t.name || 'Weg')}</strong><small>${esc([DATE.format(t.start), originOf(t)].filter(Boolean).join(' · '))}${
-              hasValues(t) ? mark('monitor_heart', 'Mit Gesundheitsdaten (Puls, Frequenz, Leistung)') : ''}${t.pin ? mark('offline_pin', 'Offline verfügbar') : ''}${
-              t.stub ? mark('folder', 'Liegt im Ordner – wird beim Öffnen geholt') : ''}</small></td>
-            <td class="w-num">${fmtDistance(t.length)}<small>${fmtDuration(moving(t))}</small></td>
-            <td class="w-eye"><button type="button" class="row-eye" data-eye="${esc(t.id)}" aria-pressed="${shownOnMap(t)}"
-              title="${shownOnMap(t) ? 'Auf der Karte ausblenden' : 'Auf der Karte zeigen'}"><span class="msr">${shownOnMap(t) ? 'visibility' : 'visibility_off'}</span></button></td>
-          </tr>`).join('')}</tbody></table>
+          <small>${ts.length} ${ts.length === 1 ? 'Weg' : 'Wege'} · ${km(sum)} · ${fmtTime(time)}${shown && shown < ts.length ? ` · ${shown} auf der Karte` : ''}</small></summary>
+        <table class="wege-table"><tbody>${ts.map(rowOf).join('')}</tbody></table>
       </details>`;
-    }).join('') + (all.length && !list.length ? `<p class="muted">Nichts gefunden für „${esc(query.wege)}“.</p>` : '');
+    }).join('') + (all.length && !list.length ? '<p class="muted">Nichts gefunden – Filter oder Suche ändern.</p>' : '');
+    paintPicking();
   }
   paintMap();
 }
 
+content.addEventListener('change', (e) => {
+  const k = e.target.closest('[data-view]')?.dataset.view;
+  if (!k || selected) return;
+  view[k] = e.target.value;
+  // Name: A–Z zuerst, Zahlen: das Größte zuerst
+  if (k === 'sort') view.dir = e.target.value === 'name' ? 1 : -1;
+  saveView();
+  paintGroups();
+  fitView();
+});
 content.addEventListener('input', (e) => {
   if (!e.target.matches('.wege-search input')) return;
   query[tab] = e.target.value;
+  paintLinkHit();
   paintGroups();
+});
+/* Ein geteilter WMap-Link in der Suche (Tour, gemeinsam planen, Aufzeichnung): „Link öffnen“ darunter, Enter öffnet */
+function paintLinkHit() {
+  const b = $('.wege-open-link', content);
+  if (b) b.hidden = !linkTarget(query[tab] ?? '');
+}
+content.addEventListener('submit', (e) => {
+  if (!e.target.matches('.wege-search')) return;
+  e.preventDefault();
+  if (linkTarget(query[tab] ?? '')) openLinkText(query[tab]);
 });
 content.addEventListener('click', (e) => {
   // Auge am Jahr: alle Wege des Jahres auf der Karte ein- bzw. ausblenden (klappt das Jahr nicht zu)
@@ -409,7 +537,32 @@ content.addEventListener('click', (e) => {
     if (t.dataset.tab !== tab) { tab = t.dataset.tab; showList({ push: true }); fitView(); }
     return;
   }
+  if (e.target.closest('[data-view-dir]')) { view.dir = -view.dir; saveView(); paintGroups(); return; }
+  if (e.target.closest('[data-view-reset]')) { Object.assign(view, { sport: '', tag: '', since: '' }); saveView(); paintGroups(); fitView(); return; }
+  const listDo = e.target.closest('[data-list]')?.dataset.list;
+  // Alle sichtbaren (Filter, Suche) zum Vergleich ankreuzen – nochmal: keinen
+  if (listDo === 'pick-all' && picking) {
+    const ids = visible().map((x) => x.id);
+    if (ids.every((id) => picking.has(id))) picking.clear(); else ids.forEach((id) => picking.add(id));
+    paintGroups();
+    return;
+  }
+  if (listDo === 'open-typed') { openLinkText(query[tab]); return; }
+  if (listDo === 'compare-cancel') { picking = null; showList(); return; }
+  if (listDo === 'compare-go' && picking?.size > 1) { openCompare([...picking], { push: true }); return; }
+  if (listDo === 'pick-tag' && picking?.size) { tagPicked(); return; }
   const row = e.target.closest('tr[data-id]');
+  // Nach langem Tippen kommt beim Loslassen oft noch ein Klick – der wählt nicht gleich wieder ab
+  if (row && longPressed && Date.now() - longPressed < 400) { longPressed = 0; return; }
+  // Vergleichen: die Zeile kreuzt an, statt den Weg zu öffnen
+  if (row && picking) {
+    const id = row.dataset.id;
+    if (picking.has(id)) picking.delete(id); else picking.add(id);
+    const box = $(`.row-pick[data-pick="${CSS.escape(id)}"]`, row);
+    if (box) box.checked = picking.has(id);
+    paintPicking();
+    return;
+  }
   if (row) { select(row.dataset.id, { push: true }); return; }
   const trow = e.target.closest('tr[data-tour]');
   if (trow) { selectTour(trow.dataset.tour, { push: true }); return; }
@@ -429,8 +582,7 @@ content.addEventListener('click', (e) => {
     connections.remove(selected.id);
     conns = connections.all();
     toast('Verbindung gelöscht');
-    showList({ push: true });
-    fitView();
+    backToList();
     return;
   }
 });
@@ -444,6 +596,135 @@ content.addEventListener('mouseover', (e) => {
   const tr = e.target.closest('tr[data-id], tr[data-tour], tr[data-conn]');
   hover(tr?.dataset.id ?? tr?.dataset.tour ?? tr?.dataset.conn ?? null);
 });
+/** Leiste „Vergleichen“: wie viele angekreuzt sind – vergleichen geht ab zwei, ein Tag ab einem */
+function paintPicking() {
+  const bar = $('.compare-bar', content);
+  if (!bar || !picking) return;
+  const n = picking.size;
+  $('.compare-count', bar).textContent = n ? `${n} gewählt` : 'Wege ankreuzen';
+  $('[data-list="compare-go"]', bar).disabled = n < 2;
+  $('[data-list="pick-tag"]', bar).disabled = n < 1;
+}
+
+/*
+ * Lange auf eine Zeile tippen (oder die Maus halten): auswählen statt öffnen – die Liste geht in den Modus
+ * „Vergleichen“ mit dieser Zeile angekreuzt; weitere kreuzt ein kurzer Tipp an. Bewegt sich der Finger (scrollen),
+ * zählt es nicht.
+ */
+const LONG_MS = 500;
+let longPressed = 0;                  // Zeit des Loslassens nach langem Tippen (0: keins)
+let pressTimer = null, pressAt = null;
+content.addEventListener('pointerdown', (e) => {
+  const row = e.target.closest('.wege-table tr[data-id]');
+  if (!row || tab !== 'wege' || selected || e.button > 0 || e.target.closest('button, input, a')) return;
+  pressAt = [e.clientX, e.clientY];
+  longPressed = 0;
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => {
+    pressTimer = null;
+    longPressed = -1;                 // läuft – beim Loslassen die Zeit
+    navigator.vibrate?.(15);
+    const id = row.dataset.id;
+    if (!picking) {
+      // Die Leiste kommt über der Liste dazu – die gedrückte Zeile bleibt, wo der Finger ist
+      const at = row.getBoundingClientRect().top, y = content.scrollTop;
+      picking = new Set([id]);
+      showList();
+      const now = content.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+      content.scrollTop = y + (now ? now.getBoundingClientRect().top - at : 0);
+      return;
+    }
+    if (picking.has(id)) picking.delete(id); else picking.add(id);
+    const box = $(`.row-pick[data-pick="${CSS.escape(id)}"]`, row);
+    if (box) box.checked = picking.has(id);
+    paintPicking();
+  }, LONG_MS);
+});
+const pressEnd = () => { clearTimeout(pressTimer); pressTimer = null; };
+content.addEventListener('pointermove', (e) => { if (pressTimer && pressAt && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) > 10) pressEnd(); });
+content.addEventListener('pointerup', () => { pressEnd(); if (longPressed === -1) longPressed = Date.now(); });
+content.addEventListener('pointercancel', pressEnd);
+// Langes Tippen öffnet am Handy sonst das Kontextmenü (Link kopieren …)
+content.addEventListener('contextmenu', (e) => { if (e.target.closest('.wege-table tr[data-id]') && tab === 'wege') e.preventDefault(); });
+
+/** Allen angekreuzten einen Tag geben – gespeichert wie im Weg selbst (auch in der GPX-Datei) */
+async function tagPicked() {
+  const ids = [...picking];
+  const tag = await askTag(allTags());
+  if (!tag) return;
+  let n = 0;
+  for (const id of ids) {
+    const t = await tracks.get(id).catch(() => null);
+    if (!t || tagsOf(t).includes(tag)) continue;
+    await tracks.put({ ...t, tags: [...tagsOf(t), tag], updated: Date.now() });
+    n += 1;
+  }
+  await load();
+  paintGroups();
+  toast(n ? `Tag „${tag}“ an ${n} ${n === 1 ? 'Weg' : 'Wegen'}` : `Alle hatten „${tag}“ schon`);
+}
+
+/**
+ * Wege vergleichen (pages/wege-compare.js) – liegen sie nur im Ordner, erst ganz holen. `focus`: der aktuelle (sonst
+ * der neueste); `same`: gleiche Strecke vom Weg aus (Stufen oben). Ein anderer als aktueller (Auswahl, Doppelklick
+ * auf der Karte) ist ein neuer Eintrag im Verlauf, Zurück führt wieder zum vorigen; andere Touren im Vergleich
+ * (Mehrfachauswahl) ersetzen den Eintrag.
+ */
+async function openCompare(ids, { push = false, replace = false, focus = null, same = null } = {}) {
+  tab = 'wege';
+  selected = null;
+  const url = `./wege.html?compare=${ids.map(encodeURIComponent).join(',')}${focus ? `&focus=${encodeURIComponent(focus)}` : ''}${same ? `&same=${encodeURIComponent(same)}` : ''}`;
+  if (push) history.pushState({ wege: 1, compare: ids, focus, same }, '', url);
+  else if (replace) history.replaceState({ ...history.state, compare: ids, focus, same }, '', url);
+  const cards = ids.map((id) => all.find((t) => t.id === id)).filter(Boolean);
+  const own = same && all.find((t) => t.id === same);
+  document.title = `${own ? 'Gleiche Strecke' : 'Vergleich'} – WMap`;
+  if (own) page.header(own.name || 'Gleiche Strecke', backToList, { icon: 'compare_arrows', color: colorOf(own) });
+  else page.header('Vergleich', backToList);
+  if (cards.length < 2) { toast('Zum Vergleichen braucht es mindestens zwei Wege'); showList(); return; }
+  content.innerHTML = '<p class="muted">Lade die Wege …</p>';
+  page.open();
+  const list = [];
+  for (const c of cards) {
+    try { list.push(c.stub ? await tracks.full(c) : c); } catch { toast(`„${c.name || 'Weg'}“ liegt im Ordner – der ist gerade nicht erreichbar`); }
+  }
+  if (list.length < 2) { showList(); return; }
+  comparing = list;
+  compareFocus = list.some((t) => t.id === focus) ? focus : list.reduce((a, b) => (b.start > a.start ? b : a)).id;
+  compareSame = own ? same : null;
+  picking = null;
+  compareView = paintCompare(content, list, {
+    focus: compareFocus, same: !!own, pool: all,
+    onHover: (id) => compareHover(id),
+    onSwitch: (id) => openCompare(ids, { push: true, focus: id, same: compareSame }),
+    onSet: (next) => {
+      if (next.length < 2) toast('Zum Vergleichen braucht es mindestens zwei Wege');
+      openCompare(next.length < 2 ? ids : next, { replace: true, focus: compareFocus, same: compareSame });
+    },
+  });
+  if (own) paintSameLevels(own);
+  paintMap();
+  fitView();
+}
+
+/* Karte im Vergleich: der aktuelle Weg kräftig in seiner Farbe, die anderen schmal und grau, der unter der Maus dunkler */
+const CMP_GREY = '#868e96', CMP_HOT = '#343a40';
+const SEL_WIDTH = ['interpolate', ['linear'], ['zoom'], 6, 3.5, 14, 7];
+const SEL_CASING = ['interpolate', ['linear'], ['zoom'], 6, 6, 14, 12];
+let compareHot = null;              // Weg, der gerade hervorgehoben ist
+function compareHover(id) {
+  compareHot = id;
+  if (!map.getLayer('weg-sel') || !comparing) return;
+  const hot = ['==', ['get', 'id'], id ?? ''];
+  const strong = ['any', hot, ['==', ['get', 'id'], compareFocus ?? '']];
+  map.setPaintProperty('weg-sel', 'line-width', ['case', hot, 6, ['==', ['get', 'id'], compareFocus ?? ''], 6, 3]);
+  map.setPaintProperty('weg-sel', 'line-color', ['case', hot, CMP_HOT, ['get', 'color']]);
+  map.setPaintProperty('weg-sel', 'line-opacity', ['case', strong, 1, 0.6]);
+  map.setPaintProperty('weg-sel-casing', 'line-width', ['case', strong, 10, 5]);
+  // Die hervorgehobene obenauf
+  map.setLayoutProperty('weg-sel', 'line-sort-key', ['case', hot, 2, ['==', ['get', 'id'], compareFocus ?? ''], 1, 0]);
+}
+
 /**
  * GPX- und FIT-Dateien übernehmen (gewählt oder hineingezogen) – als aufgezeichnete Touren (`gpx`) oder geplante
  * (`gpx-tour`). Aufzeichnungen: mehrere bzw. solche, die es schon gibt, mit der Rückfrage (ui/import-ask.js);
@@ -465,6 +746,7 @@ async function importFiles(files, kind) {
   await load();
   showList();
   fitView();
+  autoNames();
 }
 content.addEventListener('change', async (e) => {
   const inp = e.target.closest('[data-file]');
@@ -547,9 +829,9 @@ async function select(id, { push = false } = {}) {
   heights = null;
   chartScale = 1;
   showLap(null);
-  if (push) history.pushState({ id }, '', `./wege.html?id=${encodeURIComponent(id)}`);
+  if (push) history.pushState({ wege: 1, id }, '', `./wege.html?id=${encodeURIComponent(id)}`);
   document.title = `${card.name || 'Weg'} – WMap`;
-  page.header(card.name || 'Weg', () => showList({ push: true }));
+  trackHeader(card);
   // Liegt der Weg nur im Ordner (Karteikarte): erst zeigen, was die App weiß, dann alle Punkte holen
   let t = card, missing = '';
   devLog('Tour geöffnet:', card.name || card.id, card.stub ? '(liegt nur im Ordner)' : '(ganz in der App)');
@@ -564,6 +846,7 @@ async function select(id, { push = false } = {}) {
     folderPaint = { id: t.id, before: performance.now(), took };
   }
   paintTrack(t, missing);
+  paintSame(t);
   if (t.stub) return;
   paintCharts(t);
   paintLaps(t);
@@ -608,6 +891,52 @@ function folderWatch() {
   };
 }
 
+/**
+ * Gleiche Strecke schon öfter – in derselben Art (Lauf mit Lauf)? Dann im Weg nur eine Zeile „Mit 3 Touren
+ * vergleichen“ (data/same-route.js). Wie streng
+ * „gleich“ ist (Genau, Ähnlich, Grob), wählt man im Vergleich oben; gemerkt. Findet die gemerkte Stufe nichts, gilt
+ * die strengste, die etwas findet.
+ */
+const SAME_KEY = 'wmap.sameLevel';
+function sameFor(t) {
+  // Nur dieselbe Art: zu einem Lauf nur Läufe, keine Spaziergänge auf derselben Runde.
+  // Grob zuerst (das Meiste) – Ähnlich und Genau suchen nur darin
+  const rough = sameRoutes(t, all.filter((x) => sportKey(x) === sportKey(t)), 'rough');
+  const found = Object.fromEntries(Object.keys(SAME_LEVELS).map((k) => [k, k === 'rough' ? rough : sameRoutes(t, rough, k)]));
+  let level = local.get(SAME_KEY) ?? 'exact';
+  if (!found[level]?.length) level = Object.keys(SAME_LEVELS).find((k) => found[k].length) ?? 'exact';
+  return { found, level, same: found[level] };
+}
+function paintSame(t) {
+  const box = $('.weg-same', content);
+  if (!box || t.shared) return;
+  const { same } = sameFor(t);
+  box.hidden = !same.length;
+  if (!same.length) return;
+  box.innerHTML = `<button type="button" class="weg-same-go" data-do="same"><span class="msr">compare_arrows</span>
+    <span>Mit ${same.length} ${same.length === 1 ? 'Tour' : 'Touren'} vergleichen</span><span class="msr">chevron_right</span></button>`;
+  box.dataset.ids = [t.id, ...same.map((x) => x.id)].join(',');
+}
+/** Im Vergleich der gleichen Strecke oben: wie streng gleich – mit der Zahl je Stufe; ein Tipp vergleicht neu */
+function paintSameLevels(own) {
+  const { found, level } = sameFor(own);
+  const row = Object.assign(document.createElement('div'), { className: 'chip-row same-level', role: 'group' });
+  row.setAttribute('aria-label', 'Wie genau gleich');
+  row.innerHTML = Object.entries(SAME_LEVELS).map(([k, lv]) => `
+    <button type="button" class="chip" data-same-level="${k}" aria-pressed="${k === level}" ${found[k].length ? '' : 'disabled'}
+      title="${found[k].length} weitere – höchstens ${lv.near} m daneben, Länge ±${Math.round(lv.len * 100)} %">${lv.label} <small>${found[k].length}</small></button>`).join('');
+  content.prepend(row);
+}
+content.addEventListener('click', (e) => {
+  const lv = e.target.closest('[data-same-level]')?.dataset.sameLevel;
+  const own = compareSame && all.find((t) => t.id === compareSame);
+  if (!lv || !own) return;
+  local.set(SAME_KEY, lv);
+  const { same } = sameFor(own);
+  const ids = [own.id, ...same.map((x) => x.id)];
+  if (same.length) openCompare(ids, { focus: ids.includes(compareFocus) ? compareFocus : own.id, same: own.id, replace: true });
+});
+
 /** Kopf, Zahlen, Aussehen und Knöpfe eines Wegs; `note`: Hinweis, solange bzw. weil die Punkte fehlen */
 function paintTrack(t, note = '') {
   const mv = moving(t);
@@ -620,16 +949,18 @@ function paintTrack(t, note = '') {
   const color = colorOf(t);
   const shown = shownOnMap(t);
   content.innerHTML = `
-    <label class="weg-name"><span class="msr">edit</span><input type="text" value="${esc(t.name ?? '')}" placeholder="Name" aria-label="Name des Wegs" ${t.shared ? 'readonly' : ''}></label>
-    <p class="weg-when"><span class="msr" style="color:${color}">${iconOf(t)}</span>
-      ${LONG.format(t.start)}, ${TIME.format(t.start)}–${TIME.format(t.end)} Uhr
+    <p class="weg-when">${LONG.format(t.start)}, ${TIME.format(t.start)}–${TIME.format(t.end)} Uhr
       <br><span class="muted">${esc(originOf(t))}${t.kind === 'health' ? ' · aus Health Connect' : ''}</span>
       ${t.from || t.to ? `<br><span class="muted">${esc([t.from, t.to].filter(Boolean).map((x) => x.split(',')[0]).join(' → '))}</span>` : ''}</p>
+    ${t.imported || t.shared ? '' : `<div class="chip-row weg-tags" role="group" aria-label="Tags"><span class="msr">sell</span>
+      ${tagsOf(t).map((x) => `<button type="button" class="chip" data-tag-del="${esc(x)}" aria-pressed="true" title="Tag entfernen">${esc(x)} <span class="msr">close</span></button>`).join('')}
+      <button type="button" class="chip" data-tag-add><span class="msr">add</span> Tag</button></div>`}
     ${t.imported ? '<p class="muted weg-note"><span class="msr">upload_file</span> Geöffnete Datei – noch nicht gespeichert.</p>' : t.shared ? '<p class="muted weg-note"><span class="msr">share</span> Geteilte Aufzeichnung – noch nicht gespeichert.</p>' : ''}
     ${note ? `<p class="muted weg-note weg-folder"><span class="msr">folder</span><span>${esc(note)}</span></p>` : ''}
+    <div class="weg-same" hidden></div>
     <div class="weg-stats">
+      <div><strong>${fmtTime(mv)}</strong><small>in Bewegung</small></div>
       <div><strong>${fmtDistance(t.length)}</strong><small>Strecke</small></div>
-      <div><strong>${fmtDuration(mv)}</strong><small>in Bewegung</small></div>
       ${pace ? `<div><strong>${mv ? clock(pace.per / (t.length / mv)) : '–'}</strong><small>Ø ${esc(pace.unit)}</small></div>` : ''}
       <div><strong>${mv ? (t.length / mv * 3.6).toFixed(1).replace('.', ',') : '–'}</strong><small>Ø km/h</small></div>
       <div><strong>${t.top ? Math.round(t.top * 3.6) : '–'}</strong><small>max. km/h</small></div>
@@ -674,6 +1005,7 @@ function paintTrack(t, note = '') {
       <button type="button" class="button" data-do="plan" title="Im Planer als neue Tour öffnen – gespeichert wird erst dort"><span class="msr">edit_road</span> Als Planung öffnen</button>
       <button type="button" class="button" data-do="share" title="Die Aufzeichnung als Link teilen – mit Zeiten, Tempo und auf Wunsch Puls &amp; Co."><span class="msr">share</span> Teilen</button>
       <button type="button" class="button" data-do="gpx" title="Als GPX- oder FIT-Datei"><span class="msr">download</span> Herunterladen</button>
+      <button type="button" class="button" data-do="compare" title="Mit anderen Aufzeichnungen vergleichen – in der Liste ankreuzen"><span class="msr">compare_arrows</span> Vergleichen</button>
       <button type="button" class="button" data-do="delete"><span class="msr">delete</span> Löschen</button>`}
     </div>`;
   $('.weg-look', content)?.addEventListener('toggle', (e) => { lookOpen = e.target.open; });
@@ -691,6 +1023,31 @@ function withShown(t, want) {
   return shownOnMap(plain) === want ? plain : { ...plain, hidden: !want };
 }
 
+async function addTag(t) {
+  const tag = await askTag(allTags().filter((x) => !tagsOf(t).includes(x)));
+  if (!tag || tagsOf(t).includes(tag)) return;
+  await saveLook({ tags: [...tagsOf(t), tag] });
+}
+
+/** Tag erfragen – vorhandene (`known`) zum Antippen → Text oder '' */
+async function askTag(known) {
+  const v = await ask({
+    icon: 'sell', title: 'Tag hinzufügen',
+    html: `<label>Tag<input type="text" name="tag" list="tag-list" maxlength="30" placeholder="z. B. Rennen"></label>
+      <datalist id="tag-list">${known.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
+      ${known.length ? `<div class="chip-row">${known.map((x) => `<button type="button" class="chip" data-pick-tag="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}`,
+    buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'ok', label: 'Hinzufügen', icon: 'add', primary: true }],
+    // Nur „Hinzufügen“ liest das Feld – Abbrechen (oder Esc) gibt nichts, nicht den Text „null“
+    read: (dlg) => ({ tag: dlg.querySelector('input').value.trim() }),
+    setup: (dlg) => {
+      const input = dlg.querySelector('input');
+      input.focus();
+      dlg.addEventListener('click', (e) => { const x = e.target.closest('[data-pick-tag]'); if (x) { input.value = x.dataset.pickTag; input.focus(); } });
+    },
+  });
+  return typeof v?.tag === 'string' ? v.tag.replace(/\|/g, '/').trim() : '';
+}
+
 /** Art, Farbe, Sichtbarkeit, „offline verfügbar“ speichern und neu zeichnen */
 async function saveLook(changes, { quiet = false } = {}) {
   const t = { ...selected, ...changes };
@@ -700,6 +1057,7 @@ async function saveLook(changes, { quiet = false } = {}) {
   if (!quiet) t.updated = Date.now();
   selected = t;
   await load();
+  if ('sport' in changes || 'color' in changes) trackHeader(t);
   // Die Ansicht wird neu gezeichnet – an derselben Stelle bleiben
   const keep = content.scrollTop;
   paintTrack(t, $('.weg-folder span:last-child', content)?.textContent ?? '');
@@ -717,6 +1075,10 @@ content.addEventListener('click', (e) => {
   if (!t || !('start' in t)) return;
   const sw = e.target.closest('.swatch[data-color]');
   if (sw) { saveLook({ color: sw.dataset.color || undefined }); return; }
+  // Tags: „Rennen“, „Vorbereitung“ … – zum Filtern in der Liste, stehen auch in der GPX-Datei
+  const del = e.target.closest('[data-tag-del]')?.dataset.tagDel;
+  if (del) { const left = tagsOf(t).filter((x) => x !== del); saveLook({ tags: left.length ? left : undefined }); return; }
+  if (e.target.closest('[data-tag-add]')) { addTag(t); return; }
   const flag = e.target.closest('[data-flag]')?.dataset.flag;
   if (flag === 'map') {
     saveLook({ hidden: withShown(t, !shownOnMap(t)).hidden });
@@ -734,34 +1096,46 @@ content.addEventListener('change', (e) => {
   if (e.target.matches('.weg-colors input[type="color"]')) saveLook({ color: e.target.value });
 });
 
-/** Umschalter über dem Diagramm: Höhe, Tempo, Puls … – nur, was es gibt */
+/**
+ * Umschalter über dem Diagramm: Höhe, Tempo, Puls … – nur, was es gibt. Frei kombinierbar: jeder Chip schaltet
+ * seine Reihe dazu oder weg (mindestens eine bleibt), gemerkt als Liste in wmap.chart.
+ */
 let metricCache = { id: null, m: {} };
+// Ohne eigene Wahl alle Reihen zusammen in einem Diagramm (Höhe, Tempo, Puls …) – je Reihe eine eigene Skala
+const chartWant = () => { const v = local.get('wmap.chart') ?? ['ele', 'speed', 'hr', 'cad', 'pow']; return Array.isArray(v) ? v : [v]; };
 function paintCharts(t) {
   const bar = $('.weg-chart-tabs', content) ?? $('dialog.dg_fs .weg-chart-tabs');
   if (!bar || !elevation) return;
   if (metricCache.id !== t.id) metricCache = { id: t.id, m: metrics(t) };
   const m = metricCache.m;
+  const hasEle = !!heights?.elevation?.length;
   const kinds = ['ele', ...['speed', 'hr', 'cad', 'pow'].filter((k) => m[k]?.length)];
-  const want = local.get('wmap.chart') ?? 'ele';
-  const kind = kinds.includes(want) && (want !== 'ele' || heights?.elevation?.length) ? want
-    : heights?.elevation?.length ? 'ele' : kinds.find((k) => k !== 'ele') ?? 'ele';
+  let on = chartWant().filter((k) => kinds.includes(k) && (k !== 'ele' || hasEle));
+  if (!on.length) on = [hasEle ? 'ele' : kinds.find((k) => k !== 'ele') ?? 'ele'];
   bar.hidden = kinds.length < 2;
-  bar.innerHTML = kinds.map((k) => `<button type="button" class="chip" data-chart="${k}" aria-pressed="${k === kind}">
+  bar.innerHTML = kinds.map((k) => `<button type="button" class="chip" data-chart="${k}" aria-pressed="${on.includes(k)}">
       <span class="msr">${CHARTS[k].icon}</span> ${esc(k === 'cad' ? cadName(t) : CHARTS[k].name)}</button>`).join('');
   const len = cumulative(trackCoords(t)).at(-1);
-  if (kind === 'ele') {
+  if (on.length === 1 && on[0] === 'ele') {
     chartScale = heights?.length ? heights.length / len : 1;
-    if (heights?.elevation?.length) elevation.show(heights);
+    if (hasEle) elevation.show(heights);
     return;
   }
+  // Höhe zusammen mit anderen: auf die Kilometer der Strecke umgerechnet (das Höhenprofil misst selbst)
   chartScale = 1;
-  const c = CHARTS[kind];
-  const vals = m[kind].map(([, v]) => v);
-  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-  elevation.showMetric({
-    ...c, name: kind === 'cad' ? cadName(t) : c.name, points: m[kind], length: len,
-    chips: [['functions', Math.round(mean * 10) / 10, 'Durchschnitt'], ['vertical_align_top', Math.max(...vals), 'Höchstwert']],
+  const k = heights?.length ? heights.length / len : 1;
+  const mean = (pts) => Math.round(pts.reduce((a, [, v]) => a + v, 0) / pts.length * 10) / 10;
+  const list = on.map((kind) => {
+    if (kind === 'ele') return { name: 'Höhe', unit: 'm', icon: 'landscape', color: 'light-dark(hsl(142 62% 36%), hsl(142 55% 52%))', points: heights.elevation.map(([km, h]) => [km / k, h]), smooth: false };
+    const c = CHARTS[kind];
+    return { ...c, name: kind === 'cad' ? cadName(t) : c.name, points: m[kind], mean: mean(m[kind]) };
   });
+  if (list.length === 1) {
+    const [one] = list, vals = one.points.map(([, v]) => v);
+    elevation.showMetric({ ...one, length: len, chips: [['functions', one.mean, 'Durchschnitt'], ['vertical_align_top', Math.max(...vals), 'Höchstwert']] });
+    return;
+  }
+  elevation.showMany(list, len);
 }
 
 /** Runden zu 1, 2 oder 5 km – schnellste grün, langsamste rot; antippen zeigt sie auf der Karte */
@@ -807,11 +1181,14 @@ function showLap(line) {
   if (line) map.fitBounds(bbox(line), { padding: page.padding(), maxZoom: 16, duration: 600 });
 }
 
-/** Diagramm wählen (Höhe, Tempo, Puls …) – im Blatt und im Vollbild */
+/** Reihe im Diagramm zu- oder abschalten (Höhe, Tempo, Puls …) – im Blatt und im Vollbild */
 function pickChart(e) {
   const chart = e.target.closest('[data-chart]')?.dataset.chart;
   if (!chart || !selected || !('start' in selected)) return false;
-  local.set('wmap.chart', chart);
+  // Die gezeigten Reihen (nicht die gemerkten, die es bei diesem Weg nicht gibt) – dazu oder weg, eine bleibt
+  const shown = [...e.target.closest('.weg-chart-tabs').querySelectorAll('[aria-pressed="true"]')].map((b) => b.dataset.chart);
+  const next = shown.includes(chart) ? shown.filter((k) => k !== chart) : [...shown, chart];
+  local.set('wmap.chart', next.length ? next : shown);
   paintCharts(selected);
   return true;
 }
@@ -871,21 +1248,31 @@ async function showElevation(coords, item, done) {
   } catch { done(null); }
 }
 
-content.addEventListener('change', async (e) => {
-  if (!e.target.matches('.weg-name input') || !selected || !('start' in selected)) return;
-  selected.name = e.target.value.trim();
-  selected.updated = Date.now();
-  await tracks.put(selected);
-  await load();
-  page.header(selected.name || 'Weg', () => showList({ push: true }));
-  toast('Name gespeichert');
-});
+/** Kopf eines Wegs: Symbol der Art, der Name als Feld zwischen ← und ✕ (geteilte und geöffnete: nur lesen) */
+function trackHeader(t, back = backToList) {
+  page.header(t.name ?? '', back, {
+    icon: iconOf(t), color: colorOf(t),
+    onRename: t.shared ? null : async (name) => {
+      if (!selected || selected.id !== t.id) return;
+      selected.name = name;
+      // Selbst benannt: WMap vergibt keinen Namen mehr (data/auto-name.js)
+      selected.nameAuto = name;
+      selected.updated = Date.now();
+      await tracks.put(selected);
+      await load();
+      document.title = `${name || 'Weg'} – WMap`;
+      toast('Name gespeichert');
+    },
+  });
+}
 
 content.addEventListener('click', async (e) => {
   const act = e.target.closest('[data-do]')?.dataset.do;
   const t = selected;
   if (!act || !t) return;
   if (act === 'car') { sendToCar({ type: 'tour', id: t.id }, toast); return; }
+  if (act === 'same') { openCompare($('.weg-same', content).dataset.ids.split(','), { push: true, focus: t.id, same: t.id }); return; }
+  if (act === 'compare') { picking = new Set([t.id]); showList({ push: true }); toast('Weitere Wege zum Vergleichen ankreuzen'); return; }
   if (t.stub && act !== 'delete') { toast('Dafür braucht es die Tour aus dem Ordner – der ist gerade nicht erreichbar'); return; }
   if (act === 'plan') {
     // Der Verlauf als neue Planung im Planer – ungespeichert, wie eine geteilte Tour
@@ -907,7 +1294,7 @@ content.addEventListener('click', async (e) => {
     if (v !== 'yes') return;
     if (isTrack) await tracks.remove(t.id); else tours.remove(t.id);
     await load();
-    showList({ push: true });
+    backToList();
     fitView();
   }
 });
@@ -945,7 +1332,7 @@ async function shareTrack(t) {
   });
   if (how === 'file' || how === 'send') { await downloadTrack(without(t, keep), how === 'send'); return; }
   if (how !== 'link' && how !== 'short') return;
-  const facts = [fmtDistance(t.length), fmtDuration(moving(t))].join(' · ');
+  const facts = [fmtDistance(t.length), fmtTime(moving(t))].join(' · ');
   const title = t.name || 'Tour', text = `${title} – ${facts}`;
   const code = await encodeTrack(t, keep);
   if (how === 'short') {
@@ -995,7 +1382,7 @@ async function openSharedTrack(code) {
   heights = null;
   chartScale = 1;
   document.title = `${t.name} – WMap`;
-  page.header(t.name, () => { history.replaceState(null, '', './wege.html'); showList(); fitView(); });
+  trackHeader(t, () => { history.replaceState(null, '', './wege.html'); showList(); fitView(); });
   paintTrack(t);
   paintCharts(t);
   paintLaps(t);
@@ -1015,7 +1402,7 @@ async function keepShared(t) {
     try { full = await tracks.full(twin); } catch (err) { toast(`Die vorhandene Tour liegt im Ordner – ${err.message}`); return; }
     const list = choices(full, t);
     if (list.length) {
-      const picks = await askMerge(full, list);
+      const picks = await askMerge(full, list, { newName: 'die geteilte Aufzeichnung aus dem Link' });
       if (!picks) return;
       const next = combine(full, t, picks);
       if (next !== full) { await tracks.put({ ...next, updated: Date.now() }); await load(); toast(`„${full.name}“ ergänzt`); }
@@ -1046,9 +1433,9 @@ function selectTour(id, { push = false } = {}) {
   tab = 'geplant';
   selected = t;
   heights = null;
-  if (push) history.pushState({ tour: id }, '', `./wege.html?tour=${encodeURIComponent(id)}`);
+  if (push) history.pushState({ wege: 1, tour: id }, '', `./wege.html?tour=${encodeURIComponent(id)}`);
   document.title = `${t.name || 'Tour'} – WMap`;
-  page.header(t.name || 'Tour', () => showList({ push: true }));
+  page.header(t.name || 'Tour', backToList);
   const p = PROFILES[t.profile];
   const g = groupOf(t);
   const st = t.stats ?? {};
@@ -1090,9 +1477,9 @@ function selectConn(id, { push = false } = {}) {
   tab = 'bahn';
   selected = c;
   heights = null;
-  if (push) history.pushState({ conn: id }, '', `./wege.html?conn=${encodeURIComponent(id)}`);
+  if (push) history.pushState({ wege: 1, conn: id }, '', `./wege.html?conn=${encodeURIComponent(id)}`);
   document.title = `${connName(c)} – WMap`;
-  page.header(connName(c), () => showList({ push: true }));
+  page.header(connName(c), backToList);
   const pt = (x) => (x?.point ? x.point.map((v) => v.toFixed(5)).join(',') : '');
   const again = `./index.html?from=${pt(c.from)}&to=${pt(c.to)}&profile=transit`;
   content.innerHTML = `
@@ -1168,7 +1555,8 @@ async function paintMap() {
     })) }
     : tab === 'geplant'
     ? { type: 'FeatureCollection', features: visiblePlanned().map((t) => ({
-      type: 'Feature', properties: { id: t.id, color: groupOf(t).color }, geometry: { type: 'LineString', coordinates: coordsOf(t.shape) },
+      // Gemeinsam geplant: überall blau wie im Planer – auf jedem Gerät gleich, egal welche Art
+      type: 'Feature', properties: { id: t.id, color: t.collab ? COLLAB_BLUE : groupOf(t).color }, geometry: { type: 'LineString', coordinates: coordsOf(t.shape) },
     })) }
     // Aufgezeichnet: in der Farbe der Art bzw. der eigenen, je älter, desto blasser – nur was eingeblendet ist
     : { type: 'FeatureCollection', features: [...onMap()].sort((a, b) => a.start - b.start).map((t) => ({
@@ -1207,18 +1595,28 @@ async function paintMap() {
       const z = await map.getSource('wege-pts').getClusterExpansionZoom(f.properties.cluster_id);
       map.easeTo({ center: f.geometry.coordinates, zoom: Math.max(z, 9.2) });
     });
-    map.on('click', 'wege-dot', (e) => {
-      const id = e.features[0].properties.id;
-      if (tab === 'bahn') selectConn(id, { push: true }); else if (tab === 'geplant') selectTour(id, { push: true }); else select(id, { push: true });
+    // Antippen mit Spielraum: Linien sind nur 2–4 px dünn – erst genau, dann immer weiter um den Punkt, am Handy
+    // bis 24 px um den Finger, mit der Maus bis 8 px
+    map.on('click', (e) => {
+      if (comparing) return;
+      const reach = matchMedia('(pointer: coarse)').matches ? [0, 8, 16, 24] : [0, 4, 8];
+      const layers = ['wege-dot', 'wege-line'].filter((id) => map.getLayer(id));
+      if (map.queryRenderedFeatures(e.point, { layers: ['wege-cluster'] }).length) return;   // geht auf (oben)
+      for (const r of reach) {
+        const { x, y } = e.point;
+        const f = map.queryRenderedFeatures(r ? [[x - r, y - r], [x + r, y + r]] : e.point, { layers })[0];
+        if (!f) continue;
+        const id = f.properties.id;
+        // Vergleichen: auf der Karte ankreuzen wie in der Liste
+        if (picking && tab === 'wege') { content.querySelector(`tr[data-id="${CSS.escape(id)}"]`)?.click(); return; }
+        if (tab === 'bahn') selectConn(id, { push: true }); else if (tab === 'geplant') selectTour(id, { push: true }); else select(id, { push: true });
+        return;
+      }
     });
     for (const id of ['wege-cluster', 'wege-dot']) {
       map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
       map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
     }
-    map.on('click', 'wege-line', (e) => {
-      const id = e.features[0].properties.id;
-      if (tab === 'bahn') selectConn(id, { push: true }); else if (tab === 'geplant') selectTour(id, { push: true }); else select(id, { push: true });
-    });
     map.on('mousemove', 'wege-line', (e) => { map.getCanvas().style.cursor = 'pointer'; hover(e.features[0].properties.id); });
     map.on('mouseleave', 'wege-line', () => { map.getCanvas().style.cursor = ''; hover(null); });
     map.on('mousemove', 'weg-sel', (e) => {
@@ -1228,7 +1626,28 @@ async function paintMap() {
       showHover(map, p.point);
       elevation.showAt(p.along / 1000 * chartScale);
     });
-    map.on('mouseleave', 'weg-sel', () => { showHover(map, null); elevation?.showAt(null); });
+    map.on('mouseleave', 'weg-sel', () => { showHover(map, null); elevation?.showAt(null); if (comparing) { compareHover(null); compareView?.hover(null); } });
+    // Vergleich: Maus über einer Linie hebt sie hervor (auch im Diagramm), Doppelklick macht sie zur aktuellen
+    map.on('mousemove', 'weg-sel', (e) => {
+      if (!comparing) return;
+      const id = e.features[0]?.properties.id ?? null;
+      compareHover(id === compareFocus ? null : id);
+      compareView?.hover(id);
+    });
+    map.on('click', 'weg-sel', (e) => {
+      if (!comparing || !compareFocus || !matchMedia('(pointer: coarse)').matches) return;
+      const id = e.features[0]?.properties.id;
+      if (!id || id === compareFocus) return;
+      if (compareHot === id) { openCompare(comparing.map((t) => t.id), { push: true, focus: id, same: compareSame }); return; }
+      compareHover(id);
+      compareView?.hover(id);
+    });
+    map.on('dblclick', 'weg-sel', (e) => {
+      const id = e.features[0]?.properties.id;
+      if (!comparing || !compareFocus || !id || id === compareFocus) return;
+      e.preventDefault();
+      openCompare(comparing.map((t) => t.id), { push: true, focus: id, same: compareSame });
+    });
   } else { map.getSource('wege').setData(fc); map.getSource('wege-pts').setData(startsOf(fc)); }
   // Orte: Punkte mit Namen, in der Farbe ihrer Liste (geteilte rot)
   const orte = { type: 'FeatureCollection', features: tab === 'orte' ? orteFeatures() : [] };
@@ -1245,17 +1664,22 @@ async function paintMap() {
     });
   } else map.getSource('orte').setData(orte);
   // Ausgewählt: keine Punkte, nur die eine Linie (die weg-sel zeigt)
-  for (const id of ['wege-cluster', 'wege-cluster-n', 'wege-dot']) map.setLayoutProperty(id, 'visibility', selected ? 'none' : 'visible');
+  for (const id of ['wege-cluster', 'wege-cluster-n', 'wege-dot']) map.setLayoutProperty(id, 'visibility', selected || comparing ? 'none' : 'visible');
   map.getSource('weg-km').setData(kmMarks(selected));
 
   // Gewähltes obenauf (Wege nach Tempo gefärbt); der Rest tritt zurück
   // (Wege tragen ihre Deckkraft nach Alter mit, alles andere gilt als 1)
   const age = ['coalesce', ['get', 'opacity'], 1];
-  map.setPaintProperty('wege-line', 'line-opacity', ['*', age, selected ? 0.25 : 0.9]);
-  map.setPaintProperty('wege-casing', 'line-opacity', ['*', age, selected ? 0.3 : 0.8]);
+  map.setPaintProperty('wege-line', 'line-opacity', ['*', age, selected || comparing ? 0.25 : 0.9]);
+  map.setPaintProperty('wege-casing', 'line-opacity', ['*', age, selected || comparing ? 0.3 : 0.8]);
   map.setPaintProperty('wege-dot', 'circle-opacity', age);
   markers.forEach((m) => m.remove());
   markers = [];
+  if (!comparing && map.getLayer('weg-sel')) {
+    map.setPaintProperty('weg-sel', 'line-width', SEL_WIDTH);
+    map.setPaintProperty('weg-sel', 'line-opacity', 1);
+    map.setPaintProperty('weg-sel-casing', 'line-width', SEL_CASING);
+  }
   if (selected?.legs) {
     // Verbindung: jeder Abschnitt in seiner Farbe, Fußwege grau
     map.getSource('weg-sel').setData({ type: 'FeatureCollection', features: selected.legs.filter((l) => l.coords?.length > 1).map((l) => ({
@@ -1282,6 +1706,12 @@ async function paintMap() {
       const el = Object.assign(document.createElement('div'), { className: `wp-marker ${cls}`, innerHTML: `<span class="msr">${icon}</span>` });
       markers.push(new maplibregl.Marker({ element: el }).setLngLat(p).addTo(map));
     }
+  } else if (comparing) {
+    map.getSource('weg-sel').setData({ type: 'FeatureCollection', features: comparing.map((t) => ({
+      type: 'Feature', properties: { id: t.id, color: t.id === compareFocus ? colorOf(t) : CMP_GREY }, geometry: { type: 'LineString', coordinates: trackCoords(t) },
+    })) });
+    map.setPaintProperty('weg-sel', 'line-gradient', undefined);
+    compareHover(null);
   } else {
     map.getSource('weg-sel').setData({ type: 'FeatureCollection', features: [] });
   }
@@ -1321,6 +1751,7 @@ function route() {
   else if (p.get('id')) select(p.get('id'));
   else if (p.get('conn')) selectConn(p.get('conn'));
   else if (p.get('tour')) selectTour(p.get('tour'));
+  else if (p.get('compare')) openCompare(p.get('compare').split(',').filter(Boolean), { focus: p.get('focus'), same: p.get('same') });
   else showList();
 }
 addEventListener('popstate', () => { route(); fitView(); });
@@ -1340,7 +1771,47 @@ addEventListener('wmap:folder', async () => {
   await load();
   const list = tab === 'bahn' ? conns : tab === 'geplant' ? planned : all;
   if (selected) { if (!list.some((t) => t.id === selected.id)) showList(); } else showList();
+  autoNames();
 });
+
+/*
+ * Im Hintergrund kamen Touren dazu oder änderten sich – Health Connect, Abgleich im Service Worker, Aufzeichnung,
+ * Import, Teilen (wmap:data mit Art „track“/„tour“, wmap:health): Die Übersicht zieht nach, ohne die Ansicht zu
+ * wechseln. Gesammelt (viele Meldungen beim Import), offen bleibt ein geöffneter Weg; angekreuzte bleiben angekreuzt.
+ */
+let freshList = null;
+let listStale = false;                            // kam etwas, während ein Weg offen war → beim Zurück nachziehen
+function listSoon() {
+  clearTimeout(freshList);
+  freshList = setTimeout(async () => {
+    freshList = null;
+    if (selected || comparing) { listStale = true; return; }
+    const before = all.length;
+    await load();
+    if (selected || comparing) { listStale = true; return; }
+    const y = content.scrollTop;
+    showList();
+    content.scrollTop = y;
+    if (all.length !== before) autoNames();
+  }, 800);
+}
+addEventListener('wmap:data', (e) => { if (['track', 'tour'].includes(e.detail?.kind)) listSoon(); });
+addEventListener('wmap:health', (e) => { if (e.detail?.added) listSoon(); });
+
+/*
+ * Namen vergeben (data/auto-name.js): frisch importierte Wege und solche, die nur nach Datei, App oder Datum
+ * heißen – im Hintergrund, die Liste zieht alle paar Sekunden nach
+ */
+let nameRepaint = null;
+async function autoNames() {
+  const n = await nameAll(all, {
+    onEach: (id, name) => {
+      all = all.map((x) => (x.id === id ? { ...x, name, nameAuto: name } : x));
+      nameRepaint ??= setTimeout(() => { nameRepaint = null; if (!selected && tab === 'wege') paintGroups(); }, 2000);
+    },
+  }).catch(() => 0);
+  if (n) toast(`${n} ${n === 1 ? 'Tour hat' : 'Touren haben'} einen Namen aus Art, Gegend und Tageszeit bekommen`);
+}
 
 await load();
 if (params.get('liste')) await openSharedList(params.get('liste'));
@@ -1348,5 +1819,6 @@ await openShort();
 route();
 fitView();
 autoSync();
+autoNames();
 // Lesezeichen geändert (auch aus dem Ordner): Orte neu
 addEventListener('wmap:saved', () => { if (tab === 'orte' && !selected) paintGroups(); });

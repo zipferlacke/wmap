@@ -3,11 +3,16 @@
  */
 import { showHover, BASE_POI_LAYERS, osmRef } from '../map/map.js';
 import { keyboardControl } from '../map/keys.js';
+import { streetView } from '../map/street.js';
 import { mountSignals } from '../map/signals.js';
+import { MY_PLACES_LAYER, mountMyPlaces } from '../map/my-places.js';
+import { places } from '../data/saved.js';
+import { mountPoiAccess } from '../map/poi-access.js';
 import { mapLayerIds, propertyTable } from '../map/layers.js';
 import { mountLayerMenu } from '../ui/layer-menu.js';
 import { presetOf, layerInfoAt, layerInfoHtml } from '../map/presets.js';
 import { ask, toast } from '../ui/dialogs.js';
+import { share, streetUrl } from '../ui/share.js';
 import { nearestOnLine, esc } from '../core/geo.js';
 import { current, map, sheet, state } from './core.js';
 import { nav } from './nav.js';
@@ -16,6 +21,7 @@ import { reach } from './reach.js';
 import { isSet, setWaypoint } from './route-plan.js';
 import { elevation, focusTransitLeg, selectRoute } from './route-results.js';
 import { trafficItems } from './traffic-along.js';
+import { closeAll } from './views.js';
 
 /* ══════════════════════════════════════════════════════════════════════════
    Karte: Klicks und langes Drücken – alles erscheint unten im Sheet,
@@ -38,7 +44,7 @@ function openBasePoi(feat) {
   showPlace(f, { over: overContext(), fly: false });
 }
 
-map.on('contextmenu', (e) => showPoint(e.lngLat.toArray()));
+map.on('contextmenu', (e) => { if (!street.active) showPoint(e.lngLat.toArray()); });
 
 /* Langes Drücken auf dem Handy entspricht dem Rechtsklick */
 {
@@ -46,7 +52,7 @@ map.on('contextmenu', (e) => showPoint(e.lngLat.toArray()));
   const cancel = () => { clearTimeout(timer); timer = null; };
   map.on('touchstart', (e) => {
     cancel();
-    if (e.points.length !== 1) return;
+    if (e.points.length !== 1 || street.active) return;
     timer = setTimeout(() => showPoint(e.lngLat.toArray()), 550);
   });
   map.on('touchend', cancel);
@@ -54,16 +60,36 @@ map.on('contextmenu', (e) => showPoint(e.lngLat.toArray()));
   map.on('movestart', cancel);
 }
 
-const CLICKABLE = ['traffic-icon', 'poi-nr', 'poi-dot', 'hl-nr', 'hl-dot', 'route-alt', 'hl-fill', ...BASE_POI_LAYERS];
+const CLICKABLE = [MY_PLACES_LAYER, 'traffic-icon', 'poi-nr', 'poi-dot', 'hl-nr', 'hl-dot', 'route-alt', 'hl-fill', ...BASE_POI_LAYERS];
 
 /* Ebenen-Menü: Satellit, Wandern & Rad, Wanderwege, eigene Ebenen und Plugins */
 const layerMenu = mountLayerMenu(map, { toast });
+/* Street View (map/street.js): auf Augenhöhe durch die Straßen – aus dem Ebenen-Menü, dem Menü, „Umsehen“ an einem
+   Ort (Ereignis 'wmap:street', detail: Punkt) oder ?action=street */
+export const street = streetView(map, {
+  base: layerMenu.base, setBase: layerMenu.setBase,
+  onShare: (where) => share({ title: 'Street View', text: 'Schau mal, hier:', url: () => streetUrl(where) }, toast),
+  // Geschäft angeschaut oder angetippt: sein Dialog unten (wie ein Klick auf den Ort in der Karte)
+  poi: {
+    open: (f) => openBasePoi(f),
+    close: () => { if (sheet.dataset.current === 'place') closeAll(); },
+    isOpen: () => sheet.open && sheet.dataset.current === 'place',
+  },
+});
+map.wmapStreet = street;
+addEventListener('wmap:street', (e) => { if (fly.active) fly.stop(); street.start(e.detail ?? null); });
 // Ampeln ab Zoom 15 – nur wo eine steht (map/signals.js)
 mountSignals(map);
+// Zuhause und Arbeit aus den Lesezeichen (map/my-places.js)
+mountMyPlaces(map);
+// Private Parkplätze u. Ä. blass (map/poi-access.js)
+mountPoiAccess(map);
 
 map.on('click', (e) => {
   // Beim Fliegen sperrt ein Klick nur die Maus (map/keys.js) – nichts öffnen
   if (fly.active) return;
+  // Street View mit gefangener Maus: der Klick fängt nur die Maus
+  if (street.active && document.pointerLockElement) return;
   // Bus & Bahn: Abschnitt der Verbindung angetippt → hervorheben, Beschreibung zeigen
   if (current()?.transit && !nav.active && sheet.dataset.current === 'route') {
     const legs = ['route-main', 'route-walk'].filter((id) => map.getLayer(id));
@@ -86,6 +112,13 @@ map.on('click', (e) => {
   const layers = CLICKABLE.filter((id) => map.getLayer(id) && !(nav.active && id === 'route-alt'));
   const hit = layers.length ? map.queryRenderedFeatures(e.point, { layers })[0] : null;
   const id = hit?.layer.id;
+  if (id === MY_PLACES_LAYER) {
+    // Der gespeicherte Punkt, nicht der gezeichnete (auf die Kachel gerundet) – dann gilt der Ort als gemerkt
+    const p = hit.properties;
+    const point = places.byKind(p.kind)[0]?.point ?? hit.geometry.coordinates;
+    showPlace({ type: 'Feature', geometry: { type: 'Point', coordinates: point }, properties: { name: p.name, _poi: !!p.poi } }, { over: overContext(), fly: false });
+    return;
+  }
   if (id === 'traffic-icon') { const t = trafficItems[hit.properties.i]; if (t) showTrafficItem(t); return; }
   if (id === 'poi-dot' || id === 'poi-nr' || ((id === 'hl-dot' || id === 'hl-nr') && (state.category || reach.cat))) {
     showPlace(featureFromPoint(hit), { over: true, fly: false });

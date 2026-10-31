@@ -195,6 +195,17 @@ export function fmtDuration(s) {
   return rest ? `${h} h ${rest} min` : `${h} h`;
 }
 
+/**
+ * Gemessene Dauer (aufgezeichnete Touren): unter einer Stunde auf die Sekunde („35 min 12 s“), ab einer Stunde auf
+ * die Minute („1 h 23 min“). Geschätzte Zeiten (Route, Planung) bleiben bei fmtDuration.
+ */
+export function fmtTime(s) {
+  const sec = Math.round(s);
+  if (sec >= 3600) return fmtDuration(sec);
+  const m = Math.floor(sec / 60), r = sec % 60;
+  return m ? (r ? `${m} min ${r} s` : `${m} min`) : `${r} s`;
+}
+
 /** Entfernung für die Ansage: „In 300 Metern“, „In 1,5 Kilometern“. */
 export function speakDistance(m) {
   if (m >= 950) return `${nf(Math.round(m / 100) / 10, m < 9950 ? 1 : 0)} Kilometern`;

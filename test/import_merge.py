@@ -115,7 +115,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   out.autoAsk = [title(), labels()];
   await press(/Selbst einstellen/);
   out.one = [title(), labels(), ask().innerText.includes('h1.gpx')];
-  out.oneText = [ask().innerText.includes('Die Tour „Tour H1“ gibt es schon. Was willst du aus der Datei „h1.gpx“ übernehmen?'), ask().innerText.includes('47 Punkte mehr in der Datei (88 statt 41)')];
+  out.oneText = [ask().innerText.includes('Die Tour „Tour H1“ gibt es schon.') && ask().innerText.includes('die Datei „h1.gpx“'), /Neu\s*[^]*88 Punkte/.test(ask().innerText) && /Bisher\s*[^]*41 Punkte/.test(ask().innerText)];
   untick('shape');
   await press(/Weiter/);
   out.two = [title(), ask().innerText.includes('h2.gpx')];
