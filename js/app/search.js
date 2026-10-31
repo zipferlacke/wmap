@@ -14,6 +14,7 @@ import { ask, toast } from '../ui/dialogs.js';
 import { distance, esc, fmtDistance } from '../core/geo.js';
 import { fmtAbout, roadDistances, ROAD_FIRST } from '../services/routing.js';
 import { runCategory } from './category.js';
+import { lineItem } from './lines.js';
 import { directItems } from './search-direct.js';
 import { $, $$, debounce, map, q, state } from './core.js';
 import { isPoi } from './drive-target.js';
@@ -133,6 +134,9 @@ export async function placeSuggestions(text, onPick, { withCategory = true, extr
   if (seq !== searchSeq) return null;
   if (Array.isArray(direct)) return [...extra, ...direct];
   if (direct?.query) query = direct.query;
+  // „Bus 11“: die Linie zuerst – die Suche nach Orten läuft trotzdem („Linie 3“ kann auch eine Straße sein)
+  const line = withCategory && lineItem(query, searchCenter);
+  if (line) extra = [...extra, line];
   let results = [];
   try {
     results = await geocode.search(query, { center: searchCenter(), zoom: map.getZoom(), signal: searchCtl.signal });

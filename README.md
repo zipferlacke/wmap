@@ -198,6 +198,11 @@ zur zuvor besuchten Seite zu gehen.
     in der Routenplanung mit Bus & Bahn steht sie dann ganz oben.
   - Ein eigenes Liniennetz wird nie gezeichnet.
 
+- **Linie suchen:** „Bus 11“, „Linie9“, „Göttingen Linie 11“, „Darmstadt Bus L“, „S3“ – in der
+  Suche steht die Linie als erster Vorschlag (ohne Anfrage, `js/app/lines.js`). Antippen sucht sie
+  in OSM im Umkreis von 30 km um den genannten Ort, sonst um den Standort bzw. die Kartenmitte,
+  und behält den Verkehrsverbund der nächsten (`services/transit.js` `findLines`). Die erste
+  Richtung liegt gleich auf der Karte, die andere ist wählbar.
 - **Bus & Bahn** (Art in der Routenplanung): Verbindungen nach Fahrplan über
   die EFA der NVBW (ganz Deutschland, ohne Schlüssel, Echtzeit wo es sie
   gibt). Keine Navigation; Zwischenziele zählen hier nicht.
