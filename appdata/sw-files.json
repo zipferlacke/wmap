@@ -38,6 +38,7 @@
 "js/app/category.js",
 "js/app/core.js",
 "js/app/drive-target.js",
+"js/app/lines.js",
 "js/app/map-clicks.js",
 "js/app/mitmachen.js",
 "js/app/nav.js",
