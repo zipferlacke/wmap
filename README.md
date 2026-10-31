@@ -184,6 +184,9 @@ zur zuvor besuchten Seite zu gehen.
   - Nur noch **Abfahrten**, zeitlich sortiert: Uhrzeit, Verspätung, Linie,
     Ziel, „in N min“, Steig. Darüber die Wahl des Steigs: **Hier** (die
     angetippte Seite – Vorgabe), **Alle Steige** oder ein einzelner Steig.
+  - **Frühere Abfahrten** über der Liste holen schon Abgefahrene davor (erst eine
+    halbe Stunde zurück, wenn dort nichts fährt zwei und zwölf Stunden; mehrmals
+    möglich, die späteren bleiben stehen, Abgefahrenes blass).
   - Eine Abfahrt antippen zeigt **genau diese Fahrt** auf der Karte –
     Verlauf und Halte aus dem Fahrplan (XML_STOPSEQCOORD_REQUEST, rund ⅕ s):
     ab hier kräftig, der Weg bis hierher blass. Darunter klappt auf, wann sie
@@ -210,6 +213,8 @@ zur zuvor besuchten Seite zu gehen.
     zu sechs Verbindungen: Abfahrt–Ankunft, Linien, Dauer, Umstiege und
     „Schnellste“ (bei „Ankunft bis“: „Späteste Abfahrt“) bzw. „≥ N min
     umsteigen“ / „knapp: N min umsteigen“.
+  - **Frühere Verbindungen** über der Liste setzt die vorigen davor, immer wieder
+    (gefragt wird nach Ankunft bis zur ersten gezeigten, so entsteht keine Lücke).
   - **Filter-Knopf** (siehe [4](#4-route-planen)): Verkehrsmittel
     (Fernzüge ICE/IC, Regionalzug/S-Bahn, U-Bahn/Tram, Bus), **Umsteigezeit
     mindestens** 2–20 min, **Schnellste auch zeigen** (auch wenn knapp).

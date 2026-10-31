@@ -191,19 +191,62 @@ function transitTags(t) {
   return tags;
 }
 
+/*
+ * Frühere Verbindungen: nach Ankunft fragen – so kommen die letzten vor der ersten gezeigten ohne Lücke, egal wie
+ * weit sie zurückliegen (bei „Abfahrt ab“ müsste man den Abstand raten).
+ */
+let earlierBusy = false;
+async function loadEarlier() {
+  const routes = state.routes;
+  if (earlierBusy || !routes[0]?.transit) return;
+  earlierBusy = true;
+  renderRouteSheet();
+  const first = routes[0].transit;
+  try {
+    const list = await journeys(state.points[0], state.points.at(-1), {
+      when: new Date(first.arr - 60000), arrive: true, params: transitParams(), change: prefs.change, signal: routeCtl?.signal,
+    });
+    if (state.routes !== routes) return;
+    const known = new Set(routes.map((x) => x.transit.key));
+    const found = list.filter((x) => x.transit.dep < first.dep && !known.has(x.transit.key));
+    if (found.length) {
+      let id = Math.max(...routes.map((x) => x.id));
+      for (const x of found) {
+        id += 1;
+        x.id = id;
+        // „Schnellste“ gilt für die zuerst gesuchten – hier hieße es nur: die schnellste dieser Nachfrage
+        x.transit.fastest = false;
+      }
+      state.routes = [...found, ...routes];
+      earlierBusy = false;
+      selectRoute(state.selected);
+      return;
+    }
+    toast('Keine früheren Verbindungen gefunden');
+  } catch (err) {
+    if (err.name === 'AbortError' || state.routes !== routes) return;
+    toast('Frühere Verbindungen gerade nicht abrufbar – bitte gleich noch einmal versuchen');
+  } finally {
+    earlierBusy = false;
+  }
+  renderRouteSheet();
+}
+
 function renderTransitSheet(view, r) {
   const t = r.transit;
   $('.sum-time', view).textContent = `${clock(t.dep)} – ${clock(t.arr)}`;
   $('.sum-dist', view).textContent = `${fmtDuration(r.time)} · ${changesText(t)}`;
   $('.sum-tags', view).innerHTML = transitTags(t).map((x) => `<span class="badge">${esc(x)}</span>`).join('');
   // Die gewählte Verbindung klappt direkt unter sich ihre Abschnitte auf
-  $('.route-options', view).innerHTML = state.routes.map((x) => `
+  $('.route-options', view).innerHTML = `<button type="button" class="button transit-earlier" data-earlier${earlierBusy ? ' disabled' : ''}>
+      <span class="msr${earlierBusy ? ' spin' : ''}">${earlierBusy ? 'progress_activity' : 'expand_less'}</span> Frühere Verbindungen</button>
+    ${state.routes.map((x) => `
     <button type="button" role="option" class="route-opt transit-opt" data-id="${x.id}" aria-selected="${x.id === r.id}">
       <strong>${clock(x.transit.dep)} – ${clock(x.transit.arr)}</strong>
       <span class="legs">${x.transit.legs.filter((l) => !l.walk || l.duration > 300).map(legBadge).join('<span class="msr">chevron_right</span>')}</span>
       <small>${esc([fmtDuration(x.time), changesText(x.transit), ...transitTags(x.transit)].join(' · '))}</small>
     </button>
-    ${x.id === r.id ? `<ol class="step-list transit-legs">${transitLegsHtml(t, state.leg, prefs.change)}</ol>` : ''}`).join('');
+    ${x.id === r.id ? `<ol class="step-list transit-legs">${transitLegsHtml(t, state.leg, prefs.change)}</ol>` : ''}`).join('')}`;
   $('.along', view).innerHTML = '';
   // Die Wegbeschreibung unten entfällt – sie steht jetzt oben bei der Verbindung
   $('.steps .step-list', view).innerHTML = '';
@@ -287,6 +330,7 @@ $('.transit-actions').addEventListener('click', (e) => {
 });
 
 $('.route-options').addEventListener('click', (e) => {
+  if (e.target.closest('[data-earlier]')) { loadEarlier(); return; }
   const b = e.target.closest('[data-id]');
   if (b) selectRoute(Number(b.dataset.id));
 });

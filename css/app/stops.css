@@ -81,3 +81,6 @@
     .layer-info { padding: .6rem .75rem; border-radius: .8rem; background: var(--surface-2); }
     .layer-info + .layer-info { margin-top: 0; border-top: 0; }
 }
+
+/* Schon abgefahren (Frühere Abfahrten) */
+.dep-past { opacity: .6; }
