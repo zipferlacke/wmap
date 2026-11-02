@@ -212,3 +212,5 @@
     input { width: 100%; min-width: 0; }
 }
 .osm-flags .osm-tag, .osm-sockets .osm-tag, .osm-facts .osm-tag { font-size: var(--fs-100); padding: 0 .3rem; border-radius: .3rem; background: var(--surface-2); color: var(--muted); }
+
+.transit-earlier { align-self: flex-start; background: var(--surface-2); font-size: .85rem; }

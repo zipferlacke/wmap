@@ -27,6 +27,15 @@ async function efa(path, params, signal) {
   return res.json();
 }
 
+/** Date → Datum und Uhrzeit für die EFA (Ortszeit) */
+function efaTime(when) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return {
+    itdDate: `${when.getFullYear()}${pad(when.getMonth() + 1)}${pad(when.getDate())}`,
+    itdTime: `${pad(when.getHours())}${pad(when.getMinutes())}`,
+  };
+}
+
 /** Haltestelle der EFA zum Punkt → Kennung oder null */
 async function stopNear([lon, lat], name, signal) {
   const d = await efa('XML_COORD_REQUEST', {
@@ -42,18 +51,20 @@ async function stopNear([lon, lat], name, signal) {
 export const samePlatform = (a, b) => !!a && !!b && a.split(':').slice(2).join(':') === b.split(':').slice(2).join(':');
 
 /**
- * Nächste Abfahrten → { stop, list: [{ time, delay, line, product, cls, to, platform, platformId, platformPoint, cancelled }] }
- * @param o.ifopt  IFOPT des angetippten Steigs (OSM „ref:IFOPT“), wenn bekannt
+ * Abfahrten → { stop, stopId, list: [{ time, delay, line, product, cls, to, platform, platformId, platformPoint, cancelled }] }
+ * @param o.ifopt   IFOPT des angetippten Steigs (OSM „ref:IFOPT“), wenn bekannt
+ * @param o.stopId  Kennung aus einer früheren Antwort – spart das Suchen der Haltestelle
+ * @param o.when    ab dieser Zeit (Date), sonst ab jetzt
  */
-export async function departures(point, { name = '', ifopt = '', limit = 40, signal } = {}) {
+export async function departures(point, { name = '', ifopt = '', stopId = null, when = null, limit = 40, signal } = {}) {
   const parts = ifopt.split(':');
   const fromIfopt = parts.length >= 3 && parts[0] === 'de' ? parts.slice(0, 3).join(':') : null;
   const ask = (stop) => efa('XML_DM_REQUEST', {
     name_dm: stop, type_dm: 'any', mode: 'direct', useRealtime: '1', limit: String(limit), depType: 'stopEvents',
-    coordOutputFormat: COORD,
+    coordOutputFormat: COORD, ...(when ? { ...efaTime(when), itdDateTimeDepArr: 'dep' } : {}),
   }, signal);
-  let stop = fromIfopt ?? await stopNear(point, name, signal);
-  if (!stop) return { stop: null, list: [] };
+  let stop = stopId ?? fromIfopt ?? await stopNear(point, name, signal);
+  if (!stop) return { stop: null, stopId: null, list: [] };
   let d = await ask(stop);
   // Der IFOPT aus OSM passt nicht immer zur EFA (anderer Kreis) – dann über die Lage
   if (!d.stopEvents?.length && fromIfopt) {
@@ -82,7 +93,7 @@ export async function departures(point, { name = '', ifopt = '', limit = 40, sig
       lineId: t.id ?? '', tripCode: t.properties?.tripCode ?? null,
     };
   }).filter((x) => !Number.isNaN(+x.time));
-  return { stop: d.locations?.[0]?.name ?? stop, list };
+  return { stop: d.locations?.[0]?.name ?? stop, stopId: stop, list };
 }
 
 /**
@@ -300,13 +311,11 @@ function bookingLink(rides) {
  * @param o.fastest  schnellste Verbindung zusätzlich zeigen
  */
 export async function journeys(from, to, { when = new Date(), arrive = false, params = {}, change = 0, fastest = true, signal } = {}) {
-  const pad = (n) => String(n).padStart(2, '0');
   const ask = (extra) => efa('XML_TRIP_REQUEST2', {
     coordOutputFormat: COORD,
     type_origin: 'coord', name_origin: `${from[0].toFixed(5)}:${from[1].toFixed(5)}:${COORD}`,
     type_destination: 'coord', name_destination: `${to[0].toFixed(5)}:${to[1].toFixed(5)}:${COORD}`,
-    itdDate: `${when.getFullYear()}${pad(when.getMonth() + 1)}${pad(when.getDate())}`,
-    itdTime: `${pad(when.getHours())}${pad(when.getMinutes())}`,
+    ...efaTime(when),
     itdTripDateTimeDepArr: arrive ? 'arr' : 'dep', calcNumberOfTrips: '5', useRealtime: '1',
     // Ohne Verläufe und Fußweg-Texte – die kommen per refineJourney()
     genC: '0', genP: '0',

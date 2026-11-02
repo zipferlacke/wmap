@@ -16,10 +16,10 @@
  * bleibt ganz bei ihrer Fassung. Neue Nummer: Die Seite fragt
  * (js/ui/news.js) „Neue Version verfügbar“ bzw. zwingend bei minVersion;
  * „Aktualisieren“ schickt „skip-waiting“, dann lädt die Seite neu. Wartet beim
- * Öffnen einer Seite eine neue Fassung (oder wird sie in den ersten 20 s
- * fertig) und hat man noch nichts angefasst, nimmt die Seite sie gleich und
- * lädt einmal neu (js/data/offline.js freshOnOpen) – sonst galt sie erst,
- * wenn alle WMap-Tabs zu waren.
+ * Öffnen einer Seite eine neue Fassung derselben Nummer (oder wird sie in den
+ * ersten 20 s fertig) und hat man noch nichts angefasst, nimmt die Seite sie
+ * gleich und lädt einmal neu (js/data/offline.js freshOnOpen) – sonst galt sie
+ * erst, wenn alle WMap-Tabs zu waren.
  * In einer App, die älter ist als „appVersion“ der neuesten Version (messages.json), installiert
  * sich die neue Fassung gar nicht erst (appCurrent).
  *
@@ -41,11 +41,11 @@
  *   - nach 10 Tagen wird er gelöscht
  *   - reicht der Platz nicht, weicht zuerst die älteste Navigation
  */
-const VERSION = '3.0.0';            // von appdata/version.py – neue Nummer = Update
+const VERSION = '3.0.1';            // von appdata/version.py – neue Nummer = Update
 // Stand der Dateien (Prüfsumme über alles in sw-files.json, von version.py):
 // dieselbe Nummer noch einmal hochgeladen ist trotzdem ein neuer Service Worker
 // mit eigenem Speicher – Alt und Neu mischen sich nie
-const BUILD = '0a6a8173f8';
+const BUILD = '2d0d222171';
 const APP = `wmap-app-${VERSION}-${BUILD}`;
 const APP_PREFIX = 'wmap-app-';
 const SHARE = 'wmap-share';
@@ -64,7 +64,7 @@ const NO_STORE = { cache: 'no-store' };
 
 const TILE_HOSTS = ['tiles.openfreemap.org', 'tiles.mapterhorn.com'];
 
-// Neue Version: alle Dateien vorab laden, dann warten, bis die Seite „Aktualisieren“ sagt
+// Neue Version: alle Dateien vorab laden (die Seite zeigt den Fortschritt, ui/news.js), dann warten, bis sie „skip-waiting“ sagt
 // (die allererste Version wird sofort aktiv – es gibt ja keine alte)
 self.addEventListener('install', (e) => e.waitUntil(appCurrent().then(precache)));
 
@@ -105,6 +105,10 @@ async function precache() {
   let files = [];
   try { files = await (await fetch('appdata/sw-files.json', { cache: 'no-store' })).json(); } catch { /* dann nach und nach */ }
   const queue = files.slice();
+  let done = 0;
+  const report = async () => {
+    for (const c of await self.clients.matchAll({ includeUncontrolled: true })) c.postMessage({ type: 'update-progress', done, total: files.length });
+  };
   // Einzeln: Fehlt eine Datei auf dem Server, scheitert nicht gleich die ganze Version
   const worker = async () => {
     while (queue.length) {
@@ -116,6 +120,8 @@ async function precache() {
           if (res.ok || res.status === 404) break;
         } catch { /* Aussetzer: noch einmal, sonst kommt sie beim ersten Aufruf */ }
       }
+      done += 1;
+      report().catch(() => {});
     }
   };
   await Promise.all(Array.from({ length: 6 }, worker));

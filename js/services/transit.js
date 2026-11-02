@@ -9,6 +9,9 @@
  *                   Halten auf der Karte (mountTransitLine); was von hier aus
  *                   noch kommt, kräftig, der Weg bis hierher blass
  *
+ *   Linie suchen    „Bus 11“, „Göttingen Linie 9“, „Darmstadt Bus L“, „S3“ – die
+ *                   Linie dieses Namens am nächsten (parseLineQuery, findLines)
+ *
  * Farbe aus dem Tag „colour“, sonst rot (Bus) bzw. nach Verkehrsart.
  */
 import { run } from './overpass.js';
@@ -62,6 +65,61 @@ export async function linesAt([lon, lat], name, { ref = null, background = false
   const pick = (list) => list.filter((e) => e.type === 'relation').map((e) => ({ id: e.id, ...e.tags }));
   const here = pick(els.slice(0, cut));
   return { here, all: [...here, ...pick(els.slice(cut + 1))] };
+}
+
+/* ── Linie suchen ─────────────────────────────────────────────────────────── */
+
+/* Wörter für eine Linie → Verkehrsarten (null: alle) und wie die Linie dann heißt */
+const LINE_WORDS = {
+  linie: [null, 'Linie'], line: [null, 'Linie'], buslinie: [['bus', 'trolleybus', 'share_taxi'], 'Bus'], bus: [['bus', 'trolleybus', 'share_taxi'], 'Bus'],
+  tram: [['tram', 'light_rail'], 'Tram'], straßenbahn: [['tram', 'light_rail'], 'Tram'], strassenbahn: [['tram', 'light_rail'], 'Tram'], strab: [['tram', 'light_rail'], 'Tram'],
+  stadtbahn: [['light_rail', 'tram'], 'Stadtbahn'], 'u-bahn': [['subway', 'light_rail'], 'U-Bahn'], ubahn: [['subway', 'light_rail'], 'U-Bahn'],
+  's-bahn': [['light_rail', 'train', 'subway'], 'S-Bahn'], sbahn: [['light_rail', 'train', 'subway'], 'S-Bahn'],
+};
+/* Nummer („11“, „N7“, „154a“) oder ein, zwei Buchstaben („L“) – „Bus nach“ ist keine Linie */
+const LINE_REF = /^([a-z]{0,3}\d{1,4}[a-z]?|[a-z]{1,2})$/i;
+const LINE_GLUED = new RegExp(`^(${Object.keys(LINE_WORDS).join('|')})(\\d{1,4}[a-z]?)$`, 'i');
+const LINE_BARE = /^(s|u|re|rb)-?(\d{1,3})$/i;
+const BARE_KINDS = { s: [['light_rail', 'train', 'subway'], 'S-Bahn'], u: [['subway', 'light_rail'], 'U-Bahn'], re: [['train', 'light_rail'], 'Zug'], rb: [['train', 'light_rail'], 'Zug'] };
+
+/**
+ * Meint der Text eine Linie? → { ref, kinds, label, place } oder null
+ * Die übrigen Wörter sind der Ort („Göttingen Bus 11“, „Bus 11 in Göttingen“).
+ */
+export function parseLineQuery(text) {
+  const words = String(text ?? '').trim().split(/\s+/).filter(Boolean);
+  for (let i = 0; i < words.length; i += 1) {
+    const low = words[i].toLowerCase();
+    let ref = null, kind = null, used = 1;
+    if (LINE_WORDS[low] && LINE_REF.test(words[i + 1] ?? '')) { kind = LINE_WORDS[low]; ref = words[i + 1]; used = 2; }
+    else if (LINE_GLUED.test(low)) { const m = low.match(LINE_GLUED); kind = LINE_WORDS[m[1]]; ref = m[2]; }
+    else if (LINE_BARE.test(low)) { const m = low.match(LINE_BARE); kind = BARE_KINDS[m[1]]; ref = `${m[1]}${m[2]}`; }
+    if (!ref) continue;
+    const place = [...words.slice(0, i), ...words.slice(i + used)].filter((w) => w.toLowerCase() !== 'in').join(' ');
+    return { ref: ref.toUpperCase(), kinds: kind[0], label: `${kind[1]} ${ref.toUpperCase()}`, place };
+  }
+  return null;
+}
+
+const LINE_KM = 30;
+const kmTo = (center, e) => (e.center
+  ? Math.hypot((e.center.lon - center[0]) * Math.cos(center[1] * Math.PI / 180), e.center.lat - center[1]) * 111.32 : Infinity);
+
+/**
+ * Linien dieses Namens um den Punkt → Relationen wie bei linesAt. Dieselbe Nummer gibt es überall: es bleibt der
+ * Verkehrsverbund der nächsten (und was ohnehin ganz nah fährt).
+ */
+export async function findLines({ ref, kinds }, center, { signal } = {}) {
+  const dy = LINE_KM / 111.32, dx = dy / Math.cos(center[1] * Math.PI / 180);
+  const bbox = [center[1] - dy, center[0] - dx, center[1] + dy, center[0] + dx].map((v) => v.toFixed(4)).join(',');
+  // „S3“ steht in OSM auch als „S 3“
+  const name = ref.replace(/^([A-Z]+)(\d)/, '$1 ?$2');
+  const els = await run(`[out:json][timeout:25];rel[type=route][route~"^(${kinds?.join('|') ?? KINDS})$"]["ref"~"^${name}$",i](${bbox});out tags center;`, signal);
+  const list = els.filter((e) => e.type === 'relation').sort((a, b) => kmTo(center, a) - kmTo(center, b));
+  if (!list.length) return [];
+  const net = (e) => e.tags?.network ?? e.tags?.operator ?? '';
+  const near = net(list[0]);
+  return list.filter((e) => net(e) === near || kmTo(center, e) <= 5).map((e) => ({ id: e.id, ...e.tags }));
 }
 
 /* ── Liste im Ort-Sheet ───────────────────────────────────────────────────── */

@@ -244,3 +244,10 @@ html.pip-mode {
     color: var(--muted); font-size: var(--fs-200);
     .msr { font-size: 1.1rem; color: var(--route); }
 }
+
+/* Update: Ladebalken nach „Aktualisieren“ (ui/news.js) */
+.update-bar {
+    height: .5rem; border-radius: 999px; overflow: hidden; background: var(--surface-2);
+    i { display: block; width: 3%; height: 100%; background: var(--route); transition: width .2s; }
+}
+.update-status { margin: .35rem 0 0; color: var(--muted); font-size: var(--fs-200); font-variant-numeric: tabular-nums; }

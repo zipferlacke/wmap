@@ -184,6 +184,9 @@ zur zuvor besuchten Seite zu gehen.
   - Nur noch **Abfahrten**, zeitlich sortiert: Uhrzeit, Verspätung, Linie,
     Ziel, „in N min“, Steig. Darüber die Wahl des Steigs: **Hier** (die
     angetippte Seite – Vorgabe), **Alle Steige** oder ein einzelner Steig.
+  - **Frühere Abfahrten** über der Liste holen schon Abgefahrene davor (erst eine
+    halbe Stunde zurück, wenn dort nichts fährt zwei und zwölf Stunden; mehrmals
+    möglich, die späteren bleiben stehen, Abgefahrenes blass).
   - Eine Abfahrt antippen zeigt **genau diese Fahrt** auf der Karte –
     Verlauf und Halte aus dem Fahrplan (XML_STOPSEQCOORD_REQUEST, rund ⅕ s):
     ab hier kräftig, der Weg bis hierher blass. Darunter klappt auf, wann sie
@@ -195,6 +198,19 @@ zur zuvor besuchten Seite zu gehen.
     in der Routenplanung mit Bus & Bahn steht sie dann ganz oben.
   - Ein eigenes Liniennetz wird nie gezeichnet.
 
+- **Geneigte Karte:** Orte der Grundkarte hinter einem Haus werden ausgeblendet (`js/map/poi-hide.js`,
+  Sichtstrahl wie bei den Ampeln), MapLibre zeichnet Symbole sonst über die 3D-Häuser. Das eigene Haus
+  verdeckt einen Ort erst, wenn er mehr als 12 m hinter der Wand zur Kamera liegt; verdeckte lassen sich
+  nicht antippen. Flach oder unter Zoom 15 wird nichts gerechnet.
+- **Suchdienst nicht erreichbar:** Photon wird einmal wiederholt; danach zeigt die Suche statt
+  einer Fehlermeldung Namen aus dem geladenen Kartenausschnitt (`mapPlaces` in `js/app/search.js` –
+  Orte, POIs, Straßen, Gewässer) und darunter einen Hinweis. Enter in Start oder Ziel nimmt den ersten
+  davon. Kostet beim normalen Suchen nichts.
+- **Linie suchen:** „Bus 11“, „Linie9“, „Göttingen Linie 11“, „Darmstadt Bus L“, „S3“ – in der
+  Suche steht die Linie als erster Vorschlag (ohne Anfrage, `js/app/lines.js`). Antippen sucht sie
+  in OSM im Umkreis von 30 km um den genannten Ort, sonst um den Standort bzw. die Kartenmitte,
+  und behält den Verkehrsverbund der nächsten (`services/transit.js` `findLines`). Die erste
+  Richtung liegt gleich auf der Karte, die andere ist wählbar.
 - **Bus & Bahn** (Art in der Routenplanung): Verbindungen nach Fahrplan über
   die EFA der NVBW (ganz Deutschland, ohne Schlüssel, Echtzeit wo es sie
   gibt). Keine Navigation; Zwischenziele zählen hier nicht.
@@ -210,6 +226,8 @@ zur zuvor besuchten Seite zu gehen.
     zu sechs Verbindungen: Abfahrt–Ankunft, Linien, Dauer, Umstiege und
     „Schnellste“ (bei „Ankunft bis“: „Späteste Abfahrt“) bzw. „≥ N min
     umsteigen“ / „knapp: N min umsteigen“.
+  - **Frühere Verbindungen** über der Liste setzt die vorigen davor, immer wieder
+    (gefragt wird nach Ankunft bis zur ersten gezeigten, so entsteht keine Lücke).
   - **Filter-Knopf** (siehe [4](#4-route-planen)): Verkehrsmittel
     (Fernzüge ICE/IC, Regionalzug/S-Bahn, U-Bahn/Tram, Bus), **Umsteigezeit
     mindestens** 2–20 min, **Schnellste auch zeigen** (auch wenn knapp).
@@ -1968,12 +1986,16 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
   `appdata/messages.json` kommt immer erst aus dem Netz (sie sagt, ob es
   Neues gibt), `bEnd/` nur aus dem Netz.
 - **Updates** (`js/ui/news.js`, nur mit Netz): Ist im `changelog` eine
-  neuere Version, lädt der Browser die neue `sw.js` im Hintergrund, und es
-  kommt „Neue Version verfügbar“ – **Aktualisieren** oder **Später** (dann
-  erst beim nächsten Start wieder). Ausgelassene Versionen werden
-  übersprungen; nach dem Aktualisieren zeigt die Seite alles Neue seit der
-  zuletzt gesehenen Version. Zwingend (ohne Später, Escape schließt nicht)
-  bei `minVersion` bzw. `minAppVersion`, siehe `messages.json` unten.
+  neuere Version, fragt ein Popup „Aktualisieren“ oder „Später“ (dann erst beim
+  nächsten Start wieder). Nach „Aktualisieren“ gehen die Knöpfe weg, es zeigt
+  Ladebalken und Prozent (der Service Worker meldet „update-progress“; lädt er
+  schon im Hintergrund, steht der Balken gleich dort), danach lädt die Seite
+  neu und zeigt alles Neue seit der zuletzt gesehenen Version. Ausgelassene
+  Versionen werden übersprungen. Während Navigation oder Aufzeichnung fragt es
+  nicht; scheitert das Laden, bleibt alles, wie es ist, und die Knöpfe kommen
+  wieder. Von selbst neu lädt die Seite nur bei einer neuen Fassung derselben
+  Nummer. Auch unterwegs
+bei `minVersion` bzw. `minAppVersion`, siehe `messages.json` unten.
 - Auf **localhost** arbeitet der Service Worker wie früher erst mit Netz –
   Änderungen sind beim Entwickeln sofort zu sehen. Cache first ausprobieren:
   über `127.0.0.1` statt `localhost` öffnen (so auch `test/update.py`).

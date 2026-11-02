@@ -32,6 +32,7 @@ export async function showStop(f, tags, title, signal) {
     point, name, here: [], all: null, scope: 'here', more: false, active: transitLine.shown, activeLine: null,
     side: tags.local_ref ?? (tags.public_transport === 'platform' ? tags.ref : null) ?? null,
     ifopt: tags['ref:IFOPT'] ?? '', deps: null, depMore: false, error: null, depError: null, osm: null,
+    stopId: null, signal, firstDep: null, earlierBusy: false,
   };
   const mine = stop;
   paintStop();
@@ -44,9 +45,11 @@ export async function showStop(f, tags, title, signal) {
       paintStop();
     }).catch((err) => { if (err.name !== 'AbortError' && stop === mine) { stop.error = err.message; stop.all = []; paintStop(); } });
   };
-  departures(point, { name, ifopt: stop.ifopt, signal }).then(({ list }) => {
+  departures(point, { name, ifopt: stop.ifopt, signal }).then(({ list, stopId }) => {
     if (stop !== mine) return;
     stop.deps = list;
+    stop.stopId = stopId;
+    stop.firstDep = list[0] ? +list[0].time : null;
     paintStop();
     osmLines(list.length > 0);
   }).catch((err) => {
@@ -55,6 +58,35 @@ export async function showStop(f, tags, title, signal) {
     paintStop();
     osmLines(false);
   });
+}
+
+/*
+ * Frühere Abfahrten: erst die letzte halbe Stunde, ist da nichts, zwei und zuletzt zwölf Stunden. Eine Zeit zurück statt
+ * „die letzten n“ – die EFA liefert nur ab einer Zeit vorwärts.
+ */
+const EARLIER_MIN = [30, 120, 720];
+async function loadEarlier() {
+  const s = stop;
+  if (!s?.deps?.length || s.earlierBusy) return;
+  s.earlierBusy = true;
+  paintStop();
+  const first = +s.deps[0].time;
+  const known = new Set(s.deps.map(tripKey));
+  try {
+    let found = [];
+    for (const min of EARLIER_MIN) {
+      const { list } = await departures(s.point, { name: s.name, stopId: s.stopId, when: new Date(first - min * 60000), signal: s.signal });
+      found = list.filter((x) => +x.time < first && !known.has(tripKey(x)));
+      if (found.length) break;
+    }
+    if (stop !== s) return;
+    if (found.length) s.deps = [...found, ...s.deps]; else toast('Keine früheren Abfahrten gefunden');
+  } catch (err) {
+    if (err.name === 'AbortError' || stop !== s) return;
+    toast('Frühere Abfahrten gerade nicht abrufbar – bitte gleich noch einmal versuchen');
+  }
+  s.earlierBusy = false;
+  paintStop();
 }
 
 const lineCount = (list) => new Set(list.map((r) => `${r.route}|${r.ref ?? r.name}`)).size;
@@ -158,22 +190,25 @@ function tripDetailHtml({ stops, next }) {
 function departuresHtml(s, deps, filtered) {
   if (s.depError) return `<p class="muted">Fahrplan gerade nicht abrufbar (${esc(s.depError)})</p>`;
   if (!deps) return '<p class="muted"><span class="msr spin">progress_activity</span> Fahrplan wird geladen …</p>';
-  if (!deps.length) return '<p class="muted">An diesem Steig in nächster Zeit keine Abfahrten</p>';
+  const earlierBtn = s.deps.length ? `<button type="button" class="button transit-more dep-earlier" data-transit="earlier"${s.earlierBusy ? ' disabled' : ''}><span class="msr${s.earlierBusy ? ' spin' : ''}">${s.earlierBusy ? 'progress_activity' : 'expand_less'}</span> Frühere Abfahrten</button>` : '';
+  if (!deps.length) return `${earlierBtn}<p class="muted">An diesem Steig in nächster Zeit keine Abfahrten</p>`;
   const now = Date.now();
-  const rows = deps.slice(0, s.depMore ? 40 : 12).map((x) => {
+  // Frühere zählen nicht mit: „Frühere Abfahrten“ soll keine späteren aus der Liste schieben
+  const earlier = deps.filter((x) => +x.time < s.firstDep).length;
+  const rows = deps.slice(0, (s.depMore ? 40 : 12) + earlier).map((x) => {
     // Passende Linie aus OSM: Farbe, und antippen zeigt sie auf der Karte
     const rel = relFor(x, s.all ?? []);
     const at = x.delay ? new Date(+x.time + x.delay * 60000) : x.time;
     const mins = Math.round((at - now) / 60000);
-    return `<li><button type="button" class="dep-row" data-dep="${s.deps.indexOf(x)}" data-key="${esc(tripKey(x))}" aria-pressed="${tripKey(x) === s.active}">
+    return `<li><button type="button" class="dep-row${at < now ? ' dep-past' : ''}" data-dep="${s.deps.indexOf(x)}" data-key="${esc(tripKey(x))}" aria-pressed="${tripKey(x) === s.active}">
       <time>${clock(x.time)}${x.delay ? `<b class="${x.delay > 0 ? 'late' : 'early'}">${x.delay > 0 ? '+' : ''}${x.delay}</b>` : ''}</time>
       <span class="transit-badge" style="--c:${esc(rel ? colorOf(rel) : x.color)}">${esc(x.line)}</span>
       <span class="dep-to">${x.cancelled ? '<s>' : ''}${esc(x.to)}${x.cancelled ? '</s> fällt aus' : ''}</span>
       <small>${mins >= 0 && mins < 60 ? `in ${mins} min` : ''}${x.platform ? ` · Steig ${esc(x.platform)}` : ''}</small>
     </button></li>`;
   }).join('');
-  return `<ul class="dep-list">${rows}</ul>
-    ${deps.length > 12 && !s.depMore ? '<button type="button" class="button transit-more" data-transit="deps"><span class="msr">expand_more</span> Weitere Abfahrten</button>' : ''}
+  return `${earlierBtn}<ul class="dep-list">${rows}</ul>
+    ${deps.length > 12 + earlier && !s.depMore ? '<button type="button" class="button transit-more" data-transit="deps"><span class="msr">expand_more</span> Weitere Abfahrten</button>' : ''}
     <p class="muted dep-source">Fahrplan: NVBW EFA-BW${deps.some((x) => x.delay !== null) ? ' · mit Echtzeit' : ''}${filtered ? ' · nur dieser Steig' : ''}</p>`;
 }
 
@@ -182,6 +217,7 @@ $('[data-view="place"] .place-transit').addEventListener('click', async (e) => {
   const act = e.target.closest('[data-transit]')?.dataset.transit;
   if (act === 'all') { stop.more = true; paintStop(); return; }
   if (act === 'deps') { stop.depMore = true; paintStop(); return; }
+  if (act === 'earlier') { loadEarlier(); return; }
   if (act === 'scope') { stop.scope = stop.scope === 'here' ? 'all' : 'here'; paintStop(); return; }
   const pick = e.target.closest('[data-pick]')?.dataset.pick;
   if (pick) { stop.pick = pick; paintStop(); return; }

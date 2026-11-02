@@ -32,7 +32,7 @@ const GRID = 25;                    // m – Raster der Grundrisse
 const M_LAT = 111320;
 
 /** Grundrisse der 3D-Häuser im Blick: [{ ring: [[x, y] …] in m um o, h }] und ein Raster darüber */
-function houseIndex(map, o) {
+export function houseIndex(map, o) {
   const layer = map.getLayer(HOUSES);
   if (!layer || map.getLayoutProperty(HOUSES, 'visibility') === 'none') return null;
   const kx = M_LAT * Math.cos((o[1] * Math.PI) / 180);
@@ -74,8 +74,12 @@ function enter(ring, a, b) {
   return inside ? 0 : best;
 }
 
-/** Verdeckt ein Haus den Blick von der Kamera (cam: [x, y] in m, alt über dem Boden) auf die Ampel bei s? */
-function hiddenBy(idx, s, cam, alt) {
+/**
+ * Verdeckt ein Haus den Blick von der Kamera (cam: [x, y] in m, alt über dem Boden) auf den Punkt s?
+ * `own`: Steht s selbst in einem Haus (ein Laden), verdeckt das nur, wenn s mehr als so viele Meter von der Wand zur
+ * Kamera entfernt liegt. Ohne (Ampel) verdeckt auch das Haus, in dem der Punkt liegt.
+ */
+export function hiddenBy(idx, s, cam, alt, own = 0) {
   const dx = cam[0] - s[0], dy = cam[1] - s[1], d = Math.hypot(dx, dy);
   if (alt <= EYE || d < 1) return false;
   // Weiter weg ist der Strahl über jedem Haus (höchstens 150 m hoch)
@@ -89,6 +93,12 @@ function hiddenBy(idx, s, cam, alt) {
       if (seen.has(i)) continue;
       seen.add(i);
       const t = enter(idx.houses[i].ring, s, end);
+      if (t === 0 && own) {
+        const back = enter(idx.houses[i].ring, end, s);
+        const out = back === null ? 0 : reach * (1 - back);
+        if (out > own && EYE + ((alt - EYE) * out) / d < idx.houses[i].h) return true;
+        continue;
+      }
       if (t !== null && EYE + ((alt - EYE) * t * reach) / d < idx.houses[i].h) return true;
     }
   }
