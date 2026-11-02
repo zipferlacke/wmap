@@ -7,19 +7,6 @@ Was die App anfordert (src-tauri/plugins/health/android/src/main/AndroidManifest
 READ_EXERCISE, READ_EXERCISE_ROUTES, READ_HEALTH_DATA_HISTORY, READ_HEART_RATE, READ_STEPS, READ_POWER
 
 
-== Allgemein (App-Funktion / core feature) ==
-
-Wird verwendet, um in der App abgeschlossene Touren zusammen mit den aufgenommenen Gesundheitsdaten optisch aufbereitet anzuzeigen. Die Daten werden aus Health Connect bezogen.
-Beim Laufen, Wandern, Radfahren, Rudern usw. wird die aufgezeichnete GPS-Strecke auf der Karte angezeigt und dazu Tempo, Höhe, Puls, Schritt- bzw. Schlagfrequenz und Leistung im Diagramm dargestellt. Zusätzlich werden die Zeiten pro Streckenabschnitt sowie Durchschnitts- und Höchstwerte in Kacheln angezeigt, siehe auch Screenshots der App.
-Die App liest nur. Es wird nichts in Health Connect geschrieben und nichts hochgeladen, die Daten bleiben auf dem Gerät. Die Funktion ist freiwillig und ab Werk ausgeschaltet.
-
----
-
-Used to display completed tours in the app, along with the recorded health data, in a visually organized format. The data is retrieved from Health Connect.
-When running, hiking, cycling, rowing, etc., the recorded GPS route is displayed on the map, along with pace, elevation, heart rate, step or stroke cadence and power shown in a graph. In addition, the times for each section of the route, as well as average and maximum values, are displayed in tiles; see also the app screenshots.
-The app only reads. Nothing is written to Health Connect and nothing is uploaded; the data stays on the device. The feature is optional and switched off by default.
-
-
 == Training / Exercise (READ_EXERCISE) ==
 
 Wird verwendet, um die aufgezeichneten Trainings des Nutzers zu finden und in der App als aufgezeichnete Touren anzuzeigen. Gelesen werden Beginn, Ende, Art und Titel des Trainings, bei Radfahrten auch die Trittfrequenz.
@@ -40,30 +27,6 @@ Beim Laufen, Wandern, Radfahren, Rudern usw. wird die Strecke unter „Meine Tou
 
 Used to display the recorded GPS route of a workout on the map. The data is retrieved from Health Connect.
 When running, hiking, cycling, rowing, etc., the route is displayed on the map under "Meine Touren" > "Aufgezeichnet", along with the pace along the route, the laps and the elevation profile. A recorded tour can also be navigated again. Without the route, a workout cannot be shown on the map at all; it is the core of the feature; see also the app screenshots.
-
-
-== Verlauf der Gesundheitsdaten / Health data history (READ_HEALTH_DATA_HISTORY) ==
-
-Wird verwendet, um auch Trainings anzuzeigen, die mehr als 30 Tage vor der Freigabe aufgezeichnet wurden. Die Daten werden aus Health Connect bezogen.
-Nach dem Übernehmen stehen die älteren Trainings unter „Meine Touren“ > „Aufgezeichnet“, nach Jahren gruppiert, mit Strecke auf der Karte und Diagrammen. So sieht der Nutzer seine ganze Tourengeschichte der letzten Jahre und nicht nur die letzten 30 Tage.
-
----
-
-Used to also display workouts that were recorded more than 30 days before access was granted. The data is retrieved from Health Connect.
-After the import, the older workouts appear under "Meine Touren" > "Aufgezeichnet", grouped by year, with the route on the map and graphs. This way, the user sees their complete tour history from past years and not only the last 30 days.
-
-
-== Herzfrequenz / Heart rate (READ_HEART_RATE) ==
-
-Wird verwendet, um den Puls während eines aufgezeichneten Trainings optisch aufbereitet anzuzeigen. Die Daten werden aus Health Connect bezogen.
-Beim Laufen, Wandern, Radfahren, Rudern usw. wird der Puls unter „Meine Touren“ > „Aufgezeichnet“ als Diagramm entlang der Strecke dargestellt. Zusätzlich werden Durchschnitts- und Höchstwert in Kacheln sowie der Durchschnittspuls pro Runde angezeigt. So sieht der Nutzer, wo auf der Strecke die Belastung hoch oder niedrig war, siehe auch Screenshots der App.
-Gelesen wird nur für die Zeit eines übernommenen Trainings.
-
----
-
-Used to display the heart rate during a recorded workout in a visually organized format. The data is retrieved from Health Connect.
-When running, hiking, cycling, rowing, etc., the heart rate is shown under "Meine Touren" > "Aufgezeichnet" as a graph along the route. In addition, the average and maximum values are displayed in tiles, as well as the average heart rate per lap. This way, the user sees where on the route the effort was high or low; see also the app screenshots.
-The data is only read for the time span of an imported workout.
 
 
 == Schritte / Steps (READ_STEPS – Datentyp StepsCadence) ==
@@ -90,6 +53,45 @@ Kachel und Diagramm erscheinen nur, wenn das Training in Health Connect Leistung
 Used to display the power output in watts during a recorded workout in a visually organized format. The data is retrieved from Health Connect.
 When cycling with a power meter, rowing on a rowing machine or running with power measurement, the power is shown under "Meine Touren" > "Aufgezeichnet" as the graph "Leistung" along the route. In addition, the average power ("Ø Leistung") is displayed in a tile, as well as the maximum value. This way, the user sees where on the route they produced how much power.
 Tile and graph only appear if the workout in Health Connect contains power values. The data is only read for the time span of an imported workout.
+
+
+== Herzfrequenz / Heart rate (READ_HEART_RATE) ==
+
+Wird verwendet, um den Puls während eines aufgezeichneten Trainings optisch aufbereitet anzuzeigen. Die Daten werden aus Health Connect bezogen.
+Beim Laufen, Wandern, Radfahren, Rudern usw. wird der Puls unter „Meine Touren“ > „Aufgezeichnet“ als Diagramm entlang der Strecke dargestellt. Zusätzlich werden Durchschnitts- und Höchstwert in Kacheln sowie der Durchschnittspuls pro Runde angezeigt. So sieht der Nutzer, wo auf der Strecke die Belastung hoch oder niedrig war, siehe auch Screenshots der App.
+Gelesen wird nur für die Zeit eines übernommenen Trainings.
+
+---
+
+Used to display the heart rate during a recorded workout in a visually organized format. The data is retrieved from Health Connect.
+When running, hiking, cycling, rowing, etc., the heart rate is shown under "Meine Touren" > "Aufgezeichnet" as a graph along the route. In addition, the average and maximum values are displayed in tiles, as well as the average heart rate per lap. This way, the user sees where on the route the effort was high or low; see also the app screenshots.
+The data is only read for the time span of an imported workout.
+
+
+
+== Verlauf der Gesundheitsdaten / Health data history (READ_HEALTH_DATA_HISTORY) ==
+
+Wird verwendet, um auch Trainings anzuzeigen, die mehr als 30 Tage vor der Freigabe aufgezeichnet wurden. Die Daten werden aus Health Connect bezogen.
+Nach dem Übernehmen stehen die älteren Trainings unter „Meine Touren“ > „Aufgezeichnet“, nach Jahren gruppiert, mit Strecke auf der Karte und Diagrammen. So sieht der Nutzer seine ganze Tourengeschichte der letzten Jahre und nicht nur die letzten 30 Tage.
+
+---
+
+Used to also display workouts that were recorded more than 30 days before access was granted. The data is retrieved from Health Connect.
+After the import, the older workouts appear under "Meine Touren" > "Aufgezeichnet", grouped by year, with the route on the map and graphs. This way, the user sees their complete tour history from past years and not only the last 30 days.
+
+
+== Allgemein (App-Funktion / core feature) ==
+
+Wird verwendet, um in der App abgeschlossene Touren zusammen mit den aufgenommenen Gesundheitsdaten optisch aufbereitet anzuzeigen. Die Daten werden aus Health Connect bezogen.
+Beim Laufen, Wandern, Radfahren, Rudern usw. wird die aufgezeichnete GPS-Strecke auf der Karte angezeigt und dazu Tempo, Höhe, Puls, Schritt- bzw. Schlagfrequenz und Leistung im Diagramm dargestellt. Zusätzlich werden die Zeiten pro Streckenabschnitt sowie Durchschnitts- und Höchstwerte in Kacheln angezeigt, siehe auch Screenshots der App.
+Die App liest nur. Es wird nichts in Health Connect geschrieben und nichts hochgeladen, die Daten bleiben auf dem Gerät. Die Funktion ist freiwillig und ab Werk ausgeschaltet.
+
+---
+
+Used to display completed tours in the app, along with the recorded health data, in a visually organized format. The data is retrieved from Health Connect.
+When running, hiking, cycling, rowing, etc., the recorded GPS route is displayed on the map, along with pace, elevation, heart rate, step or stroke cadence and power shown in a graph. In addition, the times for each section of the route, as well as average and maximum values, are displayed in tiles; see also the app screenshots.
+The app only reads. Nothing is written to Health Connect and nothing is uploaded; the data stays on the device. The feature is optional and switched off by default.
+
 
 
 == Hinweis an die Prüfung (falls ein Freitextfeld da ist) ==
