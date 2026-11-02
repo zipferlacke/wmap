@@ -4,6 +4,7 @@
 import { showHover, BASE_POI_LAYERS, osmRef } from '../map/map.js';
 import { keyboardControl } from '../map/keys.js';
 import { streetView } from '../map/street.js';
+import { mountPoiHide } from '../map/poi-hide.js';
 import { mountSignals } from '../map/signals.js';
 import { MY_PLACES_LAYER, mountMyPlaces } from '../map/my-places.js';
 import { places } from '../data/saved.js';
@@ -80,6 +81,8 @@ map.wmapStreet = street;
 addEventListener('wmap:street', (e) => { if (fly.active) fly.stop(); street.start(e.detail ?? null); });
 // Ampeln ab Zoom 15 – nur wo eine steht (map/signals.js)
 mountSignals(map);
+// Geneigt: Orte hinter einem Haus nicht durch die Wand zeigen (map/poi-hide.js)
+mountPoiHide(map);
 // Zuhause und Arbeit aus den Lesezeichen (map/my-places.js)
 mountMyPlaces(map);
 // Private Parkplätze u. Ä. blass (map/poi-access.js)
@@ -110,7 +113,8 @@ map.on('click', (e) => {
   }
   // In der Navigation: Orte antippen ja, Routen wechseln nein
   const layers = CLICKABLE.filter((id) => map.getLayer(id) && !(nav.active && id === 'route-alt'));
-  const hit = layers.length ? map.queryRenderedFeatures(e.point, { layers })[0] : null;
+  // Verdeckte Orte (map/poi-hide.js) lassen sich nicht antippen – sie sind ja nicht zu sehen
+  const hit = layers.length ? map.queryRenderedFeatures(e.point, { layers }).find((f) => !f.state?.behind) ?? null : null;
   const id = hit?.layer.id;
   if (id === MY_PLACES_LAYER) {
     // Der gespeicherte Punkt, nicht der gezeichnete (auf die Kachel gerundet) – dann gilt der Ort als gemerkt

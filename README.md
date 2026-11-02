@@ -198,6 +198,10 @@ zur zuvor besuchten Seite zu gehen.
     in der Routenplanung mit Bus & Bahn steht sie dann ganz oben.
   - Ein eigenes Liniennetz wird nie gezeichnet.
 
+- **Geneigte Karte:** Orte der Grundkarte hinter einem Haus werden ausgeblendet (`js/map/poi-hide.js`,
+  Sichtstrahl wie bei den Ampeln), MapLibre zeichnet Symbole sonst über die 3D-Häuser. Das eigene Haus
+  verdeckt einen Ort erst, wenn er mehr als 12 m hinter der Wand zur Kamera liegt; verdeckte lassen sich
+  nicht antippen. Flach oder unter Zoom 15 wird nichts gerechnet.
 - **Suchdienst nicht erreichbar:** Photon wird einmal wiederholt; danach zeigt die Suche statt
   einer Fehlermeldung Namen aus dem geladenen Kartenausschnitt (`mapPlaces` in `js/app/search.js` –
   Orte, POIs, Straßen, Gewässer) und darunter einen Hinweis. Enter in Start oder Ziel nimmt den ersten
