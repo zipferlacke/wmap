@@ -1,5 +1,5 @@
 """Updates (sw.js, js/ui/news.js): Service Worker lädt die Version vorab (cache first, über 127.0.0.1 statt localhost),
-neue Version lädt von selbst mit Ladebalken und ohne Knöpfe (nicht unterwegs, nicht im Kreis, Scheitern lässt alles stehen), minVersion auch unterwegs,
+neue Version: Aktualisieren und Später, erst nach dem Klick Ladebalken ohne Knöpfe (nicht unterwegs, Scheitern bringt die Knöpfe zurück), minVersion zwingend, auch unterwegs,
 minAppVersion sperrt die App (sichern, Download-Seite), appVersion: ältere App bekommt den Hinweis statt des Web-Updates, Aktualisieren springt zur neuesten und zeigt alles Neue seit der gesehenen Version."""
 import json
 import sys
@@ -15,7 +15,8 @@ const done = (v) => { window.__result = JSON.stringify(v); };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const dialog = () => document.getElementById('update-dialog');
 const text = (el) => el?.innerText.replace(/\s+/g, ' ').trim();
-const buttons = () => [...(dialog()?.querySelectorAll('.confirm-actions button') ?? [])].map(text);
+const buttons = () => [...(dialog()?.querySelectorAll('.confirm-actions button') ?? [])].filter((x) => x.offsetParent).map(text);
+const click = (v) => dialog().querySelector(`button[value=${v}]`).click();
 const escape = () => dialog()?.dispatchEvent(new Event('cancel', { cancelable: true }));
 (async () => {
   const { checkUpdates } = await import('./js/ui/news.js');
@@ -26,40 +27,54 @@ const escape = () => dialog()?.dispatchEvent(new Event('cancel', { cancelable: t
   const real = sw.getRegistration.bind(sw);
   let updates = 0;
   sw.getRegistration = async () => ({ update: async () => { updates += 1; }, installing: fake, waiting: null });
-  // Neue Version ohne Zwang: Balken, keine Knöpfe, nicht wegzuklicken
+  // Neue Version ohne Zwang: erst fragen, nichts laden, kein Balken
   let p = checkUpdates({ changelog: [{ version: '9.9.9' }] });
   await wait(400);
   const barOf = () => dialog()?.querySelector('.update-bar');
-  out.normal = { title: text(dialog()?.querySelector('.uD-title')), buttons: buttons(), bar: !!barOf(), updates };
+  const barShown = () => !!barOf()?.offsetParent;
+  out.normal = { title: text(dialog()?.querySelector('.uD-title')), buttons: buttons(), bar: barShown(), updates };
+  // Später: erst beim nächsten Start wieder
+  click('later');
+  await p;
+  out.afterLater = !!dialog()?.open;
+  await checkUpdates({ changelog: [{ version: '9.9.9' }] });
+  await wait(200);
+  out.askedAgain = !!dialog()?.open;
+  sessionStorage.removeItem('wmap.update.later');
+  // Aktualisieren: Knöpfe weg, Balken mit Fortschritt, nicht wegzuklicken
+  checkUpdates({ changelog: [{ version: '9.9.9' }] });
+  await wait(300);
+  click('update');
+  await wait(300);
+  out.loading = { buttons: buttons(), bar: barShown(), updates, text: text(dialog()?.querySelector('.update-text')) };
   sw.dispatchEvent(new MessageEvent('message', { data: { type: 'update-progress', done: 50, total: 200 } }));
   out.progress = { now: barOf()?.getAttribute('aria-valuenow'), width: barOf()?.querySelector('i').style.width, text: text(dialog()?.querySelector('.update-status')) };
   escape(); await wait(200);
   out.stays = !!dialog()?.open;
-  // Laden gescheitert: Popup zu, kein Neuladen, im selben Lauf kein zweiter Versuch
+  // Laden gescheitert: kein Neuladen, die Knöpfe sind wieder da
   window.__before = 1;
   fake.state = 'redundant'; fake.dispatchEvent(new Event('statechange'));
   await wait(400);
-  out.failedClosed = !dialog()?.open;
-  checkUpdates({ changelog: [{ version: '9.9.9' }] });
-  await wait(300);
-  out.noLoop = !dialog()?.open;
-  // Unterwegs: nicht laden
-  sessionStorage.removeItem('wmap.update.tried');
+  out.failed = { buttons: buttons(), bar: barShown(), status: text(dialog()?.querySelector('.update-status')) };
+  click('later');
+  await wait(200);
+  sessionStorage.removeItem('wmap.update.later');
+  // Unterwegs: nicht fragen
   document.body.classList.add('navigating');
   await checkUpdates({ changelog: [{ version: '9.9.9' }] });
   out.navSkips = !dialog()?.open;
   document.body.classList.remove('navigating');
-  // minVersion: auch unterwegs, ebenfalls ohne Knöpfe
-  sessionStorage.removeItem('wmap.update.tried');
+  // minVersion: zwingend, auch unterwegs, nur Aktualisieren
   const fake2 = new EventTarget(); fake2.state = 'installing';
   sw.getRegistration = async () => ({ update: async () => {}, installing: fake2, waiting: null });
   document.body.classList.add('navigating');
   checkUpdates({ changelog: [{ version: '9.9.9' }], minVersion: '9.9.9' });
   await wait(400);
   document.body.classList.remove('navigating');
-  out.forced = { title: text(dialog()?.querySelector('.uD-title')), buttons: buttons(), bar: !!barOf() };
-  fake2.state = 'redundant'; fake2.dispatchEvent(new Event('statechange'));
-  await wait(400);
+  out.forced = { title: text(dialog()?.querySelector('.uD-title')), buttons: buttons(), bar: barShown() };
+  escape(); await wait(200);
+  out.forcedStays = !!dialog()?.open;
+  dialog()?.remove();
   sw.getRegistration = real;
   // minAppVersion: App zu alt → gesperrt, sichern und zur Download-Seite
   window.__TAURI__ = { app: { getVersion: async () => '2.0.0' } };
@@ -80,16 +95,11 @@ const escape = () => dialog()?.dispatchEvent(new Event('cancel', { cancelable: t
   await wait(300);
   out.hintAgain = !!dialog()?.open;
   // App aktuell: das Web-Update kommt wie immer
-  sessionStorage.removeItem('wmap.update.tried');
-  const fake3 = new EventTarget(); fake3.state = 'installing';
-  sw.getRegistration = async () => ({ update: async () => {}, installing: fake3, waiting: null });
   window.__TAURI__ = { app: { getVersion: async () => '2.2.0' } };
   checkUpdates({ changelog: [{ version: '9.9.9', appVersion: '2.2.0' }] });
   await wait(500);
   out.current = text(dialog()?.querySelector('.uD-title'));
-  fake3.state = 'redundant'; fake3.dispatchEvent(new Event('statechange'));
-  await wait(300);
-  sw.getRegistration = real;
+  dialog()?.remove();
   delete window.__TAURI__;
   return out;
 })().then(done, (e) => done('FEHLER ' + e + ' ' + e.stack));
@@ -111,16 +121,18 @@ with Browser(width=420, height=900) as b:
     print(json.dumps(r, ensure_ascii=False, indent=1))
     b.shot('update-app')
     ok = isinstance(r, dict) \
-        and r['normal']['title'] == 'system_update Neue Version wird geladen' and r['normal']['buttons'] == [] and r['normal']['bar'] and r['normal']['updates'] == 1 \
+        and r['normal'] == {'title': 'system_update Neue Version verfügbar', 'buttons': ['Später', 'system_update Aktualisieren'], 'bar': False, 'updates': 0} \
+        and not r['afterLater'] and not r['askedAgain'] \
+        and r['loading']['buttons'] == [] and r['loading']['bar'] and r['loading']['updates'] == 1 and 'wird geladen' in r['loading']['text'] \
         and r['progress'] == {'now': '25', 'width': '25%', 'text': '25 %'} and r['stays'] \
-        and r['failedClosed'] and r['noLoop'] and r['navSkips'] \
-        and r['forced']['title'] == 'system_update Update nötig' and r['forced']['buttons'] == [] and r['forced']['bar'] \
+        and r['failed']['buttons'] == ['Später', 'system_update Aktualisieren'] and not r['failed']['bar'] and 'nicht geklappt' in r['failed']['status'] and r['navSkips'] \
+        and r['forced'] == {'title': 'system_update Update nötig', 'buttons': ['system_update Aktualisieren'], 'bar': False} and r['forcedStays'] \
         and r['app']['title'] == 'system_update WMap-App aktualisieren' and r['app']['buttons'] == ['save Als ZIP sichern', 'open_in_new Zur Download-Seite'] \
         and r['appStays']
     print('Popups stimmen:', ok)
     hint = isinstance(r, dict) and r['hint']['title'] == 'system_update Neue Version der WMap-App' \
         and r['hint']['buttons'] == ['Später', 'open_in_new Zur Download-Seite'] and '2.2.0' in r['hint']['text'] and '2.1.0' in r['hint']['text'] \
-        and r['hintGone'] and not r['hintAgain'] and r['current'] == 'system_update Neue Version wird geladen'
+        and r['hintGone'] and not r['hintAgain'] and r['current'] == 'system_update Neue Version verfügbar'
     print('appVersion stimmt (App älter: Hinweis statt Web-Update, Später gilt bis zum nächsten Start; App aktuell: Web-Update):', hint)
     ok = ok and hint
 

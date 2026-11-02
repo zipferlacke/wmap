@@ -35,8 +35,11 @@ async function freshOnOpen() {
   const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
   // Allererster Besuch: Die erste Fassung wird ohnehin sofort aktiv
   if (!reg?.active) return;
-  const take = (w) => {
+  const take = async (w) => {
     if (!w || touched || performance.now() > FRESH_MS) return;
+    // Neue Nummer: die kommt nur über „Aktualisieren“ (ui/news.js)
+    const { versionOffered } = await import('../ui/news.js');
+    if (await versionOffered() || touched) return;
     try { sessionStorage.setItem('wmap.fresh', String(Date.now())); } catch { return; }
     navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
     w.postMessage({ type: 'skip-waiting' });

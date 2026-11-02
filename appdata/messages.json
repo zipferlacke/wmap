@@ -15,7 +15,7 @@
             "changes": [
                 "Bessere ÖPNV-Routen: Frühere Abfahrten an der Haltestelle und frühere Verbindungen lassen sich jetzt auch anzeigen",
                 "Nach Bus- und Bahnlinien kann nun direkt gesucht werden, z. B. „Bus 11“, „Göttingen Linie 9“ oder „S3“ – gefunden wird die Linie vor Ort",
-                "Updates laden jetzt von selbst, mit Ladebalken – „Aktualisieren“ und „Später“ sind weg",
+                "Nach „Aktualisieren“ siehst du jetzt einen Ladebalken mit Fortschritt, statt dass die Knöpfe einfach stehen bleiben",
                 "Fix: Geneigte Karte – Geschäfte hinter Gebäuden sieht man nicht mehr durch die Wände",
                 "Fix: Ist die Suche gerade nicht erreichbar, kommt kein „Failed to fetch“ mehr – beim Ändern von Start oder Ziel findet WMap dann Namen aus der geladenen Karte"
             ]

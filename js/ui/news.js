@@ -10,13 +10,14 @@
  *
  * Updates (nur mit Netz – messages.json kommt dann frisch vom Server, sw.js):
  *
- *   neuere Version im changelog   lädt von selbst: Popup mit Ladebalken, ohne
- *                                 Knöpfe, danach neu laden. Während Navigation
- *                                 oder Aufzeichnung nicht – dann beim nächsten
- *                                 Start. Ausgelassene Versionen: es geht gleich
- *                                 zur neuesten, danach die Hinweise aller
+ *   neuere Version im changelog   Popup „Neue Version verfügbar“: Aktualisieren
+ *                                 oder Später (fragt erst beim nächsten Start
+ *                                 wieder). Während Navigation oder Aufzeichnung
+ *                                 fragt es nicht. Ausgelassene Versionen: es geht
+ *                                 gleich zur neuesten, danach die Hinweise aller
  *                                 Versionen seit der zuletzt gesehenen
- *   minVersion                    ist die Oberfläche älter: dasselbe auch unterwegs
+ *   minVersion                    ist die Oberfläche älter: dasselbe zwingend –
+ *                                 nur „Aktualisieren“, auch unterwegs
  *                                 (z. B. Server-API geändert)
  *   appVersion (je Eintrag im     die App (Tauri-Teil), die zu dieser Version
  *   changelog)                    gehört; es gilt die des neuesten Eintrags. Ist
@@ -32,9 +33,9 @@
  *                                 ZIP), dann Play Store bzw. wuefl.de; der
  *                                 Service Worker hilft da nicht
  *
- * Update: der neue Service Worker lädt beim Installieren alles und meldet den
- * Fortschritt (sw.js „update-progress“), dann wird er aktiv, die Seite lädt neu.
- * Scheitert das Laden, bleibt alles, wie es ist – nächster Versuch beim nächsten Start.
+ * Aktualisieren: Die Knöpfe gehen weg, das Popup zeigt den Ladebalken. Der neue Service Worker lädt beim Installieren
+ * alles und meldet den Fortschritt (sw.js „update-progress“) – läuft das schon im Hintergrund, steht der Balken gleich
+ * dort –, dann wird er aktiv, die Seite lädt neu. Scheitert das Laden, bleibt alles, wie es ist, und die Knöpfe kommen wieder.
  *
  * In der Android-App folgt auf das Willkommen der Dialog zu den
  * Berechtigungen (ui/permissions.js).
@@ -76,7 +77,7 @@ function load() {
 }
 
 const LATER_APP = 'wmap.update.app.later'; // sessionStorage: Hinweis auf die neue App erst beim nächsten Start wieder
-const TRIED = 'wmap.update.tried';     // sessionStorage: diese Version schon versucht – nicht im Kreis laden
+const LATER = 'wmap.update.later';     // sessionStorage: diese Version erst beim nächsten Start wieder anbieten
 const UPDATED = 'wmap.update.done';    // sessionStorage: gerade aktualisiert → gleich zeigen, was neu ist
 const session = {
   get: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } },
@@ -171,7 +172,7 @@ export async function checkUpdates(m) {
     return session.get(LATER_APP) === want ? null : appHint(app, want);
   }
   if (m.minVersion && compareVersions(APP_VERSION, m.minVersion) < 0) return uiUpdate(latest, { forced: true });
-  if (latest && compareVersions(APP_VERSION, latest) < 0) return uiUpdate(latest, { forced: false });
+  if (latest && compareVersions(APP_VERSION, latest) < 0 && session.get(LATER) !== latest) return uiUpdate(latest, { forced: false });
   return null;
 }
 
@@ -201,37 +202,53 @@ async function underway() {
   return !!recorder.active;
 }
 
-/** Neue Oberfläche: lädt von selbst, im Popup nur der Ladebalken */
+/** Steht eine neuere Nummer an? Die kommt nur über „Aktualisieren“ (data/offline.js freshOnOpen) */
+export async function versionOffered() {
+  const latest = (await load())?.changelog?.[0]?.version;
+  return !!latest && compareVersions(APP_VERSION, latest) < 0;
+}
+
+/** Neue Oberfläche: „Neue Version verfügbar“ (mit Später) bzw. zwingend; nach „Aktualisieren“ nur noch der Ladebalken */
 async function uiUpdate(latest, { forced }) {
-  // Schon versucht und noch immer alt: nicht im Kreis laden
-  if (session.get(TRIED) === latest) return null;
   await whenFree();
   if (!forced && await underway()) return null;
-  session.set(TRIED, latest);
-  document.getElementById('update-dialog')?.uDFinish?.('close');
-  const shown = ask({
-    id: 'update-dialog', className: 'news', icon: 'system_update', closable: false, buttons: [],
-    title: forced ? 'Update nötig' : 'Neue Version wird geladen',
-    html: `<p>${forced ? `Diese Version von WMap (${esc(APP_VERSION)}) funktioniert so nicht mehr – die neue wird geladen.`
-      : `WMap ${esc(latest ?? '')} wird geladen. Danach siehst du, was neu ist.`}</p>
-      <div class="update-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
-      <p class="update-status">Einen Moment …</p>`,
+  const buttons = forced ? [{ value: 'update', label: 'Aktualisieren', icon: 'system_update', primary: true }]
+    : [{ value: 'later', label: 'Später' }, { value: 'update', label: 'Aktualisieren', icon: 'system_update', primary: true }];
+  return updateDialog({
+    icon: 'system_update',
+    title: forced ? 'Update nötig' : 'Neue Version verfügbar',
+    html: `<p class="update-text">${forced ? `Diese Version von WMap (${esc(APP_VERSION)}) funktioniert so nicht mehr – bitte aktualisieren, das dauert nur einen Moment.`
+      : `WMap ${esc(latest ?? '')} ist da. Jetzt aktualisieren? Danach siehst du, was neu ist.`}</p>
+      <div class="update-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><i></i></div>`,
+    buttons, closable: false,
+    onPick: async (v, dlg) => {
+      if (v === 'later') { session.set(LATER, latest); return true; }
+      const actions = dlg.querySelector('.confirm-actions');
+      const text = dlg.querySelector('.update-text');
+      const before = text.textContent;
+      const bar = dlg.querySelector('.update-bar');
+      actions.style.display = 'none';
+      text.textContent = `WMap ${latest ?? ''} wird geladen. Danach siehst du, was neu ist.`;
+      bar.hidden = false;
+      status(dlg, 'Einen Moment …');
+      const onProgress = (e) => {
+        if (e.data?.type !== 'update-progress' || !e.data.total) return;
+        const pct = Math.round((e.data.done / e.data.total) * 100);
+        bar.setAttribute('aria-valuenow', pct);
+        bar.querySelector('i').style.width = `${pct}%`;
+        status(dlg, `${pct} %`);
+      };
+      navigator.serviceWorker?.addEventListener('message', onProgress);
+      if (!await applyUpdate()) {
+        navigator.serviceWorker?.removeEventListener('message', onProgress);
+        actions.style.display = '';
+        text.textContent = before;
+        bar.hidden = true;
+        status(dlg, 'Das Laden hat nicht geklappt. Deine Version bleibt, wie sie ist.');
+      }
+      return false;
+    },
   });
-  const dlg = document.getElementById('update-dialog');
-  const bar = dlg?.querySelector('.update-bar');
-  const onProgress = (e) => {
-    if (e.data?.type !== 'update-progress' || !bar || !e.data.total) return;
-    const pct = Math.round((e.data.done / e.data.total) * 100);
-    bar.setAttribute('aria-valuenow', pct);
-    bar.querySelector('i').style.width = `${pct}%`;
-    dlg.querySelector('.update-status').textContent = `${pct} %`;
-  };
-  navigator.serviceWorker?.addEventListener('message', onProgress);
-  if (!await applyUpdate()) {
-    navigator.serviceWorker?.removeEventListener('message', onProgress);
-    dlg?.uDFinish?.('close');
-  }
-  return shown;
 }
 
 /**
@@ -244,7 +261,8 @@ export async function applyUpdate() {
   const failed = () => { session.set(UPDATED, null); return false; };
   const reg = await navigator.serviceWorker?.getRegistration().catch(() => null);
   if (reg) {
-    try { await reg.update(); } catch { return failed(); }
+    // Ohne Netz: Was schon fertig geladen wartet, geht trotzdem
+    try { await reg.update(); } catch { if (!reg.waiting && !reg.installing) return failed(); }
     const loading = reg.installing;
     const worker = reg.waiting ?? await installed(loading, 120000);
     if (worker) {

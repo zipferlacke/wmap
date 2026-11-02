@@ -1986,12 +1986,15 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
   `appdata/messages.json` kommt immer erst aus dem Netz (sie sagt, ob es
   Neues gibt), `bEnd/` nur aus dem Netz.
 - **Updates** (`js/ui/news.js`, nur mit Netz): Ist im `changelog` eine
-  neuere Version, lädt WMap sie von selbst: ein Popup mit Ladebalken und
-  Prozent, ohne Knöpfe (der Service Worker meldet „update-progress“), danach
-  lädt die Seite neu und zeigt alles Neue seit der zuletzt gesehenen Version.
-  Ausgelassene Versionen werden übersprungen. Während Navigation oder
-  Aufzeichnung wartet es bis zum nächsten Start; scheitert das Laden, bleibt
-  alles, wie es ist, und der nächste Start versucht es wieder. Auch unterwegs
+  neuere Version, fragt ein Popup „Aktualisieren“ oder „Später“ (dann erst beim
+  nächsten Start wieder). Nach „Aktualisieren“ gehen die Knöpfe weg, es zeigt
+  Ladebalken und Prozent (der Service Worker meldet „update-progress“; lädt er
+  schon im Hintergrund, steht der Balken gleich dort), danach lädt die Seite
+  neu und zeigt alles Neue seit der zuletzt gesehenen Version. Ausgelassene
+  Versionen werden übersprungen. Während Navigation oder Aufzeichnung fragt es
+  nicht; scheitert das Laden, bleibt alles, wie es ist, und die Knöpfe kommen
+  wieder. Von selbst neu lädt die Seite nur bei einer neuen Fassung derselben
+  Nummer. Auch unterwegs
 bei `minVersion` bzw. `minAppVersion`, siehe `messages.json` unten.
 - Auf **localhost** arbeitet der Service Worker wie früher erst mit Netz –
   Änderungen sind beim Entwickeln sofort zu sehen. Cache first ausprobieren:
