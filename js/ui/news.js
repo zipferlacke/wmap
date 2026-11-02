@@ -10,13 +10,14 @@
  *
  * Updates (nur mit Netz – messages.json kommt dann frisch vom Server, sw.js):
  *
- *   neuere Version im changelog   Popup „Neue Version verfügbar“: Aktualisieren
- *                                 oder Später (fragt erst beim nächsten Start
- *                                 wieder). Ausgelassene Versionen: es geht
- *                                 gleich zur neuesten, danach die Hinweise
- *                                 aller Versionen seit der zuletzt gesehenen
- *   minVersion                    ist die Oberfläche älter: dasselbe zwingend –
- *                                 nur „Aktualisieren“ (z. B. Server-API geändert)
+ *   neuere Version im changelog   lädt von selbst: Popup mit Ladebalken, ohne
+ *                                 Knöpfe, danach neu laden. Während Navigation
+ *                                 oder Aufzeichnung nicht – dann beim nächsten
+ *                                 Start. Ausgelassene Versionen: es geht gleich
+ *                                 zur neuesten, danach die Hinweise aller
+ *                                 Versionen seit der zuletzt gesehenen
+ *   minVersion                    ist die Oberfläche älter: dasselbe auch unterwegs
+ *                                 (z. B. Server-API geändert)
  *   appVersion (je Eintrag im     die App (Tauri-Teil), die zu dieser Version
  *   changelog)                    gehört; es gilt die des neuesten Eintrags. Ist
  *                                 die installierte
@@ -31,8 +32,9 @@
  *                                 ZIP), dann Play Store bzw. wuefl.de; der
  *                                 Service Worker hilft da nicht
  *
- * Aktualisieren: der neue Service Worker (lädt beim Installieren alles) wird
- * aktiv, die Seite lädt neu.
+ * Update: der neue Service Worker lädt beim Installieren alles und meldet den
+ * Fortschritt (sw.js „update-progress“), dann wird er aktiv, die Seite lädt neu.
+ * Scheitert das Laden, bleibt alles, wie es ist – nächster Versuch beim nächsten Start.
  *
  * In der Android-App folgt auf das Willkommen der Dialog zu den
  * Berechtigungen (ui/permissions.js).
@@ -74,7 +76,7 @@ function load() {
 }
 
 const LATER_APP = 'wmap.update.app.later'; // sessionStorage: Hinweis auf die neue App erst beim nächsten Start wieder
-const LATER = 'wmap.update.later';     // sessionStorage: diese Version erst beim nächsten Start wieder anbieten
+const TRIED = 'wmap.update.tried';     // sessionStorage: diese Version schon versucht – nicht im Kreis laden
 const UPDATED = 'wmap.update.done';    // sessionStorage: gerade aktualisiert → gleich zeigen, was neu ist
 const session = {
   get: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } },
@@ -169,11 +171,7 @@ export async function checkUpdates(m) {
     return session.get(LATER_APP) === want ? null : appHint(app, want);
   }
   if (m.minVersion && compareVersions(APP_VERSION, m.minVersion) < 0) return uiUpdate(latest, { forced: true });
-  if (latest && compareVersions(APP_VERSION, latest) < 0 && session.get(LATER) !== latest) {
-    // Schon im Hintergrund laden – „Aktualisieren“ geht dann schneller
-    navigator.serviceWorker?.getRegistration().then((r) => r?.update()).catch(() => {});
-    return uiUpdate(latest, { forced: false });
-  }
+  if (latest && compareVersions(APP_VERSION, latest) < 0) return uiUpdate(latest, { forced: false });
   return null;
 }
 
@@ -196,46 +194,70 @@ async function updateDialog({ icon, title, html, buttons, closable, onPick }) {
 const status = (dlg, text) => { const p = dlg.querySelector('.update-status'); p.hidden = !text; p.textContent = text ?? ''; };
 const busy = (dlg, on) => dlg.querySelectorAll('button').forEach((b) => { b.disabled = on; });
 
-/** Neue Oberfläche: „Neue Version verfügbar“ (mit Später) bzw. zwingend */
-function uiUpdate(latest, { forced }) {
-  const buttons = forced ? [{ value: 'update', label: 'Aktualisieren', icon: 'system_update', primary: true }]
-    : [{ value: 'later', label: 'Später' }, { value: 'update', label: 'Aktualisieren', icon: 'system_update', primary: true }];
-  return updateDialog({
-    icon: 'system_update',
-    title: forced ? 'Update nötig' : 'Neue Version verfügbar',
-    html: `<p>${forced ? `Diese Version von WMap (${esc(APP_VERSION)}) funktioniert so nicht mehr – bitte aktualisieren, das dauert nur einen Moment.`
-      : `WMap ${esc(latest ?? '')} ist da. Jetzt aktualisieren? Danach siehst du, was neu ist.`}</p>`,
-    buttons, closable: !forced,
-    onPick: async (v, dlg) => {
-      if (v === 'later') { session.set(LATER, latest); return true; }
-      busy(dlg, true);
-      status(dlg, 'Lade die neue Version …');
-      await applyUpdate();
-      return false;
-    },
+/* Neu laden unterbräche das – dann beim nächsten Start */
+async function underway() {
+  if (document.body.classList.contains('navigating')) return true;
+  const { recorder } = await import('../data/tracks.js');
+  return !!recorder.active;
+}
+
+/** Neue Oberfläche: lädt von selbst, im Popup nur der Ladebalken */
+async function uiUpdate(latest, { forced }) {
+  // Schon versucht und noch immer alt: nicht im Kreis laden
+  if (session.get(TRIED) === latest) return null;
+  await whenFree();
+  if (!forced && await underway()) return null;
+  session.set(TRIED, latest);
+  document.getElementById('update-dialog')?.uDFinish?.('close');
+  const shown = ask({
+    id: 'update-dialog', className: 'news', icon: 'system_update', closable: false, buttons: [],
+    title: forced ? 'Update nötig' : 'Neue Version wird geladen',
+    html: `<p>${forced ? `Diese Version von WMap (${esc(APP_VERSION)}) funktioniert so nicht mehr – die neue wird geladen.`
+      : `WMap ${esc(latest ?? '')} wird geladen. Danach siehst du, was neu ist.`}</p>
+      <div class="update-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
+      <p class="update-status">Einen Moment …</p>`,
   });
+  const dlg = document.getElementById('update-dialog');
+  const bar = dlg?.querySelector('.update-bar');
+  const onProgress = (e) => {
+    if (e.data?.type !== 'update-progress' || !bar || !e.data.total) return;
+    const pct = Math.round((e.data.done / e.data.total) * 100);
+    bar.setAttribute('aria-valuenow', pct);
+    bar.querySelector('i').style.width = `${pct}%`;
+    dlg.querySelector('.update-status').textContent = `${pct} %`;
+  };
+  navigator.serviceWorker?.addEventListener('message', onProgress);
+  if (!await applyUpdate()) {
+    navigator.serviceWorker?.removeEventListener('message', onProgress);
+    dlg?.uDFinish?.('close');
+  }
+  return shown;
 }
 
 /**
- * Neuen Service Worker aktiv machen und neu laden. Gibt es keinen neuen (sw.js
- * nicht geändert?), die gespeicherte Oberfläche verwerfen – dann kommt sie frisch.
+ * Neuen Service Worker aktiv machen und neu laden → true, wenn neu geladen wird. Gibt es keinen neuen (sw.js nicht
+ * geändert?), die gespeicherte Oberfläche verwerfen – dann kommt sie frisch. Scheitert das Laden (kein Netz,
+ * Abbruch): false – die gespeicherte Oberfläche bleibt, ohne sie ginge offline nichts mehr.
  */
 export async function applyUpdate() {
   session.set(UPDATED, '1');
-  session.set(LATER, null);
+  const failed = () => { session.set(UPDATED, null); return false; };
   const reg = await navigator.serviceWorker?.getRegistration().catch(() => null);
   if (reg) {
-    try { await reg.update(); } catch { /* ohne Netz: unten */ }
-    const worker = reg.waiting ?? await installed(reg.installing, 60000);
+    try { await reg.update(); } catch { return failed(); }
+    const loading = reg.installing;
+    const worker = reg.waiting ?? await installed(loading, 120000);
     if (worker) {
       navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
       worker.postMessage({ type: 'skip-waiting' });
       setTimeout(() => location.reload(), 10000);
-      return;
+      return true;
     }
+    if (loading) return failed();
   }
   try { for (const k of await caches.keys()) if (k.startsWith('wmap-app-')) await caches.delete(k); } catch { /* gesperrt */ }
   location.reload();
+  return true;
 }
 
 /** Wartet, bis ein Service Worker fertig installiert ist → er oder null */

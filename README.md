@@ -1986,12 +1986,13 @@ Was die Karte betrifft (Datensparmodus), gilt beim nächsten Öffnen der Karte.
   `appdata/messages.json` kommt immer erst aus dem Netz (sie sagt, ob es
   Neues gibt), `bEnd/` nur aus dem Netz.
 - **Updates** (`js/ui/news.js`, nur mit Netz): Ist im `changelog` eine
-  neuere Version, lädt der Browser die neue `sw.js` im Hintergrund, und es
-  kommt „Neue Version verfügbar“ – **Aktualisieren** oder **Später** (dann
-  erst beim nächsten Start wieder). Ausgelassene Versionen werden
-  übersprungen; nach dem Aktualisieren zeigt die Seite alles Neue seit der
-  zuletzt gesehenen Version. Zwingend (ohne Später, Escape schließt nicht)
-  bei `minVersion` bzw. `minAppVersion`, siehe `messages.json` unten.
+  neuere Version, lädt WMap sie von selbst: ein Popup mit Ladebalken und
+  Prozent, ohne Knöpfe (der Service Worker meldet „update-progress“), danach
+  lädt die Seite neu und zeigt alles Neue seit der zuletzt gesehenen Version.
+  Ausgelassene Versionen werden übersprungen. Während Navigation oder
+  Aufzeichnung wartet es bis zum nächsten Start; scheitert das Laden, bleibt
+  alles, wie es ist, und der nächste Start versucht es wieder. Auch unterwegs
+bei `minVersion` bzw. `minAppVersion`, siehe `messages.json` unten.
 - Auf **localhost** arbeitet der Service Worker wie früher erst mit Netz –
   Änderungen sind beim Entwickeln sofort zu sehen. Cache first ausprobieren:
   über `127.0.0.1` statt `localhost` öffnen (so auch `test/update.py`).

@@ -64,7 +64,7 @@ const NO_STORE = { cache: 'no-store' };
 
 const TILE_HOSTS = ['tiles.openfreemap.org', 'tiles.mapterhorn.com'];
 
-// Neue Version: alle Dateien vorab laden, dann warten, bis die Seite „Aktualisieren“ sagt
+// Neue Version: alle Dateien vorab laden (die Seite zeigt den Fortschritt, ui/news.js), dann warten, bis sie „skip-waiting“ sagt
 // (die allererste Version wird sofort aktiv – es gibt ja keine alte)
 self.addEventListener('install', (e) => e.waitUntil(appCurrent().then(precache)));
 
@@ -105,6 +105,10 @@ async function precache() {
   let files = [];
   try { files = await (await fetch('appdata/sw-files.json', { cache: 'no-store' })).json(); } catch { /* dann nach und nach */ }
   const queue = files.slice();
+  let done = 0;
+  const report = async () => {
+    for (const c of await self.clients.matchAll({ includeUncontrolled: true })) c.postMessage({ type: 'update-progress', done, total: files.length });
+  };
   // Einzeln: Fehlt eine Datei auf dem Server, scheitert nicht gleich die ganze Version
   const worker = async () => {
     while (queue.length) {
@@ -116,6 +120,8 @@ async function precache() {
           if (res.ok || res.status === 404) break;
         } catch { /* Aussetzer: noch einmal, sonst kommt sie beim ersten Aufruf */ }
       }
+      done += 1;
+      report().catch(() => {});
     }
   };
   await Promise.all(Array.from({ length: 6 }, worker));
