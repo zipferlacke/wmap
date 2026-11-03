@@ -12,6 +12,7 @@ import { parseFit } from './fit.js';
 import { gain, offers, picksFor, combine } from './duplicates.js';
 import { tourFromGpx } from './folder.js';
 import { devLog } from '../core/devlog.js';
+import { t } from '../core/i18n.js';
 
 const TIMED = /<trkpt[^>]*>(?:(?!<\/trkpt>)[\s\S])*<time>/;
 
@@ -28,17 +29,17 @@ export async function readFiles(list) {
   const out = [];
   for (const { name, text: given, bytes } of list) {
     let text = given;
-    const f = { name: name || 'Datei.gpx', text };
+    const f = { name: name || t('import.default_file_name'), text };
     try {
       // FIT: einlesen und als GPX weiterreichen – danach gilt für beide dasselbe
       if (bytes) {
-        const [t] = parseFit(bytes, f.name);
-        if (!t) throw new Error('Keine Strecke in der Datei');
-        f.text = text = trackGpx(t);
+        const [parsed] = parseFit(bytes, f.name);
+        if (!parsed) throw new Error(t('import.error.no_route'));
+        f.text = text = trackGpx(parsed);
         f.fit = true;
       }
       f.tour = tourFromGpx(text, f.name);
-      if (!f.tour) throw new Error('Keine Strecke in der Datei');
+      if (!f.tour) throw new Error(t('import.error.no_route'));
       if (TIMED.test(text)) {
         f.track = parseGpx(text)[0] ?? null;
         // Aus WMap exportiert: die ID steht im Stichwort wmap:…
@@ -64,7 +65,7 @@ function gainOf(keep, file) {
 
 /** Die vorhandene Tour ganz holen und sagen, was es zu fragen gibt → { keep, list } oder null (f.note sagt, warum) */
 export async function prepareMerge(f) {
-  try { f.full = await tracks.full(f.dup); } catch (err) { f.note = `Die vorhandene Tour liegt im Ordner – ${err.message}`; return null; }
+  try { f.full = await tracks.full(f.dup); } catch (err) { f.note = t('import.note.in_folder', { reason: err.message }); return null; }
   const list = offers(f.full, f.track);
   if (!list.length) { f.gain = { ...f.gain, any: false }; return null; }
   return { keep: f.full, list };

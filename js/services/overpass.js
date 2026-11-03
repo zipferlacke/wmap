@@ -5,6 +5,7 @@
  */
 import { API } from '../core/config.js';
 import { searchFilters } from '../core/categories.js';
+import { t } from '../core/i18n.js';
 
 // Abfragen dürfen serverseitig 25 s laufen, dazu kommt die Warteschlange
 const SERVER_TIMEOUT_MS = 45000;
@@ -92,7 +93,7 @@ function hedged(query, signal, background) {
     const servers = serverOrder(background);
     const ctrls = [];
     let next = 0, pending = 0, done = false, timer = null;
-    let lastError = background && !servers.length ? new Error('Overpass ist gerade ausgelastet') : null;
+    let lastError = background && !servers.length ? new Error(t('services.overpass.error.busy')) : null;
     const finish = (fn, v) => {
       if (done) return;
       done = true;
@@ -108,7 +109,7 @@ function hedged(query, signal, background) {
     const start = () => {
       if (done) return;
       if (next >= servers.length) {
-        if (!pending) finish(reject, lastError ?? new Error('Overpass nicht erreichbar'));
+        if (!pending) finish(reject, lastError ?? new Error(t('services.overpass.error.unreachable')));
         return;
       }
       const url = servers[next++];
@@ -121,7 +122,7 @@ function hedged(query, signal, background) {
         .then(async (res) => {
           if (!res.ok) {
             if (res.status === 406 || res.status === 429 || res.status >= 500) rest(url, res.status);
-            throw new Error(res.status === 429 ? 'Overpass ist gerade ausgelastet' : `Overpass antwortet nicht (${res.status})`);
+            throw new Error(res.status === 429 ? t('services.overpass.error.busy') : t('services.overpass.error.status', { status: res.status }));
           }
           finish(resolve, (await res.json()).elements ?? []);
         })
@@ -130,7 +131,7 @@ function hedged(query, signal, background) {
           pending -= 1;
           // Netzfehler (auch 5xx ohne CORS-Kopf): ebenfalls kurz Ruhe
           if (err instanceof TypeError) rest(url, 0);
-          lastError = err.name === 'TimeoutError' || err.name === 'AbortError' ? new Error('Overpass antwortet gerade nicht') : err;
+          lastError = err.name === 'TimeoutError' || err.name === 'AbortError' ? new Error(t('services.overpass.error.no_answer')) : err;
           start();                     // Absage oder Zeitlimit: gleich den nächsten
         });
     };

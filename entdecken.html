@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Entdecken – WMap</title>
+    <title data-i18n="entdecken.page_title">Entdecken – WMap</title>
     <meta name="description" content="Markierte Wanderwege, Radfernwege und MTB-Strecken in der Nähe, mit Etappen und Wegzeichen.">
     <!-- Vorschau beim Teilen (WhatsApp, Signal, Telegram …): kleines Logo statt großem Bild -->
     <meta property="og:type" content="website">
@@ -37,8 +37,8 @@
     <!-- Inhalt des Panels – zieht beim Start in den userDialog um (ui/side-panel.js) -->
     <div class="wege-src" hidden>
         <nav class="tours-tabs ent-tabs" role="tablist">
-            <a role="tab" href="#wege" data-tab="wege" aria-selected="true"><span class="msr">hiking</span> Wege</a>
-            <a role="tab" href="#andere" data-tab="andere" aria-selected="false"><span class="msr">groups</span> Von anderen</a>
+            <a role="tab" href="#wege" data-tab="wege" aria-selected="true"><span class="msr">hiking</span> <span data-i18n="entdecken.tabs.ways">Wege</span></a>
+            <a role="tab" href="#andere" data-tab="andere" aria-selected="false"><span class="msr">groups</span> <span data-i18n="entdecken.tabs.others">Von anderen</span></a>
         </nav>
         <div class="wege-content"></div>
     </div>

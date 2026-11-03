@@ -21,6 +21,7 @@ import { nav } from './nav.js';
 import { compactRoute, isSet, transitWhen } from './route-plan.js';
 import { loadTraffic, runAlong } from './traffic-along.js';
 import { closeSheet, openSheet } from './views.js';
+import { t } from '../core/i18n.js';
 
 /* ── Routen berechnen und zeigen ──────────────────────────────────────────── */
 
@@ -45,7 +46,7 @@ export async function computeRoutes() {
   const { signal } = routeCtl;
 
   openSheet('route');
-  routeStatus('Route wird berechnet …');
+  routeStatus(t('route.status.computing'));
   try {
     const points = await Promise.all(state.waypoints.map((w) => (w.me ? myPosition() : w.point)));
     // Mit dem Auto zu einem Geschäft, Lokal …: gefahren wird bis zum Parkplatz davor (app/drive-target.js)
@@ -75,7 +76,7 @@ export async function computeRoutes() {
     clearRoutes({ keepSheet: true });
     // Netzfehler des Browsers („Load failed“, „Failed to fetch“) nie roh zeigen
     const net = err instanceof TypeError || /load failed|failed to fetch|networkerror/i.test(err.message ?? '');
-    routeStatus(net ? 'Die Route ließ sich gerade nicht laden – bitte gleich noch einmal versuchen' : err.message, true, { retry: net || !!err.retry });
+    routeStatus(net ? t('route.status.failed') : err.message, true, { retry: net || !!err.retry });
   }
 }
 
@@ -101,7 +102,7 @@ function showPark(park, label = '') {
   parkMarker = park ? new maplibregl.Marker({ element: markerEl('park', 'local_parking') }).setLngLat(park.point).addTo(map) : null;
   const el = $('[data-view="route"] .route-park');
   el.hidden = !park;
-  el.innerHTML = park ? `<span class="msr">local_parking</span> Die Fahrt endet am Parkplatz davor – ${fmtDistance(park.dist)} bis ${esc(label.split(',')[0])}` : '';
+  el.innerHTML = park ? `<span class="msr">local_parking</span> ${t('route.park', { distance: fmtDistance(park.dist), place: esc(label.split(',')[0]) })}` : '';
 }
 
 /** `retry`: Server nicht erreichbar o. Ä. – mit Knopf „Erneut versuchen“ (im Auto ohne: dort gibt es keine eigene Oberfläche) */
@@ -112,7 +113,7 @@ function routeStatus(text, error = false, { retry = false } = {}) {
   el.textContent = text ?? '';
   el.classList.toggle('error', error);
   if (retry && !CAR) {
-    const b = Object.assign(document.createElement('button'), { type: 'button', className: 'button route-retry', innerHTML: '<span class="msr">refresh</span> Erneut versuchen' });
+    const b = Object.assign(document.createElement('button'), { type: 'button', className: 'button route-retry', innerHTML: `<span class="msr">refresh</span> ${t('route.status.retry')}` });
     b.addEventListener('click', () => computeRoutes());
     el.append(b);
   }
@@ -183,11 +184,11 @@ export function selectRoute(id, { fit = false } = {}) {
  * (in der Liste oder auf der Karte angetippt) wird hervorgehoben und
  * eingepasst.
  */
-function transitTags(t) {
+function transitTags(trip) {
   const tags = [];
-  if (t.fastest) tags.push(transitWhen().arrive ? 'Späteste Abfahrt' : 'Schnellste');
-  if (t.changes && t.relaxed) tags.push(`≥ ${prefs.change} min umsteigen`);
-  else if (t.changes && Number.isFinite(t.buffer)) tags.push(`knapp: ${Math.max(0, Math.round(t.buffer))} min umsteigen`);
+  if (trip.fastest) tags.push(transitWhen().arrive ? t('route.tags.latest') : t('route.tags.fastest'));
+  if (trip.changes && trip.relaxed) tags.push(t('route.tags.change', { min: prefs.change }));
+  else if (trip.changes && Number.isFinite(trip.buffer)) tags.push(t('route.tags.tight', { min: Math.max(0, Math.round(trip.buffer)) }));
   return tags;
 }
 
@@ -222,10 +223,10 @@ async function loadEarlier() {
       selectRoute(state.selected);
       return;
     }
-    toast('Keine früheren Verbindungen gefunden');
+    toast(t('route.earlier.none'));
   } catch (err) {
     if (err.name === 'AbortError' || state.routes !== routes) return;
-    toast('Frühere Verbindungen gerade nicht abrufbar – bitte gleich noch einmal versuchen');
+    toast(t('route.earlier.failed'));
   } finally {
     earlierBusy = false;
   }
@@ -233,27 +234,27 @@ async function loadEarlier() {
 }
 
 function renderTransitSheet(view, r) {
-  const t = r.transit;
-  $('.sum-time', view).textContent = `${clock(t.dep)} – ${clock(t.arr)}`;
-  $('.sum-dist', view).textContent = `${fmtDuration(r.time)} · ${changesText(t)}`;
-  $('.sum-tags', view).innerHTML = transitTags(t).map((x) => `<span class="badge">${esc(x)}</span>`).join('');
+  const trip = r.transit;
+  $('.sum-time', view).textContent = `${clock(trip.dep)} – ${clock(trip.arr)}`;
+  $('.sum-dist', view).textContent = `${fmtDuration(r.time)} · ${changesText(trip)}`;
+  $('.sum-tags', view).innerHTML = transitTags(trip).map((x) => `<span class="badge">${esc(x)}</span>`).join('');
   // Die gewählte Verbindung klappt direkt unter sich ihre Abschnitte auf
   $('.route-options', view).innerHTML = `<button type="button" class="button transit-earlier" data-earlier${earlierBusy ? ' disabled' : ''}>
-      <span class="msr${earlierBusy ? ' spin' : ''}">${earlierBusy ? 'progress_activity' : 'expand_less'}</span> Frühere Verbindungen</button>
+      <span class="msr${earlierBusy ? ' spin' : ''}">${earlierBusy ? 'progress_activity' : 'expand_less'}</span> ${t('route.earlier.title')}</button>
     ${state.routes.map((x) => `
     <button type="button" role="option" class="route-opt transit-opt" data-id="${x.id}" aria-selected="${x.id === r.id}">
       <strong>${clock(x.transit.dep)} – ${clock(x.transit.arr)}</strong>
       <span class="legs">${x.transit.legs.filter((l) => !l.walk || l.duration > 300).map(legBadge).join('<span class="msr">chevron_right</span>')}</span>
       <small>${esc([fmtDuration(x.time), changesText(x.transit), ...transitTags(x.transit)].join(' · '))}</small>
     </button>
-    ${x.id === r.id ? `<ol class="step-list transit-legs">${transitLegsHtml(t, state.leg, prefs.change)}</ol>` : ''}`).join('')}`;
+    ${x.id === r.id ? `<ol class="step-list transit-legs">${transitLegsHtml(trip, state.leg, prefs.change)}</ol>` : ''}`).join('')}`;
   $('.along', view).innerHTML = '';
   // Die Wegbeschreibung unten entfällt – sie steht jetzt oben bei der Verbindung
   $('.steps .step-list', view).innerHTML = '';
-  const saved = connections.all().some((c) => c.key === t.key);
+  const saved = connections.all().some((c) => c.key === trip.key);
   $('.transit-actions', view).innerHTML = `
-    <button type="button" class="button" data-transit-act="save"${saved ? ' disabled' : ''}><span class="msr">${saved ? 'bookmark_added' : 'bookmark_add'}</span> ${saved ? 'Gemerkt' : 'Merken'}</button>
-    ${t.booking ? `<a class="button" href="${esc(t.booking)}" target="_blank" rel="noopener"><span class="msr">confirmation_number</span> Ticket bei der Bahn</a>` : ''}`;
+    <button type="button" class="button" data-transit-act="save"${saved ? ' disabled' : ''}><span class="msr">${saved ? 'bookmark_added' : 'bookmark_add'}</span> ${saved ? t('place.actions.saved') : t('place.actions.save')}</button>
+    ${trip.booking ? `<a class="button" href="${esc(trip.booking)}" target="_blank" rel="noopener"><span class="msr">confirmation_number</span> ${t('route.ticket')}</a>` : ''}`;
 }
 
 /** Abschnitt hervorheben, aufklappen und einpassen (null: alle wieder gleich) */
@@ -276,10 +277,10 @@ function routeTags(r) {
   const tags = [];
   // „ohne Autobahn“ sagt nur etwas, wenn eine andere Route welche fährt
   const mixed = state.routes.some((x) => x.hasHighway) && state.routes.some((x) => !x.hasHighway);
-  if (r.noHighway && mixed) tags.push('ohne Autobahn');
-  else if (r.hasHighway) tags.push('Autobahn');
-  if (r.hasToll) tags.push('Maut');
-  if (r.hasFerry) tags.push('Fähre');
+  if (r.noHighway && mixed) tags.push(t('route.tags.no_highway'));
+  else if (r.hasHighway) tags.push(t('route.tags.highway'));
+  if (r.hasToll) tags.push(t('route.tags.toll'));
+  if (r.hasFerry) tags.push(t('route.tags.ferry'));
   return tags;
 }
 
@@ -288,17 +289,17 @@ function renderRouteSheet() {
   const r = current();
   view.classList.toggle('transit', !!r.transit);
   if (r.transit) { renderTransitSheet(view, r); return; }
-  const climbing = state.profile !== 'car' && r.ascent ? ` · ↗ ${r.ascent} m` : '';
+  const climbing = state.profile !== 'car' && r.ascent ? ` · ${t('route.ascent', { m: r.ascent })}` : '';
   $('.sum-time', view).textContent = fmtDuration(r.time);
   $('.sum-dist', view).textContent = `${fmtDistance(r.length)}${climbing}`;
-  $('.sum-tags', view).innerHTML = routeTags(r).map((t) => `<span class="badge">${esc(t)}</span>`).join('');
+  $('.sum-tags', view).innerHTML = routeTags(r).map((tag) => `<span class="badge">${esc(tag)}</span>`).join('');
 
   const fastest = Math.min(...state.routes.map((x) => x.time));
   $('.route-options', view).innerHTML = state.routes.length < 2 ? '' : state.routes.map((x) => `
     <button type="button" role="option" class="route-opt" data-id="${x.id}" aria-selected="${x.id === r.id}">
       <strong>${fmtDuration(x.time)}</strong>
       <span>${fmtDistance(x.length)}</span>
-      <small>${esc([x.time === fastest ? 'Schnellste' : null, ...routeTags(x)].filter(Boolean).join(' · ') || 'Alternative')}</small>
+      <small>${esc([x.time === fastest ? t('route.tags.fastest') : null, ...routeTags(x)].filter(Boolean).join(' · ') || t('route.tags.alternative'))}</small>
     </button>`).join('');
 
   $('.along', view).innerHTML = routeCategories(state.profile)
@@ -323,9 +324,9 @@ $('.transit-actions').addEventListener('click', (e) => {
   const act = e.target.closest('[data-transit-act]')?.dataset.transitAct;
   const r = current();
   if (act !== 'save' || !r?.transit) return;
-  const wp = (w, p) => ({ label: w.me ? 'Mein Standort' : (w.label || 'Punkt'), point: p });
+  const wp = (w, p) => ({ label: w.me ? t('map.my_location') : (w.label || t('route.waypoint.point')), point: p });
   connections.save(r, wp(state.waypoints[0], state.points[0]), wp(state.waypoints.at(-1), state.points.at(-1)));
-  toast('Verbindung gemerkt – unter Meine Touren → Verbindungen', { action: { label: 'Ansehen', run: () => { location.href = './wege.html?tab=bahn'; } } });
+  toast(t('route.connection_saved'), { action: { label: t('common.view'), run: () => { location.href = './wege.html?tab=bahn'; } } });
   renderRouteSheet();
 });
 
@@ -348,12 +349,12 @@ $('.step-list').addEventListener('click', (e) => {
 $('.share-route')?.addEventListener('click', async () => {
   const r = current();
   if (!r) return;
-  const names = state.waypoints.map((w) => (w.me ? 'meinem Standort' : w.label?.split(',')[0] || 'Punkt'));
+  const names = state.waypoints.map((w) => (w.me ? t('route.share.my_location') : w.label?.split(',')[0] || t('route.waypoint.point')));
   const pts = state.points.length === state.waypoints.length ? state.points : state.waypoints.map((w) => w.point);
   share({
-    title: 'Route',
-    text: `Route von ${names[0]} nach ${names.at(-1)} (${PROFILES[state.profile].label}, ${fmtDuration(r.time)}, ${fmtDistance(r.length)})`,
-    url: () => routeUrl({ profile: state.profile, waypoints: state.waypoints.map((w, i) => ({ ...w, point: w.point ?? pts[i], me: false, label: w.me ? 'Start' : w.label })) }),
+    title: t('route.share.title'),
+    text: t('route.share.text', { from: names[0], to: names.at(-1), profile: PROFILES[state.profile].label, time: fmtDuration(r.time), distance: fmtDistance(r.length) }),
+    url: () => routeUrl({ profile: state.profile, waypoints: state.waypoints.map((w, i) => ({ ...w, point: w.point ?? pts[i], me: false, label: w.me ? t('route.share.start') : w.label })) }),
   }, toast);
 });
 
@@ -364,7 +365,7 @@ $('.save-tour')?.addEventListener('click', () => {
   const names = state.waypoints.map((w) => w.label).filter(Boolean);
   const tour = tours.save({
     id: tours.newId(),
-    name: names.length >= 2 ? `${names[0]} → ${names.at(-1)}` : 'Neue Tour',
+    name: names.length >= 2 ? `${names[0]} → ${names.at(-1)}` : t('route.new_tour'),
     description: '',
     profile,
     points: state.points,
@@ -394,8 +395,8 @@ function altLabels() {
     const el = document.createElement('button');
     el.type = 'button';
     el.className = 'alt-label';
-    el.innerHTML = `<strong>${diff === 0 ? '±0 min' : `${diff > 0 ? '+' : '−'}${fmtDuration(Math.abs(diff) * 60)}`}</strong>`
-      + (r.noHighway && state.routes.some((x) => x.hasHighway) ? '<small>ohne Autobahn</small>' : '');
+    el.innerHTML = `<strong>${diff === 0 ? t('route.alternative.same') : `${diff > 0 ? '+' : '−'}${fmtDuration(Math.abs(diff) * 60)}`}</strong>`
+      + (r.noHighway && state.routes.some((x) => x.hasHighway) ? `<small>${t('route.tags.no_highway')}</small>` : '');
     el.addEventListener('click', (e) => { e.stopPropagation(); selectRoute(r.id); });
     altMarkers.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(best.p).addTo(map));
   }

@@ -38,6 +38,7 @@ import { contribute } from '../data/trace.js';
 import { distance, simplifyTo, cumulative, nearestOnLine } from '../core/geo.js';
 import { osmRef } from '../map/map.js';
 import { map } from './core.js';
+import { t } from '../core/i18n.js';
 
 const OFF_WAY_M = 30;
 const OFF_RUN_M = 200;
@@ -137,10 +138,10 @@ function offWay(fix, p) {
   s.offAsked = true;
   const mid = s.run[Math.floor(s.run.length / 2)];
   const q = {
-    key: `missing_way:${mid[0].toFixed(4)},${mid[1].toFixed(4)}`, quest: 'missing_way', name: 'Weg abseits der Karte',
+    key: `missing_way:${mid[0].toFixed(4)},${mid[1].toFixed(4)}`, quest: 'missing_way', name: t('ask_along.missing_way.name'),
     point: [mid[0], mid[1]], line: simplifyTo(s.run, 12).map(([x, y]) => [x, y]), mode: s.profile, at: Date.now(),
   };
-  pill(q, { icon: 'add_road', title: s.profile === 'car' ? 'Neue Straße?' : 'Neuer Weg?', yes: s.profile === 'car' ? 'road' : 'way', later: true });
+  pill(q, { icon: 'add_road', title: s.profile === 'car' ? t('ask_along.missing_way.road') : t('ask_along.missing_way.way'), yes: s.profile === 'car' ? 'road' : 'way', later: true });
 }
 
 /** Liegt ein Weg der Karte (Straße, Weg, Pfad …) näher als 30 m? */
@@ -166,10 +167,10 @@ function watchDetour(p) {
   s.detour = null;
   const at = d.planned[Math.min(3, d.planned.length - 1)] ?? d.point;
   const q = {
-    key: `detour:${at[0].toFixed(4)},${at[1].toFixed(4)}`, quest: 'detour', name: 'Abweichung von der Route',
+    key: `detour:${at[0].toFixed(4)},${at[1].toFixed(4)}`, quest: 'detour', name: t('ask_along.detour.name'),
     point: at, line: d.planned, mode: s.profile, at: Date.now(),
   };
-  pill(q, { icon: 'block', title: 'Gesperrt?', yes: 'blocked', later: true });
+  pill(q, { icon: 'block', title: t('ask_along.detour.title'), yes: 'blocked', later: true });
 }
 
 /* ── Gibt es … noch? ────────────────────────────────────────────────────── */
@@ -222,7 +223,7 @@ function askExists(q) {
   const run = s;
   element(q.ref.type, q.ref.id).then((el) => {
     const ask = s === run && existsQuestion(el, q.point);
-    if (ask) pill({ ...ask, at: Date.now() }, { icon: 'storefront', title: `Gibt es ${ask.name} noch?`, yes: 'yes' });
+    if (ask) pill({ ...ask, at: Date.now() }, { icon: 'storefront', title: t('ask_along.exists.title', { name: ask.name }), yes: 'yes' });
   }).catch(() => {});
 }
 

@@ -20,6 +20,7 @@
  */
 import { userDialog } from '../../libs/wuefl-libs/userDialog/userDialog.js';
 import { esc } from '../core/geo.js';
+import { t } from '../core/i18n.js';
 
 /*
  * Dialoge, die von selbst kommen (Willkommen, Neuigkeiten, „Navigation
@@ -64,7 +65,7 @@ function show({ icon = 'help', title, text = '', html = '', buttons, read = null
         <button type="button" class="button${b.primary ? ' primary' : ''}" value="${esc(b.value)}">${label(b)}</button>`).join('')}
       </div>`}`,
     ...(footer ? { confirmText: label(primary), ...(rest[0] ? { cancelText: label(rest[0]) } : { onlyConfirm: true }) } : {}),
-    barRight: closable ? { icon: '<span class="msr">close</span>', title: 'Schließen', action: 'close' } : null,
+    barRight: closable ? { icon: '<span class="msr">close</span>', title: t('common.close'), action: 'close' } : null,
     onInsert() {
       dlg = document.getElementById(dialogId);
       dlg.classList.add('confirm', ...className.split(/\s+/).filter(Boolean));

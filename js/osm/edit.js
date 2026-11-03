@@ -29,59 +29,60 @@ import { esc } from '../core/geo.js';
 import { hoursField, mountHours } from './hours-editor.js';
 import { openLink } from '../core/links.js';
 import { TRAITS, EQUIPMENT, editFields, EDIT_SOCKETS } from '../ui/poi-info.js';
+import { t, tBase } from '../core/i18n.js';
 // Auswahl mit Suche für <select data-sp-picker> (legt sich selbst an)
 import '../../libs/wuefl-libs/selectpicker/selectpicker.js';
 
 /** Arten zum Eintragen – gruppiert; die Auswahl hat eine Suche (wuefl-libs selectpicker) */
 const PLACE_TYPES = [
-  ['Einkaufen', [
-    ['shop', 'Laden (sonstiger)', { shop: 'yes' }],
-    ['supermarket', 'Supermarkt', { shop: 'supermarket' }],
-    ['bakery', 'Bäckerei', { shop: 'bakery' }],
-    ['butcher', 'Metzgerei', { shop: 'butcher' }],
-    ['beverages', 'Getränkemarkt', { shop: 'beverages' }],
-    ['kiosk', 'Kiosk', { shop: 'kiosk' }],
-    ['chemist', 'Drogerie', { shop: 'chemist' }],
-    ['pharmacy', 'Apotheke', { amenity: 'pharmacy', healthcare: 'pharmacy' }],
-    ['farm', 'Hofladen', { shop: 'farm' }],
-    ['florist', 'Blumen', { shop: 'florist' }],
-    ['books', 'Buchhandlung', { shop: 'books' }],
-    ['clothes', 'Bekleidung', { shop: 'clothes' }],
-    ['shoes', 'Schuhe', { shop: 'shoes' }],
-    ['electronics', 'Elektronik', { shop: 'electronics' }],
-    ['doityourself', 'Baumarkt', { shop: 'doityourself' }],
-    ['bicycle', 'Fahrradladen', { shop: 'bicycle' }],
-    ['optician', 'Optiker', { shop: 'optician' }],
-    ['hairdresser', 'Friseur', { shop: 'hairdresser' }],
-    ['fuel', 'Tankstelle', { amenity: 'fuel' }],
+  [t('osm.edit.types.groups.shopping'), [
+    ['shop', t('osm.edit.types.items.shop'), { shop: 'yes' }],
+    ['supermarket', t('osm.edit.types.items.supermarket'), { shop: 'supermarket' }],
+    ['bakery', t('osm.edit.types.items.bakery'), { shop: 'bakery' }],
+    ['butcher', t('osm.edit.types.items.butcher'), { shop: 'butcher' }],
+    ['beverages', t('osm.edit.types.items.beverages'), { shop: 'beverages' }],
+    ['kiosk', t('osm.edit.types.items.kiosk'), { shop: 'kiosk' }],
+    ['chemist', t('osm.edit.types.items.chemist'), { shop: 'chemist' }],
+    ['pharmacy', t('osm.edit.types.items.pharmacy'), { amenity: 'pharmacy', healthcare: 'pharmacy' }],
+    ['farm', t('osm.edit.types.items.farm'), { shop: 'farm' }],
+    ['florist', t('osm.edit.types.items.florist'), { shop: 'florist' }],
+    ['books', t('osm.edit.types.items.books'), { shop: 'books' }],
+    ['clothes', t('osm.edit.types.items.clothes'), { shop: 'clothes' }],
+    ['shoes', t('osm.edit.types.items.shoes'), { shop: 'shoes' }],
+    ['electronics', t('osm.edit.types.items.electronics'), { shop: 'electronics' }],
+    ['doityourself', t('osm.edit.types.items.doityourself'), { shop: 'doityourself' }],
+    ['bicycle', t('osm.edit.types.items.bicycle'), { shop: 'bicycle' }],
+    ['optician', t('osm.edit.types.items.optician'), { shop: 'optician' }],
+    ['hairdresser', t('osm.edit.types.items.hairdresser'), { shop: 'hairdresser' }],
+    ['fuel', t('osm.edit.types.items.fuel'), { amenity: 'fuel' }],
   ]],
-  ['Essen & Trinken', [
-    ['cafe', 'Café', { amenity: 'cafe' }],
-    ['restaurant', 'Restaurant', { amenity: 'restaurant' }],
-    ['fast_food', 'Imbiss', { amenity: 'fast_food' }],
-    ['ice_cream', 'Eisdiele', { amenity: 'ice_cream' }],
-    ['bar', 'Bar / Kneipe', { amenity: 'pub' }],
-    ['biergarten', 'Biergarten', { amenity: 'biergarten' }],
+  [t('osm.edit.types.groups.food'), [
+    ['cafe', t('osm.edit.types.items.cafe'), { amenity: 'cafe' }],
+    ['restaurant', t('osm.edit.types.items.restaurant'), { amenity: 'restaurant' }],
+    ['fast_food', t('osm.edit.types.items.fast_food'), { amenity: 'fast_food' }],
+    ['ice_cream', t('osm.edit.types.items.ice_cream'), { amenity: 'ice_cream' }],
+    ['bar', t('osm.edit.types.items.bar'), { amenity: 'pub' }],
+    ['biergarten', t('osm.edit.types.items.biergarten'), { amenity: 'biergarten' }],
   ]],
-  ['Dienstleistung', [
-    ['office', 'Firma / Büro', { office: 'company' }],
-    ['craft', 'Handwerksbetrieb', { craft: 'yes' }],
-    ['car_repair', 'Autowerkstatt', { shop: 'car_repair' }],
-    ['doctors', 'Arztpraxis', { amenity: 'doctors' }],
-    ['dentist', 'Zahnarzt', { amenity: 'dentist' }],
-    ['bank', 'Bank', { amenity: 'bank' }],
-    ['post_office', 'Post', { amenity: 'post_office' }],
-    ['hotel', 'Hotel / Pension', { tourism: 'hotel' }],
-    ['apartment', 'Ferienwohnung', { tourism: 'apartment' }],
+  [t('osm.edit.types.groups.services'), [
+    ['office', t('osm.edit.types.items.office'), { office: 'company' }],
+    ['craft', t('osm.edit.types.items.craft'), { craft: 'yes' }],
+    ['car_repair', t('osm.edit.types.items.car_repair'), { shop: 'car_repair' }],
+    ['doctors', t('osm.edit.types.items.doctors'), { amenity: 'doctors' }],
+    ['dentist', t('osm.edit.types.items.dentist'), { amenity: 'dentist' }],
+    ['bank', t('osm.edit.types.items.bank'), { amenity: 'bank' }],
+    ['post_office', t('osm.edit.types.items.post_office'), { amenity: 'post_office' }],
+    ['hotel', t('osm.edit.types.items.hotel'), { tourism: 'hotel' }],
+    ['apartment', t('osm.edit.types.items.apartment'), { tourism: 'apartment' }],
   ]],
-  ['Kultur & Freizeit', [
-    ['events_venue', 'Veranstaltungsort', { amenity: 'events_venue' }],
-    ['community_centre', 'Gemeindezentrum / Saal', { amenity: 'community_centre' }],
-    ['theatre', 'Theater', { amenity: 'theatre' }],
-    ['cinema', 'Kino', { amenity: 'cinema' }],
-    ['nightclub', 'Club / Disco', { amenity: 'nightclub' }],
-    ['museum', 'Museum', { tourism: 'museum' }],
-    ['sports_centre', 'Sporthalle / -anlage', { leisure: 'sports_centre' }],
+  [t('osm.edit.types.groups.culture'), [
+    ['events_venue', t('osm.edit.types.items.events_venue'), { amenity: 'events_venue' }],
+    ['community_centre', t('osm.edit.types.items.community_centre'), { amenity: 'community_centre' }],
+    ['theatre', t('osm.edit.types.items.theatre'), { amenity: 'theatre' }],
+    ['cinema', t('osm.edit.types.items.cinema'), { amenity: 'cinema' }],
+    ['nightclub', t('osm.edit.types.items.nightclub'), { amenity: 'nightclub' }],
+    ['museum', t('osm.edit.types.items.museum'), { tourism: 'museum' }],
+    ['sports_centre', t('osm.edit.types.items.sports_centre'), { leisure: 'sports_centre' }],
   ]],
 ];
 const TYPE_LIST = PLACE_TYPES.flatMap(([, list]) => list);
@@ -107,19 +108,19 @@ const BRANDS = {
 };
 
 const FIELDS = [
-  ['name', 'Name', 'text', 'z. B. Bäckerei Müller'],
-  ['phone', 'Telefon', 'tel', '+49 …'],
-  ['website', 'Website', 'url', 'https://…'],
-  ['website:events', 'Veranstaltungen – Seite mit den Terminen', 'url', 'https://…/programm'],
-  ['image', 'Bild – Link zu einem freien Foto', 'url', 'z. B. commons.wikimedia.org/wiki/File:…'],
+  ['name', t('osm.edit.fields.name.title'), 'text', t('osm.edit.fields.name.placeholder')],
+  ['phone', t('osm.edit.fields.phone.title'), 'tel', t('osm.edit.fields.phone.placeholder')],
+  ['website', t('osm.edit.fields.website.title'), 'url', t('osm.edit.fields.website.placeholder')],
+  ['website:events', t('osm.edit.fields.events.title'), 'url', t('osm.edit.fields.events.placeholder')],
+  ['image', t('osm.edit.fields.image.title'), 'url', t('osm.edit.fields.image.placeholder')],
   // Art steuert nur die Tastatur – alle Felder sehen gleich aus
 ];
 const ADDRESS = [
-  ['addr:street', 'Straße', 'text', ''], ['addr:housenumber', 'Nr.', 'text', ''],
-  ['addr:postcode', 'PLZ', 'text', ''], ['addr:city', 'Ort', 'text', ''],
+  ['addr:street', t('osm.edit.fields.address.street'), 'text', ''], ['addr:housenumber', t('osm.edit.fields.address.housenumber'), 'text', ''],
+  ['addr:postcode', t('osm.edit.fields.address.postcode'), 'text', ''], ['addr:city', t('osm.edit.fields.address.city'), 'text', ''],
 ];
 
-const DESCRIPTION = ['description', 'Beschreibung – kurz und sachlich, keine Werbung', 'textarea', 'z. B. Bio-Bäckerei mit Café, Brot aus eigenem Sauerteig'];
+const DESCRIPTION = ['description', t('osm.edit.fields.description.title'), 'textarea', t('osm.edit.fields.description.placeholder')];
 
 /** Feld mit dem OSM-Schlüssel klein daneben – damit klar ist, was wo landet */
 const field = ([k, label, type, ph], v = '', { tag = true } = {}) => `<label class="osm-field"><span>${label}${tag ? ` <code class="osm-tag">${esc(k)}</code>` : ''}</span>
@@ -133,13 +134,13 @@ const field = ([k, label, type, ph], v = '', { tag = true } = {}) => `<label cla
 const EDIT_TRAITS = [
   ...TRAITS.map(([k, label, txt]) => [k, label, k === 'internet_access' ? ['wlan'] : Object.keys(txt)]),
   ...EQUIPMENT.filter(([k]) => k !== 'wheelchair').map(([k, label]) => [k, label, k === 'internet_access' ? ['wlan'] : ['yes']]),
-  ['toilets:access', 'Toiletten für alle', ['yes', 'customers']],
-  ['wheelchair', 'Rollstuhlgerecht', ['yes', 'limited']],
+  ['toilets:access', t('osm.edit.traits.toilets'), ['yes', 'customers']],
+  ['wheelchair', t('osm.edit.traits.wheelchair'), ['yes', 'limited']],
 ];
-const WORD = { yes: 'Ja', only: 'Nur', limited: 'Teilweise', wlan: 'Ja', no: 'Nein', customers: 'Nur Gäste' };
+const WORD = { yes: t('osm.edit.traits.values.yes'), only: t('osm.edit.traits.values.only'), limited: t('osm.edit.traits.values.limited'), wlan: t('osm.edit.traits.values.wlan'), no: t('osm.edit.traits.values.no'), customers: t('osm.edit.traits.values.customers') };
 
 /** Merkmale als Zeilen mit Auswahl (leer, wenn keine) */
-const traitsBlock = (list, tags = {}) => (list.length ? `<div class="osm-traits"><h4 class="osm-sub"><span class="msr">checklist</span> Merkmale</h4>${list.map(([k, label, vals]) => {
+const traitsBlock = (list, tags = {}) => (list.length ? `<div class="osm-traits"><h4 class="osm-sub"><span class="msr">checklist</span> ${t('osm.edit.traits.title')}</h4>${list.map(([k, label, vals]) => {
   const cur = tags[k] ?? '';
   const opts = [['', '–'], ...[...vals, 'no'].map((v) => [v, WORD[v]])];
   if (cur && !opts.some(([v]) => v === cur)) opts.push([cur, cur]);
@@ -175,10 +176,10 @@ function factField({ label, edit: e }, tags) {
   }
   if (e.kind === 'sockets') {
     return `<fieldset class="osm-sockets"><legend>${esc(label)} ${tag('socket:…')}</legend>
-      <span></span><small>Anzahl</small><small>Leistung</small>
+      <span></span><small>${t('osm.edit.sockets.count')}</small><small>${t('osm.edit.sockets.power')}</small>
       ${Object.entries(EDIT_SOCKETS).map(([k, name]) => `<span>${esc(name)}</span>
         <input type="text" inputmode="numeric" name="socket:${esc(k)}" value="${esc(tags[`socket:${k}`] ?? '')}" placeholder="–" autocomplete="off">
-        <input type="text" name="socket:${esc(k)}:output" value="${esc(tags[`socket:${k}:output`] ?? '')}" placeholder="z. B. 22 kW" autocomplete="off">`).join('')}
+        <input type="text" name="socket:${esc(k)}:output" value="${esc(tags[`socket:${k}:output`] ?? '')}" placeholder="${t('osm.edit.sockets.power_placeholder')}" autocomplete="off">`).join('')}
     </fieldset>`;
   }
   return '';
@@ -186,20 +187,20 @@ function factField({ label, edit: e }, tags) {
 
 /** Block „Angaben“ – wie in der Ortskarte (leer, wenn es keine gibt); `html` baut ein Feld */
 const factsBlock = (list, html) => (list.length
-  ? `<fieldset class="osm-facts"><legend><span class="msr">tune</span> Angaben <small>wie in der Ortskarte</small></legend>${list.map(html).join('')}</fieldset>`
+  ? `<fieldset class="osm-facts"><legend><span class="msr">tune</span> ${t('osm.edit.facts.title')} <small>${t('osm.edit.facts.hint')}</small></legend>${list.map(html).join('')}</fieldset>`
   : '');
 
 /** Zugeklappt: was selten gebraucht wird, am Ende immer alle Tags */
 const moreBlock = (inner, what) => `<details class="osm-more">
-  <summary><span class="msr">unfold_more</span> Weiteres <small>${esc(what.join(', '))}</small></summary>
+  <summary><span class="msr">unfold_more</span> ${t('osm.edit.more.title')} <small>${esc(what.join(', '))}</small></summary>
   <div class="osm-more-body">${inner}</div>
 </details>`;
 
 /** Rohdaten: eine Zeile je Tag. Neu anlegen: leer, für weitere Tags. */
 const RAW = '_raw';
 const rawBlock = (tags, hint) => `<div class="osm-raw-block">
-  <h4 class="osm-sub"><span class="msr">data_object</span> ${tags ? 'Alle Tags' : 'Weitere Tags'} <small>für Kenner – Schlüssel=Wert, eine Zeile je Tag</small></h4>
-  <textarea name="${RAW}" class="osm-raw" rows="${tags ? 8 : 3}" spellcheck="false" autocapitalize="off" placeholder="z. B. payment:cash=yes">${esc(Object.entries(tags ?? {}).map(([k, v]) => `${k}=${v}`).sort().join('\n'))}</textarea>
+  <h4 class="osm-sub"><span class="msr">data_object</span> ${tags ? t('osm.edit.raw.all') : t('osm.edit.raw.more')} <small>${t('osm.edit.raw.hint')}</small></h4>
+  <textarea name="${RAW}" class="osm-raw" rows="${tags ? 8 : 3}" spellcheck="false" autocapitalize="off" placeholder="${t('osm.edit.raw.placeholder')}">${esc(Object.entries(tags ?? {}).map(([k, v]) => `${k}=${v}`).sort().join('\n'))}</textarea>
   <p class="muted">${hint}</p>
 </div>`;
 
@@ -248,28 +249,28 @@ const valuesOf = (dlg) => Object.fromEntries([...dlg.querySelectorAll('input[nam
  */
 async function withoutAccount(what) {
   const v = await ask({
-    icon: 'account_circle', title: 'OpenStreetMap-Konto verbinden',
-    html: `<p>${esc(what)} landet direkt in OpenStreetMap – der offenen Karte, die WMap nutzt. Dafür brauchst du ein kostenloses OSM-Konto; einmal in den Einstellungen verbunden, geht alles unter deinem Namen in die Karte.</p>
-      <p class="muted">Ohne Konto kannst du es auch als anonymen Hinweis schicken – Mapper aus der Gegend tragen es dann ein.</p>`,
-    buttons: [{ value: 'note', label: 'Als Hinweis senden' }, { value: 'account', label: 'Konto verbinden', primary: true, icon: 'login' }],
+    icon: 'account_circle', title: t('osm.edit.no_account.title'),
+    html: `<p>${t('osm.edit.no_account.text', { what: esc(what) })}</p>
+      <p class="muted">${t('osm.edit.no_account.anon')}</p>`,
+    buttons: [{ value: 'note', label: t('osm.edit.no_account.note') }, { value: 'account', label: t('osm.edit.no_account.connect'), primary: true, icon: 'login' }],
   });
   if (v === 'account') location.href = './settings.html#osm';
   return v;
 }
 
-const noteText = (title, vals) => `${title} (über WMap):\n${Object.entries(vals).map(([k, v]) => (v ? `${k}=${v}` : `${k} entfernen`)).join('\n')}`;
+const noteText = (title, vals) => tBase('osm.edit.note.text', { title, lines: Object.entries(vals).map(([k, v]) => (v ? `${k}=${v}` : tBase('osm.edit.note.remove', { k }))).join('\n') });
 
 /** @param kind  'bearbeitet' | 'neu' – für die Zählung (osm/stats.js) */
 async function send({ edits = [], creates = [], note = null }, comment, toast, kind) {
   try {
     const r = note ? await upload({ notes: [note] }, { comment }) : await upload({ edits, creates }, { comment });
-    if (r.conflicts?.length) { toast('Inzwischen hat jemand anderes das geändert – bitte neu laden'); return false; }
+    if (r.conflicts?.length) { toast(t('osm.edit.toast.conflict')); return false; }
     countOsm(kind, note ? 'hinweis' : 'karte');
     const link = r.changeset ? changesetUrl(r.changeset) : r.notes?.[0]?.id ? noteUrl(r.notes[0].id) : null;
-    toast(note ? 'Hinweis gesendet – danke!' : 'In OpenStreetMap eingetragen – danke!', link ? { action: { label: 'Ansehen', run: () => openLink(link) } } : undefined);
+    toast(note ? t('osm.edit.toast.note_sent') : t('osm.edit.toast.saved'), link ? { action: { label: t('osm.edit.toast.view'), run: () => openLink(link) } } : undefined);
     return true;
   } catch (err) {
-    toast(`Ging nicht: ${err.message}`);
+    toast(t('osm.edit.toast.failed', { error: err.message }));
     return false;
   }
 }
@@ -280,7 +281,7 @@ async function send({ edits = [], creates = [], note = null }, comment, toast, k
  * @param tags  aktuelle Tags
  */
 export async function editPlace({ osm, tags, point, title }, { toast }) {
-  const mode = account.loggedIn() ? 'edit' : await withoutAccount('Deine Änderung');
+  const mode = account.loggedIn() ? 'edit' : await withoutAccount(t('osm.edit.what_change'));
   if (mode !== 'edit' && mode !== 'note') return;
   // Bild von Commons: als Link zeigen – geändert gilt nur, was davon abweicht
   const shown = { ...tags, image: tags.image ?? (tags.wikimedia_commons ? `https://commons.wikimedia.org/wiki/${tags.wikimedia_commons.replace(/ /g, '_')}` : '') };
@@ -305,30 +306,30 @@ export async function editPlace({ osm, tags, point, title }, { toast }) {
   ].filter(([k]) => !inCard.has(k));
   // Weitere: ausgefüllte über „Weiteres“, leere darin – [Name, ausgefüllt?, HTML]
   const extra = [
-    ['Adresse', ADDRESS.some(([k]) => tags[k]), () => `<div class="osm-addr">${ADDRESS.map((f) => field(f, tags[f[0]] ?? '')).join('')}</div>`],
-    ['Programm', !!tags[events[0]], () => text(events)],
-    ['Bild', !!shown.image, () => text(image)],
+    [t('osm.edit.more.address'), ADDRESS.some(([k]) => tags[k]), () => `<div class="osm-addr">${ADDRESS.map((f) => field(f, tags[f[0]] ?? '')).join('')}</div>`],
+    [t('osm.edit.more.events'), !!tags[events[0]], () => text(events)],
+    [t('osm.edit.more.image'), !!shown.image, () => text(image)],
   ];
   const traits = EDIT_TRAITS.filter(([k]) => !inCard.has(k));
   const filled = traits.filter(([k]) => tags[k]);
   const vals = await ask({
-    icon: 'edit_location_alt', title: `${title || 'Ort'} bearbeiten`, className: 'osm-edit',
+    icon: 'edit_location_alt', title: t('osm.edit.edit.title', { name: title || t('osm.edit.place') }), className: 'osm-edit',
     html: `<div class="osm-form">${field(FIELDS[0], tags.name ?? '')}
         ${factsBlock(card, cardField)}
         ${basic.map(([, html]) => html()).join('')}
         ${extra.filter(([, full]) => full).map(([, , html]) => html()).join('')}${traitsBlock(filled, tags)}
-        ${moreBlock(`${extra.filter(([, full]) => !full).map(([, , html]) => html()).join('')}${traitsBlock(traits.filter((t) => !filled.includes(t)), tags)}
-          ${rawBlock(tags, 'Was du oben in den Feldern änderst, gilt vor dem, was hier steht. Zeile löschen = Tag entfernen.')}`,
-        [...extra.filter(([, full]) => !full).map(([name]) => name), ...(filled.length < traits.length ? ['Merkmale'] : []), 'alle Tags'])}</div>
-      <p class="muted">Nur eintragen, was du selbst weißt – z. B. vom Schild vor Ort.</p>`,
-    buttons: [{ value: 'cancel', label: 'Abbrechen' }, { value: 'ok', label: mode === 'note' ? 'Hinweis senden' : 'Speichern', primary: true }],
+        ${moreBlock(`${extra.filter(([, full]) => !full).map(([, , html]) => html()).join('')}${traitsBlock(traits.filter((x) => !filled.includes(x)), tags)}
+          ${rawBlock(tags, t('osm.edit.raw.edit_hint'))}`,
+        [...extra.filter(([, full]) => !full).map(([name]) => name), ...(filled.length < traits.length ? [t('osm.edit.more.traits')] : []), t('osm.edit.more.all_tags')])}</div>
+      <p class="muted">${t('osm.edit.edit.hint')}</p>`,
+    buttons: [{ value: 'cancel', label: t('common.cancel') }, { value: 'ok', label: mode === 'note' ? t('osm.edit.send_note') : t('common.save'), primary: true }],
     read: valuesOf,
     setup(dlg) { mountHours(dlg); syncRaw(dlg); },
   });
   if (!vals || typeof vals !== 'object') return;
   const { gone, [RAW]: raw, ...form } = vals;
   if (gone) {
-    await send({ note: { point, text: `„${title || 'Ort'}“ (${osm.type}/${osm.id}) ist dauerhaft geschlossen – gibt es an dieser Stelle nicht mehr (über WMap).` } }, '', toast, 'bearbeitet');
+    await send({ note: { point, text: tBase('osm.edit.note.gone', { name: title || t('osm.edit.place'), type: osm.type, id: osm.id }) } }, '', toast, 'bearbeitet');
     return;
   }
   // Ausgang: alle Tags (so wie unter „Alle Tags“ stehen gelassen), darüber
@@ -341,13 +342,13 @@ export async function editPlace({ osm, tags, point, title }, { toast }) {
   const set = {};
   for (const [k, v] of Object.entries(next)) if (tags[k] !== v) set[k] = v;
   for (const k of Object.keys(tags)) if (!(k in next)) set[k] = '';
-  if (!Object.keys(set).length) { toast('Nichts geändert'); return; }
+  if (!Object.keys(set).length) { toast(t('osm.edit.toast.unchanged')); return; }
   if (mode === 'note') {
-    await send({ note: { point, text: noteText(`Bitte ändern bei „${title}“ (${osm.type}/${osm.id})`, set) } }, '', toast, 'bearbeitet');
+    await send({ note: { point, text: noteText(tBase('osm.edit.note.change', { name: title, type: osm.type, id: osm.id }), set) } }, '', toast, 'bearbeitet');
     return;
   }
   const expect = Object.fromEntries(Object.keys(set).map((k) => [k, tags[k] ?? null]));
-  const ok = await send({ edits: [{ osm, set, expect }] }, `${title || 'Ort'}: ${Object.keys(set).join(', ')} geändert`, toast, 'bearbeitet');
+  const ok = await send({ edits: [{ osm, set, expect }] }, tBase('osm.edit.comment.changed', { name: title || t('osm.edit.place'), keys: Object.keys(set).join(', ') }), toast, 'bearbeitet');
   if (ok) for (const [k, v] of Object.entries(set)) { if (v) tags[k] = v; else delete tags[k]; }
 }
 
@@ -356,24 +357,24 @@ export async function editPlace({ osm, tags, point, title }, { toast }) {
  * @param address  Vorschlag aus der Rückwärtssuche ({ street, housenumber, postcode, city })
  */
 export async function addPlace(point, { address = {}, toast }) {
-  const mode = account.loggedIn() ? 'add' : await withoutAccount('Der neue Ort');
+  const mode = account.loggedIn() ? 'add' : await withoutAccount(t('osm.edit.what_new'));
   if (mode !== 'add' && mode !== 'note') return;
   const addr = { 'addr:street': address.street ?? '', 'addr:housenumber': address.housenumber ?? '', 'addr:postcode': address.postcode ?? '', 'addr:city': address.city ?? '' };
   const vals = await ask({
-    icon: 'add_business', title: 'Ort eintragen', className: 'osm-edit',
+    icon: 'add_business', title: t('osm.edit.add.title'), className: 'osm-edit',
     html: `<div class="osm-form">
-        <label class="osm-field"><span>Was ist hier?</span><select name="type" data-sp-picker="Was ist hier?">${PLACE_TYPES.map(([group, list]) => `<optgroup label="${esc(group)}">${list.map(([id, label]) => `<option value="${id}">${esc(label)}</option>`).join('')}</optgroup>`).join('')}</select></label>
-        <label class="osm-field osm-brand" hidden><span>Marke / Kette <code class="osm-tag">brand</code></span>
-          <input type="text" name="brand" list="osm-brands" placeholder="z. B. EDEKA – leer lassen, wenn es keine Kette ist" autocomplete="off"><datalist id="osm-brands"></datalist></label>
+        <label class="osm-field"><span>${t('osm.edit.add.what')}</span><select name="type" data-sp-picker="${t('osm.edit.add.what')}">${PLACE_TYPES.map(([group, list]) => `<optgroup label="${esc(group)}">${list.map(([id, label]) => `<option value="${id}">${esc(label)}</option>`).join('')}</optgroup>`).join('')}</select></label>
+        <label class="osm-field osm-brand" hidden><span>${t('osm.edit.add.brand.title')} <code class="osm-tag">brand</code></span>
+          <input type="text" name="brand" list="osm-brands" placeholder="${t('osm.edit.add.brand.placeholder')}" autocomplete="off"><datalist id="osm-brands"></datalist></label>
         ${field(FIELDS[0])}
         <div class="osm-facts-slot"></div>
         ${field(DESCRIPTION)}${hoursField('', { gone: false })}
         ${FIELDS.slice(1, 3).map((f) => field(f)).join('')}
         <div class="osm-addr">${ADDRESS.map((f) => field(f, addr[f[0]])).join('')}</div>
-        ${moreBlock(`${FIELDS.slice(3).map((f) => field(f)).join('')}${traitsBlock(EDIT_TRAITS)}${rawBlock(null, 'Kommt zu den Angaben oben dazu.')}`, ['Programm', 'Bild', 'Merkmale', 'weitere Tags'])}
+        ${moreBlock(`${FIELDS.slice(3).map((f) => field(f)).join('')}${traitsBlock(EDIT_TRAITS)}${rawBlock(null, t('osm.edit.raw.add_hint'))}`, [t('osm.edit.more.events'), t('osm.edit.more.image'), t('osm.edit.more.traits'), t('osm.edit.more.more_tags')])}
       </div>
-      <p class="muted">Der Punkt liegt dort, wo du lange gedrückt hast. Bitte nur, was es wirklich gibt – vor Ort gesehen.</p>`,
-    buttons: [{ value: 'cancel', label: 'Abbrechen' }, { value: 'ok', label: mode === 'note' ? 'Hinweis senden' : 'Eintragen', primary: true }],
+      <p class="muted">${t('osm.edit.add.hint')}</p>`,
+    buttons: [{ value: 'cancel', label: t('common.cancel') }, { value: 'ok', label: mode === 'note' ? t('osm.edit.send_note') : t('osm.edit.add.button'), primary: true }],
     read: valuesOf,
     setup(dlg) {
       mountHours(dlg);
@@ -394,12 +395,12 @@ export async function addPlace(point, { address = {}, toast }) {
   });
   if (!vals || typeof vals !== 'object') return;
   const { type, gone: _, [RAW]: raw, ...rest } = vals;
-  if (!rest.name) { toast('Bitte einen Namen angeben'); return; }
+  if (!rest.name) { toast(t('osm.edit.toast.need_name')); return; }
   const kind = TYPE_LIST.find(([id]) => id === type) ?? TYPE_LIST[0];
   const tags = { ...parseRaw(raw), ...kind[2], ...imageTags(Object.fromEntries(Object.entries(rest).filter(([, v]) => v))) };
   if (mode === 'note') {
-    await send({ note: { point, text: noteText(`Neuer Ort: ${kind[1]} „${rest.name}“`, tags) } }, '', toast, 'neu');
+    await send({ note: { point, text: noteText(tBase('osm.edit.note.new', { kind: kind[1], name: rest.name }), tags) } }, '', toast, 'neu');
     return;
   }
-  await send({ creates: [{ point, tags }] }, `${kind[1]} „${rest.name}“ eingetragen`, toast, 'neu');
+  await send({ creates: [{ point, tags }] }, tBase('osm.edit.comment.added', { kind: kind[1], name: rest.name }), toast, 'neu');
 }

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Konto löschen – WMap</title>
+    <title data-i18n="delete_konto.page_title">Konto löschen – WMap</title>
     <!-- Vorschau beim Teilen (WhatsApp, Signal, Telegram …): kleines Logo statt großem Bild -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="WMap">
@@ -32,42 +32,42 @@
 -->
 <body class="dash-page settings-page">
     <header class="dash-head">
-        <h1>Konto löschen</h1>
+        <h1 data-i18n="delete_konto.title">Konto löschen</h1>
     </header>
 
     <main class="dash settings delete-konto">
         <section>
-            <h3>Was ist ein WMap-Konto?</h3>
-            <p>WMap geht ohne Konto. Ein Konto brauchst du nur, um Touren oder Plugins zu teilen und Touren zu bewerten.
+            <h3 data-i18n="delete_konto.what.title">Was ist ein WMap-Konto?</h3>
+            <p data-i18n="delete_konto.what.text">WMap geht ohne Konto. Ein Konto brauchst du nur, um Touren oder Plugins zu teilen und Touren zu bewerten.
                Angemeldet wirst du mit deinem OpenStreetMap-Konto; WMap speichert davon nur deinen OSM-Namen und deine OSM-Nutzernummer –
                kein Passwort und keine E-Mail-Adresse.</p>
         </section>
 
         <section>
-            <h3>Was gelöscht wird</h3>
+            <h3 data-i18n="delete_konto.deleted.title">Was gelöscht wird</h3>
             <ul class="delete-list">
-                <li><span class="msr">badge</span> dein Name und deine OSM-Nutzernummer auf dem WMap-Server</li>
-                <li><span class="msr">route</span> alle Touren, die du gespeichert hast – private und veröffentlichte – samt Bewertungen anderer dazu</li>
-                <li><span class="msr">extension</span> alle Plugins, die du angelegt hast – private und veröffentlichte, mit hochgeladenen Daten</li>
-                <li><span class="msr">star</span> deine Bewertungen und Kommentare zu Touren anderer</li>
-                <li><span class="msr">devices</span> alle Anmeldungen auf allen Geräten</li>
+                <li><span class="msr">badge</span> <span data-i18n="delete_konto.deleted.name">dein Name und deine OSM-Nutzernummer auf dem WMap-Server</span></li>
+                <li><span class="msr">route</span> <span data-i18n="delete_konto.deleted.tours">alle Touren, die du gespeichert hast – private und veröffentlichte – samt Bewertungen anderer dazu</span></li>
+                <li><span class="msr">extension</span> <span data-i18n="delete_konto.deleted.plugins">alle Plugins, die du angelegt hast – private und veröffentlichte, mit hochgeladenen Daten</span></li>
+                <li><span class="msr">star</span> <span data-i18n="delete_konto.deleted.ratings">deine Bewertungen und Kommentare zu Touren anderer</span></li>
+                <li><span class="msr">devices</span> <span data-i18n="delete_konto.deleted.logins">alle Anmeldungen auf allen Geräten</span></li>
             </ul>
-            <p>Gelöscht wird sofort und endgültig; auf dem Server bleibt davon nichts zurück.</p>
-            <p class="muted">Nicht auf dem Server liegen: aufgezeichnete Wege, gemerkte Orte, Offline-Karten und Einstellungen.
+            <p data-i18n="delete_konto.deleted.final">Gelöscht wird sofort und endgültig; auf dem Server bleibt davon nichts zurück.</p>
+            <p class="muted" data-i18n="delete_konto.deleted.not_server">Nicht auf dem Server liegen: aufgezeichnete Wege, gemerkte Orte, Offline-Karten und Einstellungen.
                Sie bleiben auf deinem Gerät, bis du die App bzw. die Website-Daten im Browser löschst.
                Dein OpenStreetMap-Konto und alles, was du dort eingetragen hast, bleibt – das verwaltest du auf openstreetmap.org.</p>
         </section>
 
         <section class="delete-now">
-            <h3>Jetzt löschen</h3>
-            <div class="delete-status"><p><span class="msr spin">progress_activity</span> Einen Moment …</p></div>
-            <button type="button" class="button danger delete-button"><span class="msr">delete_forever</span> Konto endgültig löschen</button>
-            <p class="muted">Gelöscht wird das WMap-Konto, das zu dem OpenStreetMap-Konto gehört, mit dem du angemeldet bist.</p>
+            <h3 data-i18n="delete_konto.now.title">Jetzt löschen</h3>
+            <div class="delete-status"><p><span class="msr spin">progress_activity</span> <span data-i18n="delete_konto.now.wait">Einen Moment …</span></p></div>
+            <button type="button" class="button danger delete-button"><span class="msr">delete_forever</span> <span data-i18n="delete_konto.now.button">Konto endgültig löschen</span></button>
+            <p class="muted" data-i18n="delete_konto.now.hint">Gelöscht wird das WMap-Konto, das zu dem OpenStreetMap-Konto gehört, mit dem du angemeldet bist.</p>
         </section>
 
         <section>
-            <h3>Anmelden geht nicht?</h3>
-            <p>Wenn du dich nicht mehr anmelden kannst, schreib an
+            <h3 data-i18n="delete_konto.no_login.title">Anmelden geht nicht?</h3>
+            <p data-i18n-html="delete_konto.no_login.text">Wenn du dich nicht mehr anmelden kannst, schreib an
                <a href="mailto:contact@wuefl.de?subject=WMap-Konto%20l%C3%B6schen">contact@wuefl.de</a>
                mit deinem OpenStreetMap-Namen und – wenn möglich – dem Namen einer deiner Touren oder Plugins.
                Wir löschen das Konto dann von Hand, spätestens innerhalb von 30 Tagen, und bestätigen es dir.</p>

@@ -43,6 +43,7 @@ import { nav, navTour, startNav } from '../app/nav.js';
 import { closeSheet } from '../app/views.js';
 import { startDrive, pauseDrive, resumeDrive, hudInsets, recenterIcon } from './drive.js';
 import { timed } from './carlog.js';
+import { t } from '../core/i18n.js';
 
 // Das Auto zeigt ein Video der Karte, meist mit 30 Bildern je Sekunde – mehr zu zeichnen kostet nur
 // Rechenzeit und Wärme (core/fps.js). 20 reichen für eine ruhige Fahrt.
@@ -251,7 +252,7 @@ function fitHits(points) {
  */
 async function category(id) {
   const cat = byId(id);
-  if (!cat) throw new Error('Unbekannte Kategorie');
+  if (!cat) throw new Error(t('car.errors.unknown_category'));
   catCtl?.abort();
   catCtl = new AbortController();
   const { signal } = catCtl;
@@ -313,7 +314,7 @@ async function search(text) {
   const cat = matchCategory(q, { loose: true });
   if (cat && !cat.place) {
     const c = cat.category;
-    const item = { kind: 'category', id: c.id, title: c.label, icon: c.icon, color: c.color, sub: 'In der Nähe' };
+    const item = { kind: 'category', id: c.id, title: c.label, icon: c.icon, color: c.color, sub: t('car.nearby') };
     if (cat.strong) items.unshift(item); else items.splice(2, 0, item);
   }
   return { items: await withPng(await withRoad([...savedRows(q), ...items])) };
@@ -323,10 +324,10 @@ async function search(text) {
 
 const routeRows = () => state.routes.map((r) => {
   const tags = [];
-  if (r.hasHighway) tags.push('Autobahn');
-  else if (state.routes.some((x) => x.hasHighway)) tags.push('ohne Autobahn');
-  if (r.hasToll) tags.push('Maut');
-  if (r.hasFerry) tags.push('Fähre');
+  if (r.hasHighway) tags.push(t('route.tags.highway'));
+  else if (state.routes.some((x) => x.hasHighway)) tags.push(t('route.tags.no_highway'));
+  if (r.hasToll) tags.push(t('route.tags.toll'));
+  if (r.hasFerry) tags.push(t('route.tags.ferry'));
   return { id: r.id, time: r.time, length: r.length, title: `${fmtDuration(r.time)} · ${fmtDistance(r.length)}`, sub: tags.join(' · ') };
 });
 
@@ -337,17 +338,17 @@ async function routesReady() {
     return el && !el.hidden ? el.textContent : null;
   };
   for (let i = 0; i < 240; i += 1) {
-    if (state.routes.length) return { title: state.waypoints.at(-1)?.label ?? 'Ziel', routes: routeRows(), selected: state.selected };
+    if (state.routes.length) return { title: state.waypoints.at(-1)?.label ?? t('car.destination'), routes: routeRows(), selected: state.selected };
     const err = failed();
     if (err) throw new Error(err);
     await new Promise((r) => setTimeout(r, 125));
   }
-  throw new Error('Die Route ließ sich nicht berechnen');
+  throw new Error(t('car.errors.no_route_computed'));
 }
 
 async function routeTo(key) {
   const f = hits.get(key);
-  if (!f) throw new Error('Ort nicht mehr bekannt');
+  if (!f) throw new Error(t('car.errors.place_unknown'));
   const title = f.properties._point ? f.properties.name : geocode.describe(f).title;
   return routeToPoint(f.geometry.coordinates, title, isPoi(f));
 }
@@ -364,7 +365,7 @@ async function routeToPoint(point, label, poi = false) {
   navTour.set(null);
   setProfile('car');
   // Der Standort läuft im Auto ständig mit – nicht erst auf eine neue Meldung warten
-  const from = state.position ? { label: 'Mein Standort', point: state.position, me: false } : { label: 'Mein Standort', point: null, me: true };
+  const from = state.position ? { label: t('map.my_location'), point: state.position, me: false } : { label: t('map.my_location'), point: null, me: true };
   enterRoute({ waypoints: [from, { label, point, me: false, ...(poi === true ? { poi: true } : {}) }], push: false });
   return routesReady();
 }
@@ -378,8 +379,8 @@ async function routeToPoint(point, label, poi = false) {
 async function shared(text) {
   const p = typeof text === 'string' ? JSON.parse(text) : text;
   if (p?.type === 'tour') { shareSync(); return tour(p.id); }
-  if (p?.type === 'place') return routeToPoint(p.point, p.label || 'Ziel', !!p.poi);
-  if (p?.type !== 'route' || !(p.waypoints?.length >= 2)) throw new Error('Das Gesendete ließ sich nicht lesen');
+  if (p?.type === 'place') return routeToPoint(p.point, p.label || t('car.destination'), !!p.poi);
+  if (p?.type !== 'route' || !(p.waypoints?.length >= 2)) throw new Error(t('car.errors.sent_unreadable'));
   if (nav.active) nav.stop();
   pauseDrive();
   clearPlace();
@@ -390,7 +391,7 @@ async function shared(text) {
   navTour.set(p.tour ? tours.get(p.tour) ?? null : null);
   setProfile(PROFILES[p.profile]?.costing === 'auto' ? p.profile : 'car');
   const waypoints = p.waypoints.map((w) => (w.me || !w.point
-    ? (state.position ? { label: 'Mein Standort', point: state.position, me: false } : { label: 'Mein Standort', point: null, me: true })
+    ? (state.position ? { label: t('map.my_location'), point: state.position, me: false } : { label: t('map.my_location'), point: null, me: true })
     : { label: w.label, point: w.point, me: false, ...(w.poi ? { poi: true } : {}) }));
   enterRoute({ waypoints, push: false });
   const r = await routesReady();
@@ -405,21 +406,21 @@ async function shared(text) {
 /* ── Touren ──────────────────────────────────────────────────────────────── */
 
 /** Fürs Auto geplant? – Wander- und Radtouren gehören nicht auf den Autobildschirm */
-const forCar = (t) => PROFILES[t.profile]?.costing === 'auto';
+const forCar = (plan) => PROFILES[plan.profile]?.costing === 'auto';
 
 function tourList() {
-  return tours.all().filter((t) => t.points?.length >= 2 && forCar(t)).slice(0, 40).map((t) => ({
-    id: t.id, title: t.name || 'Tour',
-    sub: [t.stats?.length ? fmtDistance(t.stats.length) : null, PROFILES[t.profile]?.label].filter(Boolean).join(' · '),
-    icon: PROFILES[t.profile]?.icon ?? 'route',
+  return tours.all().filter((plan) => plan.points?.length >= 2 && forCar(plan)).slice(0, 40).map((plan) => ({
+    id: plan.id, title: plan.name || t('car.tour'),
+    sub: [plan.stats?.length ? fmtDistance(plan.stats.length) : null, PROFILES[plan.profile]?.label].filter(Boolean).join(' · '),
+    icon: PROFILES[plan.profile]?.icon ?? 'route',
   }));
 }
 
 /** Geplante Tour als Route (wie „?tour=“ in app.js) – gerechnet wird mit dem Auto */
 async function tour(id) {
-  const t = tours.get(id);
-  if (!t?.points?.length) throw new Error('Die Tour ist im Auto noch nicht angekommen – am Handy WMap einmal öffnen');
-  if (!forCar(t)) throw new Error('Die Tour ist nicht fürs Auto geplant');
+  const plan = tours.get(id);
+  if (!plan?.points?.length) throw new Error(t('car.errors.tour_missing'));
+  if (!forCar(plan)) throw new Error(t('car.errors.tour_not_car'));
   if (nav.active) nav.stop();
   pauseDrive();
   clearPlace();
@@ -427,9 +428,9 @@ async function tour(id) {
   reloadPrefs();
   clearRoutes({ keepSheet: true });
   setProfile('car');
-  navTour.set(t);
-  const n = t.points.length;
-  enterRoute({ waypoints: t.points.map((point, i) => ({ label: i === 0 ? `Start: ${t.name}` : i === n - 1 ? t.name : `${t.name} · ${i}`, point, me: false })), push: false });
+  navTour.set(plan);
+  const n = plan.points.length;
+  enterRoute({ waypoints: plan.points.map((point, i) => ({ label: i === 0 ? t('route.waypoint.tour_start', { name: plan.name }) : i === n - 1 ? plan.name : `${plan.name} · ${i}`, point, me: false })), push: false });
   return routesReady();
 }
 
@@ -505,10 +506,10 @@ window.wmapCarAsk = (opts, setClose) => new Promise((resolve) => {
   const id = ++askSeq;
   // Pille wie am Handy: ✕ (schließen, nicht mehr fragen) und „Bestätigen“
   const options = opts.pill
-    ? [{ value: 'no', label: 'Schließen', close: true }, { value: 'yes', label: 'Bestätigen' }]
+    ? [{ value: 'no', label: t('common.close'), close: true }, { value: 'yes', label: t('car.ask.confirm') }]
     : (opts.options ?? []).slice(0, 2).map((o) => ({ value: o.value, label: o.label }));
   // Nur ein Knopf: daneben das ✕ – das Auto erlaubt je Hinweis zwei
-  if (!opts.pill && options.length === 1) options.unshift({ value: null, label: 'Schließen', close: true });
+  if (!opts.pill && options.length === 1) options.unshift({ value: null, label: t('common.close'), close: true });
   if (opts.input || !options.length) { resolve(null); return; }
   const done = (v) => { if (!asks.has(id)) return; asks.delete(id); send('askEnd', { id }); resolve(v); };
   asks.set(id, done);
@@ -550,7 +551,7 @@ const methods = {
   /** Wischen mit Schwung: weiterrollen, langsamer werdend */
   fling(vx, vy) {
     hold();
-    map.panBy([vx * 0.25, vy * 0.25], { duration: 700, easing: (t) => 1 - (1 - t) ** 3 }, ORIGINAL);
+    map.panBy([vx * 0.25, vy * 0.25], { duration: 700, easing: (x) => 1 - (1 - x) ** 3 }, ORIGINAL);
   },
   recenter,
   async click(x, y) {
@@ -583,10 +584,10 @@ const methods = {
   recentTargets() {
     const seen = new Set();
     return recent.list('route')
-      .map((r) => r.to).filter((t) => t?.point && !t.me)
-      .filter((t) => { const k = t.point.map((v) => v.toFixed(4)).join(); if (seen.has(k)) return false; seen.add(k); return true; })
+      .map((r) => r.to).filter((target) => target?.point && !target.me)
+      .filter((target) => { const k = target.point.map((v) => v.toFixed(4)).join(); if (seen.has(k)) return false; seen.add(k); return true; })
       .slice(0, 6)
-      .map((t) => ({ ...row({ type: 'Feature', geometry: { type: 'Point', coordinates: t.point }, properties: { name: t.label, _point: true, _poi: !!t.poi } }), kind: 'target', icon: 'history' }));
+      .map((target) => ({ ...row({ type: 'Feature', geometry: { type: 'Point', coordinates: target.point }, properties: { name: target.label, _point: true, _poi: !!target.poi } }), kind: 'target', icon: 'history' }));
   },
   /** „Ziel wählen“: Zuhause, Arbeit, Lesezeichen, zuletzt gefahren */
   async targets() {
@@ -595,7 +596,7 @@ const methods = {
   },
   async place(key) {
     const f = hits.get(key);
-    if (!f) throw new Error('Ort nicht mehr bekannt');
+    if (!f) throw new Error(t('car.errors.place_unknown'));
     return openPlace(f);
   },
   save(key) {
@@ -615,7 +616,7 @@ const methods = {
     return { highways: !routePrefs.highways, tolls: !routePrefs.tolls, ferries: !routePrefs.ferries };
   },
   setRoutePref(key, avoid) {
-    if (!['highways', 'tolls', 'ferries'].includes(key)) throw new Error('Unbekannte Einstellung');
+    if (!['highways', 'tolls', 'ferries'].includes(key)) throw new Error(t('car.errors.unknown_setting'));
     setPref(key, !avoid);
     return true;
   },
@@ -626,7 +627,7 @@ const methods = {
     return routesReady();
   },
   async start() {
-    if (!current()) throw new Error('Keine Route gewählt');
+    if (!current()) throw new Error(t('car.errors.no_route'));
     rememberRoute();
     await startNav();
     return true;
@@ -666,7 +667,7 @@ const methods = {
   async tours(text = '') {
     shareSync();
     const w = fold(text).split(/\s+/).filter(Boolean);
-    const list = tourList().filter((t) => w.every((x) => fold(`${t.title} ${t.sub}`).includes(x)));
+    const list = tourList().filter((entry) => w.every((x) => fold(`${entry.title} ${entry.sub}`).includes(x)));
     return { items: await withPng(list) };
   },
   tour,
@@ -698,8 +699,8 @@ setInterval(() => {
 // kommt sie nicht gleich wieder, die Seite neu laden – sonst bleibt die Karte weiß
 map.on('webglcontextlost', () => {
   console.warn('WebGL-Kontext verloren');
-  const t = setTimeout(() => location.reload(), 3000);
-  map.once('webglcontextrestored', () => clearTimeout(t));
+  const timer = setTimeout(() => location.reload(), 3000);
+  map.once('webglcontextrestored', () => clearTimeout(timer));
 });
 
 // Stand der Karte gleich melden: Kotlin wartet darauf, bevor es fragt

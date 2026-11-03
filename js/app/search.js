@@ -22,6 +22,7 @@ import { paintPlaceActions, placeWaypoint, showPlace } from './place.js';
 import { openReach } from './reach.js';
 import { enterRoute, setProfile } from './route-plan.js';
 import { closeAll } from './views.js';
+import { t } from '../core/i18n.js';
 
 /* ══════════════════════════════════════════════════════════════════════════
    Vorschläge unter den Eingabefeldern
@@ -172,8 +173,8 @@ export async function placeSuggestions(text, onPick, { withCategory = true, extr
     if (!err.unreachable) { toast(err.message); return extra; }
     // Statt einer Meldung bei jedem Tastendruck: Treffer aus der Karte, darunter ein Hinweis
     const local = mapPlaces(query);
-    return [...extra, ...local.map((f) => ({ icon: 'map', title: f.properties.name, subtitle: 'aus der Karte', type: 'Karte', point: f.geometry.coordinates, run: () => onPick(f) })),
-      { icon: 'cloud_off', title: 'Suche gerade nicht erreichbar', subtitle: local.length ? 'Nur Namen aus dem geladenen Kartenausschnitt' : err.message, type: '', run: () => {} }];
+    return [...extra, ...local.map((f) => ({ icon: 'map', title: f.properties.name, subtitle: t('search.local.subtitle'), type: t('search.local.type'), point: f.geometry.coordinates, run: () => onPick(f) })),
+      { icon: 'cloud_off', title: t('search.local.unreachable'), subtitle: local.length ? t('search.local.only_names') : err.message, type: '', run: () => {} }];
   }
   if (seq !== searchSeq) return null;
 
@@ -185,7 +186,7 @@ export async function placeSuggestions(text, onPick, { withCategory = true, extr
   const cat = matchCategory(query, { loose: true });
   const catItem = cat && {
     icon: cat.category.icon, color: cat.category.color, title: cat.category.label,
-    subtitle: cat.place ? `in ${cat.place}` : 'hier in der Gegend', type: 'Kategorie',
+    subtitle: cat.place ? t('map.in_place', { place: cat.place }) : t('map.around_here'), type: t('search.types.category'),
     run: () => runCategory(cat.category, cat.place, { rememberAs: query }),
   };
   // Mit Hausnummer oder Postleitzahl ist eine Adresse gemeint: die Treffer zuerst
@@ -193,7 +194,7 @@ export async function placeSuggestions(text, onPick, { withCategory = true, extr
   // Sonst oben „in der Nähe“: die Kategorie („Parkplatz“) bzw. alle mit dem Namen („Rewe“, „Aldi“), darunter die
   // einzelnen Treffer zum direkten Wählen
   const byName = !cat?.strong && query.length >= 3 && {
-    icon: 'storefront', color: '#e8590c', title: `„${query}“ in der Nähe`, subtitle: 'alle mit diesem Namen hier in der Gegend', type: 'Suche',
+    icon: 'storefront', color: '#e8590c', title: t('search.by_name.title', { query }), subtitle: t('search.by_name.subtitle'), type: t('search.types.search'),
     run: () => runCategory(nameCategory(query), null, { rememberAs: query }),
   };
   return [...extra, ...(catItem ? [catItem] : []), ...(byName ? [byName] : []), ...places];
@@ -201,8 +202,8 @@ export async function placeSuggestions(text, onPick, { withCategory = true, extr
 
 /* ── Zuletzt genutzt ──────────────────────────────────────────────────────── */
 
-const RECENT_SECTION = 'Zuletzt genutzt';
-const SAVED_SECTION = 'Lesezeichen';
+const RECENT_SECTION = t('search.sections.recent');
+const SAVED_SECTION = t('search.sections.saved');
 
 const fold = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ß/g, 'ss');
 
@@ -235,7 +236,7 @@ export function togglePlace(f, point, title, subtitle) {
   const tags = f.properties._tags;
   places.save({ kind: tags && isStop(tags) ? 'stop' : 'fav', name: title, label: subtitle, point, ifopt: tags?.['ref:IFOPT'] ?? '', poi: isPoi(f) });
   paintPlaceActions();
-  toast(`In „${DEFAULT_LIST}“ gemerkt`, { action: { label: 'Ändern', run: () => editBookmark(point, title) } });
+  toast(t('search.bookmark.toast.saved_in', { list: t('places.default_list') }), { action: { label: t('search.bookmark.toast.change'), run: () => editBookmark(point, title) } });
 }
 
 /** Lesezeichen bearbeiten: Name, Liste (auch neu), Zuhause/Arbeit, entfernen */
@@ -245,18 +246,18 @@ export async function editBookmark(point, title) {
   const lists = places.lists();
   const fixedKind = mine.kind === 'home' || mine.kind === 'work';
   const v = await ask({
-    icon: 'bookmark', title: 'Lesezeichen', className: 'stacked bookmark-edit',
-    html: `<label class="bm-field"><span>Name</span><input type="text" name="bm-name" value="${esc(mine.name)}" maxlength="60" placeholder="z. B. Oma, Verein, Lieblingsbäcker"></label>
-      ${fixedKind ? '' : `<label class="bm-field"><span>Liste</span><select name="bm-list">
-        ${lists.map((l) => `<option ${l === (mine.list || DEFAULT_LIST) ? 'selected' : ''}>${esc(l)}</option>`).join('')}
-        <option value="__new">Neue Liste …</option></select></label>
-      <label class="bm-field bm-new" hidden><span>Neue Liste</span><input type="text" name="bm-new" maxlength="40" placeholder="z. B. Hannover Urlaub"></label>`}
+    icon: 'bookmark', title: t('search.bookmark.title'), className: 'stacked bookmark-edit',
+    html: `<label class="bm-field"><span>${t('search.bookmark.name.title')}</span><input type="text" name="bm-name" value="${esc(mine.name)}" maxlength="60" placeholder="${t('search.bookmark.name.placeholder')}"></label>
+      ${fixedKind ? '' : `<label class="bm-field"><span>${t('search.bookmark.list.title')}</span><select name="bm-list">
+        ${lists.map((l) => `<option value="${esc(l)}" ${l === (mine.list || DEFAULT_LIST) ? 'selected' : ''}>${esc(l === DEFAULT_LIST ? t('places.default_list') : l)}</option>`).join('')}
+        <option value="__new">${t('search.bookmark.list.new_option')}</option></select></label>
+      <label class="bm-field bm-new" hidden><span>${t('search.bookmark.list.new.title')}</span><input type="text" name="bm-new" maxlength="40" placeholder="${t('search.bookmark.list.new.placeholder')}"></label>`}
       <p class="muted">${esc(title)}</p>`,
     buttons: [
-      { value: 'save', label: 'Speichern', icon: 'check', primary: true },
-      ...(mine.kind !== 'home' ? [{ value: 'home', label: 'Als Zuhause', icon: 'home' }] : []),
-      ...(mine.kind !== 'work' ? [{ value: 'work', label: 'Als Arbeit', icon: 'work' }] : []),
-      { value: 'remove', label: 'Entfernen', icon: 'bookmark_remove' },
+      { value: 'save', label: t('common.save'), icon: 'check', primary: true },
+      ...(mine.kind !== 'home' ? [{ value: 'home', label: t('search.bookmark.as_home'), icon: 'home' }] : []),
+      ...(mine.kind !== 'work' ? [{ value: 'work', label: t('search.bookmark.as_work'), icon: 'work' }] : []),
+      { value: 'remove', label: t('search.bookmark.remove'), icon: 'bookmark_remove' },
     ],
     read: (dlg) => {
       const sel = dlg.querySelector('[name="bm-list"]');
@@ -274,15 +275,15 @@ export async function editBookmark(point, title) {
   if (!v) return;
   if (v === 'remove') {
     places.remove(mine.id);
-    toast('Lesezeichen entfernt');
+    toast(t('search.bookmark.toast.removed'));
   } else if (v === 'home' || v === 'work') {
     places.remove(mine.id);
     places.save({ kind: v, name: PLACE_KINDS[v].label, label: title, point });
-    toast(`Als „${PLACE_KINDS[v].label}“ gemerkt`);
+    toast(t('search.bookmark.toast.saved_as', { name: PLACE_KINDS[v].label }));
   } else if (typeof v === 'object') {
     // Der eigene Name steht oben, der eigentliche Ort darunter
     places.update(mine.id, { name: v.name || mine.name, label: mine.label || (v.name && v.name !== title ? title : ''), ...(fixedKind ? {} : { list: v.list }) });
-    toast(fixedKind ? `Gemerkt als „${v.name || mine.name}“` : `In „${v.list}“ gemerkt`);
+    toast(fixedKind ? t('search.bookmark.toast.saved_name', { name: v.name || mine.name }) : t('search.bookmark.toast.saved_in', { list: v.list }));
   }
   paintPlaceActions();
 }
@@ -290,7 +291,7 @@ export async function editBookmark(point, title) {
 /** Passende Lesezeichen vor die Suchergebnisse – die bekommen dann eine eigene Überschrift */
 export function withSaved(saved, found) {
   if (!found) return saved.length ? saved : found;
-  return saved.length ? [...saved, ...found.map((x) => ({ ...x, section: x.section ?? 'Suchergebnisse' }))] : found;
+  return saved.length ? [...saved, ...found.map((x) => ({ ...x, section: x.section ?? t('search.sections.results') }))] : found;
 }
 
 
@@ -303,12 +304,12 @@ export function recentItems(onPlace, kinds = ['place', 'category', 'route']) {
     if (e.kind === 'category') {
       const cat = byId(e.category);
       return cat && {
-        section: RECENT_SECTION, icon: cat.icon, color: cat.color, title: cat.label, subtitle: e.subtitle, type: 'Kategorie',
+        section: RECENT_SECTION, icon: cat.icon, color: cat.color, title: cat.label, subtitle: e.subtitle, type: t('search.types.category'),
         run: () => runCategory(cat, e.place, { rememberAs: e.place ? `${cat.label} in ${e.place}` : cat.label }),
       };
     }
     return {
-      section: RECENT_SECTION, icon: PROFILES[e.profile]?.icon ?? 'directions', title: e.title, subtitle: 'Route', type: 'Route',
+      section: RECENT_SECTION, icon: PROFILES[e.profile]?.icon ?? 'directions', title: e.title, subtitle: t('search.types.route'), type: t('search.types.route'),
       run: () => {
         if (PROFILES[e.profile]?.nav) setProfile(e.profile);
         enterRoute({ waypoints: e.waypoints.map((w) => ({ ...w })) });
@@ -333,8 +334,8 @@ export function rememberPlace(f) {
 
 function discoverItems() {
   return [{
-    section: 'Entdecken', icon: 'radar', color: '#2f9e44', title: 'Was ist von hier erreichbar?',
-    subtitle: 'in Minuten oder Kilometern ab deinem Standort', run: () => openReach(),
+    section: t('search.sections.discover'), icon: 'radar', color: '#2f9e44', title: t('search.discover.reach.title'),
+    subtitle: t('search.discover.reach.subtitle'), run: () => openReach(),
   }];
 }
 
@@ -368,7 +369,7 @@ $('#search-form').addEventListener('submit', async (e) => {
   const items = await placeSuggestions(q.value, (f) => showPlace(f));
   suggest.hide();
   q.blur();
-  if (items?.length) items[0].run(); else toast('Nichts gefunden');
+  if (items?.length) items[0].run(); else toast(t('search.toast.nothing_found'));
 });
 
 $('#q-clear').addEventListener('click', () => {

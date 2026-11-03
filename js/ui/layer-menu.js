@@ -18,11 +18,12 @@ import { firstRoadLayer, RELIEF, RELIEF_FOCUS } from '../map/map.js';
 import { layers as ownLayers, showLayer, hideLayer } from '../map/layers.js';
 import { wms } from './own-source.js';
 import { esc } from '../core/geo.js';
+import { t } from '../core/i18n.js';
 
 const KEY = 'wmap.layers';
 const DEFAULT = { base: 'map', focus: false, relief: true, hiking: false, cycling: false, mtb: false };
 
-const EOX = 'Satellit: <a href="https://s2maps.eu" target="_blank" rel="noopener">Sentinel-2 cloudless von EOX</a> (Copernicus-Daten 2020)';
+const EOX = t('layers_menu.attribution.satellite');
 
 /*
  * Luftbilder: weltweit Sentinel-2 (10 m), darüber amtliche Luftbilder der
@@ -37,37 +38,37 @@ const JPNG = 'image/vnd.jpeg-png';
 const SAT = [
   { id: 'sat-s2', tiles: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg', tileSize: 256, maxzoom: 14, attribution: EOX },
   { id: 'sat-ni', tiles: wms('https://opendata.lgln.niedersachsen.de/doorman/noauth/dop_wms', 'ni_dop20'), tileSize: 512, minzoom: 11, bounds: [6.6, 51.29, 11.6, 53.9],
-    attribution: 'Luftbild Niedersachsen: © LGLN (CC BY 4.0)' },
+    attribution: t('layers_menu.attribution.sat_ni') },
   { id: 'sat-nw', tiles: wms('https://www.wms.nrw.de/geobasis/wms_nw_dop', 'nw_dop_rgb'), tileSize: 512, minzoom: 11, bounds: [5.86, 50.32, 9.47, 52.53],
-    attribution: 'Luftbild NRW: © Geobasis NRW (dl-de/zero-2-0)' },
+    attribution: t('layers_menu.attribution.sat_nw') },
   { id: 'sat-by', tiles: wms('https://geoservices.bayern.de/od/wms/dop/v1/dop40', 'by_dop40c'), tileSize: 512, minzoom: 11, bounds: [8.97, 47.27, 13.84, 50.56],
-    attribution: 'Luftbild Bayern: © Bayerische Vermessungsverwaltung (CC BY 4.0)' },
+    attribution: t('layers_menu.attribution.sat_by') },
   { id: 'sat-he', tiles: wms('https://www.gds-srv.hessen.de/cgi-bin/lika-services/ogc-free-images.ows', 'el_dop5000_rgb,el_dop320_rgb,he_dop20_rgb', JPNG), tileSize: 512, minzoom: 11, bounds: [7.77, 49.39, 10.24, 51.66],
-    attribution: 'Luftbild Hessen: © HVBG' },
+    attribution: t('layers_menu.attribution.sat_he') },
   { id: 'sat-th', tiles: wms('https://www.geoproxy.geoportal-th.de/geoproxy/services/DOP', 'th_dop'), tileSize: 512, minzoom: 11, bounds: [9.87, 50.2, 12.66, 51.65],
-    attribution: 'Luftbild Thüringen: © GDI-Th (CC BY 4.0)' },
+    attribution: t('layers_menu.attribution.sat_th') },
   { id: 'sat-sn', tiles: wms('https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest', 'sn_dop_020'), tileSize: 512, minzoom: 11, bounds: [11.87, 50.17, 15.04, 51.69],
-    attribution: 'Luftbild Sachsen: © GeoSN (dl-de/by-2-0)' },
+    attribution: t('layers_menu.attribution.sat_sn') },
   { id: 'sat-bb', tiles: wms('https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms', 'bebb_dop20c'), tileSize: 512, minzoom: 11, bounds: [11.26, 51.36, 14.77, 53.56],
-    attribution: 'Luftbild Brandenburg: © GeoBasis-DE/LGB (dl-de/by-2-0)' },
+    attribution: t('layers_menu.attribution.sat_bb') },
   { id: 'sat-be', tiles: wms('https://gdi.berlin.de/services/wms/truedop_2024', 'truedop_2024'), tileSize: 512, minzoom: 11, bounds: [13.08, 52.33, 13.77, 52.68],
-    attribution: 'Luftbild Berlin: © Geoportal Berlin (dl-de/zero-2-0)' },
+    attribution: t('layers_menu.attribution.sat_be') },
   { id: 'sat-mv', tiles: wms('https://www.geodaten-mv.de/dienste/adv_dop', 'mv_dop'), tileSize: 512, minzoom: 11, bounds: [10.59, 53.11, 14.42, 54.69],
-    attribution: 'Luftbild M-V: © GeoBasis-DE/M-V' },
+    attribution: t('layers_menu.attribution.sat_mv') },
   { id: 'sat-rp', tiles: wms('https://geo4.service24.rlp.de/wms/rp_dop20.fcgi', 'rp_dop20', JPNG), tileSize: 512, minzoom: 11, bounds: [6.11, 48.96, 8.51, 50.95],
-    attribution: 'Luftbild Rheinland-Pfalz: © GeoBasis-DE/LVermGeoRP (dl-de/by-2-0)' },
+    attribution: t('layers_menu.attribution.sat_rp') },
   { id: 'sat-sl', tiles: wms('https://geoportal.saarland.de/freewms/dop2023', 'sl_dop20_rgb', JPNG), tileSize: 512, minzoom: 11, bounds: [6.35, 49.1, 7.41, 49.64],
-    attribution: 'Luftbild Saarland: © LVGL' },
+    attribution: t('layers_menu.attribution.sat_sl') },
   { id: 'sat-bw', tiles: wms('https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DOP_20_C', 'IMAGES_DOP_20_RGB'), tileSize: 512, minzoom: 11, bounds: [7.5, 47.53, 10.5, 49.8],
-    attribution: 'Luftbild Baden-Württemberg: © LGL-BW (dl-de/by-2-0)' },
+    attribution: t('layers_menu.attribution.sat_bw') },
 ];
 
 const TRAILS = {
-  hiking: { label: 'Wanderwege', icon: 'hiking', url: 'hiking' },
-  cycling: { label: 'Radwege', icon: 'directions_bike', url: 'cycling' },
-  mtb: { label: 'Mountainbike', icon: 'landscape', url: 'mtb' },
+  hiking: { label: t('layers_menu.trails.hiking'), icon: 'hiking', url: 'hiking' },
+  cycling: { label: t('layers_menu.trails.cycling'), icon: 'directions_bike', url: 'cycling' },
+  mtb: { label: t('layers_menu.trails.mtb'), icon: 'landscape', url: 'mtb' },
 };
-const WMT_ATTR = 'Wege: <a href="https://waymarkedtrails.org" target="_blank" rel="noopener">Waymarked Trails</a> (CC BY-SA)';
+const WMT_ATTR = t('layers_menu.attribution.trails');
 
 /* Große Straßen im Schwerpunkt „Wandern & Rad“ – Ebenen-IDs von OpenMapTiles/Liberty */
 const BIG_ROADS = /(motorway|trunk|primary|secondary)/;
@@ -146,7 +147,7 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
     onAdd() {
       const el = document.createElement('div');
       el.className = 'maplibregl-ctrl maplibregl-ctrl-group layer-ctrl';
-      el.innerHTML = '<button type="button" title="Ebenen: Satellit, Wanderwege, Plugins" aria-haspopup="dialog"><span class="msr">layers</span></button>';
+      el.innerHTML = `<button type="button" title="${t('layers_menu.button')}" aria-haspopup="dialog"><span class="msr">layers</span></button>`;
       el.querySelector('button').addEventListener('click', () => toggle());
       return el;
     },
@@ -158,7 +159,7 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
   box.className = 'layer-menu';
   box.hidden = true;
   box.setAttribute('role', 'dialog');
-  box.setAttribute('aria-label', 'Ebenen');
+  box.setAttribute('aria-label', t('layers_menu.title'));
   document.body.append(box);
 
   function toggle(open = box.hidden) {
@@ -177,21 +178,21 @@ export function mountLayerMenu(map, { toast = () => {} } = {}) {
   async function paint() {
     try { own = await ownLayers.all(); } catch { own = []; }
     box.innerHTML = `
-      <header><strong>Ebenen</strong><button type="button" class="button" data-shape="round no-background" data-l="close" title="Schließen"><span class="msr">close</span></button></header>
+      <header><strong>${t('layers_menu.title')}</strong><button type="button" class="button" data-shape="round no-background" data-l="close" title="${t('common.close')}"><span class="msr">close</span></button></header>
       <div class="layer-bases">
-        <button type="button" data-base="map" aria-pressed="${state.base === 'map'}"><span class="layer-thumb thumb-map"></span>Karte</button>
-        <button type="button" data-base="sat" aria-pressed="${state.base === 'sat'}"><span class="layer-thumb thumb-sat"></span>Satellit</button>
+        <button type="button" data-base="map" aria-pressed="${state.base === 'map'}"><span class="layer-thumb thumb-map"></span>${t('layers_menu.base.map')}</button>
+        <button type="button" data-base="sat" aria-pressed="${state.base === 'sat'}"><span class="layer-thumb thumb-sat"></span>${t('layers_menu.base.sat')}</button>
         <!-- Street View: vorerst nicht im Menü (Umsehen am Ort und Menü bleiben) -->
       </div>
-      ${check('focus', state.focus, 'hiking', 'Wandern & Rad', 'Große Straßen treten zurück, Wanderwege und Relief hervor')}
-      <h4>Ebenen</h4>
-      ${check('relief', state.relief || state.focus, 'terrain', 'Relief', 'Schatten an Hängen – auch flach von oben')}
-      ${Object.entries(TRAILS).map(([k, t]) => check(k, state[k] || (state.focus && k === 'hiking'), t.icon, t.label, 'markierte Routen, Waymarked Trails')).join('')}
-      <h4>Eigene Ebenen & Plugins</h4>
+      ${check('focus', state.focus, 'hiking', t('layers_menu.focus.title'), t('layers_menu.focus.hint'))}
+      <h4>${t('layers_menu.title')}</h4>
+      ${check('relief', state.relief || state.focus, 'terrain', t('layers_menu.relief.title'), t('layers_menu.relief.hint'))}
+      ${Object.entries(TRAILS).map(([k, trail]) => check(k, state[k] || (state.focus && k === 'hiking'), trail.icon, trail.label, t('layers_menu.trails.hint'))).join('')}
+      <h4>${t('layers_menu.own.title')}</h4>
       ${own.length ? own.map((l) => check(`own:${l.id}`, l.onMain && l.visible, l.raster ? 'grid_on' : 'scatter_plot', esc(l.name),
-        esc(l.source?.kind === 'plugin' ? `Plugin von ${l.source.operator ?? '?'}` : l.raster?.auth ? 'private Quelle' : l.raster ? 'Kartenkacheln' : `${l.count ?? ''} Objekte`))).join('')
-        : '<p class="muted">Noch keine – unter „Verwalten“ gibt es Geologie, Luftbilder und mehr.</p>'}
-      <a class="button layer-manage" href="./plugins.html${own.length ? '?f=own' : ''}"><span class="msr">tune</span> Verwalten</a>`;
+        esc(l.source?.kind === 'plugin' ? t('layers_menu.own.plugin_by', { operator: l.source.operator ?? '?' }) : l.raster?.auth ? t('layers_menu.own.private') : l.raster ? t('layers_menu.own.tiles') : t('layers_menu.own.objects', { count: l.count ?? '' })))).join('')
+        : `<p class="muted">${t('layers_menu.own.none')}</p>`}
+      <a class="button layer-manage" href="./plugins.html${own.length ? '?f=own' : ''}"><span class="msr">tune</span> ${t('layers_menu.manage')}</a>`;
   }
 
   box.addEventListener('click', async (e) => {

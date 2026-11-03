@@ -12,6 +12,7 @@
  */
 import { buildTrack, trackCoords } from './tracks.js';
 import { distance } from '../core/geo.js';
+import { t } from '../core/i18n-text.js';
 
 const FIT_EPOCH = 631065600;            // Sekunden zwischen 1970 und dem 31.12.1989
 const DEG = 180 / 2 ** 31;              // „Semicircles“ → Grad
@@ -31,7 +32,7 @@ const SPORTS = {
 /** Alle Meldungen der Arten in `want` → { Art: [{ Feldnummer: Wert }] } */
 function messages(buffer, want) {
   const v = new DataView(buffer);
-  if (v.byteLength < 14 || String.fromCharCode(v.getUint8(8), v.getUint8(9), v.getUint8(10), v.getUint8(11)) !== '.FIT') throw new Error('Keine FIT-Datei');
+  if (v.byteLength < 14 || String.fromCharCode(v.getUint8(8), v.getUint8(9), v.getUint8(10), v.getUint8(11)) !== '.FIT') throw new Error(t('import.error.no_fit'));
   const head = v.getUint8(0), end = Math.min(v.byteLength, head + v.getUint32(4, true));
   const defs = {}, out = Object.fromEntries(want.map((g) => [g, []]));
   let i = head;
@@ -52,7 +53,7 @@ function messages(buffer, want) {
       continue;
     } else local = h & 0x0f;
     const d = defs[local];
-    if (!d) throw new Error('FIT-Datei beschädigt');
+    if (!d) throw new Error(t('import.error.fit_damaged'));
     const rec = out[d.global] ? {} : null;
     for (const [num, size, type] of d.fields) {
       const t = TYPES[type];
@@ -71,7 +72,7 @@ export function parseFit(buffer, fileName = '') {
   const points = m[RECORD].filter((r) => r[0] !== undefined && r[1] !== undefined && r[253] !== undefined)
     .map((r) => [r[1] * DEG, r[0] * DEG, (r[253] + FIT_EPOCH) * 1000, r[3] ?? 0, r[4] ?? 0, r[7] ?? 0]);
   const [sport, profile] = SPORTS[m[SESSION][0]?.[5]] ?? [null, null];
-  const name = fileName.replace(/\.fit$/i, '') || 'Importierter Weg';
+  const name = fileName.replace(/\.fit$/i, '') || t('tracks.names.imported');
   let t = buildTrack(points, { kind: 'gpx', profile: profile ?? 'foot', name });
   if (!t) return [];
   if (sport) t = { ...t, sport };

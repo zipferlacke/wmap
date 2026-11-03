@@ -9,19 +9,20 @@
  *   nameFor(t)          → Name; die Gegend kommt von Photon (nächster Ort), ohne Netz ohne Gegend
  *   nameAll(list)       alle, die einen brauchen, der Reihe nach (höchstens ein Abruf je Sekunde) → Anzahl
  */
-import { tracks, trackCoords, defaultName } from './tracks.js';
+import { tracks, trackCoords, defaultName, profileWord } from './tracks.js';
 import { sportOf } from './track-look.js';
 import { cumulative, pointAt, distance } from '../core/geo.js';
-import { API } from '../core/config.js';
+import { askServer } from '../services/servers.js';
+import { PHOTON_LANG } from '../services/geocode.js';
+import { t, words, ownValue, baseValue } from '../core/i18n.js';
 
 // Wörter, die nur sagen „eine Aufzeichnung aus App X“ – was danach übrig bleibt, ist der eigentliche Name
 const FILLER = new RegExp(`\\b(${[
   'zepp', 'amazfit', 'garmin', 'connect', 'strava', 'huawei', 'health', 'polar', 'suunto', 'coros', 'fitbit', 'samsung', 'komoot',
-  'wahoo', 'mi', 'fitness', 'google', 'fit', 'gpx', 'tcx', 'export', 'import', 'importierter', 'activity', 'aktivität', 'workout',
-  'training', 'track', 'route', 'weg', 'tour', 'vom', 'am', 'um', 'uhr', 'und', 'morning', 'afternoon', 'evening', 'night', 'lunch',
-  'run', 'ride', 'walk', 'hike', 'swim', 'row', 'outdoor', 'indoor', 'running', 'cycling', 'walking', 'hiking', 'biking', 'rowing',
-  'lauf', 'laufen', 'joggen', 'radtour', 'radfahrt', 'radfahren', 'rad', 'spaziergang', 'gehen', 'wanderung', 'wandern', 'rudern',
-  'schwimmen', 'unbenannt', 'untitled', 'neu', 'new',
+  'wahoo', 'mi', 'fitness', 'google', 'fit', 'gpx', 'tcx', 'export', 'import', 'activity', 'workout',
+  'training', 'track', 'route', 'morning', 'afternoon', 'evening', 'night', 'lunch',
+  'run', 'ride', 'walk', 'hike', 'swim', 'row', 'outdoor', 'indoor', 'running', 'cycling', 'walking', 'hiking', 'biking', 'rowing', 'untitled', 'new',
+  ...words('tracks.names.filler'),
 ].join('|')})\\b`, 'giu');
 
 export function isPlainName(name) {
@@ -31,7 +32,10 @@ export function isPlainName(name) {
 }
 
 // Von WMap selbst vorgeschlagen, noch ohne Gegend („Spaziergang am Dienstagmorgen“)
-const BARE = /^\S+ am \S+(morgen|mittag|nachmittag|abend| in der Nacht)$/;
+const WHEN = ['night', 'morning', 'noon', 'afternoon', 'evening'];
+const whenPattern = (value) => WHEN.map((k) => value?.[k]).filter(Boolean)
+  .map((v) => `^${v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\{what\\\}|\\\{day\\\}/g, '\\S+')}$`);
+const BARE = new RegExp([...whenPattern(ownValue('tracks.names.when')), ...whenPattern(baseValue('tracks.names.when'))].join('|'));
 
 export function needsName(t) {
   if (t.kind !== 'gpx' && t.kind !== 'health') return false;     // selbst aufgezeichnet: Name stand zur Wahl
@@ -41,10 +45,10 @@ export function needsName(t) {
 }
 
 const WORD = {
-  running: 'Lauf', running_treadmill: 'Lauf', walking: 'Spaziergang', hiking: 'Wanderung', biking: 'Radtour', driving: 'Autofahrt',
-  rowing: 'Rudern', paddling: 'Paddeln', sailing: 'Segeln', swimming_open_water: 'Schwimmen', skiing: 'Skifahren',
-  snowboarding: 'Snowboarden', snowshoeing: 'Schneeschuhwandern', skating: 'Inlineskaten', ice_skating: 'Eislaufen',
-  surfing: 'Surfen', paragliding: 'Gleitschirmflug', rock_climbing: 'Klettern', golf: 'Golf', wheelchair: 'Ausfahrt',
+  running: 'run', running_treadmill: 'run', walking: 'walk', hiking: 'hike', biking: 'ride', driving: 'car',
+  rowing: 'rowing', paddling: 'paddling', sailing: 'sailing', swimming_open_water: 'swimming', skiing: 'skiing',
+  snowboarding: 'snowboarding', snowshoeing: 'snowshoeing', skating: 'skating', ice_skating: 'ice_skating',
+  surfing: 'surfing', paragliding: 'paragliding', rock_climbing: 'climbing', golf: 'golf', wheelchair: 'drive',
 };
 
 /* Gegend: der nächste Ort (Photon, nur „place“) – je ~500 m nur einmal gefragt */
@@ -55,9 +59,8 @@ async function placeAt([lon, lat]) {
   if (places.has(key)) return places.get(key);
   let name = null;
   try {
-    const u = new URL('/reverse', API.photon);
-    u.search = new URLSearchParams({ lon: lon.toFixed(5), lat: lat.toFixed(5), lang: 'de', limit: '1', osm_tag: 'place' });
-    const res = await fetch(u);
+    const q = new URLSearchParams({ lon: lon.toFixed(5), lat: lat.toFixed(5), lang: PHOTON_LANG, limit: '1', osm_tag: 'place' });
+    const res = await askServer('photon', `/reverse?${q}`);
     const f = res.ok ? (await res.json()).features?.[0] : null;
     const p = f?.properties ?? {};
     name = (PLACE_KINDS.has(p.osm_value) && p.name) || p.district || p.city || p.town || p.village || null;
@@ -75,14 +78,12 @@ function spotOf(t) {
   return pointAt(coords, cum, cum.at(-1) / 2);
 }
 
-export async function nameFor(t) {
-  const sport = sportOf(t);
-  const base = defaultName(t.profile, t.start);                   // „Spaziergang am Dienstagmorgen“
-  const word = WORD[sport] ?? base.split(' ')[0];
-  const when = base.slice(base.indexOf(' am ') + 1);              // „am Dienstagmorgen“
-  const spot = spotOf(t);
+export async function nameFor(track) {
+  const sport = sportOf(track);
+  const word = WORD[sport] ? t(`tracks.names.words.${WORD[sport]}`) : profileWord(track.profile);
+  const spot = spotOf(track);
   const place = spot ? await placeAt(spot) : null;
-  return [word, place ? `in ${place}` : '', when].filter(Boolean).join(' ');
+  return defaultName(track.profile, track.start, place ? t('tracks.names.with_place', { what: word, place }) : word);   // „Lauf in Rittmarshausen am Dienstagmorgen“
 }
 
 let queue = Promise.resolve();

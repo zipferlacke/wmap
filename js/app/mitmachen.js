@@ -13,6 +13,7 @@ import { clearPlace } from './place.js';
 import { clearReach } from './reach.js';
 import { leaveRouteMode } from './route-plan.js';
 import { openSheet, remember } from './views.js';
+import { t } from '../core/i18n.js';
 
 /* ══════════════════════════════════════════════════════════════════════════
    Mitmachen bei OpenStreetMap
@@ -33,7 +34,7 @@ export function openSurvey({ push = true } = {}) {
 }
 
 const FROM_CAR = 'wmap.survey.fromCar';
-const offer = (n) => toast(`${n} ${n === 1 ? 'kurze Frage' : 'kurze Fragen'} zu deinem Weg`, { action: { label: 'Ansehen', run: () => openSurvey() } });
+const offer = (n) => toast(t('contribute.offer', { n }), { action: { label: t('common.view'), run: () => openSurvey() } });
 
 /**
  * Nach einer Fahrt: Fragen suchen und anbieten. Im Auto nicht – dort lassen sie sich nicht beantworten
@@ -52,11 +53,9 @@ export async function askContributeOnce() {
   if (!contribute.get() || local.get('wmap.contribute.seen') || SIMULATING || CAR) return;
   local.set('wmap.contribute.seen', true);
   const v = await ask({
-    icon: 'volunteer_activism', title: 'Mitmachen bei OpenStreetMap',
-    text: 'WMap merkt sich deinen Weg auf diesem Gerät und stellt dir danach kurze Fragen – etwa, ob der '
-      + 'Parkplatz etwas kostet oder die Bäckerei noch so geöffnet hat. Deine Antworten verbessern die Karte '
-      + 'für alle. Die Aufzeichnung verlässt das Gerät nicht und lässt sich in den Einstellungen abschalten.',
-    buttons: [{ value: 'no', label: 'Nicht aufzeichnen' }, { value: 'yes', label: 'Einverstanden', primary: true }],
+    icon: 'volunteer_activism', title: t('contribute.first.title'),
+    text: t('contribute.first.text'),
+    buttons: [{ value: 'no', label: t('contribute.first.no') }, { value: 'yes', label: t('contribute.first.yes'), primary: true }],
   });
   if (v === 'no') contribute.set(false);
 }

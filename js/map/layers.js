@@ -17,6 +17,7 @@
 import { store } from '../data/db.js';
 import { AUTH } from './map.js';
 import { esc } from '../core/geo.js';
+import { locale, t } from '../core/i18n.js';
 
 const db = store('layers');
 
@@ -36,16 +37,16 @@ export const RAMP = ['#313695', '#4575b4', '#74add1', '#abd9e9', '#fee090', '#fd
 /** Text → FeatureCollection (auch einzelnes Feature oder Geometrie). */
 function readGeoJson(text) {
   let o;
-  try { o = JSON.parse(text); } catch { throw new Error('Das ist kein gültiges GeoJSON (JSON-Fehler)'); }
+  try { o = JSON.parse(text); } catch { throw new Error(t('layers.geojson.invalid')); }
   if (o?.type === 'FeatureCollection') o = { type: 'FeatureCollection', features: o.features ?? [] };
   else if (o?.type === 'Feature') o = { type: 'FeatureCollection', features: [o] };
   else if (o?.type && o.coordinates) o = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: o }] };
-  else throw new Error('Das ist kein GeoJSON – erwartet wird eine FeatureCollection');
+  else throw new Error(t('layers.geojson.not_geojson'));
   o.features = o.features.filter((f) => f?.geometry?.coordinates);
-  if (!o.features.length) throw new Error('Die Datei enthält keine Objekte mit Koordinaten');
+  if (!o.features.length) throw new Error(t('layers.geojson.empty'));
   // Lage prüfen: GeoJSON ist lon, lat in Grad (WGS84)
   const [w, s, e, n] = bboxOf(o);
-  if (w < -180 || e > 180 || s < -90 || n > 90) throw new Error('Die Koordinaten sind nicht in Grad (WGS84) – bitte vorher umrechnen, z. B. mit QGIS');
+  if (w < -180 || e > 180 || s < -90 || n > 90) throw new Error(t('layers.geojson.not_degrees'));
   return o;
 }
 
@@ -173,9 +174,9 @@ export const mapLayerIds = (id) => { const x = ids(id); return [x.point, x.line,
 /** Eigenschaften eines Objekts als Tabelle. */
 export function propertyTable(props = {}) {
   const rows = Object.entries(props).filter(([, v]) => v !== null && v !== '' && typeof v !== 'object');
-  if (!rows.length) return '<p class="muted">Keine Eigenschaften</p>';
+  if (!rows.length) return `<p class="muted">${t('layers.object.no_properties')}</p>`;
   return `<table class="prop-table">${rows.map(([k, v]) => {
-    const val = typeof v === 'number' ? v.toLocaleString('de-DE', { maximumFractionDigits: 4 }) : String(v);
+    const val = typeof v === 'number' ? v.toLocaleString(locale, { maximumFractionDigits: 4 }) : String(v);
     const link = /^https?:\/\//.test(val) ? `<a href="${esc(val)}" target="_blank" rel="noopener">${esc(val)}</a>` : esc(val);
     return `<tr><th>${esc(k)}</th><td>${link}</td></tr>`;
   }).join('')}</table>`;

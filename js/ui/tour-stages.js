@@ -16,6 +16,7 @@
 import { tours, shapeOf } from '../data/store.js';
 import { nearestOnLine, pointAt, simplifyTo, fmtDistance, fmtDuration } from '../core/geo.js';
 import * as geocode from '../services/geocode.js';
+import { t } from '../core/i18n.js';
 
 const COLORS = ['#e8590c', '#7048e8'];
 const SRC = 'stages';
@@ -47,7 +48,7 @@ export function setupStages({ map, box, button, getRoute, getTour, timeFor, toas
     button.setAttribute('aria-pressed', String(active));
     document.body.classList.toggle('stage-mode', active);
     box.hidden = !active && !splits().length;
-    if (active) toast('Tippe auf die Linie, wo ein Tag enden soll – oder lass automatisch teilen');
+    if (active) toast(t('tour_stages.toast.start'));
     paint();
   });
 
@@ -58,7 +59,7 @@ export function setupStages({ map, box, button, getRoute, getTour, timeFor, toas
     if (!r) return true;
     const onLine = map.getLayer('route-main')
       && map.queryRenderedFeatures([[e.point.x - 8, e.point.y - 8], [e.point.x + 8, e.point.y + 8]], { layers: ['route-main'] }).length;
-    if (!onLine) { toast('Für ein Tagesende genau auf die Linie tippen'); return true; }
+    if (!onLine) { toast(t('tour_stages.toast.on_line')); return true; }
     setSplits([...splits(), nearestOnLine(r.coords, r.cum, e.lngLat.toArray()).along]);
     return true;
   }
@@ -119,7 +120,7 @@ export function setupStages({ map, box, button, getRoute, getTour, timeFor, toas
       el.type = 'button';
       el.className = 'stage-marker';
       el.innerHTML = `<span class="msr">flag</span>${s.i + 1}`;
-      el.title = `Ende Tag ${s.i + 1} – antippen zum Entfernen`;
+      el.title = t('tour_stages.marker', { n: s.i + 1 });
       el.addEventListener('click', (ev) => {
         ev.stopPropagation();
         setSplits(splits().filter((m) => m !== s.b));
@@ -134,20 +135,20 @@ export function setupStages({ map, box, button, getRoute, getTour, timeFor, toas
     if (box.hidden) return;
     const per = Math.round((list.at(-1)?.b ?? 0) / Math.max(1, list.length) / 1000);
     box.innerHTML = `
-      <h3><span class="msr">flag</span> Etappen</h3>
-      <p class="muted">${active ? 'Tippe auf die Linie, wo ein Tag enden soll; ein Fähnchen antippen entfernt es.' : 'Mit „Etappen“ oben lassen sich die Tagesenden ändern.'}</p>
+      <h3><span class="msr">flag</span> ${t('tour_stages.title')}</h3>
+      <p class="muted">${active ? t('tour_stages.hint.active') : t('tour_stages.hint.idle')}</p>
       <form class="stage-auto">
-        <label>Alle <input type="number" name="km" min="2" max="300" step="1" value="${per > 2 && list.length > 1 ? per : 20}"> km</label>
-        <button type="submit" class="button"><span class="msr">auto_awesome</span> Automatisch teilen</button>
-        ${splits().length ? '<button type="button" class="button" data-st="clear"><span class="msr">delete_sweep</span> Alle entfernen</button>' : ''}
+        <label>${t('tour_stages.auto.every')} <input type="number" name="km" min="2" max="300" step="1" value="${per > 2 && list.length > 1 ? per : 20}"> ${t('common.units.km')}</label>
+        <button type="submit" class="button"><span class="msr">auto_awesome</span> ${t('tour_stages.auto.split')}</button>
+        ${splits().length ? `<button type="button" class="button" data-st="clear"><span class="msr">delete_sweep</span> ${t('tour_stages.clear')}</button>` : ''}
       </form>
       ${list.length > 1 ? `<ol class="stage-list">${list.map((s) => `
         <li style="--c:${COLORS[s.i % 2]}">
-          <strong>Tag ${s.i + 1}</strong>
-          <span>${fmtDistance(s.len)} · <span class="msr">north_east</span>${s.up} m · ${fmtDuration(s.time)}</span>
-          <small data-place="${s.i}">${s.i === list.length - 1 ? 'Ziel' : 'bis …'}</small>
+          <strong>${t('tour_stages.day', { n: s.i + 1 })}</strong>
+          <span>${fmtDistance(s.len)} · <span class="msr">north_east</span>${s.up} ${t('common.units.m')} · ${fmtDuration(s.time)}</span>
+          <small data-place="${s.i}">${s.i === list.length - 1 ? t('tour_stages.goal') : t('tour_stages.until_unknown')}</small>
         </li>`).join('')}</ol>
-        <button type="button" class="button primary" data-st="save"><span class="msr">library_add</span> Als ${list.length} Tagestouren speichern</button>` : ''}`;
+        <button type="button" class="button primary" data-st="save"><span class="msr">library_add</span> ${t('tour_stages.save', { n: list.length })}</button>` : ''}`;
     list.slice(0, -1).forEach((s) => placeName(s.end).then((name) => {
       const el = box.querySelector(`[data-place="${s.i}"]`);
       if (el && name) el.textContent = `bis ${name}`;
@@ -186,17 +187,17 @@ export function setupStages({ map, box, button, getRoute, getTour, timeFor, toas
   });
 
   async function saveDays() {
-    const t = getTour();
+    const tour = getTour();
     const list = stageList();
-    const base = t.name || 'Tour';
+    const base = tour.name || t('tracks.names.tour');
     for (const s of list) {
       const line = slice(s.a, s.b);
-      const end = s.i === list.length - 1 ? 'Ziel' : await placeName(s.end);
+      const end = s.i === list.length - 1 ? t('tour_stages.goal') : await placeName(s.end);
       tours.save({
         id: tours.newId(),
-        name: `${base} – Tag ${s.i + 1}`,
-        description: `Etappe ${s.i + 1} von ${list.length}${end ? ` (bis ${end})` : ''} · aus „${base}“`,
-        profile: t.profile,
+        name: t('tour_stages.saved.name', { base, n: s.i + 1 }),
+        description: t('tour_stages.saved.description', { i: s.i + 1, n: list.length, end: end ? t('tour_stages.saved.until', { end }) : '', base }),
+        profile: tour.profile,
         points: simplifyTo(line, 8),
         fixed: true,
         shape: shapeOf(simplifyTo(line, 1500)),
@@ -204,7 +205,7 @@ export function setupStages({ map, box, button, getRoute, getTour, timeFor, toas
         preview: null,
       });
     }
-    toast(`${list.length} Tagestouren gespeichert – unter „Meine Touren“`);
+    toast(t('tour_stages.toast.saved', { n: list.length }));
   }
 
   return {

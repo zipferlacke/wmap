@@ -12,15 +12,16 @@
  * rechnet unterwegs mit denselben Einstellungen neu.
  */
 import { local } from '../data/store.js';
+import { t } from '../core/i18n.js';
 
 const KEY = 'wmap.routePrefs';
 
 /** Verkehrsmittel-Gruppen → Produktklassen der EFA */
 const MODES = {
-  long: { label: 'Fernzüge (ICE, IC)', icon: 'train', classes: [14, 15, 16] },
-  regional: { label: 'Regionalzug, S-Bahn', icon: 'directions_railway', classes: [0, 1, 13, 18] },
-  urban: { label: 'U-Bahn, Tram', icon: 'tram', classes: [2, 3, 4, 8] },
-  bus: { label: 'Bus', icon: 'directions_bus', classes: [5, 6, 7, 10, 17, 19] },
+  long: { label: t('route_prefs.modes.long'), icon: 'train', classes: [14, 15, 16] },
+  regional: { label: t('route_prefs.modes.regional'), icon: 'directions_railway', classes: [0, 1, 13, 18] },
+  urban: { label: t('route_prefs.modes.urban'), icon: 'tram', classes: [2, 3, 4, 8] },
+  bus: { label: t('route_prefs.modes.bus'), icon: 'directions_bus', classes: [5, 6, 7, 10, 17, 19] },
 };
 const ALWAYS = [9, 11];                 // Schiff, Sonstige
 const CHANGE_TIMES = [2, 5, 10, 15, 20];
@@ -80,22 +81,22 @@ const check = (key, label, icon) => `<label class="pref-row"><span class="msr">$
 
 function html(profile) {
   if (profile === 'transit') {
-    return `<h2><span class="msr">tune</span> Verbindungen</h2>
-      <div class="pref-group"><h3>Verkehrsmittel</h3><div class="chip-row pref-modes">
+    return `<h2><span class="msr">tune</span> ${t('route_prefs.transit.title')}</h2>
+      <div class="pref-group"><h3>${t('route_prefs.transit.modes')}</h3><div class="chip-row pref-modes">
         ${Object.entries(MODES).map(([k, m]) => `<button type="button" class="chip" data-mode="${k}" aria-pressed="${prefs.modes[k]}"><span class="msr">${m.icon}</span> ${m.label}</button>`).join('')}
       </div></div>
-      <div class="pref-group"><h3>Umsteigezeit mindestens</h3><div class="chip-row pref-change">
-        ${CHANGE_TIMES.map((m) => `<button type="button" class="chip" data-change="${m}" aria-pressed="${prefs.change === m}">${m} min</button>`).join('')}
+      <div class="pref-group"><h3>${t('route_prefs.transit.change')}</h3><div class="chip-row pref-change">
+        ${CHANGE_TIMES.map((m) => `<button type="button" class="chip" data-change="${m}" aria-pressed="${prefs.change === m}">${m} ${t('common.units.min')}</button>`).join('')}
       </div></div>
-      <label class="pref-row"><span class="msr">bolt</span><span>Schnellste Verbindung auch zeigen<small>auch wenn das Umsteigen knapp ist</small></span>
+      <label class="pref-row"><span class="msr">bolt</span><span>${t('route_prefs.transit.fastest')}<small>${t('route_prefs.transit.fastest_hint')}</small></span>
         <input type="checkbox" data-shape="toggle" data-flag="fastest"${prefs.fastest ? ' checked' : ''}></label>`;
   }
   const rows = profile === 'car'
-    ? [['highways', 'Autobahnen vermeiden', 'add_road'], ['tolls', 'Mautstraßen vermeiden', 'toll'], ['ferries', 'Fähren vermeiden', 'directions_boat']]
+    ? [['highways', t('route_prefs.avoid.highways'), 'add_road'], ['tolls', t('route_prefs.avoid.tolls'), 'toll'], ['ferries', t('route_prefs.avoid.ferries'), 'directions_boat']]
     : profile === 'bike'
-      ? [['unpaved', 'Unbefestigte Wege vermeiden', 'landscape'], ['ferries', 'Fähren vermeiden', 'directions_boat']]
-      : [['ferries', 'Fähren vermeiden', 'directions_boat']];
-  return `<h2><span class="msr">tune</span> Route</h2>${rows.map((r) => check(...r)).join('')}`;
+      ? [['unpaved', t('route_prefs.avoid.unpaved'), 'landscape'], ['ferries', t('route_prefs.avoid.ferries'), 'directions_boat']]
+      : [['ferries', t('route_prefs.avoid.ferries'), 'directions_boat']];
+  return `<h2><span class="msr">tune</span> ${t('route_prefs.title')}</h2>${rows.map((r) => check(...r)).join('')}`;
 }
 
 /**

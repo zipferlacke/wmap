@@ -8,13 +8,14 @@
  */
 import { API } from '../core/config.js';
 import * as overpass from '../services/overpass.js';
+import { t } from '../core/i18n.js';
 
 const TYPES = { N: 'node', W: 'way', R: 'relation' };
 const cache = new Map();
 
 async function get(path, signal) {
   const res = await fetch(`${API.osm}/${path}`, { signal, headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error(`OSM antwortet nicht (${res.status})`);
+  if (!res.ok) throw new Error(t('osm.error.no_answer', { status: res.status }));
   return res.json();
 }
 

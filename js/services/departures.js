@@ -16,14 +16,15 @@
  * gewählte Verbindung nach: je Fahrt aus dem Fahrplan, Fußwege über das
  * Fußgänger-Routing.
  */
+import { askServer } from './servers.js';
 import { segment } from './routing.js';
+import { t, lang, FALLBACK } from '../core/i18n.js';
 
-const EFA = 'https://www.efa-bw.de/nvbw/';
 const COORD = 'WGS84[dd.ddddd]';
 
 async function efa(path, params, signal) {
-  const res = await fetch(`${EFA}${path}?${new URLSearchParams({ outputFormat: 'rapidJSON', ...params })}`, { signal });
-  if (!res.ok) throw new Error(`Fahrplan antwortet mit ${res.status}`);
+  const res = await askServer('efa', `${path}?${new URLSearchParams({ outputFormat: 'rapidJSON', ...(lang === FALLBACK ? {} : { language: lang.split('_')[0] }), ...params })}`, { signal }, { timeout: 20000 });
+  if (!res.ok) throw new Error(t('services.departures.error.status', { status: res.status }));
   return res.json();
 }
 
@@ -103,16 +104,16 @@ export async function departures(point, { name = '', ifopt = '', stopId = null, 
  *   index: dieser Halt in der Folge (−1, wenn nicht gefunden)
  */
 export async function tripCourse(dep, { signal } = {}) {
-  if (!dep.lineId || dep.tripCode === null) throw new Error('Kein Verlauf bekannt');
+  if (!dep.lineId || dep.tripCode === null) throw new Error(t('services.departures.error.no_course'));
   const pad = (n) => String(n).padStart(2, '0');
-  const t = dep.time;
+  const when = dep.time;
   const d = await efa('XML_STOPSEQCOORD_REQUEST', {
     coordOutputFormat: COORD, line: dep.lineId, stop: dep.platformId, tripCode: String(dep.tripCode),
-    date: `${t.getFullYear()}${pad(t.getMonth() + 1)}${pad(t.getDate())}`, time: `${pad(t.getHours())}${pad(t.getMinutes())}`,
+    date: `${when.getFullYear()}${pad(when.getMonth() + 1)}${pad(when.getDate())}`, time: `${pad(when.getHours())}${pad(when.getMinutes())}`,
     tStOTType: 'all', useRealtime: '1',
   }, signal);
   const leg = d.leg;
-  if (!leg?.stopSequence?.length) throw new Error('Kein Verlauf bekannt');
+  if (!leg?.stopSequence?.length) throw new Error(t('services.departures.error.no_course'));
   const stops = leg.stopSequence.map((x) => {
     const tm = x.departureTimeEstimated ?? x.departureTimePlanned ?? x.arrivalTimeEstimated ?? x.arrivalTimePlanned;
     return {
@@ -131,8 +132,8 @@ const bboxOf = (c) => [Math.min(...c.map((p) => p[0])), Math.min(...c.map((p) =>
 const WALK = /footpath|fußweg|walk/i;
 
 const TURN = {
-  LEFT: 'links', RIGHT: 'rechts', SLIGHT_LEFT: 'halb links', SLIGHT_RIGHT: 'halb rechts',
-  SHARP_LEFT: 'scharf links', SHARP_RIGHT: 'scharf rechts', STRAIGHT: 'geradeaus', UTURN: 'wenden',
+  LEFT: 'left', RIGHT: 'right', SLIGHT_LEFT: 'slight_left', SLIGHT_RIGHT: 'slight_right',
+  SHARP_LEFT: 'sharp_left', SHARP_RIGHT: 'sharp_right', STRAIGHT: 'straight', UTURN: 'uturn',
 };
 const TRAINS = new Set([0, 1, 13, 14, 15, 16, 18]);
 
@@ -151,13 +152,14 @@ const LONG = new Set([14, 15, 16]);
 /** Fußweg-Beschreibung der EFA → [{ text, distance }] (gleiche Richtung ohne Namen zusammengefasst) */
 function walkSteps(l) {
   const out = [];
+  const straight = t('services.departures.walk.straight_on');
   for (const p of l.pathDescriptions ?? []) {
     if (/ORIGIN|DESTINATION/.test(p.manoeuvre ?? '')) continue;
     const turn = p.manoeuvre === 'TURN' || /LEFT|RIGHT|UTURN/.test(p.turnDirection ?? '') ? TURN[p.turnDirection] : null;
     const name = (p.name ?? '').trim();
-    const text = turn && name ? `${turn[0].toUpperCase()}${turn.slice(1)} in ${name}` : turn ? `${turn[0].toUpperCase()}${turn.slice(1)} abbiegen` : name || 'Geradeaus';
+    const text = turn && name ? t(`services.departures.walk.${turn}.into`, { name }) : turn ? t(`services.departures.walk.${turn}.turn`) : name || straight;
     const last = out.at(-1);
-    if (last && !name && !turn && last.text === 'Geradeaus') { last.distance += p.distance ?? 0; continue; }
+    if (last && !name && !turn && last.text === straight) { last.distance += p.distance ?? 0; continue; }
     out.push({ text, distance: p.distance ?? 0 });
   }
   return out;
@@ -214,7 +216,7 @@ function dropLoops(legs) {
       if (!near(end(legs[i]), start(legs[j]), 300)) continue;
       const gap = cum([end(legs[i]), start(legs[j])]).at(-1);
       const walk = gap > 30 ? [{
-        walk: true, cls: null, color: null, line: '', product: 'Fußweg', long: false, to_: '',
+        walk: true, cls: null, color: null, line: '', product: t('services.departures.walk.title'), long: false, to_: '',
         from: legs[i].to, to: legs[j].from, dep: legs[i].arr, arr: new Date(+legs[i].arr + Math.max(60, gap / 1.2) * 1000),
         planned: legs[i].arr, plannedArr: legs[j].dep, delay: null, platform: '', platformTo: legs[j].platform,
         stops: 0, stopList: [], steps: [], distance: Math.round(gap), duration: Math.round(Math.max(60, gap / 1.2)),
@@ -228,19 +230,19 @@ function dropLoops(legs) {
 
 function parseJourney(j) {
   const legs = dropLoops((j.legs ?? []).map((l) => {
-    const t = l.transportation ?? {};
-    const cls = t.product?.class ?? null;
-    const walk = !t.product || WALK.test(t.product?.name ?? '') || cls === 99 || cls === 100;
+    const tr = l.transportation ?? {};
+    const cls = tr.product?.class ?? null;
+    const walk = !tr.product || WALK.test(tr.product?.name ?? '') || cls === 99 || cls === 100;
     const time = (x, k) => new Date(x?.[`${k}TimeEstimated`] ?? x?.[`${k}TimePlanned`]);
-    const train = t.properties?.trainType;
+    const train = tr.properties?.trainType;
     const stops = walk ? [] : stopList(l);
     return {
       walk, cls, color: modeColor(cls),
       // Fernzüge heißen „ICE 783“, die EFA hat dafür keine Kurzform
-      line: walk ? '' : (t.disassembledName ?? (train ? `${train} ${t.properties?.trainNumber ?? ''}`.trim() : null) ?? t.number ?? t.name ?? ''),
-      product: walk ? 'Fußweg' : (t.product?.name ?? ''),
+      line: walk ? '' : (tr.disassembledName ?? (train ? `${train} ${tr.properties?.trainNumber ?? ''}`.trim() : null) ?? tr.number ?? tr.name ?? ''),
+      product: walk ? t('services.departures.walk.title') : (tr.product?.name ?? ''),
       long: LONG.has(cls),
-      to_: t.destination?.name ?? '',
+      to_: tr.destination?.name ?? '',
       from: l.origin?.parent?.name && l.origin.type === 'platform' ? l.origin.parent.name : (l.origin?.name ?? ''),
       to: l.destination?.parent?.name && l.destination.type === 'platform' ? l.destination.parent.name : (l.destination?.name ?? ''),
       dep: time(l.origin, 'departure'), arr: time(l.destination, 'arrival'),
@@ -257,7 +259,7 @@ function parseJourney(j) {
       // EFA liefert [lat, lon]
       coords: legCoords(l, stops),
       // Für refineJourney: welche Fahrt, ab welchem Steig
-      lineId: t.id ?? '', tripCode: t.properties?.tripCode ?? null, stopId: l.origin?.id ?? '',
+      lineId: tr.id ?? '', tripCode: tr.properties?.tripCode ?? null, stopId: l.origin?.id ?? '',
     };
   }));
   const coords = legs.flatMap((l) => l.coords);
@@ -331,7 +333,7 @@ export async function journeys(from, to, { when = new Date(), arrive = false, pa
       if (r && !all.some((x) => x.transit.key === r.transit.key)) all.push(r);
     }
   }
-  if (!all.length) throw new Error('Keine Verbindung mit Bus und Bahn gefunden');
+  if (!all.length) throw new Error(t('services.departures.error.no_connection'));
   // Die EFA liefert auch Fahrten vor der gewünschten Zeit bzw. mit späterer
   // Ankunft – die gehören nicht dazu (außer es gibt sonst keine)
   const fits = all.filter((r) => (arrive ? r.transit.arr <= +when + 60000 : r.transit.dep >= +when - 60000));

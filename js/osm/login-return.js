@@ -6,8 +6,9 @@
  */
 import { finishLogin } from './api.js';
 import { toast } from '../ui/dialogs.js';
+import { t } from '../core/i18n.js';
 
 finishLogin().then((user) => {
   if (!user) return;
-  toast(user.wmapError ? `Bei OpenStreetMap angemeldet als ${user.name} – WMap-Konto: ${user.wmapError}` : `Angemeldet als ${user.name}`);
+  toast(user.wmapError ? t('osm.login.return_wmap_error', { name: user.name, error: user.wmapError }) : t('osm.login.signed_in', { name: user.name }));
 }).catch((err) => toast(err.message));

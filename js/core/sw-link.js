@@ -3,6 +3,7 @@
  *
  *   swCall(type, data)    Auftrag an ihn („sync:folder“, „sync:auto“ …) → Ergebnis; null, wenn es ihn (noch) nicht
  *                         gibt – dann gleicht die Seite selbst ab wie früher
+ *                         Jede Nachricht nennt die Sprache der Seite (`lang`): Seine Meldungen kommen in ihr
  *   Bote                  „tauri“ { cmd, args }: Befehle der App-Plugins für ihn ausführen (core/tauri.js)
  *   Meldungen             „event“ → dasselbe Ereignis hier (detail.remote = true), „local“ → in den localStorage
  *                         (data/store.js), „devlog“ → ins Protokoll
@@ -12,9 +13,13 @@
  */
 import { localReady, takeShared } from '../data/store.js';
 import { devLog } from './devlog.js';
+import { CHOICE, t } from './i18n-text.js';
 
 const sw = 'serviceWorker' in navigator ? navigator.serviceWorker : null;
 const ALIVE_MS = 20000;
+// Die Texte der Seite laden, ohne darauf zu warten: Sonst käme die Antwort an ihn (Bote) erst danach
+import('./i18n.js').catch(() => {});
+const lang = () => { try { return localStorage.getItem(CHOICE) || undefined; } catch { return undefined; } };
 let aliveTimer = null;
 
 /** Auftrag an den Service Worker → Ergebnis; wirft mit seinem Fehler. `timeout`: nur für die Frage, ob er da ist */
@@ -28,9 +33,9 @@ function send(type, data = {}, timeout = 0) {
     if (timeout) timer = setTimeout(() => resolve({ none: true }), timeout);
     ch.port1.onmessage = (e) => {
       clearTimeout(timer);
-      if (e.data?.ok) resolve({ r: e.data.r }); else reject(new Error(e.data?.err ?? 'Abgleich ging nicht'));
+      if (e.data?.ok) resolve({ r: e.data.r }); else reject(new Error(e.data?.err ?? t('sync.toast.failed')));
     };
-    worker.postMessage({ type, ...data }, [ch.port2]);
+    worker.postMessage({ type, lang: lang(), ...data }, [ch.port2]);
   });
 }
 

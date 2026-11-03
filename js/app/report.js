@@ -14,6 +14,7 @@ import { $, map } from './core.js';
 import { survey } from './mitmachen.js';
 import { nav } from './nav.js';
 import { TRAFFIC_ICON, trafficItems } from './traffic-along.js';
+import { t, locale } from '../core/i18n.js';
 
 /* ══════════════════════════════════════════════════════════════════════════
    Unterwegs kurz fragen und melden – wie bei Google
@@ -21,8 +22,8 @@ import { TRAFFIC_ICON, trafficItems } from './traffic-along.js';
 
 /** Was mit einer Antwort passiert – steht klein unter der Frage. */
 function whereItGoes() {
-  if (account.loggedIn()) return 'Geht mit deinem OSM-Konto direkt in die Karte.';
-  return anonNotes.get() ? 'Geht ohne Konto als Hinweis an OpenStreetMap.' : 'Wird gespeichert, bis du dich bei OSM anmeldest.';
+  if (account.loggedIn()) return t('report.goes.account');
+  return anonNotes.get() ? t('report.goes.anonymous') : t('report.goes.later');
 }
 
 /*
@@ -36,39 +37,39 @@ function whereItGoes() {
 const passing = new Map();
 export function checkTrafficPassed(point) {
   if (!nav.active || !contribute.get() || !alongSetting.get(nav.profile)) return;
-  for (const t of trafficItems) {
-    const ref = `t:${t.road}|${t.title}|${t.point.map((v) => v.toFixed(4)).join(',')}`;
-    const d = distance(point, t.point);
+  for (const item of trafficItems) {
+    const ref = `t:${item.road}|${item.title}|${item.point.map((v) => v.toFixed(4)).join(',')}`;
+    const d = distance(point, item.point);
     if (d < 150) passing.set(ref, true);
     else if (d > 250 && passing.get(ref) && !answered(ref)) {
       passing.set(ref, false);
-      askStillThere(t, ref);
+      askStillThere(item, ref);
     }
   }
 }
 
-async function askStillThere(t, ref) {
-  const kind = t.kind === 'warning' ? 'hazard' : t.kind;
-  const title = { roadworks: 'Baustelle noch da?', closure: 'Immer noch gesperrt?', jam: 'Immer noch Stau?',
-    accident: 'Unfall noch da?' }[t.kind] ?? 'Immer noch Behinderung?';
-  const v = await quickAsk({ pill: true, urgent: true, icon: TRAFFIC_ICON[t.kind]?.[0] ?? 'warning', title, timeout: 15000, no: 'Nein, nicht mehr da' });
+async function askStillThere(item, ref) {
+  const kind = item.kind === 'warning' ? 'hazard' : item.kind;
+  const title = { roadworks: t('report.still.roadworks'), closure: t('report.still.closure'), jam: t('report.still.jam'),
+    accident: t('report.still.accident') }[item.kind] ?? t('report.still.other');
+  const v = await quickAsk({ pill: true, urgent: true, icon: TRAFFIC_ICON[item.kind]?.[0] ?? 'warning', title, timeout: 15000, no: t('report.still.gone') });
   if (!v) return;
-  await report({ kind, point: t.point, answer: v, ref });
-  toast('Danke!');
+  await report({ kind, point: item.point, answer: v, ref });
+  toast(t('report.thanks'));
 }
 
 /** „Melden“ in der Navigation: was ist hier los? */
 export async function reportHere(point) {
   if (!point) return;
   const v = await quickAsk({
-    icon: 'add_alert', title: 'Was möchtest du melden?', timeout: 20000,
+    icon: 'add_alert', title: t('report.here.title'), timeout: 20000,
     options: Object.entries(REPORT_KINDS).map(([value, k]) => ({ value, label: k.label, icon: k.icon })),
-    note: reportsShared() ? 'Andere sehen deine Meldung für ein paar Stunden.'
-      : 'Noch ohne Meldeserver – die Meldung bleibt vorerst auf diesem Gerät.',
+    note: reportsShared() ? t('report.here.shared')
+      : t('report.here.local'),
   });
   if (!v) return;
   const res = await report({ kind: v, point });
-  toast(res.shared ? `${REPORT_KINDS[v].label} gemeldet – danke!` : `${REPORT_KINDS[v].label} vermerkt`);
+  toast(res.shared ? t('report.here.toast_shared', { kind: REPORT_KINDS[v].label }) : t('report.here.toast_local', { kind: REPORT_KINDS[v].label }));
 }
 
 /*
@@ -90,25 +91,25 @@ export async function askParking(dest) {
   try { tags = await osm.tags(ref.type, ref.id); } catch { return; }
   if (tags.amenity !== 'parking' || (tags.fee && tags.access)) return;
   const osmType = { N: 'node', W: 'way', R: 'relation' }[ref.type] ?? ref.type;
-  const p = { osm: { type: osmType, id: Number(ref.id) }, name: tags.name ?? 'Parkplatz', point: best.f.geometry.coordinates, tags };
-  const what = tags.name ? `„${tags.name}“` : 'der Parkplatz hier';
+  const p = { osm: { type: osmType, id: Number(ref.id) }, name: tags.name ?? t('report.parking.name'), point: best.f.geometry.coordinates, tags };
+  const what = tags.name ? t('report.parking.named', { name: tags.name }) : t('report.parking.this_one');
   const note = whereItGoes();
   const out = {};
 
   if (!tags.fee) {
     const fee = await quickAsk({
-      icon: 'local_parking', title: `Ist ${what} kostenlos?`, sub: 'Du bist gerade angekommen', note,
-      options: [{ value: 'no', label: 'Kostenlos', icon: 'money_off', primary: true }, { value: 'yes', label: 'Kostet etwas', icon: 'payments' }, { value: '?', label: 'Weiß nicht' }],
+      icon: 'local_parking', title: t('report.parking.fee.title', { what }), sub: t('report.parking.fee.sub'), note,
+      options: [{ value: 'no', label: t('report.parking.fee.free'), icon: 'money_off', primary: true }, { value: 'yes', label: t('report.parking.fee.paid'), icon: 'payments' }, { value: '?', label: t('report.parking.fee.unknown') }],
     });
     if (!fee) return;
     if (fee !== '?') out.fee = fee;
     if (fee === 'yes') {
       const price = await quickAsk({
-        icon: 'payments', title: 'Wie viel ungefähr?', note,
-        options: [...['1', '1.5', '2', '3'].map((v) => ({ value: v, label: `${v.replace('.', ',')} €/Std.` })), { value: 'other', label: 'Anders …' }],
+        icon: 'payments', title: t('report.parking.price.title'), note,
+        options: [...['1', '1.5', '2', '3'].map((v) => ({ value: v, label: t('report.parking.price.per_hour', { price: Number(v).toLocaleString(locale) }) })), { value: 'other', label: t('report.parking.price.other') }],
       });
       if (price === 'other') {
-        const text = await quickAsk({ icon: 'payments', title: 'Was kostet es?', input: true, placeholder: 'z. B. 1,50 € pro Stunde oder 6 € am Tag', timeout: 60000 });
+        const text = await quickAsk({ icon: 'payments', title: t('report.parking.price.ask'), input: true, placeholder: t('report.parking.price.placeholder'), timeout: 60000 });
         const m = text?.match(/(\d+(?:[.,]\d{1,2})?)\s*(?:€|eur|euro)?\s*(?:pro|je|\/)?\s*(stunde|std|h|tag|d)?/i);
         if (m) out.charge = `${Number(m[1].replace(',', '.')).toFixed(2)} EUR/${/^(tag|d)$/i.test(m[2] ?? '') ? 'day' : 'hour'}`;
         else if (text) out.remark = `Preis: ${text}`;
@@ -117,19 +118,19 @@ export async function askParking(dest) {
   }
   if (!tags.access) {
     const access = await quickAsk({
-      icon: 'lock_open', title: 'Kann dort jeder parken?', note,
-      options: [{ value: 'yes', label: 'Ja, alle', primary: true }, { value: 'customers', label: 'Nur Kunden' }, { value: 'private', label: 'Privat' }],
+      icon: 'lock_open', title: t('report.parking.access.title'), note,
+      options: [{ value: 'yes', label: t('report.parking.access.all'), primary: true }, { value: 'customers', label: t('report.parking.access.customers') }, { value: 'private', label: t('report.parking.access.private') }],
     });
     if (access) out.access = access;
   }
   if (Object.keys(out).length) {
     const remark = await quickAsk({
-      icon: 'edit_note', title: 'Noch etwas für andere?', sub: 'z. B. Schranke, Höhenbegrenzung, nur bis 20 Uhr', input: true,
-      placeholder: 'Vermerk (freiwillig)', options: [{ value: '', label: 'Nein, danke' }], timeout: 20000,
+      icon: 'edit_note', title: t('report.parking.remark.title'), sub: t('report.parking.remark.sub'), input: true,
+      placeholder: t('report.parking.remark.placeholder'), options: [{ value: '', label: t('report.parking.remark.no') }], timeout: 20000,
     });
     if (remark) out.remark = [out.remark, remark].filter(Boolean).join(' · ');
     answerParking(p, out);
     survey.sync();
-    toast('Danke! Das hilft allen, die hier parken wollen.');
+    toast(t('report.parking.thanks'));
   }
 }

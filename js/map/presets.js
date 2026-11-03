@@ -9,40 +9,41 @@
  * source.presetId – so finden Karte und Plugin-Seite die Angaben hier wieder.
  */
 import { esc } from '../core/geo.js';
+import { t } from '../core/i18n.js';
 
 const BGR_BASE = 'https://services.bgr.de/wms/geologie/guek250/';
 const BGR = (layers) => `${BGR_BASE}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap`
   + `&LAYERS=${layers}&STYLES=&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=512&HEIGHT=512&FORMAT=image/png&TRANSPARENT=true`;
 const BGR_LEGEND = (layer) => `${BGR_BASE}?request=GetLegendGraphic&version=1.3.0&format=image/png&layer=${layer}`;
-const BGR_ATTR = 'Geologie: GÜK250 (WMS), © <a href="https://www.bgr.bund.de" target="_blank" rel="noopener">BGR</a>, Hannover, 2019';
+const BGR_ATTR = `${t('layers.presets.attribution')} GÜK250 (WMS), © <a href="https://www.bgr.bund.de" target="_blank" rel="noopener">BGR</a>, Hannover, 2019`;
 // Die BGR liefert nur zwischen 1:546 000 und 1:34 000 – Zoom 9 bis 13
 const BGR_ZOOM = { minzoom: 8.5, maxzoom: 13 };
 
 export const PRESETS = [
   {
-    id: 'geo-de', icon: 'landslide', name: 'Geologie Deutschland',
-    operator: 'BGR – Bundesanstalt für Geowissenschaften und Rohstoffe',
-    text: 'Geologische Übersichtskarte 1:250 000 (GÜK250): welche Gesteine an der Oberfläche liegen, farbig nach Erdzeitalter, dazu Störungen und Verwerfungen. Zu sehen ab Zoom 9 – vom Landkreis bis zum Ort. Lange auf die Karte drücken zeigt das Erdzeitalter an dieser Stelle.',
+    id: 'geo-de', icon: 'landslide', name: t('layers.presets.geo_de.name'),
+    operator: t('layers.presets.bgr_operator'),
+    text: t('layers.presets.geo_de.text'),
     tiles: BGR('7,8,11'), attribution: BGR_ATTR, ...BGR_ZOOM,
     url: 'https://www.bgr.bund.de/DE/Themen/Sammlungen-Grundlagen/GG_geol_Info/Karten/Deutschland/GUEK250/guek250_node.html',
     info: { type: 'bgr', layers: '7,8' },
-    legend: [{ title: 'Erdzeitalter', src: BGR_LEGEND(7) }],
+    legend: [{ title: t('layers.presets.geo_de.legend'), src: BGR_LEGEND(7) }],
   },
   {
-    id: 'geo-de-rock', icon: 'texture', name: 'Gesteinsarten Deutschland',
-    operator: 'BGR – Bundesanstalt für Geowissenschaften und Rohstoffe',
-    text: 'Dieselbe Übersichtskarte (GÜK250), gefärbt nach Gesteinsart statt Alter: Sand, Ton, Kalk, Granit, Schiefer … Gut für Wanderungen und Boden. Zu sehen ab Zoom 9. Lange auf die Karte drücken zeigt das Gestein an dieser Stelle.',
+    id: 'geo-de-rock', icon: 'texture', name: t('layers.presets.geo_rock.name'),
+    operator: t('layers.presets.bgr_operator'),
+    text: t('layers.presets.geo_rock.text'),
     tiles: BGR('4,5'), attribution: BGR_ATTR, ...BGR_ZOOM, url: 'https://www.bgr.bund.de',
     info: { type: 'bgr', layers: '4,5' },
-    legend: [{ title: 'Gesteinsarten', src: BGR_LEGEND(4) }],
+    legend: [{ title: t('layers.presets.geo_rock.legend'), src: BGR_LEGEND(4) }],
   },
   {
-    id: 'geo-world', icon: 'public', name: 'Geologie weltweit',
-    operator: 'Macrostrat (University of Wisconsin–Madison)',
-    text: 'Geologische Karten aus aller Welt, zusammengesetzt aus vielen Quellen – grob für ganze Länder, genauer, wo es gute Karten gibt. Farbig nach Erdzeitalter. Lange auf die Karte drücken zeigt Gestein und Alter an dieser Stelle.',
-    tiles: 'https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png', attribution: 'Geologie: <a href="https://macrostrat.org" target="_blank" rel="noopener">Macrostrat</a> (CC BY 4.0)', url: 'https://macrostrat.org',
+    id: 'geo-world', icon: 'public', name: t('layers.presets.geo_world.name'),
+    operator: t('layers.presets.geo_world.operator'),
+    text: t('layers.presets.geo_world.text'),
+    tiles: 'https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png', attribution: `${t('layers.presets.attribution')} <a href="https://macrostrat.org" target="_blank" rel="noopener">Macrostrat</a> (CC BY 4.0)`, url: 'https://macrostrat.org',
     info: { type: 'macrostrat' },
-    legendText: 'Die Farben folgen der internationalen Zeitskala: Violett Trias, Blau Jura, Grün Kreide, Gelb/Orange Tertiär und Quartär, Braun/Grau Erdaltertum. Langes Drücken nennt Einheit und Alter.',
+    legendText: t('layers.presets.geo_world.legend_text'),
   },
 ];
 
@@ -67,7 +68,7 @@ async function bgrInfo(info, [lon, lat], zoom, signal) {
     WIDTH: '101', HEIGHT: '101', I: '50', J: '50', INFO_FORMAT: 'application/geo+json', FEATURE_COUNT: '5',
   });
   const res = await fetch(`${BGR_BASE}?${q}`, { signal });
-  if (!res.ok) throw new Error(`BGR antwortet mit ${res.status}`);
+  if (!res.ok) throw new Error(t('layers.info.answer', { source: 'BGR', status: res.status }));
   const { features = [] } = await res.json();
   return features.map((f) => {
     const p = f.properties ?? {};
@@ -80,16 +81,16 @@ async function bgrInfo(info, [lon, lat], zoom, signal) {
 
 async function macrostratInfo([lon, lat], signal) {
   const res = await fetch(`https://macrostrat.org/api/v2/geologic_units/map?lat=${lat.toFixed(5)}&lng=${lon.toFixed(5)}`, { signal });
-  if (!res.ok) throw new Error(`Macrostrat antwortet mit ${res.status}`);
+  if (!res.ok) throw new Error(t('layers.info.answer', { source: 'Macrostrat', status: res.status }));
   const data = (await res.json())?.success?.data ?? [];
   // Die genaueste Karte zuerst – Macrostrat liefert grob bis fein
   return data.slice(0, 2).map((u) => ({
-    title: u.name || u.strat_name || 'Geologische Einheit', color: u.color,
+    title: u.name || u.strat_name || t('layers.info.unit'), color: u.color,
     rows: [
-      ['Alter', u.b_int_name === u.t_int_name ? u.b_int_name : `${u.b_int_name} bis ${u.t_int_name}`],
-      ['Millionen Jahre', u.b_age != null ? `${Math.round(u.b_age)}–${Math.round(u.t_age)}` : ''],
-      ['Gestein', (u.lith ?? '').replace(/Major:|Minor/g, '').replace(/[{}]/g, '').trim()],
-      ['Beschreibung', u.descrip ?? ''],
+      [t('layers.info.rows.age'), u.b_int_name === u.t_int_name ? u.b_int_name : t('layers.info.rows.age_range', { from: u.b_int_name, to: u.t_int_name })],
+      [t('layers.info.rows.million_years'), u.b_age != null ? `${Math.round(u.b_age)}–${Math.round(u.t_age)}` : ''],
+      [t('layers.info.rows.rock'), (u.lith ?? '').replace(/Major:|Minor/g, '').replace(/[{}]/g, '').trim()],
+      [t('layers.info.rows.description'), u.descrip ?? ''],
     ].filter(([, v]) => v),
   }));
 }
@@ -118,7 +119,7 @@ export function layerInfoHtml(results) {
   return results.map(({ preset, items, error }) => `
     <section class="layer-info">
       <h3><span class="msr">${preset.icon}</span> ${esc(preset.name)}</h3>
-      ${error ? `<p class="muted">Gerade nicht abrufbar (${esc(error)})</p>` : items.map((it) => `
+      ${error ? `<p class="muted">${t('layers.info.unavailable', { error: esc(error) })}</p>` : items.map((it) => `
         <p class="layer-info-title">${it.color ? `<i style="background:${esc(it.color)}"></i>` : ''}<strong>${esc(it.title)}</strong></p>
         ${it.rows.length ? `<dl>${it.rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}`).join('')}
       ${legendHtml(preset, { open: false })}
@@ -130,8 +131,8 @@ export function legendHtml(preset, { open = true } = {}) {
   if (preset.legend?.length) {
     return preset.legend.map((l) => `
       <details class="layer-legend" ${open ? 'open' : ''}>
-        <summary><span class="msr">format_list_bulleted</span> Legende: ${esc(l.title)}</summary>
-        <div class="layer-legend-img"><img src="${esc(l.src)}" alt="Legende ${esc(l.title)}" loading="lazy"></div>
+        <summary><span class="msr">format_list_bulleted</span> ${t('layers.info.legend.summary', { title: esc(l.title) })}</summary>
+        <div class="layer-legend-img"><img src="${esc(l.src)}" alt="${t('layers.info.legend.alt', { title: esc(l.title) })}" loading="lazy"></div>
       </details>`).join('');
   }
   return preset.legendText ? `<p class="layer-legend-text"><span class="msr">palette</span> ${esc(preset.legendText)}</p>` : '';

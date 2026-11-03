@@ -20,6 +20,7 @@ import { phrases, laneHint } from './voice.js';
 import { reverse } from '../services/geocode.js';
 import { trustedSpeed } from '../core/smooth.js';
 import { ask } from '../ui/dialogs.js';
+import { locale, t } from '../core/i18n.js';
 
 const OFF_ROUTE_M = 40;
 const OFF_ROUTE_FIXES = 3;
@@ -44,7 +45,7 @@ const VOICE_KEY = 'wmap.voice';
  * eSpeak klingt blechern und wirkt schnell verzerrt.
  */
 function voiceScore(v) {
-  let s = v.lang === 'de-DE' ? 20 : 10;
+  let s = v.lang === locale ? 20 : 10;
   if (/google|microsoft|natural|neural|online|premium|enhanced|siri|anna|petra|katja|conrad|helena/i.test(v.name)) s += 8;
   if (/espeak|mbrola|pico/i.test(v.name)) s -= 12;
   if (v.default) s += 1;
@@ -62,7 +63,7 @@ const speech = {
   /** Deutsche Stimmen, die beste zuerst. */
   voices() {
     return (window.speechSynthesis?.getVoices() ?? [])
-      .filter((v) => v.lang?.toLowerCase().replace('_', '-').startsWith('de'))
+      .filter((v) => v.lang?.toLowerCase().replace('_', '-').startsWith(locale.split('-')[0]))
       .sort((a, b) => voiceScore(b) - voiceScore(a));
   },
   pickVoice() {
@@ -81,7 +82,7 @@ const speech = {
     if (!window.speechSynthesis) return;
     const go = () => {
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = this.voice?.lang ?? 'de-DE';
+      u.lang = this.voice?.lang ?? locale;
       if (this.voice) u.voice = this.voice;
       u.rate = 1;
       u.pitch = 1;
@@ -113,16 +114,15 @@ export function openVoiceDialog() {
   speech.pickVoice();
   const list = speech.voices();
   ask({
-    icon: 'record_voice_over', title: 'Stimme für Ansagen',
-    html: `${list.length ? `<select class="voice-select" aria-label="Stimme">${list.map((v) => `
-      <option value="${esc(v.name)}" ${v === speech.voice ? 'selected' : ''}>${esc(v.name)}${v.localService ? '' : ' · online'}</option>`).join('')}
-    </select>` : androidSpeech() ? '<p>Die App spricht mit der Sprachausgabe von Android – Stimme und Tempo stellst du in den Android-Einstellungen unter „Sprachausgabe“ ein.</p>'
-      : '<p>Dieser Browser bietet keine deutsche Stimme an.</p>'}
-    <p>Klingt es blechern oder verzerrt, ist meist eine einfache Systemstimme (eSpeak) gewählt.
-       „Google Deutsch“ in Chrome oder die Stimmen von Android, Windows und macOS klingen deutlich besser.</p>`,
+    icon: 'record_voice_over', title: t('nav.voice_dialog.title'),
+    html: `${list.length ? `<select class="voice-select" aria-label="${t('nav.voice_dialog.select')}">${list.map((v) => `
+      <option value="${esc(v.name)}" ${v === speech.voice ? 'selected' : ''}>${esc(v.name)}${v.localService ? '' : ` · ${t('nav.voice_dialog.online')}`}</option>`).join('')}
+    </select>` : androidSpeech() ? `<p>${t('nav.voice_dialog.android')}</p>`
+      : `<p>${t('nav.voice_dialog.none')}</p>`}
+    <p>${t('nav.voice_dialog.hint')}</p>`,
     buttons: [
-      { value: 'test', label: 'Probe', icon: 'play_arrow', run: () => speech.say('In 300 Metern rechts abbiegen, dann halten Sie sich links.', { force: true }) },
-      { value: 'ok', label: 'Fertig', primary: true },
+      { value: 'test', label: t('nav.voice_dialog.test'), icon: 'play_arrow', run: () => speech.say(t('nav.voice_dialog.sample'), { force: true }) },
+      { value: 'ok', label: t('nav.voice_dialog.done'), primary: true },
     ],
     setup: (dlg) => dlg.querySelector('select')?.addEventListener('change', (e) => speech.setVoice(e.target.value)),
   });
@@ -282,7 +282,7 @@ export class Navigation {
     if (!this.#route) return;
     this.#targets = [point, ...this.#targets];
     this.#lastReroute = 0;
-    this.#reroute(this.#lastFix?.point ?? this.#pos?.point ?? this.#route.coords[0], this.#travel, { announce: 'Zwischenstopp wird eingeplant.' });
+    this.#reroute(this.#lastFix?.point ?? this.#pos?.point ?? this.#route.coords[0], this.#travel, { announce: t('nav.voice.stop_added') });
   }
 
   /**
@@ -333,7 +333,7 @@ export class Navigation {
       // obwohl der Bildschirm an ist – dann die Standortabfrage neu starten
       this.#watchdog = setInterval(() => this.#checkGps(), 2000);
     } else {
-      this.#status('Standort wird von diesem Gerät nicht unterstützt');
+      this.#status(t('nav.gps.unsupported'));
     }
   }
 
@@ -379,9 +379,9 @@ export class Navigation {
     const el = this.#el.querySelector('.nav-gps');
     if (!el) return;
     const text = {
-      weak: 'GPS-Signal schwach – suche Standort …',
-      coarse: 'Nur ungefährer Standort freigegeben. Bitte in den Handy-Einstellungen für den Browser „Genauer Standort“ erlauben.',
-      denied: 'Standort nicht freigegeben – bitte in den Browser-Einstellungen erlauben.',
+      weak: t('nav.gps.weak'),
+      coarse: t('nav.gps.coarse'),
+      denied: t('nav.gps.denied'),
     }[state];
     el.hidden = !text;
     el.textContent = text ?? '';
@@ -611,19 +611,19 @@ export class Navigation {
     this.#raf = requestAnimationFrame(this.#frame);
   }
 
-  #frame = (t) => {
+  #frame = (stamp) => {
     if (!this.#route) return;
     this.#raf = null;
-    const moving = this.#draw(t);
+    const moving = this.#draw(stamp);
     // setTimeout, dann aufs nächste Bild warten – ergibt gut 30 Bilder je Sekunde
     this.#schedule(moving ? FRAME_MS - 8 : IDLE_MS);
   };
 
   /** Ein Bild: Pfeil setzen, Kamera nachführen. → hat sich etwas bewegt? */
-  #draw(t) {
-    const dt = this.#lastFrame ? Math.min(0.25, (t - this.#lastFrame) / 1000) : FRAME_MS / 1000;
-    this.#lastFrame = t;
-    const pos = this.#currentPos(t);
+  #draw(stamp) {
+    const dt = this.#lastFrame ? Math.min(0.25, (stamp - this.#lastFrame) / 1000) : FRAME_MS / 1000;
+    this.#lastFrame = stamp;
+    const pos = this.#currentPos(stamp);
     if (!pos) return false;
     this.#pos = pos;
     const r = this.#route;
@@ -659,7 +659,7 @@ export class Navigation {
     c.center = c.center ? lerp(c.center, pos.point, k) : pos.point;
     c.tau = Math.max(0.06, c.tau - dt * 0.4);       // nach dem Zentrieren erst weich, dann eng dran
     // Beim Start zügig in die Fahreransicht (≈ 1,5 s), danach ruhig nachführen
-    const quick = t < (c.quick ?? 0);
+    const quick = stamp < (c.quick ?? 0);
     c.bearing = approachAngle(c.bearing, navSettings.north ? 0 : this.#heading, dt, quick ? 0.3 : 0.7, quick ? 240 : 90);
     c.zoom += (this.#target.zoom - c.zoom) * (1 - Math.exp(-dt / (quick ? 0.45 : 1.6)));
     c.pitch += (this.#target.pitch - c.pitch) * (1 - Math.exp(-dt / (quick ? 0.4 : 1.2)));
@@ -751,9 +751,9 @@ export class Navigation {
     const k = ms.findIndex((m, i) => i > 0 && ![7, 8, 22].includes(m.type));
     const first = ms[k];
     const p = first ? phrases(first, { extras: this.#extras }) : null;
-    if (!p?.soon || first.at <= 200) return 'Die Route ist berechnet.';
+    if (!p?.soon || first.at <= 200) return t('nav.voice.route_ready');
     this.#said.set(k, { far: true, near: false });
-    return `Die Route ist berechnet. ${p.soon(speakDistance(first.at)) ?? ''}`;
+    return `${t('nav.voice.route_ready')} ${p.soon(speakDistance(first.at)) ?? ''}`;
   }
 
   #instruct(along) {
@@ -772,7 +772,7 @@ export class Navigation {
 
     // Gerade ein Manöver hinter uns gelassen und bis zum nächsten ist es weit
     if (k !== this.#current) {
-      if (this.#current >= 0 && dist > 1500) speech.say(`${speakDistance(dist).replace(/n$/, '')} der Route folgen.`);
+      if (this.#current >= 0 && dist > 1500) speech.say(t('nav.voice.follow', { distance: speakDistance(dist, '_plain') }));
       this.#current = k;
       this.#paintArrows(k);
     }
@@ -795,12 +795,12 @@ export class Navigation {
     $('.nav-dist').textContent = fmtDistance(dist);
     // Oben lesen darf man Straßennamen – dazu Nummer und Richtung vom Schild
     const street = [4, 5, 6].includes(m.type) ? m.instruction
-      : m.type === 26 ? `${m.roundabout_exit_count ?? ''}. Ausfahrt`
+      : m.type === 26 ? t('nav.banner.exit', { n: m.roundabout_exit_count ?? '' })
         : p.ref ?? m.street_names?.join(' / ') ?? m.instruction;
     $('.nav-instr').textContent = street;
     const toward = $('.nav-toward');
     toward.hidden = !p.toward?.length;
-    toward.textContent = p.toward?.length ? `Richtung ${p.toward.join(', ')}` : '';
+    toward.textContent = p.toward?.length ? t('nav.banner.toward', { places: p.toward.join(', ') }) : '';
 
     // Fahrspuren bis 1,5 km vorher, dazu „links einordnen“
     // Spuren wie bei Google: die der nächsten Kreuzung voraus, auch wenn dort
@@ -816,16 +816,16 @@ export class Navigation {
         const dirs = l.dirs.length ? l.dirs : ['straight'];
         return `<span class="lane${l.use ? ' use' : ''}">${dirs.slice(0, 3).map((d) =>
           `<span class="msr${l.use && l.act && d !== l.act ? ' off' : ''}">${LANE_ICON[d] ?? 'straight'}</span>`).join('')}</span>`;
-      }).join('') + (p.hint && dist < 1500 ? `<span class="lane-hint">${p.hint === 'links' ? 'Links' : 'Rechts'} einordnen</span>` : '');
+      }).join('') + (p.hint && dist < 1500 ? `<span class="lane-hint">${p.hint === 'links' ? t('nav.banner.lane_left') : t('nav.banner.lane_right')}</span>` : '');
     }
 
     // „Dann …“ nur, wenn das übernächste Manöver dicht folgt
     const then = $('.nav-then');
     then.hidden = !next || next.at - m.at > 250;
-    if (!then.hidden) then.innerHTML = `Dann <span class="msr">${esc(maneuverIcon(next))}</span>`;
+    if (!then.hidden) then.innerHTML = `${t('nav.banner.then')} <span class="msr">${esc(maneuverIcon(next))}</span>`;
     this.#guide = {
       type: m.via ? 'via' : m.type, exit: m.roundabout_exit_count ?? null, dist, street,
-      toward: p.toward?.length ? `Richtung ${p.toward.join(', ')}` : '', next: then.hidden ? null : next.type,
+      toward: p.toward?.length ? t('nav.banner.toward', { places: p.toward.join(', ') }) : '', next: then.hidden ? null : next.type,
     };
     return dist;
   }
@@ -900,17 +900,17 @@ export class Navigation {
     this.#arrived = true;
     const last = this.#route.maneuvers.at(-1);
     const said = this.#said.get(this.#route.maneuvers.length - 1);
-    if (!said?.near) speech.say(last ? phrases(last).now : 'Sie haben Ihr Ziel erreicht.');
+    if (!said?.near) speech.say(last ? phrases(last).now : t('nav.voice.arrive.now'));
     this.#el.classList.add('arrived');
     const $ = (s) => this.#el.querySelector(s);
     $('.nav-icon').textContent = 'sports_score';
     $('.nav-exit').hidden = true;
-    $('.nav-dist').textContent = 'Ziel erreicht';
+    $('.nav-dist').textContent = t('nav.banner.arrived');
     $('.nav-instr').textContent = last?.instruction ?? '';
     $('.nav-toward').hidden = true;
     $('.nav-lanes').hidden = true;
     $('.nav-then').hidden = true;
-    $('.nav-remaining').textContent = '0 min · 0 m';
+    $('.nav-remaining').textContent = t('nav.banner.arrived_remaining');
     this.#onGuidance?.({ arrived: true, street: last?.instruction ?? '' });
     this.#onArrive?.(this.#route.coords.at(-1), this.#profile);
   }
@@ -999,13 +999,13 @@ export class Navigation {
     const $ = (s) => this.#el.querySelector(s);
     const mute = $('.nav-mute');
     mute.querySelector('.msr').textContent = speech.muted ? 'volume_off' : 'volume_up';
-    mute.title = speech.muted ? 'Ansagen einschalten' : 'Ansagen stummschalten';
+    mute.title = speech.muted ? t('nav.buttons.unmute') : t('nav.buttons.mute');
     const follow = $('.nav-recenter');
     follow.querySelector('.msr').textContent = !this.#following ? 'share_location' : navSettings.threeD ? 'navigation' : 'explore';
-    follow.title = !this.#following ? 'Zurück zu meinem Standort'
-      : navSettings.threeD ? 'Folgt dir – antippen: flache Ansicht' : 'Folgt dir – antippen: geneigte Ansicht';
+    follow.title = !this.#following ? t('nav.buttons.back_to_me')
+      : navSettings.threeD ? t('nav.buttons.follow_flat') : t('nav.buttons.follow_tilted');
     $('.nav-compass').classList.toggle('north', navSettings.north);
-    $('.nav-compass').title = navSettings.north ? 'In Fahrtrichtung drehen' : 'Norden oben';
+    $('.nav-compass').title = navSettings.north ? t('nav.buttons.heading_up') : t('nav.buttons.north_up');
   }
 
   #paintCompass(b) {
@@ -1063,7 +1063,7 @@ export class Navigation {
    * Verfahren: ab dem eigenen Standort neu rechnen, in Fahrtrichtung – eine
    * einzige Anfrage ohne Alternativen, damit es schnell geht.
    */
-  async #reroute(point, heading, { announce = 'Route wird neu berechnet.' } = {}) {
+  async #reroute(point, heading, { announce = t('nav.voice.recalculating') } = {}) {
     if (this.#rerouting || Date.now() - this.#lastReroute < REROUTE_PAUSE_MS) return;
     this.#rerouting = true;
     this.#lastReroute = Date.now();
@@ -1091,7 +1091,7 @@ export class Navigation {
       this.#cutAt = null;
       this.#extras = null;
       this.#reset();
-      speech.say(this.#startText().replace('Die Route ist berechnet.', '').trim() || 'Neue Route berechnet.');
+      speech.say(this.#startText().replace(t('nav.voice.route_ready'), '').trim() || t('nav.voice.new_route'));
       this.#said.set(0, { far: true, near: true });
       this.#paintTargets();
       this.#onRoute?.(route, { profile: this.#profile, highways: this.#highways, targets: this.#targets });
@@ -1120,9 +1120,9 @@ export class Navigation {
   }
 
   #offlineHint() {
-    this.#status('Offline – zurück zur Route, neu berechnen geht erst wieder mit Netz');
+    this.#status(t('nav.offline.back_to_route'));
     if (Date.now() - (this.#offlineSaid ?? 0) > 120000) {
-      speech.say('Keine Verbindung. Bitte zur Route zurückkehren.');
+      speech.say(t('nav.voice.no_connection'));
       this.#offlineSaid = Date.now();
     }
   }

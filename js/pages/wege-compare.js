@@ -25,37 +25,38 @@ import { paceOf, cadName, sportName, sportOf } from '../data/track-look.js';
 import { metrics } from '../data/track-stats.js';
 import { local } from '../data/store.js';
 import { fmtDistance, fmtTime, esc } from '../core/geo.js';
+import { locale, t } from '../core/i18n.js';
 // Auswahl mit Suche für <select data-sp-picker> (legt sich selbst an)
 import '../../libs/wuefl-libs/selectpicker/selectpicker.js';
 
-const DAY = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short', year: '2-digit' });
-const SHORT = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short' });
-const DM = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'numeric' });
-const HM = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
-const FULL = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'numeric', year: 'numeric' });
+const DAY = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: '2-digit' });
+const SHORT = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' });
+const DM = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'numeric' });
+const HM = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' });
+const FULL = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'numeric', year: 'numeric' });
 
-const moving = (t) => t.moving || (t.end - t.start) / 1000;
+const moving = (tk) => tk.moving || (tk.end - tk.start) / 1000;
 const values = (a) => (a ?? []).filter((x) => x > 0);
 const mean = (a) => { const v = values(a); return v.length ? v.reduce((x, y) => x + y, 0) / v.length : null; };
 const most = (a) => { const v = values(a); return v.length ? Math.max(...v) : null; };
-const num = (v, d = 0) => v.toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
+const num = (v, d = 0) => v.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d });
 const clock = (sec) => {
   const s = Math.round(Math.abs(sec)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
   return h ? `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}` : `${m}:${String(r).padStart(2, '0')}`;
 };
 
 /** Eintrag einer Auswahl: „18.10.2026 · Morgenrunde · 5,2 km“, gesucht auch über Tags und Art */
-const option = (t, on) => `<option value="${esc(t.id)}" ${on ? 'selected' : ''} data-search="${esc([...(t.tags ?? []), sportName(sportOf(t))].join(' '))}"
-  >${esc(`${FULL.format(t.start)} · ${t.name || 'Weg'} · ${fmtDistance(t.length)}`)}</option>`;
+const option = (tk, on) => `<option value="${esc(tk.id)}" ${on ? 'selected' : ''} data-search="${esc([...(tk.tags ?? []), sportName(sportOf(tk))].join(' '))}"
+  >${esc(t('wege.compare.option', { date: FULL.format(tk.start), name: tk.name || t('wege.compare.default_name'), length: fmtDistance(tk.length) }))}</option>`;
 
 /** Kennzahlen eines Trainings – null, wo es nichts gibt */
-function figures(t) {
-  const mv = moving(t), hr = mean(t.hr);
+function figures(tk) {
+  const mv = moving(tk), hr = mean(tk.hr);
   return {
-    time: mv, dist: t.length, speed: mv ? t.length / mv : null, top: t.top > 0 ? t.top : null,
-    hr, hrMax: most(t.hr), cad: mean(t.cad), pow: mean(t.pow),
+    time: mv, dist: tk.length, speed: mv ? tk.length / mv : null, top: tk.top > 0 ? tk.top : null,
+    hr, hrMax: most(tk.hr), cad: mean(tk.cad), pow: mean(tk.pow),
     // Herzschläge je Kilometer: gleich schnell mit weniger Schlägen – das Herz arbeitet leichter
-    beats: hr && t.length > 100 ? (hr * mv) / 60 / (t.length / 1000) : null,
+    beats: hr && tk.length > 100 ? (hr * mv) / 60 / (tk.length / 1000) : null,
   };
 }
 
@@ -65,21 +66,21 @@ function figures(t) {
  */
 function rows(ref) {
   const pace = paceOf(ref);
-  const speed = (v) => (pace ? `${clock(pace.per / v)} ${pace.unit}` : `${num(v * 3.6, 1)} km/h`);
+  const speed = (v) => (pace ? `${clock(pace.per / v)} ${pace.unit}` : t('wege.compare.unit.kmh', { v: num(v * 3.6, 1) }));
   const sign = (v) => (v > 0 ? '+' : v < 0 ? '−' : '±');
   return [
-    ['time', 'Zeit in Bewegung', fmtTime, (a, b) => `${sign(b - a)}${clock(b - a)}`, -1],
-    ['dist', 'Strecke', fmtDistance, (a, b) => (Math.abs(b - a) < 5 ? '±0 m' : `${sign(b - a)}${fmtDistance(Math.abs(b - a))}`), 1],
-    ['speed', pace ? `Ø Tempo` : 'Ø Geschwindigkeit', speed,
-      (a, b) => (pace ? `${sign(pace.per / b - pace.per / a)}${clock(pace.per / b - pace.per / a)} ${pace.unit}` : `${sign(b - a)}${num(Math.abs(b - a) * 3.6, 1)} km/h`), 1,
+    ['time', t('wege.compare.rows.time'), fmtTime, (a, b) => `${sign(b - a)}${clock(b - a)}`, -1],
+    ['dist', t('wege.compare.rows.dist'), fmtDistance, (a, b) => (Math.abs(b - a) < 5 ? t('wege.compare.unit.zero_m') : `${sign(b - a)}${fmtDistance(Math.abs(b - a))}`), 1],
+    ['speed', pace ? t('wege.compare.rows.pace') : t('wege.compare.rows.speed'), speed,
+      (a, b) => (pace ? `${sign(pace.per / b - pace.per / a)}${clock(pace.per / b - pace.per / a)} ${pace.unit}` : `${sign(b - a)}${t('wege.compare.unit.kmh', { v: num(Math.abs(b - a) * 3.6, 1) })}`), 1,
       // Zeit je km: die Prozente auf die Zeit, nicht auf die Geschwindigkeit (schneller = weniger Minuten)
       pace ? (a, b) => a / b - 1 : null],
-    ['top', 'max. Geschwindigkeit', (v) => `${num(v * 3.6, 1)} km/h`, (a, b) => `${sign(b - a)}${num(Math.abs(b - a) * 3.6, 1)} km/h`, 1],
-    ['hr', 'Ø Puls', (v) => `${Math.round(v)}`, (a, b) => `${sign(Math.round(b) - Math.round(a))}${Math.abs(Math.round(b) - Math.round(a))}`, -1],
-    ['hrMax', 'max. Puls', (v) => `${Math.round(v)}`, (a, b) => `${sign(b - a)}${Math.abs(Math.round(b - a))}`, -1],
-    ['beats', 'Herzschläge je km', (v) => num(Math.round(v)), (a, b) => `${sign(Math.round(b - a))}${num(Math.abs(Math.round(b - a)))}`, -1],
-    ['cad', `Ø ${cadName(ref)}`, (v) => `${Math.round(v)}`, (a, b) => `${sign(Math.round(b - a))}${Math.abs(Math.round(b - a))}`, 1],
-    ['pow', 'Ø Leistung', (v) => `${Math.round(v)} W`, (a, b) => `${sign(Math.round(b - a))}${Math.abs(Math.round(b - a))} W`, 1],
+    ['top', t('wege.compare.rows.top'), (v) => t('wege.compare.unit.kmh', { v: num(v * 3.6, 1) }), (a, b) => `${sign(b - a)}${t('wege.compare.unit.kmh', { v: num(Math.abs(b - a) * 3.6, 1) })}`, 1],
+    ['hr', t('wege.compare.rows.hr'), (v) => `${Math.round(v)}`, (a, b) => `${sign(Math.round(b) - Math.round(a))}${Math.abs(Math.round(b) - Math.round(a))}`, -1],
+    ['hrMax', t('wege.compare.rows.hr_max'), (v) => `${Math.round(v)}`, (a, b) => `${sign(b - a)}${Math.abs(Math.round(b - a))}`, -1],
+    ['beats', t('wege.compare.rows.beats'), (v) => num(Math.round(v)), (a, b) => `${sign(Math.round(b - a))}${num(Math.abs(Math.round(b - a)))}`, -1],
+    ['cad', t('wege.compare.rows.cad', { name: cadName(ref) }), (v) => `${Math.round(v)}`, (a, b) => `${sign(Math.round(b - a))}${Math.abs(Math.round(b - a))}`, 1],
+    ['pow', t('wege.compare.rows.pow'), (v) => t('wege.compare.unit.watt', { v: Math.round(v) }), (a, b) => `${sign(Math.round(b - a))}${t('wege.compare.unit.watt', { v: Math.abs(Math.round(b - a)) })}`, 1],
   ];
 }
 
@@ -88,7 +89,7 @@ function change([, , , diff, better, share], a, b) {
   const pct = a ? Math.round((share ? share(a, b) : (b - a) / a) * 100) : 0;
   // Unter einem halben Prozent zählt nicht (dieselbe Strecke misst nie ganz gleich)
   const moved = Math.abs(b - a) > Math.abs(a) * 0.005;
-  return { text: diff(a, b), pct: `${pct > 0 ? '+' : pct < 0 ? '−' : '±'}${Math.abs(pct)} %`, mood: better && moved ? (Math.sign(b - a) === better ? 'good' : 'bad') : '' };
+  return { text: diff(a, b), pct: `${pct > 0 ? '+' : pct < 0 ? '−' : '±'}${t('wege.compare.unit.pct', { v: Math.abs(pct) })}`, mood: better && moved ? (Math.sign(b - a) === better ? 'good' : 'bad') : '' };
 }
 
 /** Mittel der Kennzahlen mehrerer Trainings (je Kennzahl über die, die sie haben) */
@@ -103,20 +104,20 @@ function average(figs) {
 
 /** Womit der aktuelle Lauf verglichen wird – Name, Kennzahlen der Vergleichsgröße oder null */
 const REFS = {
-  prev: ['Vorheriges Mal', (cur, others) => { const o = others.filter((x) => x.t.start < cur.t.start).at(-1); return o && { f: o.f, note: SHORT.format(o.t.start) }; }],
-  last5: ['Letzte 5', (cur, others) => { const o = others.filter((x) => x.t.start < cur.t.start).slice(-5); return o.length ? { f: average(o.map((x) => x.f)), note: `Ø aus ${o.length}` } : null; }],
-  avg: ['Durchschnitt', (cur, others) => (others.length ? { f: average(others.map((x) => x.f)), note: `Ø aus ${others.length}` } : null)],
-  best: ['Bestes', (cur, others) => { const o = [...others].filter((x) => x.f.speed).sort((a, b) => b.f.speed - a.f.speed)[0]; return o && { f: o.f, note: SHORT.format(o.t.start) }; }],
-  worst: ['Schlechtestes', (cur, others) => { const o = [...others].filter((x) => x.f.speed).sort((a, b) => a.f.speed - b.f.speed)[0]; return o && { f: o.f, note: SHORT.format(o.t.start) }; }],
+  prev: [t('wege.compare.refs.prev'), (cur, others) => { const o = others.filter((x) => x.tk.start < cur.tk.start).at(-1); return o && { f: o.f, note: SHORT.format(o.tk.start) }; }],
+  last5: [t('wege.compare.refs.last5'), (cur, others) => { const o = others.filter((x) => x.tk.start < cur.tk.start).slice(-5); return o.length ? { f: average(o.map((x) => x.f)), note: t('wege.compare.refs.avg_of', { n: o.length }) } : null; }],
+  avg: [t('wege.compare.refs.avg'), (cur, others) => (others.length ? { f: average(others.map((x) => x.f)), note: t('wege.compare.refs.avg_of', { n: others.length }) } : null)],
+  best: [t('wege.compare.refs.best'), (cur, others) => { const o = [...others].filter((x) => x.f.speed).sort((a, b) => b.f.speed - a.f.speed)[0]; return o && { f: o.f, note: SHORT.format(o.tk.start) }; }],
+  worst: [t('wege.compare.refs.worst'), (cur, others) => { const o = [...others].filter((x) => x.f.speed).sort((a, b) => a.f.speed - b.f.speed)[0]; return o && { f: o.f, note: SHORT.format(o.tk.start) }; }],
 };
 const REF_KEY = 'wmap.compareRef';
 
 /** Was die Diagramme zeigen können */
 const KINDS = {
-  speed: { name: 'Tempo', unit: 'km/h', icon: 'speed', decimals: 1, color: 'light-dark(#1a73e8, #74a7f5)' },
-  hr: { name: 'Puls', unit: 'bpm', icon: 'favorite', color: 'light-dark(#e03131, #ff8787)' },
-  cad: { name: 'Frequenz', unit: '/min', icon: 'autorenew', color: 'light-dark(#ae3ec9, #e599f7)' },
-  pow: { name: 'Leistung', unit: 'W', icon: 'bolt', color: 'light-dark(#e8590c, #ffa94d)' },
+  speed: { name: t('wege.compare.kinds.speed'), unit: 'km/h', icon: 'speed', decimals: 1, color: 'light-dark(#1a73e8, #74a7f5)' },
+  hr: { name: t('wege.compare.kinds.hr'), unit: 'bpm', icon: 'favorite', color: 'light-dark(#e03131, #ff8787)' },
+  cad: { name: t('wege.compare.kinds.cad'), unit: '/min', icon: 'autorenew', color: 'light-dark(#ae3ec9, #e599f7)' },
+  pow: { name: t('wege.compare.kinds.pow'), unit: 'W', icon: 'bolt', color: 'light-dark(#e8590c, #ffa94d)' },
 };
 const KEY = 'wmap.compareChart';      // Verlauf: Liste der gezeigten Größen
 const TREND_KEY = 'wmap.compareTrend'; // Entwicklung: eine Größe
@@ -133,19 +134,19 @@ const TREND_KEY = 'wmap.compareTrend'; // Entwicklung: eine Größe
  * → { hover(id | null) } – von der Karte aus hervorheben
  */
 export function paintCompare(box, list, { focus = null, same = false, pool = [], onHover = () => {}, onSwitch = () => {}, onSet = () => {} } = {}) {
-  const items = [...list].sort((a, b) => a.start - b.start).map((t) => ({ t }));
-  let fi = items.findIndex(({ t }) => t.id === focus);
+  const items = [...list].sort((a, b) => a.start - b.start).map((tk) => ({ tk }));
+  let fi = items.findIndex(({ tk }) => tk.id === focus);
   if (fi < 0) fi = items.length - 1;
-  focus = items[fi].t.id;
-  const ref = items[fi].t;
-  const figs = items.map(({ t }) => figures(t));
+  focus = items[fi].tk.id;
+  const ref = items[fi].tk;
+  const figs = items.map(({ tk }) => figures(tk));
   const ROWS = rows(ref).filter(([k]) => figs.some((f) => f[k] != null));
   // Von wo nach wo die Veränderung in der Tabelle gilt
-  const [ai, bi, label] = fi > 0 ? [fi - 1, fi, 'zum vorigen Mal'] : [1, 0, 'zum nächsten Mal'];
+  const [ai, bi, label] = fi > 0 ? [fi - 1, fi, t('wege.compare.table.to_prev')] : [1, 0, t('wege.compare.table.to_next')];
   const cls = (i) => (i === fi ? ' class="focus"' : '');
   // Jedes Training heißt nach seinem Tag („29.9.“), am selben Tag mit Uhrzeit – statt einer Nummer
-  const tags = items.map(({ t }) => DM.format(t.start));
-  const dayOf = items.map(({ t }, i) => (tags.filter((x) => x === tags[i]).length > 1 ? `${tags[i]} ${HM.format(t.start)}` : tags[i]));
+  const tags = items.map(({ tk }) => DM.format(tk.start));
+  const dayOf = items.map(({ tk }, i) => (tags.filter((x) => x === tags[i]).length > 1 ? `${tags[i]} ${HM.format(tk.start)}` : tags[i]));
   const head = items.map((x, i) => `<th scope="col"${cls(i)}>${esc(dayOf[i])}</th>`).join('');
   const table = ROWS.map((row) => {
     const [k, name, show] = row;
@@ -160,10 +161,10 @@ export function paintCompare(box, list, { focus = null, same = false, pool = [],
 
   // Kacheln: der aktuelle – womit er verglichen werden kann
   const ci = fi;
-  const cur = items.length > 1 ? { t: items[ci].t, f: figs[ci] } : null;
-  const others = items.map(({ t }, i) => ({ t, f: figs[i] })).filter((x, i) => i !== ci);
+  const cur = items.length > 1 ? { tk: items[ci].tk, f: figs[ci] } : null;
+  const others = items.map(({ tk }, i) => ({ tk, f: figs[i] })).filter((x, i) => i !== ci);
   const refs = cur ? Object.entries(REFS).map(([k, [name, pick]]) => [k, name, pick(cur, others)]).filter(([, , r]) => r) : [];
-  const m = items.map(({ t }) => metrics(t));
+  const m = items.map(({ tk }) => metrics(tk));
   const kinds = Object.keys(KINDS).filter((k) => m.some((x) => x[k]?.length));
   const wanted = local.get(KEY);
   let shown = (Array.isArray(wanted) ? wanted : [wanted]).filter((k) => kinds.includes(k));
@@ -174,35 +175,34 @@ export function paintCompare(box, list, { focus = null, same = false, pool = [],
   const withTrend = items.length > 2 || (same && items.length > 1);
 
   // Welche im Vergleich sind (die gewählten zuerst, dann die neuesten) und welche davon die aktuelle ist
-  const inSet = new Set(items.map(({ t }) => t.id));
-  const choices = [...items.map(({ t }) => t).reverse(), ...[...pool].filter((t) => !inSet.has(t.id)).sort((a, b) => b.start - a.start)];
+  const inSet = new Set(items.map(({ tk }) => tk.id));
+  const choices = [...items.map(({ tk }) => tk).reverse(), ...[...pool].filter((tk) => !inSet.has(tk.id)).sort((a, b) => b.start - a.start)];
   box.innerHTML = `
     <div class="cmp-pick">
-      <label class="cmp-field"><span><span class="msr">checklist</span> Im Vergleich</span>
-        <select class="cmp-set" multiple data-sp-picker="Touren im Vergleich" data-sp-save data-sp-summary="{n} Touren">${choices.map((t) => option(t, inSet.has(t.id))).join('')}</select></label>
-      <label class="cmp-field"><span><span class="msr">leaderboard</span> Aktuell</span>
-        <select class="cmp-focus" data-sp-picker="Welche ist die aktuelle?">${items.map(({ t }) => t).reverse().map((t) => option(t, t.id === focus)).join('')}</select></label>
+      <label class="cmp-field"><span><span class="msr">checklist</span> ${t('wege.compare.pick.set')}</span>
+        <select class="cmp-set" multiple data-sp-picker="${t('wege.compare.pick.set_title')}" data-sp-save data-sp-summary="${t('wege.compare.pick.set_summary')}">${choices.map((tk) => option(tk, inSet.has(tk.id))).join('')}</select></label>
+      <label class="cmp-field"><span><span class="msr">leaderboard</span> ${t('wege.compare.pick.focus')}</span>
+        <select class="cmp-focus" data-sp-picker="${t('wege.compare.pick.focus_title')}">${items.map(({ tk }) => tk).reverse().map((tk) => option(tk, tk.id === focus)).join('')}</select></label>
     </div>
-    <p class="muted">${same ? `Dieselbe Strecke, ${items.length}-mal` : `${items.length} Trainings`} – die aktuelle kräftig, mit den anderen verglichen:
-      <span class="cmp-good">grün</span> besser, <span class="cmp-bad">rot</span> schlechter.</p>
+    <p class="muted">${same ? t('wege.compare.intro.same', { n: items.length }) : t('wege.compare.intro.count', { n: items.length })} ${t('wege.compare.intro.legend')}</p>
     ${refs.length ? `
-      <div class="chip-row cmp-refs" role="group" aria-label="Vergleichen mit">${refs.map(([k, name]) => `
+      <div class="chip-row cmp-refs" role="group" aria-label="${t('wege.compare.refs.label')}">${refs.map(([k, name]) => `
         <button type="button" class="chip" data-ref="${k}">${esc(name)}</button>`).join('')}</div>
       <div class="cmp-tiles"></div>` : ''}
-    <details class="cmp-all" ${items.length < 2 ? 'open' : ''}><summary><span class="msr">table</span> Alle als Tabelle</summary>
+    <details class="cmp-all" ${items.length < 2 ? 'open' : ''}><summary><span class="msr">table</span> ${t('wege.compare.table.title')}</summary>
     <div class="cmp-scroll"><table class="cmp-table">
       <thead><tr><th></th>${head}<th scope="col">${label}</th></tr></thead>
       <tbody>${table}</tbody>
     </table></div></details>
     ${kinds.length ? `
-      <h3 class="cmp-h"><span class="msr">stacked_line_chart</span> Verlauf über die Strecke</h3>
-      <div class="chip-row cmp-kinds" role="group" aria-label="Größen im Diagramm">${kinds.map((k) => `
+      <h3 class="cmp-h"><span class="msr">stacked_line_chart</span> ${t('wege.compare.along.title')}</h3>
+      <div class="chip-row cmp-kinds" role="group" aria-label="${t('wege.compare.along.label')}">${kinds.map((k) => `
         <button type="button" class="chip" data-cmp="${k}" aria-pressed="${shown.includes(k)}"><span class="msr">${KINDS[k].icon}</span> ${esc(k === 'cad' ? cadName(ref) : KINDS[k].name)}</button>`).join('')}</div>
-      <div class="cmp-charts"></div>` : '<p class="muted">Ohne Zeiten gibt es keine Verläufe zu vergleichen.</p>'}
-    ${withTrend ? `<h3 class="cmp-h"><span class="msr">trending_up</span> Entwicklung</h3>
-      <div class="chip-row cmp-trends" role="group" aria-label="Größe der Entwicklung">${trends.map((k) => `
+      <div class="cmp-charts"></div>` : `<p class="muted">${t('wege.compare.along.none')}</p>`}
+    ${withTrend ? `<h3 class="cmp-h"><span class="msr">trending_up</span> ${t('wege.compare.trend.title')}</h3>
+      <div class="chip-row cmp-trends" role="group" aria-label="${t('wege.compare.trend.label')}">${trends.map((k) => `
         <button type="button" class="chip" data-trend="${k}" aria-pressed="${k === trendKind}">${esc(TREND[k](ref).name)}</button>`).join('')}</div>
-      <p class="muted">Je Training, das älteste links – der große Punkt ist das aktuelle.</p>
+      <p class="muted">${t('wege.compare.trend.hint')}</p>
       <div class="elevation cmp-trend"></div>` : ''}`;
 
   // Kacheln
@@ -216,7 +216,7 @@ export function paintCompare(box, list, { focus = null, same = false, pool = [],
       const a = r.f[key], b = cur.f[key];
       const c = a != null ? change(row, a, b) : null;
       // Groß der Wert, darunter in einer Zeile ± absolut und in Prozent (grün besser, rot schlechter)
-      return `<div class="cmp-tile ${c?.mood ?? ''}" title="${a != null ? esc(`${show(a)} · ${r.note}`) : 'keine Angabe'}"><small>${esc(name)}</small><strong>${esc(show(b))}</strong>
+      return `<div class="cmp-tile ${c?.mood ?? ''}" title="${a != null ? esc(`${show(a)} · ${r.note}`) : t('wege.compare.tile.none')}"><small>${esc(name)}</small><strong>${esc(show(b))}</strong>
         <span>${c ? `${esc(c.text)} <span class="cmp-pct">${c.pct}</span>` : '–'}</span></div>`;
     }).join('');
   };
@@ -232,7 +232,7 @@ export function paintCompare(box, list, { focus = null, same = false, pool = [],
   }
 
   let hovered = null;
-  const index = (id) => items.findIndex(({ t }) => t.id === id);
+  const index = (id) => items.findIndex(({ tk }) => tk.id === id);
   let charts = [];
   const hover = (id) => {
     if (id === focus) id = null;
@@ -259,9 +259,9 @@ export function paintCompare(box, list, { focus = null, same = false, pool = [],
     const chart = new ElevationProfile(el);
     const kindList = shown.map((k) => ({ ...KINDS[k], name: k === 'cad' ? cadName(ref) : KINDS[k].name }));
     chart.showCompare({
-      kinds: kindList, length: Math.max(...items.map(({ t }) => t.length)), icon: 'stacked_line_chart', tip,
+      kinds: kindList, length: Math.max(...items.map(({ tk }) => tk.length)), icon: 'stacked_line_chart', tip,
       title: kindList.map((k) => k.name).join(' + '),
-      series: shown.flatMap((k, ki) => items.map(({ t }, i) => ({ name: `${kindList[ki].name} · ${dayOf[i]} · ${DAY.format(t.start)}`, kind: ki, group: i, points: m[i][k] ?? [] }))),
+      series: shown.flatMap((k, ki) => items.map(({ tk }, i) => ({ name: `${kindList[ki].name} · ${dayOf[i]} · ${DAY.format(tk.start)}`, kind: ki, group: i, points: m[i][k] ?? [] }))),
     });
     chart.emphasize(ci, hovered ? index(hovered) : null);
     charts = [chart];
@@ -288,7 +288,7 @@ export function paintCompare(box, list, { focus = null, same = false, pool = [],
     box.querySelectorAll('[data-trend]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.trend === k)));
     trend.showSeries({
       unit: d.unit, decimals: d.decimals ?? 0, icon: 'trending_up', title: d.name, smooth: false,
-      x: { unit: '', decimals: 0, labels: items.map(({ t }) => SHORT.format(t.start)), mark: { x: fi + 1, color: '#1a73e8' } },
+      x: { unit: '', decimals: 0, labels: items.map(({ tk }) => SHORT.format(tk.start)), mark: { x: fi + 1, color: '#1a73e8' } },
       series: [{ name: d.name, color: 'light-dark(#1a73e8, #74a7f5)',
         points: figs.map((f, i) => [i + 1, d.value(f)]).filter(([, v]) => v != null) }],
     });
@@ -313,11 +313,11 @@ export function paintCompare(box, list, { focus = null, same = false, pool = [],
 
 /** Entwicklung: Größe je Training → { name, unit, decimals, value(figures) } */
 const TREND = {
-  time: () => ({ name: 'Gesamtzeit', unit: 'min', decimals: 1, value: (f) => (f.time ? Math.round(f.time / 6) / 10 : null) }),
-  speed: (t) => (paceOf(t)
-    ? { name: 'Ø Tempo', unit: `min ${paceOf(t).unit}`, decimals: 2, value: (f) => (f.speed ? Math.round(paceOf(t).per / f.speed / 60 * 100) / 100 : null) }
-    : { name: 'Ø Geschwindigkeit', unit: 'km/h', decimals: 1, value: (f) => (f.speed ? Math.round(f.speed * 36) / 10 : null) }),
-  hr: () => ({ name: 'Ø Puls', unit: 'bpm', value: (f) => (f.hr ? Math.round(f.hr) : null) }),
-  cad: (t) => ({ name: `Ø ${cadName(t)}`, unit: '/min', value: (f) => (f.cad ? Math.round(f.cad) : null) }),
-  pow: () => ({ name: 'Ø Leistung', unit: 'W', value: (f) => (f.pow ? Math.round(f.pow) : null) }),
+  time: () => ({ name: t('wege.compare.trend.time'), unit: 'min', decimals: 1, value: (f) => (f.time ? Math.round(f.time / 6) / 10 : null) }),
+  speed: (tk) => (paceOf(tk)
+    ? { name: t('wege.compare.rows.pace'), unit: `min ${paceOf(tk).unit}`, decimals: 2, value: (f) => (f.speed ? Math.round(paceOf(tk).per / f.speed / 60 * 100) / 100 : null) }
+    : { name: t('wege.compare.rows.speed'), unit: 'km/h', decimals: 1, value: (f) => (f.speed ? Math.round(f.speed * 36) / 10 : null) }),
+  hr: () => ({ name: t('wege.compare.rows.hr'), unit: 'bpm', value: (f) => (f.hr ? Math.round(f.hr) : null) }),
+  cad: (tk) => ({ name: t('wege.compare.rows.cad', { name: cadName(tk) }), unit: '/min', value: (f) => (f.cad ? Math.round(f.cad) : null) }),
+  pow: () => ({ name: t('wege.compare.rows.pow'), unit: 'W', value: (f) => (f.pow ? Math.round(f.pow) : null) }),
 };

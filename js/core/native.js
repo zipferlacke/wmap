@@ -15,6 +15,7 @@
  * geht es über den Standort des WebViews weiter.
  */
 import { trustedSpeed } from './smooth.js';
+import { t } from './i18n-text.js';
 
 // (Auch im Service Worker geladen – über data/tracks.js; dort ohne Fenster)
 const core = globalThis.window?.__TAURI__?.core;
@@ -25,7 +26,7 @@ const notAllowed = (err) => /not allowed/i.test(String(err));
 const realGeo = navigator.geolocation;
 const webGeo = () => (navigator.geolocation?.wmapShim ? realGeo : navigator.geolocation);
 
-const DENIED = { code: 1, message: 'Standortfreigabe verweigert' };
+const DENIED = { code: 1, get message() { return t('permissions.location.denied'); } };
 /** Freigabe da? Sonst erst der Dialog (nicht beim still gemeinten Abfragen) */
 const allowed = async (options) => {
   const { locationAccess } = await import('../ui/permissions.js');

@@ -37,6 +37,7 @@ import { local, tours, changed } from './store.js';
 import { store } from './db.js';
 import { geo } from '../core/native.js';
 import { encodePolyline, decodePolyline, simplify, simplifyTo, distance, bbox } from '../core/geo.js';
+import { locale, t } from '../core/i18n-text.js';
 
 const SETTING = 'wmap.history';
 
@@ -85,14 +86,14 @@ async function makeRoom(exceptId) {
     const removed = [];
     if (shelved === null) {
       const old = (await db.all()).filter((t) => !t.pin && t.id !== exceptId).sort((a, b) => a.start - b.start).slice(0, 5);
-      for (const t of old) { healthGone.add(t.source?.health); await db.remove(t.id); removed.push(t.name || 'Tour'); }
+      for (const x of old) { healthGone.add(x.source?.health); await db.remove(x.id); removed.push(x.name || t('tracks.names.tour')); }
     }
     const n = shelved || removed.length;
     if (n) {
       dispatchEvent(new CustomEvent('wmap:storage-full', { detail: { shelved: shelved ?? 0, removed } }));
       import('../ui/dialogs.js').then(({ toast }) => toast(removed.length
-        ? `Speicher voll – die ${removed.length === 1 ? 'älteste Tour' : `${removed.length} ältesten Touren`} wurden gelöscht`
-        : `Speicher voll – ${shelved} ältere Touren liegen jetzt nur noch im Ordner`)).catch(() => {});
+        ? t('tracks.toast.oldest_removed', { n: removed.length })
+        : t('tracks.toast.shelved', { n: shelved }))).catch(() => {});
     }
     return n;
   } finally { makingRoom = false; }
@@ -116,12 +117,12 @@ export const tracks = {
   /**
    * Der ganze Weg mit allen Punkten und Messwerten – eine Karteikarte (stub)
    * wird aus dem verbundenen Ordner gelesen. Wirft, wenn der Ordner gerade
-   * nicht erreichbar ist. `t`: Weg oder ID, `onStep`: siehe readTrack
+   * nicht erreichbar ist. `which`: Weg oder ID, `onStep`: siehe readTrack
    */
-  async full(t, onStep) {
-    const item = typeof t === 'string' ? await db.get(t) : t;
+  async full(which, onStep) {
+    const item = typeof which === 'string' ? await db.get(which) : which;
     if (!item?.stub) return item ?? null;
-    onStep?.('Ordner-Teil laden');
+    onStep?.(t('tracks.step.load_part'));
     const { readTrack } = await import('./folder.js');
     return readTrack(item, onStep);
   },
@@ -489,15 +490,17 @@ export const recorder = new Recorder();
 
 /* ── Namen ────────────────────────────────────────────────────────────────── */
 
-const PROFILE_WORD = { car: 'Autofahrt', drive: 'Ausfahrt', bike: 'Radtour', road: 'Radtour', tour: 'Radtour', gravel: 'Radtour', mtb: 'Radtour', foot: 'Spaziergang', walk: 'Spaziergang', hike: 'Wanderung' };
+const PROFILE_WORD = { car: 'car', drive: 'drive', bike: 'ride', road: 'ride', tour: 'ride', gravel: 'ride', mtb: 'ride', foot: 'walk', walk: 'walk', hike: 'hike' };
 
-/** „Radtour am Samstagnachmittag“ */
-export function defaultName(profile, when = Date.now()) {
+export const profileWord = (profile) => t(`tracks.names.words.${PROFILE_WORD[profile] ?? 'other'}`);
+
+/** „Radtour am Samstagnachmittag“; `word`: anderes erstes Wort */
+export function defaultName(profile, when = Date.now(), word = null) {
   const d = new Date(when);
   const h = d.getHours();
-  const part = h < 5 ? 'Nacht' : h < 11 ? 'morgen' : h < 14 ? 'mittag' : h < 18 ? 'nachmittag' : 'abend';
-  const day = d.toLocaleDateString('de-DE', { weekday: 'long' });
-  return `${PROFILE_WORD[profile] ?? 'Unterwegs'} am ${part === 'Nacht' ? `${day} in der Nacht` : `${day}${part}`}`;
+  const part = h < 5 ? 'night' : h < 11 ? 'morning' : h < 14 ? 'noon' : h < 18 ? 'afternoon' : 'evening';
+  const day = d.toLocaleDateString(locale, { weekday: 'long' });
+  return t(`tracks.names.when.${part}`, { what: word ?? profileWord(profile), day });
 }
 
 /* ── GPX ──────────────────────────────────────────────────────────────────── */
@@ -506,7 +509,7 @@ export function defaultName(profile, when = Date.now()) {
  *  Typ aus der Datei (<type>) – oder er wird am Tempo erkannt. */
 export function parseGpx(text, profile = null) {
   const doc = parseXml(text);
-  if (doc.querySelector('parsererror')) throw new Error('Keine gültige GPX-Datei');
+  if (doc.querySelector('parsererror')) throw new Error(t('import.error.no_gpx'));
   const out = [];
   const fileName = doc.querySelector('metadata > name')?.textContent?.trim();
   // Aus Health Connect (von WMap geschrieben): dasselbe Training erkennen
@@ -520,14 +523,14 @@ export function parseGpx(text, profile = null) {
     if (pts.length < 2) continue;
     let fake = Date.parse(doc.querySelector('metadata > time')?.textContent ?? '') || Date.now();
     const points = pts.map((p) => {
-      const t = Date.parse(p.querySelector('time')?.textContent ?? '');
+      const at = Date.parse(p.querySelector('time')?.textContent ?? '');
       fake += 1000;
       // Puls, Frequenz, Leistung aus Garmin-/Strava-Erweiterungen (gpxtpx:hr, ns3:cad, power …)
       const ext = [...p.getElementsByTagName('*')];
       const val = (name) => Number(ext.find((e) => e.localName === name)?.textContent) || 0;
-      return [+p.getAttribute('lon'), +p.getAttribute('lat'), Number.isFinite(t) ? t : fake, val('hr'), val('cad'), val('power')];
+      return [+p.getAttribute('lon'), +p.getAttribute('lat'), Number.isFinite(at) ? at : fake, val('hr'), val('cad'), val('power')];
     }).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
-    const name = trk.querySelector(':scope > name')?.textContent?.trim() || fileName || 'Importierter Weg';
+    const name = trk.querySelector(':scope > name')?.textContent?.trim() || fileName || t('tracks.names.imported');
     const type = trk.querySelector(':scope > type')?.textContent?.trim();
     // Von WMap geschrieben und noch mit denselben Punkten: so lassen, wie sie sind
     const keepAll = !!own && num('points') === points.length;
@@ -556,35 +559,35 @@ export function parseGpx(text, profile = null) {
   return out;
 }
 
-export function trackGpx(t) {
+export function trackGpx(track) {
   // Eine Karteikarte hat nicht alle Punkte – sie darf nie die Datei ersetzen (data/folder.js liest erst die Datei)
-  if (t.stub) throw new Error('Der Weg liegt nur im Ordner');
-  const coords = trackCoords(t);
+  if (track.stub) throw new Error(t('tracks.error.only_in_folder'));
+  const coords = trackCoords(track);
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   // Puls und Frequenz wie Garmin (TrackPointExtension), Leistung als <power> daneben
   const ext = (i) => {
-    const tpx = `${t.hr?.[i] > 0 ? `<gpxtpx:hr>${t.hr[i]}</gpxtpx:hr>` : ''}${t.cad?.[i] > 0 ? `<gpxtpx:cad>${t.cad[i]}</gpxtpx:cad>` : ''}`;
-    const pw = t.pow?.[i] > 0 ? `<power>${t.pow[i]}</power>` : '';
+    const tpx = `${track.hr?.[i] > 0 ? `<gpxtpx:hr>${track.hr[i]}</gpxtpx:hr>` : ''}${track.cad?.[i] > 0 ? `<gpxtpx:cad>${track.cad[i]}</gpxtpx:cad>` : ''}`;
+    const pw = track.pow?.[i] > 0 ? `<power>${track.pow[i]}</power>` : '';
     return tpx || pw ? `<extensions>${pw}${tpx ? `<gpxtpx:TrackPointExtension>${tpx}</gpxtpx:TrackPointExtension>` : ''}</extensions>` : '';
   };
-  const pts = coords.map(([lon, lat], i) => `      <trkpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}"><time>${new Date(t.start + (t.times?.[i] ?? 0) * 1000).toISOString()}</time>${ext(i)}</trkpt>`).join('\n');
+  const pts = coords.map(([lon, lat], i) => `      <trkpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}"><time>${new Date(track.start + (track.times?.[i] ?? 0) * 1000).toISOString()}</time>${ext(i)}</trkpt>`).join('\n');
   // Die Datei enthält nur die vereinfachten Punkte: was aus allen gemessen
   // wurde (Strecke, Zeit in Bewegung, Spitze) und woher der Weg kommt, steht
   // daneben – sonst wäre er auf dem nächsten Gerät kürzer und nur noch „GPX“
-  const attrs = { points: coords.length, kind: t.kind, length: t.length, moving: t.moving, top: t.top, app: t.source?.app, type: t.source?.type,
+  const attrs = { points: coords.length, kind: track.kind, length: track.length, moving: track.moving, top: track.top, app: track.source?.app, type: track.source?.type,
     // Art, Farbe, aus-/eingeblendet, Start und Ziel – auf allen Geräten gleich
-    sport: t.sport, color: t.color, hidden: t.hidden === true ? 1 : t.hidden === false ? 0 : undefined, from: t.from, to: t.to,
+    sport: track.sport, color: track.color, hidden: track.hidden === true ? 1 : track.hidden === false ? 0 : undefined, from: track.from, to: track.to,
     // Tags („Rennen|Vorbereitung“) und der Name, den WMap vergeben hat (data/auto-name.js)
-    tags: t.tags?.length ? t.tags.join('|') : undefined, nameAuto: typeof t.nameAuto === 'string' ? t.nameAuto : undefined,
+    tags: track.tags?.length ? track.tags.join('|') : undefined, nameAuto: typeof track.nameAuto === 'string' ? track.nameAuto : undefined,
     // Runden der Uhr: Sekunden ab Start, an denen eine Runde endete
-    marks: t.marks?.length ? t.marks.join(',') : undefined };
+    marks: track.marks?.length ? track.marks.join(',') : undefined };
   const own = `<extensions><wmap:track ${Object.entries(attrs).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => `${k}="${esc(v)}"`).join(' ')}/></extensions>`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="WMap" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" xmlns:wmap="https://app.wuefl.de/wmap/gpx">
-  <metadata><name>${esc(t.name)}</name>${t.description ? `<desc>${esc(t.description)}</desc>` : ''}<time>${new Date(t.start).toISOString()}</time><keywords>wmap:${esc(t.id)}${t.source?.health ? ` wmap-hc:${esc(t.source.health)}` : ''}</keywords>${own}</metadata>
+  <metadata><name>${esc(track.name)}</name>${track.description ? `<desc>${esc(track.description)}</desc>` : ''}<time>${new Date(track.start).toISOString()}</time><keywords>wmap:${esc(track.id)}${track.source?.health ? ` wmap-hc:${esc(track.source.health)}` : ''}</keywords>${own}</metadata>
   <trk>
-    <name>${esc(t.name)}</name>
-    <type>${esc(t.profile)}</type>
+    <name>${esc(track.name)}</name>
+    <type>${esc(track.profile)}</type>
     <trkseg>
 ${pts}
     </trkseg>
@@ -604,7 +607,7 @@ export async function backup() {
 /** Sicherung einspielen – vorhandene Einträge bleiben, gleiche IDs werden ersetzt. */
 export async function restore(text) {
   const data = JSON.parse(text);
-  if (data?.app !== 'wmap') throw new Error('Das ist keine WMap-Sicherung');
+  if (data?.app !== 'wmap') throw new Error(t('backup.error.not_backup'));
   let n = 0;
   for (const t of data.tours ?? []) { tours.save(t); n += 1; }
   for (const t of data.tracks ?? []) { if (t?.id && t.shape) { await tracks.put(t); n += 1; } }
@@ -675,16 +678,16 @@ const SPORT_WORDS = {
  * Aus einem Weg eine Tour zum Navigieren oder Speichern: fester Verlauf, ein
  * paar Punkte zum Weiterplanen. `heights`: { ascent, descent } oder null
  */
-export function trackAsTour(t, heights = null, id = null) {
-  const coords = trackCoords(t);
-  const g = PROFILE_GROUP[t.profile] ?? 'foot';
-  const profile = g === 'car' ? 'drive' : g === 'bike' ? (['road', 'gravel', 'mtb', 'tour'].includes(t.profile) ? t.profile : 'tour')
-    : (heights?.ascent ?? 0) > 150 || t.length > 8000 ? 'hike' : 'walk';
+export function trackAsTour(track, heights = null, id = null) {
+  const coords = trackCoords(track);
+  const g = PROFILE_GROUP[track.profile] ?? 'foot';
+  const profile = g === 'car' ? 'drive' : g === 'bike' ? (['road', 'gravel', 'mtb', 'tour'].includes(track.profile) ? track.profile : 'tour')
+    : (heights?.ascent ?? 0) > 150 || track.length > 8000 ? 'hike' : 'walk';
   return {
-    id, name: t.name || 'Tour', description: `Aufgezeichnet am ${new Date(t.start).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`, profile,
-    points: simplifyTo(coords, Math.min(30, Math.max(6, Math.round(t.length / 1000)))),
+    id, name: track.name || t('tracks.names.tour'), description: t('tracks.recorded_on', { date: new Date(track.start).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) }), profile,
+    points: simplifyTo(coords, Math.min(30, Math.max(6, Math.round(track.length / 1000)))),
     shape: encodePolyline(coords, 5), fixed: true,
-    stats: { length: t.length, time: t.moving || (trackEnd(t) - t.start) / 1000, ascent: heights?.ascent ?? 0, descent: heights?.descent ?? 0 },
+    stats: { length: track.length, time: track.moving || (trackEnd(track) - track.start) / 1000, ascent: heights?.ascent ?? 0, descent: heights?.descent ?? 0 },
   };
 }
 

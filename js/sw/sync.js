@@ -15,11 +15,15 @@
  * (wmap:folder …), geht an alle offenen Seiten, ebenso Änderungen an den gemeinsamen Einstellungen (store.js).
  * Ordner und Health Connect der App erreicht er über eine offene Seite als Boten (core/tauri.js); im Browser öffnet
  * er den gewählten Ordner selbst.
+ *
+ * Texte: Die Sprachdatei wird beim Start geladen (Deutsch), die gewählte Sprache steht in jeder Nachricht der Seiten
+ * (`lang`, core/sw-link.js). Eine Aufgabe, die Texte brauchen kann, läuft erst, wenn sie da sind (prepare).
  */
 import { localReady, takeShared, tellPages } from '../data/store.js';
 import { tauri } from '../core/tauri.js';
 import { folder, autoFolderSync, syncSoon, importFiles, importSlot, restoreZip } from '../data/folder.js';
 import { syncHealth, autoHealthSync, healthSyncing } from '../services/health.js';
+import { FALLBACK, setTexts } from '../core/i18n-text.js';
 
 const FORWARD = ['wmap:folder', 'wmap:folder-progress', 'wmap:folder-inbox', 'wmap:folder-others', 'wmap:health',
   'wmap:health-progress', 'wmap:saved', 'wmap:storage-full', 'wmap:data'];
@@ -43,8 +47,34 @@ function track(p) {
 }
 const anyJob = () => Promise.allSettled([...jobs]);
 
-/** Vor jedem Auftrag: Einstellungen und Touren aus der Kopie, nachsehen, ob es die App ist */
-const prepare = () => Promise.all([localReady(), tauri.ready()]);
+/** Sprachdatei: erst aus dem Speicher dieser Fassung, damit es ohne Netz geht (auf localhost wie sw.js erst das Netz) */
+async function readLang(code) {
+  const url = new URL(`../../appdata/lang/${code}.json`, import.meta.url).href;
+  const net = () => fetch(url).then((res) => (res.ok ? res.json() : null)).catch(() => null);
+  const stored = () => caches.match(url).then((res) => res?.json() ?? null).catch(() => null);
+  return self.location.hostname === 'localhost' ? (await net()) ?? stored() : (await stored()) ?? net();
+}
+
+let wantedLang = FALLBACK;
+let textsLoad = null;
+/** Texte der Sprache `code` laden → fertig; geht es schief, versucht es der nächste Aufruf noch einmal */
+function loadTexts(code = wantedLang) {
+  if (code === wantedLang && textsLoad) return textsLoad;
+  wantedLang = code;
+  const load = (async () => {
+    const base = await readLang(FALLBACK);
+    const own = code === FALLBACK ? base : await readLang(code);
+    if (!base && !own) throw new Error(`appdata/lang/${code}.json nicht lesbar`);
+    if (wantedLang === code) setTexts(code, own, base);
+  })();
+  textsLoad = load;
+  load.catch(() => { if (textsLoad === load) textsLoad = null; });
+  return load;
+}
+loadTexts().catch(() => {});
+
+/** Vor jedem Auftrag: Texte, Einstellungen und Touren aus der Kopie, nachsehen, ob es die App ist */
+const prepare = () => Promise.all([loadTexts(), localReady(), tauri.ready()]);
 const healthHere = () => tauri.here && /Android/i.test(navigator.userAgent);
 
 async function auto(periodic) {
@@ -72,6 +102,7 @@ const HANDLERS = {
 
 self.addEventListener('message', (e) => {
   const d = e.data ?? {};
+  if (d.lang) loadTexts(d.lang).catch(() => {});
   if (d.type === 'local') { takeShared(d.row); return; }
   const fn = HANDLERS[d.type];
   if (!fn) return;

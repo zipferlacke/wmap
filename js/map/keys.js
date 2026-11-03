@@ -24,13 +24,14 @@
  * nach 2,5 s).
  */
 import { destination } from '../core/geo.js';
+import { t } from '../core/i18n.js';
 
 const MOVE_KEYS = new Set(['w', 's', 'a', 'd', 'q', 'e', 'r', 'f', ' ', 'shift']);
 
 /** Tippt man gerade irgendwo, gehört die Taste dem Feld. */
 function typing(e) {
-  const t = e.target;
-  return t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+  const el = e.target;
+  return el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
 }
 
 /** Offene Liste, Menü oder Dialog: Esc schließt erst das. */
@@ -57,11 +58,11 @@ export function keyboardControl(map, { onManual, onEscape } = {}) {
   let flying = false;
   let hud = null;
 
-  const frame = (t) => {
+  const frame = (stamp) => {
     if (!down.size || flying) { raf = null; return; }
-    since ||= t;
+    since ||= stamp;
     // Langsam los, dann schneller – sanft ansteigend
-    const k = Math.min(1, (t - since) / RAMP_MS);
+    const k = Math.min(1, (stamp - since) / RAMP_MS);
     const boost = 1 + (MAX_BOOST - 1) * k * k;
     const v = BASE_PX * boost;
     const pitch = map.getPitch() * Math.PI / 180;
@@ -137,11 +138,11 @@ export function keyboardControl(map, { onManual, onEscape } = {}) {
   const steer = (x) => (Math.abs(x) < STEER.dead ? 0 : Math.sign(x) * (Math.abs(x) - STEER.dead) / (1 - STEER.dead));
 
   /** Ein Bild im Flug: Blick (Maus) und Bewegung (Tasten) zusammen, ein einziges jumpTo */
-  const flyFrame = (t) => {
+  const flyFrame = (stamp) => {
     if (!flying) { flyRaf = null; return; }
     flyRaf = requestAnimationFrame(flyFrame);
-    const dt = last ? Math.min(0.1, (t - last) / 1000) : 1 / 60;
-    last = t;
+    const dt = last ? Math.min(0.1, (stamp - last) / 1000) : 1 / 60;
+    last = stamp;
     let bearing = map.getBearing();
     let pitch = map.getPitch();
     // Blick
@@ -162,8 +163,8 @@ export function keyboardControl(map, { onManual, onEscape } = {}) {
     // Bewegung: Tempo in Pixeln je Sekunde, umgerechnet in Meter auf dieser Höhe
     const moving = ['w', 's', 'a', 'd', ' ', 'shift'].some((k) => down.has(k));
     if (!moving) since = 0;
-    since ||= t;
-    const k = Math.min(1, (t - since) / RAMP_MS);
+    since ||= stamp;
+    const k = Math.min(1, (stamp - since) / RAMP_MS);
     const boost = 1 + (MAX_BOOST - 1) * k * k;
     let center = map.getCenter().toArray();
     let zoom = map.getZoom();
@@ -190,8 +191,8 @@ export function keyboardControl(map, { onManual, onEscape } = {}) {
   function paintHud() {
     if (!hud) return;
     hud.innerHTML = locked()
-      ? '<span class="msr">flight</span> <b>Maus</b> umsehen · <b>W/S</b> vor/zurück · <b>A/D</b> seitlich · <b>Leertaste/Shift</b> hoch/runter · <b>Esc</b> beenden'
-      : '<span class="msr">mouse</span> Zeiger zum Rand lenkt den Blick · <b>Klick</b> in die Karte: Maus schaut frei · <b>W/S/A/D</b> fliegen · <b>Esc</b> beenden';
+      ? `<span class="msr">flight</span> ${t('map.fly.locked')}`
+      : `<span class="msr">mouse</span> ${t('map.fly.free')}`;
   }
   document.addEventListener('pointerlockchange', () => {
     // Esc gibt die Maus frei – dann ist das Fliegen zu Ende

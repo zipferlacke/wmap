@@ -13,13 +13,14 @@
  */
 import { trackCoords, PROFILE_GROUP } from './tracks.js';
 import { cumulative, distance, nearestOnLine, pointAt } from '../core/geo.js';
+import { t } from '../core/i18n.js';
 
 const SAMPLES = 40;
 // near: so weit daneben (m) – share: so viel der Stellen; len: Länge anders um höchstens; ends: Start/Ziel (m)
 export const SAME_LEVELS = {
-  exact: { label: 'Genau', near: 60, share: 0.9, len: 0.15, ends: 200 },
-  close: { label: 'Ähnlich', near: 150, share: 0.75, len: 0.3, ends: 500 },
-  rough: { label: 'Grob', near: 400, share: 0.6, len: 0.5, ends: 1500 },
+  exact: { label: t('tracks.same_route.exact'), near: 60, share: 0.9, len: 0.15, ends: 200 },
+  close: { label: t('tracks.same_route.close'), near: 150, share: 0.75, len: 0.3, ends: 500 },
+  rough: { label: t('tracks.same_route.rough'), near: 400, share: 0.6, len: 0.5, ends: 1500 },
 };
 
 const group = (t) => PROFILE_GROUP[t.profile] ?? 'foot';

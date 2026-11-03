@@ -9,6 +9,15 @@
     "messages": [],
     "changelog": [
         {
+            "version": "3.1.0",
+            "date": "2026-11-02",
+            "appVersion": "2.3.1",
+            "changes": [
+                "WMap ist für weitere Sprachen vorbereitet: Die Texte liegen jetzt in einer eigenen Sprachdatei, weitere Sprachen folgen",
+                "Suche, Routen und Fahrplan können künftig selbst zwischen mehreren Servern wechseln, wenn einer ausfällt"
+            ]
+        },
+        {
             "version": "3.0.1",
             "date": "2026-11-02",
             "appVersion": "2.3.1",

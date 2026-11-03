@@ -9,6 +9,7 @@
  *   sendToCar(payload, toast)  { type: 'place', point, label, poi } | { type: 'route', profile, waypoints, length, time }
  *                              | { type: 'tour', id }
  */
+import { t } from '../core/i18n.js';
 const android = () => window.WMapAndroid;
 
 export const carLink = {
@@ -19,6 +20,6 @@ export const carLink = {
 export function sendToCar(payload, toast) {
   let r = '';
   try { r = android()?.carSend?.(JSON.stringify(payload)) ?? ''; } catch { /* alte App */ }
-  toast?.(r === 'sent' ? 'Ans Auto gesendet' : r === 'waiting' ? 'Gesendet – im Auto WMap öffnen' : 'Kein Auto verbunden');
+  toast?.(r === 'sent' ? t('services.car.sent') : r === 'waiting' ? t('services.car.waiting') : t('services.car.none'));
   return !!r;
 }

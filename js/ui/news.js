@@ -37,6 +37,9 @@
  * alles und meldet den Fortschritt (sw.js „update-progress“) – läuft das schon im Hintergrund, steht der Balken gleich
  * dort –, dann wird er aktiv, die Seite lädt neu. Scheitert das Laden, bleibt alles, wie es ist, und die Knöpfe kommen wieder.
  *
+ * In anderen Sprachen stehen die Texte unter „news“ in der Sprachdatei: `welcome`, `changes` { Version: [Punkte] },
+ * `messages` { id: { title, text } }. Was dort fehlt, bleibt so, wie es in messages.json steht.
+ *
  * In der Android-App folgt auf das Willkommen der Dialog zu den
  * Berechtigungen (ui/permissions.js).
  *
@@ -52,9 +55,10 @@ import { appVersion } from '../core/native.js';
 import { local } from '../data/store.js';
 import { ask, whenFree } from './dialogs.js';
 import { esc } from '../core/geo.js';
+import { languageAsked, languageOffer, locale, setLanguage, t, textOf, ownValue } from '../core/i18n.js';
 
 const SEEN = 'wmap.seen';
-const DATE = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
+const DATE = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' });
 
 /** „1.2.10“ mit „1.10.0“ vergleichen → -1, 0, 1 */
 export function compareVersions(a, b) {
@@ -108,15 +112,17 @@ export async function appNews({ dialogs = false } = {}) {
     await showChangelog(m, { since: seen.version });
   }
 
+  await offerLanguage();
+
   const today = new Date().toISOString().slice(0, 10);
   const shown = new Set(local.get(SEEN)?.messages ?? []);
   for (const msg of m.messages ?? []) {
     if (!msg?.id || shown.has(msg.id)) continue;
     if ((msg.from && today < msg.from) || (msg.until && today > msg.until)) continue;
     await ask({
-      auto: true, icon: msg.icon ?? 'campaign', title: msg.title ?? 'Neuigkeit', className: 'news',
-      html: paragraphs(msg.text),
-      buttons: [{ value: 'ok', label: 'OK', primary: true }],
+      auto: true, icon: msg.icon ?? 'campaign', title: msg.title ?? t('news.message_title'), className: 'news',
+      html: paragraphs(ownValue(`news.messages.${msg.id}.text`) ?? msg.text),
+      buttons: [{ value: 'ok', label: t('common.ok'), primary: true }],
     });
     shown.add(msg.id);
     // Nur Nachrichten merken, die es noch gibt – die Liste wächst sonst ewig
@@ -125,13 +131,26 @@ export async function appNews({ dialogs = false } = {}) {
   }
 }
 
+/** Gibt es die Sprache des Geräts: einmal anbieten, in dieser Sprache */
+async function offerLanguage() {
+  const offer = await languageOffer();
+  if (!offer) return;
+  const say = (key) => textOf(offer.texts, `common.language.${key}`, { name: offer.name });
+  languageAsked();
+  const pick = await ask({
+    auto: true, icon: 'translate', title: say('offer_title'), className: 'news', text: say('offer_text'),
+    buttons: [{ value: 'stay', label: say('stay') }, { value: 'switch', label: say('switch'), primary: true }],
+  });
+  if (pick === 'switch') { setLanguage(offer.code); location.reload(); }
+}
+
 const paragraphs = (text) => [].concat(text ?? []).map((p) => `<p>${p}</p>`).join('');
 
 function welcome(m) {
   return ask({
-    auto: true, icon: 'waving_hand', title: 'Willkommen bei WMap', className: 'news',
-    html: `${paragraphs(m.welcome)}<p class="news-version">Version ${esc(APP_VERSION)}</p>`,
-    buttons: [{ value: 'ok', label: 'Los geht’s', icon: 'map', primary: true }],
+    auto: true, icon: 'waving_hand', title: t('news.welcome.title'), className: 'news',
+    html: `${paragraphs(ownValue('news.welcome') ?? m.welcome)}<p class="news-version">${t('news.version', { version: esc(APP_VERSION) })}</p>`,
+    buttons: [{ value: 'ok', label: t('news.welcome.go'), icon: 'map', primary: true }],
   });
 }
 
@@ -144,15 +163,15 @@ export async function showChangelog(m = null, { since = null } = {}) {
   const list = (m?.changelog ?? []).filter((v) => compareVersions(v.version, APP_VERSION) <= 0
     && (since === null || compareVersions(v.version, since) > 0));
   if (!list.length) return;
-  const title = since === null ? 'Was es in WMap gibt'
-    : list.length === 1 ? `Neu in WMap ${list[0].version}` : `Neu seit Version ${since}`;
+  const title = since === null ? t('news.changelog.all')
+    : list.length === 1 ? t('news.changelog.one', { version: list[0].version }) : t('news.changelog.since', { version: since });
   await ask({
     auto: since !== null, icon: 'new_releases', title, className: 'news',
     html: list.map((v) => `<section class="news-release">
-        <h3>Version ${esc(v.version)}${v.date ? ` <small>${DATE.format(new Date(v.date))}</small>` : ''}</h3>
-        <ul>${v.changes.map((c) => `<li>${c}</li>`).join('')}</ul>
+        <h3>${t('news.version', { version: esc(v.version) })}${v.date ? ` <small>${DATE.format(new Date(v.date))}</small>` : ''}</h3>
+        <ul>${(ownValue('news.changes')?.[v.version] ?? v.changes).map((c) => `<li>${c}</li>`).join('')}</ul>
       </section>`).join(''),
-    buttons: [{ value: 'ok', label: 'OK', primary: true }],
+    buttons: [{ value: 'ok', label: t('common.ok'), primary: true }],
   });
 }
 
@@ -212,13 +231,13 @@ export async function versionOffered() {
 async function uiUpdate(latest, { forced }) {
   await whenFree();
   if (!forced && await underway()) return null;
-  const buttons = forced ? [{ value: 'update', label: 'Aktualisieren', icon: 'system_update', primary: true }]
-    : [{ value: 'later', label: 'Später' }, { value: 'update', label: 'Aktualisieren', icon: 'system_update', primary: true }];
+  const buttons = forced ? [{ value: 'update', label: t('news.update.button'), icon: 'system_update', primary: true }]
+    : [{ value: 'later', label: t('common.later') }, { value: 'update', label: t('news.update.button'), icon: 'system_update', primary: true }];
   return updateDialog({
     icon: 'system_update',
-    title: forced ? 'Update nötig' : 'Neue Version verfügbar',
-    html: `<p class="update-text">${forced ? `Diese Version von WMap (${esc(APP_VERSION)}) funktioniert so nicht mehr – bitte aktualisieren, das dauert nur einen Moment.`
-      : `WMap ${esc(latest ?? '')} ist da. Jetzt aktualisieren? Danach siehst du, was neu ist.`}</p>
+    title: forced ? t('news.update.forced_title') : t('news.update.title'),
+    html: `<p class="update-text">${forced ? t('news.update.forced_text', { version: esc(APP_VERSION) })
+      : t('news.update.text', { version: esc(latest ?? '') })}</p>
       <div class="update-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><i></i></div>`,
     buttons, closable: false,
     onPick: async (v, dlg) => {
@@ -228,15 +247,15 @@ async function uiUpdate(latest, { forced }) {
       const before = text.textContent;
       const bar = dlg.querySelector('.update-bar');
       actions.style.display = 'none';
-      text.textContent = `WMap ${latest ?? ''} wird geladen. Danach siehst du, was neu ist.`;
+      text.textContent = t('news.update.loading', { version: latest ?? '' });
       bar.hidden = false;
-      status(dlg, 'Einen Moment …');
+      status(dlg, t('news.update.moment'));
       const onProgress = (e) => {
         if (e.data?.type !== 'update-progress' || !e.data.total) return;
         const pct = Math.round((e.data.done / e.data.total) * 100);
         bar.setAttribute('aria-valuenow', pct);
         bar.querySelector('i').style.width = `${pct}%`;
-        status(dlg, `${pct} %`);
+        status(dlg, t('news.update.percent', { pct }));
       };
       navigator.serviceWorker?.addEventListener('message', onProgress);
       if (!await applyUpdate()) {
@@ -244,7 +263,7 @@ async function uiUpdate(latest, { forced }) {
         actions.style.display = '';
         text.textContent = before;
         bar.hidden = true;
-        status(dlg, 'Das Laden hat nicht geklappt. Deine Version bleibt, wie sie ist.');
+        status(dlg, t('news.update.failed'));
       }
       return false;
     },
@@ -282,10 +301,10 @@ export async function applyUpdate() {
 function installed(worker, ms) {
   if (!worker) return Promise.resolve(null);
   return new Promise((resolve) => {
-    const t = setTimeout(() => resolve(null), ms);
+    const timer = setTimeout(() => resolve(null), ms);
     worker.addEventListener('statechange', () => {
-      if (worker.state === 'installed') { clearTimeout(t); resolve(worker); }
-      if (worker.state === 'redundant') { clearTimeout(t); resolve(null); }
+      if (worker.state === 'installed') { clearTimeout(timer); resolve(worker); }
+      if (worker.state === 'redundant') { clearTimeout(timer); resolve(null); }
     });
   });
 }
@@ -308,11 +327,11 @@ function appHint(app, want) {
   const android = /Android/i.test(navigator.userAgent);
   return updateDialog({
     icon: 'system_update',
-    title: 'Neue Version der WMap-App',
-    html: `<p>WMap-App ${esc(want)} ist da – du hast ${esc(app)}. Bitte aktualisiere sie ${android ? 'im Play Store' : 'über wuefl.de'}. Die neue Oberfläche kommt danach von selbst.</p>`,
+    title: t('news.app.title'),
+    html: `<p>${t('news.app.text', { want: esc(want), app: esc(app), where: t(android ? 'news.app.via_store' : 'news.app.via_site') })}</p>`,
     buttons: [
-      { value: 'later', label: 'Später' },
-      { value: 'open', label: android ? 'Zum Play Store' : 'Zur Download-Seite', icon: 'open_in_new', primary: true },
+      { value: 'later', label: t('common.later') },
+      { value: 'open', label: android ? t('news.app.to_store') : t('news.app.to_site'), icon: 'open_in_new', primary: true },
     ],
     closable: true,
     onPick: async (v) => {
@@ -336,24 +355,24 @@ async function appRequired(min) {
   const android = /Android/i.test(navigator.userAgent);
   return updateDialog({
     icon: 'system_update',
-    title: 'WMap-App aktualisieren',
-    html: `<p>Diese Version braucht eine neuere WMap-App (mindestens ${esc(min)}). Sichere vorher deine Daten, dann aktualisiere ${android ? 'im Play Store' : 'über wuefl.de'}.</p>`,
+    title: t('news.app.required_title'),
+    html: `<p>${t('news.app.required_text', { min: esc(min), where: t(android ? 'news.app.via_store' : 'news.app.via_site') })}</p>`,
     buttons: [
-      { value: 'backup', label: inFolder ? `In „${i.name}“ sichern` : 'Als ZIP sichern', icon: 'save' },
-      { value: 'open', label: android ? 'Zum Play Store' : 'Zur Download-Seite', icon: 'open_in_new', primary: true },
+      { value: 'backup', label: inFolder ? t('backup.to_folder', { name: i.name }) : t('backup.to_zip'), icon: 'save' },
+      { value: 'open', label: android ? t('news.app.to_store') : t('news.app.to_site'), icon: 'open_in_new', primary: true },
     ],
     closable: false,
     onPick: async (v, dlg) => {
       if (v === 'backup') {
         busy(dlg, true);
         try {
-          if (inFolder) status(dlg, `Gesichert – ${syncSummary(await folder.sync())}`);
+          if (inFolder) status(dlg, t('backup.done', { summary: syncSummary(await folder.sync()) }));
           else {
-            status(dlg, 'Erstelle die Sicherung …');
+            status(dlg, t('backup.creating'));
             const saved = await download(`wmap-sicherung-${new Date().toISOString().slice(0, 10)}.zip`, await zipBackup(), 'application/zip');
-            status(dlg, saved ? `Gespeichert als „${saved.name ?? 'wmap-sicherung.zip'}“` : null);
+            status(dlg, saved ? t('backup.saved_as', { name: saved.name ?? 'wmap-sicherung.zip' }) : null);
           }
-        } catch (err) { status(dlg, `Sichern ging nicht: ${err.message}`); }
+        } catch (err) { status(dlg, t('backup.failed', { reason: err.message })); }
         busy(dlg, false);
         return false;
       }

@@ -9,6 +9,7 @@
 import { ask, toast } from './dialogs.js';
 import { linkTarget } from '../core/map-links.js';
 import { settled } from '../core/back.js';
+import { t } from '../core/i18n.js';
 
 async function fromClipboard() {
   try {
@@ -20,11 +21,11 @@ async function fromClipboard() {
 export async function askOpenLink() {
   const clip = await fromClipboard();
   const v = await ask({
-    icon: 'link', title: 'Link öffnen',
-    text: 'Einen geteilten WMap-Link hier einfügen – Tour, gemeinsam planen oder Aufzeichnung.',
-    html: `<input type="url" class="open-link-input" placeholder="https://…" value="${clip.replace(/"/g, '&quot;')}" aria-label="Link">`,
+    icon: 'link', title: t('share.open_link.title'),
+    text: t('share.open_link.text'),
+    html: `<input type="url" class="open-link-input" placeholder="https://…" value="${clip.replace(/"/g, '&quot;')}" aria-label="${t('share.open_link.input')}">`,
     read: (dlg) => dlg.querySelector('.open-link-input').value,
-    buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'go', label: 'Öffnen', icon: 'open_in_new', primary: true }],
+    buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'go', label: t('share.open_link.open'), icon: 'open_in_new', primary: true }],
   });
   if (!v || v === 'no') return;
   await openLinkText(v);
@@ -33,7 +34,7 @@ export async function askOpenLink() {
 /** Geteilten WMap-Link öffnen (auch aus der Suche in Meine Touren) – sonst ein Hinweis */
 export async function openLinkText(v) {
   const to = linkTarget(v);
-  if (!to) { toast('Das ist kein geteilter WMap-Link'); return; }
+  if (!to) { toast(t('share.open_link.invalid')); return; }
   // Der Dialog nimmt beim Schließen seinen Eintrag im Verlauf zurück (core/back.js) – erst danach wechseln,
   // sonst bricht dieses Zurück den Wechsel ab (in der App blieb man auf Meine Touren)
   await settled();

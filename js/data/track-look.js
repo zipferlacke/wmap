@@ -21,6 +21,7 @@
 import { local } from './store.js';
 import { PROFILE_GROUP } from './tracks.js';
 import { typeName, typeIcon } from '../services/health.js';
+import { t } from '../core/i18n.js';
 
 /* ── Art ──────────────────────────────────────────────────────────────────── */
 
@@ -33,7 +34,7 @@ export function sportOf(t) {
   return t.profile === 'hike' ? 'hiking' : FROM_GROUP[PROFILE_GROUP[t.profile]] ?? null;
 }
 
-export const sportName = (sport) => (sport === 'driving' ? 'Auto' : sport ? typeName(sport) : 'GPX');
+export const sportName = (sport) => (sport === 'driving' ? t('tracks.sports.driving') : sport ? typeName(sport) : t('tracks.sports.gpx'));
 export const sportIcon = (sport) => (sport === 'driving' ? 'directions_car' : sport ? typeIcon(sport) : 'timeline');
 
 /** Arten zum Auswählen – die häufigen zuerst */
@@ -71,7 +72,7 @@ export function ageOpacity(t, now = Date.now()) {
 
 const SHOW = 'wmap.tracks.show';      // 'all' | 'year' | '30' | '365'
 const YEARS = 'wmap.tracks.years';    // { [Jahr]: true | false } – von Hand ein- bzw. ausgeblendet
-export const SHOW_OPTIONS = [['all', 'Alle'], ['year', 'Dieses Jahr'], ['365', 'Letzte 365 Tage'], ['30', 'Letzte 30 Tage']];
+export const SHOW_OPTIONS = [['all', t('tracks.show.all')], ['year', t('tracks.show.year')], ['365', t('tracks.show.days_365')], ['30', t('tracks.show.days_30')]];
 
 export const trackShow = {
   get: () => { const v = local.get(SHOW, 'all'); return SHOW_OPTIONS.some(([k]) => k === v) ? v : 'all'; },
@@ -117,13 +118,13 @@ export function paceOf(t) {
   return onFoot ? { per: 1000, unit: '/km' } : null;
 }
 
-export function cadName(t) {
-  const s = sportOf(t);
-  if (WATER.has(s)) return 'Schlagfrequenz';
-  if (SWIM.has(s)) return 'Zugfrequenz';
-  if (s === 'biking' || (!s && group(t) === 'bike')) return 'Trittfrequenz';
-  if (['walking', 'hiking', 'running'].includes(s) || (!s && group(t) === 'foot')) return 'Schrittfrequenz';
-  return 'Frequenz';
+export function cadName(track) {
+  const s = sportOf(track);
+  if (WATER.has(s)) return t('tracks.cadence.stroke');
+  if (SWIM.has(s)) return t('tracks.cadence.swim');
+  if (s === 'biking' || (!s && group(track) === 'bike')) return t('tracks.cadence.pedal');
+  if (['walking', 'hiking', 'running'].includes(s) || (!s && group(track) === 'foot')) return t('tracks.cadence.step');
+  return t('tracks.cadence.other');
 }
 
 /** Rundenlängen zur Auswahl: auf dem Wasser auch 500 m; 'watch' = die Runden der Uhr, wenn der Weg welche hat */

@@ -7,6 +7,7 @@ import { geo } from '../core/native.js';
 import { createMap, showHighlight } from '../map/map.js';
 import { local } from '../data/store.js';
 import { bboxAround, esc } from '../core/geo.js';
+import { t } from '../core/i18n.js';
 
 export const $ = (s, root = document) => root.querySelector(s);
 export const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -58,9 +59,9 @@ window.__wmap = { map, state };
 
 /** Erst nach `ms` Ruhe aufrufen; `.cancel()` verwirft einen noch ausstehenden Aufruf */
 export const debounce = (fn, ms) => {
-  let t;
-  const call = (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
-  call.cancel = () => clearTimeout(t);
+  let timer;
+  const call = (...a) => { clearTimeout(timer); timer = setTimeout(() => fn(...a), ms); };
+  call.cancel = () => clearTimeout(timer);
   return call;
 };
 
@@ -104,7 +105,7 @@ export function locateNow() {
   geo.wake();
   let answered = false;
   const say = (text) => import('../ui/dialogs.js').then(({ toast }) => toast(text));
-  const slow = setTimeout(() => { if (!answered) say('Noch kein Standort – WMap sucht weiter (kein GPS-Empfang?)'); }, 12000);
+  const slow = setTimeout(() => { if (!answered) say(t('map.locate.waiting')); }, 12000);
   locating = slow;
   const end = () => { answered = true; clearTimeout(slow); locating = null; };
   geo.once((p) => {
@@ -114,7 +115,7 @@ export function locateNow() {
   }, (err) => {
     end();
     if (err?.code === 1) return;   // nicht erlaubt: das sagt schon der Dialog
-    say(/disabled/i.test(String(err?.message)) ? 'Der Standort ist am Handy ausgeschaltet' : 'Kein Standort gefunden – WMap sucht weiter');
+    say(/disabled/i.test(String(err?.message)) ? t('map.locate.switched_off') : t('map.locate.not_found'));
   }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
 }
 // Nach MapLibres eigenem Klick (Blase): Hat der Tipp den Standort ausgeschaltet, nichts holen
@@ -140,11 +141,11 @@ export function releaseLock() {
 /** `ask: false`: ohne Freigabe nicht nachfragen (Start der Karte) */
 export function myPosition({ ask = true } = {}) {
   return new Promise((resolve, reject) => {
-    if (!geo.available()) { reject(new Error('Standort wird nicht unterstützt')); return; }
+    if (!geo.available()) { reject(new Error(t('map.locate.unsupported'))); return; }
     geo.once(
       (p) => { state.position = [p.coords.longitude, p.coords.latitude]; resolve(state.position); },
       (err) => (state.position ? resolve(state.position)
-        : reject(new Error(err.code === 1 ? 'Standortfreigabe verweigert' : 'Standort nicht verfügbar'))),
+        : reject(new Error(err.code === 1 ? t('map.locate.denied') : t('map.locate.unavailable')))),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000, ask },
     );
   });
@@ -221,12 +222,12 @@ export function fitTo([w, s, e, n], maxZoom = 16, { flat = false } = {}) {
 export const extentToBounds = (ext) => (ext ? [ext[0], ext[3], ext[2], ext[1]] : null);
 
 export function viewBounds() {
-  if (map.getZoom() < 11) return { bounds: bboxAround(map.getCenter().toArray(), 5000), label: 'im Umkreis von 5 km' };
+  if (map.getZoom() < 11) return { bounds: bboxAround(map.getCenter().toArray(), 5000), label: t('map.area.radius') };
   const b = map.getBounds();
-  return { bounds: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], label: 'im Kartenausschnitt' };
+  return { bounds: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], label: t('map.area.view') };
 }
 
-export const parseTags = (t) => (typeof t === 'string' ? JSON.parse(t || '{}') : t ?? {});
+export const parseTags = (tags) => (typeof tags === 'string' ? JSON.parse(tags || '{}') : tags ?? {});
 
 /*
  * Hervorhebung auf der Karte. Die letzte wird gemerkt: Öffnet man aus einer

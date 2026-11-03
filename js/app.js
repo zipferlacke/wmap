@@ -33,6 +33,7 @@ import './app/route-results.js';
 import './app/traffic-along.js';
 import './app/stops.js';
 import './app/report.js';
+import { locale, t } from './core/i18n.js';
 
 /* ══════════════════════════════════════════════════════════════════════════
    Startansicht, Menü oben rechts, Maße
@@ -82,14 +83,14 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) saveV
 
 
 function keysDialog() {
-  const rows = [['W / S', 'vor / zurück'], ['A / D', 'nach links / rechts'], ['Q / E', 'drehen'],
-    ['R / F', 'nach oben / unten schauen'], ['Leertaste', 'höher'], ['Shift', 'tiefer'],
-    ['Esc', 'normale Ansicht – in der Navigation: zum eigenen Standort'],
-    ['Fliegen', 'Menü → Fliegen: die Maus schaut, W fliegt zur Bildmitte, Esc beendet']];
+  const rows = [['W / S', t('map.keys.rows.move')], ['A / D', t('map.keys.rows.side')], ['Q / E', t('map.keys.rows.turn')],
+    ['R / F', t('map.keys.rows.look')], [t('map.keys.rows.space'), t('map.keys.rows.up')], ['Shift', t('map.keys.rows.down')],
+    ['Esc', t('map.keys.rows.esc')],
+    [t('map.keys.rows.fly_key'), t('map.keys.rows.fly')]];
   ask({
-    icon: 'keyboard', title: 'Tastatur',
+    icon: 'keyboard', title: t('map.keys.title'),
     html: `<table class="keys-table">${rows.map(([k, v]) => `<tr><th><kbd>${k}</kbd></th><td>${v}</td></tr>`).join('')}</table>`,
-    buttons: [{ value: 'ok', label: 'Verstanden', primary: true }],
+    buttons: [{ value: 'ok', label: t('map.keys.ok'), primary: true }],
   });
 }
 
@@ -105,21 +106,21 @@ appNav.el.querySelector('a[href*="action=fly"]')?.addEventListener('click', (e) 
 const recording = setupRecording({ map, toast,
   // „Zurück zum Start“ beim Aufzeichnen: Route vom Standort dorthin
   onRouteTo: (point, name) => enterRoute({ to: placeWaypoint({ type: 'Feature', geometry: { type: 'Point', coordinates: point }, properties: { name } }) }) });
-appNav.addItem('radio_button_checked', 'Aufzeichnen', () => recording.choose());
-appNav.addItem('streetview', 'Street View', () => dispatchEvent(new CustomEvent('wmap:street')));
-appNav.addItem('share_location', 'Standort teilen', async () => {
+appNav.addItem('radio_button_checked', t('map.menu.record'), () => recording.choose());
+appNav.addItem('streetview', t('map.menu.street_view'), () => dispatchEvent(new CustomEvent('wmap:street')));
+appNav.addItem('share_location', t('map.menu.share_location'), async () => {
   try {
     const p = await myPosition();
-    share({ title: 'Mein Standort', text: `Hier bin ich gerade (${clock(Date.now())} Uhr):`, url: () => placeUrl(p, 'Mein Standort', { at: Date.now() }), geo: { point: p, name: 'Mein Standort' } }, toast);
+    share({ title: t('map.my_location'), text: t('map.share_location.text', { time: clock(Date.now()) }), url: () => placeUrl(p, t('map.my_location'), { at: Date.now() }), geo: { point: p, name: t('map.my_location') } }, toast);
   } catch (err) { toast(err.message); }
 });
-appNav.addItem('person_pin_circle', 'Standort anfragen', async () => {
+appNav.addItem('person_pin_circle', t('map.menu.request_location'), async () => {
   const name = await myName();
   if (!name) return;
-  share({ title: 'Wo bist du?', text: `${name} möchte wissen, wo du gerade bist. Tippe auf den Link, um deinen Standort zu senden:`, url: () => requestUrl(name) }, toast);
+  share({ title: t('map.request.title'), text: t('map.request.text', { name }), url: () => requestUrl(name) }, toast);
 });
-appNav.addItem('keyboard', 'Tastatur', keysDialog);
-appNav.addItem('settings', 'Einstellungen', () => { location.href = './settings.html'; });
+appNav.addItem('keyboard', t('map.keys.title'), keysDialog);
+appNav.addItem('settings', t('map.menu.settings'), () => { location.href = './settings.html'; });
 /* Suchleiste: Controls rechts oben rücken darunter (mobil) – auch wenn sie
    nur ihre Lage ändert (Ränder der Android-App, core/theme.js) */
 const panelHeight = () => {
@@ -129,7 +130,7 @@ new ResizeObserver(panelHeight).observe($('#search'));
 addEventListener('resize', panelHeight);
 
 /* Kategorien für die Hilfe im Suchfeld */
-q.title = `Auch Kategorien: ${CATEGORIES.slice(0, 12).map((c) => c.one).join(', ')} …`;
+q.title = t('search.input.categories', { list: CATEGORIES.slice(0, 12).map((c) => c.one).join(', ') });
 
 /* ══════════════════════════════════════════════════════════════════════════
    Aufruf per Link
@@ -164,7 +165,7 @@ async function fromUrl() {
     // Auch Koordinaten „lon,lat“ – praktisch für Tests und geteilte Links
     const xy = text.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
     if (xy) {
-      return { type: 'Feature', geometry: { type: 'Point', coordinates: [Number(xy[1]), Number(xy[2])] }, properties: { name: 'Punkt auf der Karte' } };
+      return { type: 'Feature', geometry: { type: 'Point', coordinates: [Number(xy[1]), Number(xy[2])] }, properties: { name: t('map.point_on_map') } };
     }
     return (await geocode.search(text, { center: map.getCenter().toArray(), zoom: map.getZoom(), limit: 1 }))[0];
   };
@@ -181,7 +182,7 @@ async function fromUrl() {
       }
     } else if (p.get('reach')) {
       const [lon, lat] = p.get('reach').split(',').map(Number);
-      openReach({ origin: [lon, lat], label: 'Punkt auf der Karte' });
+      openReach({ origin: [lon, lat], label: t('map.point_on_map') });
     } else if (p.get('q')) {
       q.value = p.get('q');
       const items = await placeSuggestions(q.value, (f) => showPlace(f));
@@ -222,9 +223,9 @@ async function fromUrl() {
  * wird sie immer (app/nav.js) – auch wenn „Fahrten merken“ aus ist.
  */
 async function startTour(id, go) {
-  const t = tours.all().find((x) => x.id === id);
-  if (!t?.points?.length) { toast('Die Tour gibt es auf diesem Gerät nicht'); return; }
-  return navigateTour(t, go);
+  const tour = tours.all().find((x) => x.id === id);
+  if (!tour?.points?.length) { toast(t('map.link.tour_missing')); return; }
+  return navigateTour(tour, go);
 }
 
 /**
@@ -234,42 +235,43 @@ async function startTour(id, go) {
  * nur im verbundenen Ordner, kommt sie von dort.
  */
 async function startTrack(id, go) {
-  let t = null;
-  try { t = await tracks.full(id); } catch (err) { toast(err.message); return; }
-  if (!t?.shape) { toast('Die Tour gibt es auf diesem Gerät nicht'); return; }
-  return navigateTour(trackAsTour(t), go);
+  let tour = null;
+  try { tour = await tracks.full(id); } catch (err) { toast(err.message); return; }
+  if (!tour?.shape) { toast(t('map.link.tour_missing')); return; }
+  return navigateTour(trackAsTour(tour), go);
 }
 
-async function navigateTour(t, go) {
-  const costing = PROFILES[t.profile]?.costing;
+async function navigateTour(tour, go) {
+  const costing = PROFILES[tour.profile]?.costing;
   setProfile(costing === 'bicycle' ? 'bike' : costing === 'auto' ? 'car' : 'foot');
-  const n = t.points.length;
-  navTour.set(t);
-  enterRoute({ waypoints: t.points.map((point, i) => ({ label: i === 0 ? `Start: ${t.name}` : i === n - 1 ? t.name : `${t.name} · ${i}`, point, me: false })) });
+  const n = tour.points.length;
+  navTour.set(tour);
+  enterRoute({ waypoints: tour.points.map((point, i) => ({ label: i === 0 ? t('route.waypoint.tour_start', { name: tour.name }) : i === n - 1 ? tour.name : `${tour.name} · ${i}`, point, me: false })) });
   if (!go) return;
   // Warten, bis die Route berechnet ist – dann los
   for (let i = 0; i < 120 && !state.routes.length; i += 1) await new Promise((r) => setTimeout(r, 250));
   if (state.routes.length) document.querySelector('.start-nav')?.click();
-  else toast('Für die Tour ließ sich keine Route berechnen');
+  else toast(t('map.link.tour_no_route'));
 }
 
 /** Geteilter Ort oder Standort („?ort=lon,lat&name=…&zeit=…“) */
 function openShared(p) {
   const [lon, lat] = p.get('ort').split(',').map(Number);
   if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
-  const name = p.get('name') || 'Geteilter Ort';
+  const name = p.get('name') || t('map.link.shared.place');
   const f = { type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties: { name, _point: true } };
   showPlace(f, { fly: true });
   const mins = Number(p.get('zeit'));
   const sub = $('[data-view="place"] .place-sub');
   if (mins) {
     const ago = Math.round((Date.now() - mins * 60000) / 60000);
-    sub.textContent = `Geteilt ${ago < 1 ? 'gerade eben' : ago < 90 ? `vor ${ago} min` : `am ${new Date(mins * 60000).toLocaleString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}`;
+    sub.textContent = ago < 1 ? t('map.link.shared.now') : ago < 90 ? t('map.link.shared.minutes', { n: ago })
+      : t('map.link.shared.date', { date: new Date(mins * 60000).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) });
   }
   geocode.reverse([lon, lat]).then((r) => {
     if (state.place !== f || !r) return;
     const d = geocode.describe(r);
-    sub.textContent = [sub.textContent, `bei ${[d.title, d.subtitle].filter(Boolean).join(', ')}`].filter(Boolean).join(' · ');
+    sub.textContent = [sub.textContent, t('map.near_place', { place: [d.title, d.subtitle].filter(Boolean).join(', ') })].filter(Boolean).join(' · ');
   }).catch(() => {});
 }
 
@@ -280,18 +282,18 @@ function openShared(p) {
  */
 async function openGeo(link) {
   const g = parseGeoUri(link);
-  if (!g) { toast('Diesen Karten-Link kann WMap nicht lesen'); return; }
+  if (!g) { toast(t('map.link.geo_unreadable')); return; }
   if (g.point) map.jumpTo({ center: g.point, zoom: g.zoom ?? (g.query ? 14 : 16) });
   if (g.query && g.point) {
     // Suche in der Nähe des Punkts – auch Kategorien („Bäckerei“)
     q.value = g.query;
     const items = await placeSuggestions(g.query, (f) => showPlace(f));
-    if (items?.[0]) items[0].run(); else toast(`Nichts gefunden zu „${g.query}“`);
+    if (items?.[0]) items[0].run(); else toast(t('map.link.nothing_found', { query: g.query }));
   } else if (g.query) {
     // Nur eine Adresse: ohne Bezug zum letzten Kartenausschnitt suchen
     q.value = g.query;
     const [f] = await geocode.search(g.query, { limit: 1 });
-    if (f) showPlace(f, { fly: true }); else toast(`Nichts gefunden zu „${g.query}“`);
+    if (f) showPlace(f, { fly: true }); else toast(t('map.link.nothing_found', { query: g.query }));
   } else if (g.label) {
     showPlace({ type: 'Feature', geometry: { type: 'Point', coordinates: g.point }, properties: { name: g.label, _point: true } }, { fly: false });
   } else {
@@ -303,15 +305,16 @@ async function openGeo(link) {
 async function answerRequest(from) {
   const name = from.slice(0, 40);
   const v = await ask({
-    icon: 'person_pin_circle', title: `${name} fragt, wo du bist`,
-    text: 'Dein Standort wird einmalig als Link geteilt – du wählst selbst, an wen. Nichts wird gespeichert.',
-    buttons: [{ value: 'no', label: 'Nicht jetzt' }, { value: 'yes', label: 'Standort senden', icon: 'send', primary: true }],
+    icon: 'person_pin_circle', title: t('map.request.answer.title', { name }),
+    text: t('map.request.answer.text'),
+    buttons: [{ value: 'no', label: t('common.not_now') }, { value: 'yes', label: t('map.request.answer.send'), icon: 'send', primary: true }],
   });
   if (v !== 'yes') return;
   try {
     const p = await myPosition();
     const me = local.get('wmap.myname');
-    share({ title: 'Mein Standort', text: `Hier bin ich gerade (${clock(Date.now())} Uhr):`, url: () => placeUrl(p, me ? `${me}s Standort` : 'Standort', { at: Date.now() }), geo: { point: p, name: me ? `${me}s Standort` : 'Standort' } }, toast);
+    const here = me ? t('map.share_location.of_person', { name: me }) : t('map.share_location.plain');
+    share({ title: t('map.my_location'), text: t('map.share_location.text', { time: clock(Date.now()) }), url: () => placeUrl(p, here, { at: Date.now() }), geo: { point: p, name: here } }, toast);
   } catch (err) { toast(err.message); }
 }
 

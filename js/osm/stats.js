@@ -14,6 +14,7 @@
 import { api } from '../services/api.js';
 import { local } from '../data/store.js';
 import { account } from './api.js';
+import { t } from '../core/i18n.js';
 
 const KEY = 'wmap.osmStats';
 const STAT_KINDS = ['frage', 'bearbeitet', 'neu'];
@@ -44,11 +45,11 @@ export const allOsmStats = () => api(['stats', 'summary']);
 export function statsText(s) {
   const sum = (k) => s[k].karte + s[k].hinweis;
   const parts = [
-    sum('frage') && `${sum('frage')} ${sum('frage') === 1 ? 'Frage' : 'Fragen'} beantwortet`,
-    sum('bearbeitet') && `${sum('bearbeitet')} ${sum('bearbeitet') === 1 ? 'Ort' : 'Orte'} bearbeitet`,
-    sum('neu') && `${sum('neu')} neu eingetragen`,
+    sum('frage') && t('osm.stats.answered', { n: sum('frage') }),
+    sum('bearbeitet') && t('osm.stats.edited', { n: sum('bearbeitet') }),
+    sum('neu') && t('osm.stats.added', { n: sum('neu') }),
   ].filter(Boolean);
   if (!parts.length) return '';
   const notes = STAT_KINDS.reduce((a, k) => a + s[k].hinweis, 0);
-  return parts.join(' · ') + (notes ? ` (davon ${notes} als Hinweis)` : '');
+  return parts.join(' · ') + (notes ? t('osm.stats.notes', { n: notes }) : '');
 }

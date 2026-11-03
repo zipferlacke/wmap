@@ -25,6 +25,7 @@
 import { destination } from '../core/geo.js';
 import { modelLook } from './street-look.js';
 import { streetShops } from './street-shops.js';
+import { t } from '../core/i18n.js';
 
 const EYE = 1.7;                        // Augenhöhe (m)
 const FOV = 60;                         // Blickwinkel senkrecht (Grad)
@@ -128,12 +129,12 @@ export function streetView(map, { base = () => 'map', setBase = () => {}, onShar
     shown = [pos[0], pos[1], bearing, look];
   }
 
-  const frame = (t) => {
+  const frame = (stamp) => {
     if (!on) { raf = null; return; }
     raf = requestAnimationFrame(frame);
     // Langsame Bilder (schwaches Handy): die Zeit trotzdem ganz nehmen, nur nach langer Pause nicht springen
-    const dt = last ? Math.min(0.25, (t - last) / 1000) : 1 / 60;
-    last = t;
+    const dt = last ? Math.min(0.25, (stamp - last) / 1000) : 1 / 60;
+    last = stamp;
     const speed = down.has('shift') ? RUN : WALK;
     const fwd = (down.has('w') || down.has('arrowup') ? 1 : 0) - (down.has('s') || down.has('arrowdown') ? 1 : 0);
     const side = (down.has('d') ? 1 : 0) - (down.has('a') ? 1 : 0);
@@ -158,15 +159,15 @@ export function streetView(map, { base = () => 'map', setBase = () => {}, onShar
     const moved = shown[0] !== pos[0] || shown[1] !== pos[1] || shown[2] !== bearing || shown[3] !== look;
     // Auch im Stand: kommt feineres Gelände nach, rückt die Kamera auf die richtige Höhe
     // (im Stand nur alle 0,5 s – queryTerrainElevation ist teuer)
-    if (moved || t - groundAt > 500) {
-      groundAt = t;
+    if (moved || stamp - groundAt > 500) {
+      groundAt = stamp;
       const g = map.queryTerrainElevation(pos) ?? ground;
       if (moved || Math.abs(g - ground) > 0.02) place(dt);
     }
-    if (moved || !told) paintTop(t);
+    if (moved || !told) paintTop(stamp);
     // Später dazugekommene Symbole (Ampeln, Treffer …) auch aus – sie stünden quer durchs Bild; einmal je Sekunde
-    if (t - hidAt > 1000) {
-      hidAt = t;
+    if (stamp - hidAt > 1000) {
+      hidAt = stamp;
       for (const l of map.getStyle().layers) {
         if (l.type !== 'symbol' || before.symbols.includes(l.id) || map.getLayoutProperty(l.id, 'visibility') === 'none') continue;
         before.symbols.push(l.id);
@@ -174,7 +175,7 @@ export function streetView(map, { base = () => 'map', setBase = () => {}, onShar
       }
     }
     focus.point = pos;
-    shops?.frame({ pos, bearing, look, eye: (ground ?? 0) + EYE, ground: ground ?? 0, fov: FOV }, t);
+    shops?.frame({ pos, bearing, look, eye: (ground ?? 0) + EYE, ground: ground ?? 0, fov: FOV }, stamp);
   };
 
   /* ── Tasten ─────────────────────────────────────────────────────────────── */
@@ -328,10 +329,10 @@ export function streetView(map, { base = () => 'map', setBase = () => {}, onShar
         for (let i = 1; i < l.length; i += 1) {
           const [ax, ay] = meters(p, l[i - 1]), [bx, by] = meters(p, l[i]);
           const dx = bx - ax, dy = by - ay, len = dx * dx + dy * dy;
-          const t = len ? clamp(-(ax * dx + ay * dy) / len, 0, 1) : 0;
-          const d = Math.hypot(ax + t * dx, ay + t * dy);
+          const u = len ? clamp(-(ax * dx + ay * dy) / len, 0, 1) : 0;
+          const d = Math.hypot(ax + u * dx, ay + u * dy);
           if (d > 80 || (best && d >= best.d)) continue;
-          const q = [l[i - 1][0] + (l[i][0] - l[i - 1][0]) * t, l[i - 1][1] + (l[i][1] - l[i - 1][1]) * t];
+          const q = [l[i - 1][0] + (l[i][0] - l[i - 1][0]) * u, l[i - 1][1] + (l[i][1] - l[i - 1][1]) * u];
           if (!housed(q)) best = { d, point: q };
         }
       }
@@ -351,8 +352,8 @@ export function streetView(map, { base = () => 'map', setBase = () => {}, onShar
   function toSegment(p, a, b) {
     const [ax, ay] = meters(p, a), [bx, by] = meters(p, b);
     const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy;
-    const t = l ? clamp(-(ax * dx + ay * dy) / l, 0, 1) : 0;
-    return Math.hypot(ax + t * dx, ay + t * dy);
+    const u = l ? clamp(-(ax * dx + ay * dy) / l, 0, 1) : 0;
+    return Math.hypot(ax + u * dx, ay + u * dy);
   }
   function paintTop(now) {
     if (!top || now - told < 500) return;
@@ -371,7 +372,7 @@ export function streetView(map, { base = () => 'map', setBase = () => {}, onShar
     }
     // Nur, wo man ist: an einer Haltestelle (bis 15 m) ihr Name, sonst die Straße bzw. der Platz
     const stop = shops?.stopAt(pos);
-    const html = stop ? `<b>Haltestelle ${esc(stop)}</b>` : road ? `<b>${esc(road)}</b>` : '<b>Abseits der Straßen</b>';
+    const html = stop ? `<b>${t('street.stop', { name: esc(stop) })}</b>` : road ? `<b>${esc(road)}</b>` : `<b>${t('street.off_road')}</b>`;
     if (top.innerHTML !== html) top.innerHTML = html;
   }
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -381,18 +382,18 @@ export function streetView(map, { base = () => 'map', setBase = () => {}, onShar
   function paintHint() {
     const touch = matchMedia('(pointer: coarse)').matches;
     hud.querySelector('.street-hint').innerHTML = touch
-      ? '<b>Ein Finger</b> drehen · <b>Zoomgeste</b> vor/zurück · <b>2× tippen</b> hingehen'
+      ? t('street.hint.touch')
       : locked()
-        ? '<b>Maus</b> umsehen · <b>W/A/S/D</b> gehen · <b>Shift</b> laufen · <b>Esc</b> Maus frei'
-        : '<b>Klick ins Bild</b>: die Maus schaut · <b>W/A/S/D</b> gehen · <b>Doppelklick</b> hingehen';
+        ? t('street.hint.locked')
+        : t('street.hint.free');
   }
   function paintHud() {
     hud = Object.assign(document.createElement('div'), { className: 'street-hud', role: 'status' });
     hud.innerHTML = `
       <span class="msr">streetview</span>
       <span class="street-hint"></span>
-      ${onShare ? '<button type="button" class="button" data-s="share" title="Diese Ansicht teilen"><span class="msr">share</span></button>' : ''}
-      <button type="button" class="button" data-s="close"><span class="msr">close</span> Karte</button>`;
+      ${onShare ? `<button type="button" class="button" data-s="share" title="${t('street.share')}"><span class="msr">share</span></button>` : ''}
+      <button type="button" class="button" data-s="close"><span class="msr">close</span> ${t('street.close')}</button>`;
     hud.querySelector('[data-s=close]').addEventListener('click', () => api.stop());
     hud.querySelector('[data-s=share]')?.addEventListener('click', () => onShare(api.where));
     paintHint();

@@ -23,6 +23,7 @@ import { isSet, setWaypoint } from './route-plan.js';
 import { elevation, focusTransitLeg, selectRoute } from './route-results.js';
 import { trafficItems } from './traffic-along.js';
 import { closeAll } from './views.js';
+import { t } from '../core/i18n.js';
 
 /* ══════════════════════════════════════════════════════════════════════════
    Karte: Klicks und langes Drücken – alles erscheint unten im Sheet,
@@ -69,7 +70,7 @@ const layerMenu = mountLayerMenu(map, { toast });
    Ort (Ereignis 'wmap:street', detail: Punkt) oder ?action=street */
 export const street = streetView(map, {
   base: layerMenu.base, setBase: layerMenu.setBase,
-  onShare: (where) => share({ title: 'Street View', text: 'Schau mal, hier:', url: () => streetUrl(where) }, toast),
+  onShare: (where) => share({ title: t('map.menu.street_view'), text: t('street.share_text'), url: () => streetUrl(where) }, toast),
   // Geschäft angeschaut oder angetippt: sein Dialog unten (wie ein Klick auf den Ort in der Karte)
   poi: {
     open: (f) => openBasePoi(f),
@@ -107,8 +108,8 @@ map.on('click', (e) => {
   if (ownHit) {
     const l = mainLayers.find((x) => ownHit.layer.id.startsWith(`own-${x.id}-`));
     const p = ownHit.properties;
-    ask({ icon: 'layers', title: String(p.name ?? p.Name ?? p.title ?? l?.name ?? 'Objekt'), html: `<p class="muted">Ebene „${esc(l?.name ?? '')}“</p>${propertyTable(p)}`,
-      buttons: [{ value: 'ok', label: 'Schließen', primary: true }] });
+    ask({ icon: 'layers', title: String(p.name ?? p.Name ?? p.title ?? l?.name ?? t('layers.object.default_name')), html: `<p class="muted">${t('layers.object.layer', { name: esc(l?.name ?? '') })}</p>${propertyTable(p)}`,
+      buttons: [{ value: 'ok', label: t('common.close'), primary: true }] });
     return;
   }
   // In der Navigation: Orte antippen ja, Routen wechseln nein
@@ -123,7 +124,7 @@ map.on('click', (e) => {
     showPlace({ type: 'Feature', geometry: { type: 'Point', coordinates: point }, properties: { name: p.name, _poi: !!p.poi } }, { over: overContext(), fly: false });
     return;
   }
-  if (id === 'traffic-icon') { const t = trafficItems[hit.properties.i]; if (t) showTrafficItem(t); return; }
+  if (id === 'traffic-icon') { const item = trafficItems[hit.properties.i]; if (item) showTrafficItem(item); return; }
   if (id === 'poi-dot' || id === 'poi-nr' || ((id === 'hl-dot' || id === 'hl-nr') && (state.category || reach.cat))) {
     showPlace(featureFromPoint(hit), { over: true, fly: false });
     return;
@@ -139,7 +140,7 @@ map.on('click', (e) => {
   // Planung: ein Klick in die Karte füllt das erste leere Feld
   if (state.mode === 'route' && !nav.active) {
     const i = state.waypoints.findIndex((w) => !isSet(w));
-    if (i >= 0) setWaypoint(i, { label: 'Punkt auf der Karte', point: e.lngLat.toArray(), me: false }, { reverse: true });
+    if (i >= 0) setWaypoint(i, { label: t('map.point_on_map'), point: e.lngLat.toArray(), me: false }, { reverse: true });
   }
 });
 
@@ -154,10 +155,10 @@ export function showLayerInfo(point, box) {
   infoCtl?.abort();
   if (!withInfo.length) return;
   infoCtl = new AbortController();
-  box.innerHTML = '<p class="muted"><span class="msr spin">progress_activity</span> Was die Ebenen hier wissen …</p>';
+  box.innerHTML = `<p class="muted"><span class="msr spin">progress_activity</span> ${t('layers.info.loading')}</p>`;
   layerInfoAt(withInfo, point, zoom, { signal: infoCtl.signal }).then((res) => {
     box.innerHTML = res.length ? layerInfoHtml(res) : '';
-  }).catch((err) => { if (err.name !== 'AbortError') box.innerHTML = `<p class="muted">Ebenen gerade nicht abrufbar (${esc(err.message)})</p>`; });
+  }).catch((err) => { if (err.name !== 'AbortError') box.innerHTML = `<p class="muted">${t('layers.info.all_unavailable', { error: esc(err.message) })}</p>`; });
 }
 
 /* Maus über der Route → Stelle im Höhenprofil */

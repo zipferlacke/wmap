@@ -17,6 +17,7 @@ import { enhanceDot } from './location-dot.js';
 import { mountBuildings } from './buildings.js';
 import { tiltGestures } from './tilt-gestures.js';
 import { POI_ICON, addPoiIcon } from './poi-icons.js';
+import { t } from '../core/i18n.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const fc = (features) => ({ type: 'FeatureCollection', features });
@@ -123,10 +124,10 @@ export function createMap(container, {
   map.addControl(new maplibregl.AttributionControl({
     compact: true,
     customAttribution: [
-      'Suche: <a href="https://photon.komoot.io" target="_blank" rel="noopener">Photon</a>',
-      'Routing: <a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a> (FOSSGIS)',
-      'Höhen: <a href="https://mapterhorn.com" target="_blank" rel="noopener">Mapterhorn</a>',
-      '© 2026 wuefl · <a href="https://wuefl.de/impressum.html">Impressum</a>',
+      `${t('map.attribution.search')} <a href="https://photon.komoot.io" target="_blank" rel="noopener">Photon</a>`,
+      `${t('map.attribution.routing')} <a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a> (FOSSGIS)`,
+      `${t('map.attribution.heights')} <a href="https://mapterhorn.com" target="_blank" rel="noopener">Mapterhorn</a>`,
+      `© 2026 wuefl · <a href="https://wuefl.de/impressum.html">${t('map.attribution.imprint')}</a>`,
     ],
   }), 'bottom-left');
   collapseAttribution(map.getContainer());
@@ -231,11 +232,11 @@ const conn = () => navigator.connection ?? navigator.mozConnection ?? navigator.
  * Bildschirm, höchstens 2; 'max': wie der Bildschirm; sonst die Zahl (nicht über dem Bildschirm).
  */
 export const SHARPNESS = [
-  ['auto', 'Automatisch (höchstens 2)'],
-  ['1', 'Sparsam (1)'],
-  ['1.5', 'Mittel (1,5)'],
-  ['2', 'Scharf (2)'],
-  ['max', 'Volle Auflösung des Bildschirms'],
+  ['auto', t('map.sharpness.auto')],
+  ['1', t('map.sharpness.low')],
+  ['1.5', t('map.sharpness.medium')],
+  ['2', t('map.sharpness.high')],
+  ['max', t('map.sharpness.max')],
 ];
 export const sharpness = {
   get: () => { const v = local.get('wmap.sharpness', 'auto'); return SHARPNESS.some(([k]) => k === v) ? v : 'auto'; },
@@ -277,9 +278,9 @@ function allow3d() {
 /** Rückfrage – nicht mitten in das Willkommen oder einen anderen Dialog hinein (`auto`) */
 async function askCellular() {
   return await ask({
-    auto: true, icon: 'signal_cellular_alt', title: 'Mobilfunk erkannt',
-    text: 'Die 3D-Ansicht lädt Gelände- und Höhendaten nach. Im Mobilfunknetz kann das spürbar Datenvolumen kosten. Jetzt aktivieren?',
-    buttons: [{ value: 'no', label: 'Bei 2D bleiben' }, { value: 'yes', label: '3D aktivieren', icon: 'view_in_ar', primary: true }],
+    auto: true, icon: 'signal_cellular_alt', title: t('map.cellular.title'),
+    text: t('map.cellular.text'),
+    buttons: [{ value: 'no', label: t('map.cellular.no') }, { value: 'yes', label: t('map.cellular.yes'), icon: 'view_in_ar', primary: true }],
   }) === 'yes';
 }
 
@@ -730,16 +731,16 @@ function darken({ h, s, l, a }, role) {
 
 /** '#rgb', '#rrggbb(aa)', 'rgb(a)(…)', 'hsl(a)(…)' → { h, s, l, a } (0–360, 0–1) */
 function parseColor(str) {
-  const t = str.trim().toLowerCase();
+  const low = str.trim().toLowerCase();
   let r, g, b, a = 1;
-  if (t.startsWith('#')) {
-    const hex = t.slice(1);
+  if (low.startsWith('#')) {
+    const hex = low.slice(1);
     const full = hex.length <= 4 ? [...hex].map((c) => c + c).join('') : hex;
     if (!/^[0-9a-f]{6}([0-9a-f]{2})?$/.test(full)) return null;
     [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) / 255);
     if (full.length === 8) a = parseInt(full.slice(6, 8), 16) / 255;
   } else {
-    const m = t.match(/^(rgba?|hsla?)\(([^)]*)\)$/);
+    const m = low.match(/^(rgba?|hsla?)\(([^)]*)\)$/);
     if (!m) return null;
     // Prozente als Anteil; rgb ohne % in 0–255
     const parts = m[2].split(/[\s,/]+/).filter(Boolean);
@@ -1273,9 +1274,9 @@ export function showReach(map, features = []) {
 /** Verkehrsmeldungen: Punkt je Meldung, dazu ihre Strecke, falls bekannt. */
 export function showTraffic(map, items = []) {
   const color = { closure: '#e03131', roadworks: '#f08c00', warning: '#e8590c', jam: '#e8590c', accident: '#e03131', hazard: '#e8590c' };
-  const features = items.flatMap((t) => [
-    ...(t.line ? [{ type: 'Feature', properties: { color: color[t.kind] }, geometry: { type: 'LineString', coordinates: t.line } }] : []),
-    { type: 'Feature', properties: { kind: t.kind, color: color[t.kind], i: t.i }, geometry: { type: 'Point', coordinates: t.point } },
+  const features = items.flatMap((item) => [
+    ...(item.line ? [{ type: 'Feature', properties: { color: color[item.kind] }, geometry: { type: 'LineString', coordinates: item.line } }] : []),
+    { type: 'Feature', properties: { kind: item.kind, color: color[item.kind], i: item.i }, geometry: { type: 'Point', coordinates: item.point } },
   ]);
   whenReady(map, () => src(map, 'traffic').setData(fc(features)));
 }
@@ -1361,7 +1362,7 @@ export function showHover(map, lngLat) {
  */
 function retryFailedSources(map) {
   const failed = () => Object.entries(map.style?.tileManagers ?? map.style?.sourceCaches ?? {})
-    .filter(([, t]) => t._sourceErrored && !t._sourceLoaded).map(([id]) => id);
+    .filter(([, src]) => src._sourceErrored && !src._sourceLoaded).map(([id]) => id);
   let timer = null, tries = 0;
   const retry = () => {
     clearTimeout(timer);

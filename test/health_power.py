@@ -49,11 +49,12 @@ with Browser(width=420, height=900) as b:
     b.open('wege.html?id=hpow', wait=5)
     with_pow = b.js(VIEW)
     print('mit Leistung:', json.dumps(with_pow, ensure_ascii=False))
-    b.js("[...document.querySelectorAll('.weg-chart-tabs .chip')].find((c) => c.dataset.chart === 'pow')?.click()")
+    # Die Chips schalten an und aus, die Leistung ist von selbst schon an: alles andere aus, dann steht sie allein
+    b.js("[...document.querySelectorAll('.weg-chart-tabs .chip')].find((c) => c.dataset.chart === 'pow' && c.getAttribute('aria-pressed') !== 'true')?.click()")
     time.sleep(1)
-    # Die Chips schalten dazu: die Höhe (falls an) wieder weg – dann steht die Leistung allein
-    b.js("document.querySelector('.weg-chart-tabs [data-chart=ele][aria-pressed=true]')?.click()")
-    time.sleep(1.5)
+    for _ in range(3):
+        b.js("document.querySelector('.weg-chart-tabs .chip[aria-pressed=true]:not([data-chart=pow])')?.click()")
+        time.sleep(.8)
     chosen = b.js(VIEW)
     print('Diagramm Leistung:', json.dumps(chosen, ensure_ascii=False))
     b.shot('health-power')

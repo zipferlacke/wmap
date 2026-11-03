@@ -10,6 +10,7 @@
  *
  * Läuft auch im Service Worker (js/sw/sync.js).
  */
+import { t } from '../core/i18n-text.js';
 const NAME = 'wmap';
 const VERSION = 4;
 
@@ -39,13 +40,13 @@ export function store(name) {
   const tx = async (mode, fn) => {
     const db = await open();
     return new Promise((resolve, reject) => {
-      const t = db.transaction(name, mode);
-      const out = fn(t.objectStore(name));
+      const tx = db.transaction(name, mode);
+      const out = fn(tx.objectStore(name));
       // Bei get() eines fehlenden Schlüssels ist result undefined – dann auch undefined
       // zurückgeben, nicht die Anfrage selbst
-      t.oncomplete = () => resolve(out instanceof IDBRequest ? out.result : out);
-      t.onerror = () => reject(t.error);
-      t.onabort = () => reject(t.error ?? new Error('Speichern abgebrochen'));
+      tx.oncomplete = () => resolve(out instanceof IDBRequest ? out.result : out);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error ?? new Error(t('tracks.error.save_aborted')));
     });
   };
   return {

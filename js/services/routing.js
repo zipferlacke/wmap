@@ -5,9 +5,11 @@
  * zusätzlich immer eine Route ohne Autobahn gerechnet – außer eine der
  * Alternativen kommt schon ohne aus.
  */
-import { API, PROFILES, MAX_ROUTES } from '../core/config.js';
+import { askServer } from './servers.js';
+import { PROFILES, MAX_ROUTES } from '../core/config.js';
 import { decodePolyline, distance, encodePolyline, cumulative, fmtDistance, simplifyTo } from '../core/geo.js';
 import { valhallaPrefs } from '../ui/route-prefs.js';
+import { locale, t } from '../core/i18n.js';
 
 const ELEVATION_STEP = 30;   // Meter zwischen zwei Höhenwerten
 
@@ -33,8 +35,8 @@ function body(points, profile, { highways = true, alternates = 0, avoid = [], he
     // Dazu Maut, Fähren, unbefestigte Wege aus den Routen-Einstellungen
     costing_options: { [costing]: { ...costingOptions(profile, { highways })[costing], ...valhallaPrefs(costing) } },
     units: 'kilometers',
-    language: 'de-DE',
-    directions_options: { units: 'kilometers', language: 'de-DE' },
+    language: locale,
+    directions_options: { units: 'kilometers', language: locale },
     // Alternativen gibt Valhalla nur für eine Strecke ohne Zwischenziele
     alternates: points.length === 2 ? alternates : 0,
     elevation_interval: ELEVATION_STEP,
@@ -47,40 +49,35 @@ function body(points, profile, { highways = true, alternates = 0, avoid = [], he
  * anfangen. Darum: einmal von selbst wiederholen, danach eine Meldung, die sagt, was los ist – mit
  * `retry`, damit die Oberfläche „Erneut versuchen“ anbietet (app/route-results.js).
  */
-const RETRY_MS = 1500;
 function unreachable(busy = false) {
   const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-  const err = new Error(offline ? 'Keine Verbindung zum Netz – für die Route braucht WMap das Internet'
-    : busy ? 'Der Routenserver ist gerade überlastet – bitte gleich noch einmal versuchen'
-      : 'Der Routenserver ist gerade nicht erreichbar – bitte gleich noch einmal versuchen');
+  const err = new Error(offline ? t('services.routing.error.offline')
+    : busy ? t('services.routing.error.busy')
+      : t('services.routing.error.unreachable'));
   err.retry = true;
   return err;
 }
 
 export async function request(payload, signal, endpoint = 'route') {
-  const ask = () => fetch(`${API.valhalla}/${endpoint}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-    signal,
-  });
   let res;
-  try { res = await ask(); } catch (err) {
+  try {
+    res = await askServer('valhalla', `/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal,
+    }, { timeout: 60000 });
+  } catch (err) {
     if (err.name === 'AbortError') throw err;
-    await new Promise((ok) => { setTimeout(ok, RETRY_MS); });
-    if (signal?.aborted) throw new DOMException('Abgebrochen', 'AbortError');
-    try { res = await ask(); } catch (again) {
-      if (again.name === 'AbortError') throw again;
-      throw unreachable();
-    }
+    throw unreachable();
   }
   if (res.status === 429 || res.status >= 502) throw unreachable(true);
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.error) {
-    const msg = data.error_code === 442 ? 'Keine Route zwischen diesen Punkten gefunden'
-      : data.error_code === 171 || data.error_code === 170 ? 'Punkt liegt nicht in der Nähe eines Wegs'
-        : data.error_code === 154 ? 'Die Strecke ist für dieses Profil zu lang'
-          : data.error || `Routing fehlgeschlagen (${res.status})`;
+    const msg = data.error_code === 442 ? t('services.routing.error.no_route')
+      : data.error_code === 171 || data.error_code === 170 ? t('services.routing.error.not_near_way')
+        : data.error_code === 154 ? t('services.routing.error.too_long')
+          : data.error || t('services.routing.error.failed', { status: res.status });
     throw new Error(msg);
   }
   if (endpoint !== 'route') return data;
@@ -442,21 +439,21 @@ function bboxOf(coords) {
 /* ── Wegtypen und Beläge ──────────────────────────────────────────────────── */
 
 const SURFACE = {
-  paved_smooth: 'Asphalt', paved: 'Befestigt', paved_rough: 'Pflaster',
-  compacted: 'Verdichtet', dirt: 'Erdweg', gravel: 'Schotter', path: 'Naturpfad', impassable: 'Unwegsam',
+  paved_smooth: t('services.routing.surface.paved_smooth'), paved: t('services.routing.surface.paved'), paved_rough: t('services.routing.surface.paved_rough'),
+  compacted: t('services.routing.surface.compacted'), dirt: t('services.routing.surface.dirt'), gravel: t('services.routing.surface.gravel'), path: t('services.routing.surface.path'), impassable: t('services.routing.surface.impassable'),
 };
 
 function wayType(e) {
-  if (e.use === 'cycleway') return 'Radweg';
-  if (e.use === 'footway' || e.use === 'sidewalk' || e.use === 'pedestrian') return 'Fußweg';
-  if (e.use === 'path' || e.use === 'mountain_bike') return (e.sac_scale ?? 0) >= 2 ? 'Bergpfad' : 'Pfad';
-  if (e.use === 'track') return 'Feldweg';
-  if (e.use === 'steps') return 'Treppe';
-  if (e.use === 'ferry') return 'Fähre';
-  if (['motorway', 'trunk'].includes(e.road_class)) return 'Schnellstraße';
-  if (['primary', 'secondary'].includes(e.road_class)) return 'Hauptstraße';
-  if (e.use === 'living_street' || e.road_class === 'residential') return 'Wohnstraße';
-  return 'Nebenstraße';
+  if (e.use === 'cycleway') return t('services.routing.way.cycleway');
+  if (e.use === 'footway' || e.use === 'sidewalk' || e.use === 'pedestrian') return t('services.routing.way.footway');
+  if (e.use === 'path' || e.use === 'mountain_bike') return (e.sac_scale ?? 0) >= 2 ? t('services.routing.way.mountain_path') : t('services.routing.way.path');
+  if (e.use === 'track') return t('services.routing.way.track');
+  if (e.use === 'steps') return t('services.routing.way.steps');
+  if (e.use === 'ferry') return t('services.routing.way.ferry');
+  if (['motorway', 'trunk'].includes(e.road_class)) return t('services.routing.way.motorway');
+  if (['primary', 'secondary'].includes(e.road_class)) return t('services.routing.way.primary');
+  if (e.use === 'living_street' || e.road_class === 'residential') return t('services.routing.way.residential');
+  return t('services.routing.way.minor');
 }
 
 /**
@@ -476,7 +473,7 @@ export async function wayInfo(coords, profile, { signal } = {}) {
   const surfaces = new Map(), ways = new Map();
   for (const e of data.edges ?? []) {
     const m = (e.length ?? 0) * 1000;
-    const s = SURFACE[e.surface] ?? 'Unbekannt';
+    const s = SURFACE[e.surface] ?? t('services.routing.surface.unknown');
     surfaces.set(s, (surfaces.get(s) ?? 0) + m);
     const w = wayType(e);
     ways.set(w, (ways.get(w) ?? 0) + m);

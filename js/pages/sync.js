@@ -26,19 +26,20 @@ import { showPermissions } from '../ui/permissions.js';
 import { autoSync } from '../data/auto-sync.js';
 import { offerInbox, offerOthers } from '../ui/folder-inbox.js';
 import { findDuplicates, removeDuplicates, valueKinds } from '../data/duplicates.js';
+import { locale, t } from '../core/i18n.js';
 
 const root = document.querySelector('.sync');
-const WHEN = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-const when = (ms) => (ms ? WHEN.format(ms) : 'noch nie');
+const WHEN = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const when = (ms) => (ms ? WHEN.format(ms) : t('sync.never'));
 let connecting = false;
 let importing = false;
 let progress = null;        // Health Connect: { i, n }
 const nativeHere = !!window.__TAURI__?.core;
 
-const AUTO = [['off', 'Aus – nur von Hand'], ['start', 'Beim Öffnen von WMap'], ['every30', 'Beim Öffnen und alle 30 Minuten']];
-const KEEP = [['30', 'Letzte 30 Tage'], ['90', 'Letzte 90 Tage'], ['365', 'Letztes Jahr'], ['all', 'Alles']];
+const AUTO = [['off', t('sync.auto.options.off')], ['start', t('sync.auto.options.start')], ['every30', t('sync.auto.options.every30')]];
+const KEEP = [['30', t('sync.folder.keep.options.days30')], ['90', t('sync.folder.keep.options.days90')], ['365', t('sync.folder.keep.options.year')], ['all', t('sync.folder.keep.options.all')]];
 const autoSelect = (name, value, hint) => `<label class="settings-select">
-    <span><strong>Automatisch</strong><small>${esc(hint)}</small></span>
+    <span><strong>${t('sync.auto.title')}</strong><small>${esc(hint)}</small></span>
     <select name="${name}">${AUTO.map(([v, l]) => `<option value="${v}" ${v === value ? 'selected' : ''}>${l}</option>`).join('')}</select>
   </label>`;
 
@@ -47,35 +48,24 @@ const status = (icon, text, cls = '') => `<p class="sync-status ${cls}"><span cl
 /** „Gleiche ab … 40 von 96 (42 %) · noch etwa 1 Min.“ */
 function progressText(p) {
   // Was gerade geschieht: erst die Liste des Ordners, dann (einmalig) der Umzug, dann Datei für Datei
-  const what = p?.what === 'lift' ? 'Ziehe aus dem Unterordner „WMap“ um' : 'Gleiche ab';
-  if (!p?.n) return p?.what === 'list' ? 'Lese den Ordner …' : `${what} …`;
+  const what = p?.what === 'lift' ? t('sync.progress.lift') : t('sync.progress.sync');
+  if (!p?.n) return p?.what === 'list' ? t('sync.progress.list') : t('sync.progress.what', { what });
   const pct = Math.floor((p.i / p.n) * 100);
   const took = Date.now() - p.since;
   let rest = '';
   if (p.i >= 3 && took > 2000 && p.i < p.n) {
     const s = Math.round(((p.n - p.i) * took) / p.i / 1000);
-    rest = s < 20 ? ' · gleich fertig' : s < 90 ? ` · noch etwa ${Math.round(s / 10) * 10} s` : ` · noch etwa ${Math.round(s / 60)} Min.`;
+    rest = s < 20 ? t('sync.progress.rest.soon') : s < 90 ? t('sync.progress.rest.seconds', { n: Math.round(s / 10) * 10 }) : t('sync.progress.rest.minutes', { n: Math.round(s / 60) });
   }
-  return `${what} … ${p.i} von ${p.n} (${pct} %)${rest}`;
+  return t('sync.progress.state', { what, i: p.i, n: p.n, pct, rest });
 }
 const progressBar = (p) => `<div class="sync-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${p?.n ?? 0}" aria-valuenow="${p?.i ?? 0}">
     <i style="width:${p?.n ? Math.round((p.i / p.n) * 100) : 5}%"></i></div>`;
 
 /* ── Ordner ───────────────────────────────────────────────────────────────── */
 
-const TREE = `<details class="sync-tree"><summary>Ordnerstruktur erklärt</summary><pre>Dein Ordner/
-├─ settings.json            Einstellungen
-├─ Geplante Touren/         je Tour eine GPX-Datei
-├─ Aufgezeichnete Touren/
-│  └─ 2026/09 September/    je Weg eine GPX-Datei (mit Puls &amp; Co.) oder die FIT-Datei der Uhr
-├─ Bus &amp; Bahn/              je gemerkte Verbindung eine JSON-Datei
-├─ Lesezeichen.json         Zuhause, Arbeit, Lesezeichen und Listen
-├─ Unbekannte Dateien/         was sich nicht lesen ließ – nach 30 Tagen gelöscht
-└─ Inhalt.json              Verzeichnis für den schnellen Abgleich</pre>
-  <p class="settings-hint">Jede WMap, die denselben Ordner verbindet, liest ihn ein und gleicht mit ab. Nimm einen Ordner nur für WMap.
-    GPX- und FIT-Dateien von woanders (Uhr, Garmin, Komoot …) legst du einfach hinein, egal wohin: WMap fragt, was damit geschehen soll, und sortiert sie an ihren Platz –
-    auch aus eigenen Unterordnern. Eine FIT-Datei bleibt, wie die Uhr sie schrieb. Andere Dateien (Fotos, Dokumente) fasst WMap nicht an.
-    Löschst du eine Tourendatei, verschwindet der Eintrag auch in WMap.</p></details>`;
+const TREE = `<details class="sync-tree"><summary>${t('sync.folder.tree.title')}</summary><pre>${t('sync.folder.tree.code')}</pre>
+  <p class="settings-hint">${t('sync.folder.tree.hint')}</p></details>`;
 
 /*
  * Knöpfe: Importieren liest einen Ordner einmal ein (App: Ordnerdialog,
@@ -83,34 +73,32 @@ const TREE = `<details class="sync-tree"><summary>Ordnerstruktur erklärt</summa
  * „ZIP einspielen“ nimmt den Export direkt. Exportieren gibt alles als ZIP.
  */
 const importButton = () => (nativeHere
-  ? `<button type="button" class="button" data-act="import" ${importing ? 'disabled' : ''}><span class="msr">drive_folder_upload</span> Aus Ordner importieren</button>`
-  : '<label class="button"><span class="msr">drive_folder_upload</span> Aus Ordner importieren<input type="file" webkitdirectory multiple hidden data-file="folder"></label>');
-const exportButton = '<button type="button" class="button" data-act="backup"><span class="msr">folder_zip</span> Exportieren (ZIP)</button>';
-const zipLink = `<p class="settings-hint sync-zip">Export als ZIP wieder einspielen:
-    <label class="sync-link">ZIP wählen<input type="file" accept=".zip,.json,application/zip,application/json" hidden data-file="restore"></label></p>`;
+  ? `<button type="button" class="button" data-act="import" ${importing ? 'disabled' : ''}><span class="msr">drive_folder_upload</span> ${t('sync.folder.import')}</button>`
+  : `<label class="button"><span class="msr">drive_folder_upload</span> ${t('sync.folder.import')}<input type="file" webkitdirectory multiple hidden data-file="folder"></label>`);
+const exportButton = `<button type="button" class="button" data-act="backup"><span class="msr">folder_zip</span> ${t('sync.folder.export')}</button>`;
+const zipLink = `<p class="settings-hint sync-zip">${t('sync.folder.restore.text')}
+    <label class="sync-link">${t('sync.folder.restore.pick')}<input type="file" accept=".zip,.json,application/zip,application/json" hidden data-file="restore"></label></p>`;
 
 /** „Unbekannte Dateien“: was keine Tour ist oder sich nicht lesen ließ – selbst nachsehen, nach 30 Tagen löscht WMap sie */
 function brokenHtml(i) {
   const list = Object.entries(i.broken ?? {}).sort((a, b) => a[1] - b[1]);
-  const reveal = i.native ? '<div class="sync-actions"><button type="button" class="button" data-act="reveal"><span class="msr">folder_open</span> Im Dateimanager öffnen</button></div>' : '';
+  const reveal = i.native ? `<div class="sync-actions"><button type="button" class="button" data-act="reveal"><span class="msr">folder_open</span> ${t('sync.folder.broken.reveal')}</button></div>` : '';
   // Andere Dateien, die (noch) liegen bleiben
   const others = (i.others ?? []).map((p) => p.split('/').pop());
-  const othersHtml = others.length ? `<div class="folder-others">${status('folder_delete', `${others.length === 1 ? 'Eine Datei im Ordner ist keine Tour' : `${others.length} Dateien im Ordner sind keine Touren`} und ${others.length === 1 ? 'bleibt' : 'bleiben'} liegen: ${esc(others.slice(0, 5).join(', '))}${others.length > 5 ? ' …' : ''}.`, 'warn')}
-    <div class="sync-actions"><button type="button" class="button" data-act="others"><span class="msr">drive_file_move</span> Aufräumen …</button></div></div>` : '';
+  const othersHtml = others.length ? `<div class="folder-others">${status('folder_delete', t('sync.folder.others.state', { n: others.length, files: esc(others.slice(0, 5).join(', ')), more: others.length > 5 ? ' …' : '' }), 'warn')}
+    <div class="sync-actions"><button type="button" class="button" data-act="others"><span class="msr">drive_file_move</span> ${t('sync.folder.others.tidy')}</button></div></div>` : '';
   if (!list.length) return othersHtml;
-  const until = new Date(list[0][1] + 30 * 24 * 3600 * 1000).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' });
+  const until = new Date(list[0][1] + 30 * 24 * 3600 * 1000).toLocaleDateString(locale, { day: 'numeric', month: 'long' });
   const names = list.map(([p]) => p.split('/').pop());
-  return `${othersHtml}<div class="folder-broken">${status('report', `${list.length === 1 ? 'Eine Datei ist keine Tour oder ließ' : `${list.length} Dateien sind keine Touren oder ließen`} sich nicht lesen und ${list.length === 1 ? 'liegt' : 'liegen'} im Ordner unter „Unbekannte Dateien“:
-      ${esc(names.slice(0, 5).join(', '))}${names.length > 5 ? ' …' : ''}. Schau selbst nach, ob etwas Wichtiges dabei ist – WMap löscht sie 30 Tage nach dem Fund (die erste am ${until}).`, 'warn')}
+  return `${othersHtml}<div class="folder-broken">${status('report', t('sync.folder.broken.state', { n: list.length, files: esc(names.slice(0, 5).join(', ')), more: names.length > 5 ? ' …' : '', until }), 'warn')}
     ${reveal}</div>`;
 }
 
 async function folderHtml() {
   if (!folder.supported) {
     return `<section>
-      <h3><span class="msr">folder</span> Ordner</h3>
-      ${status('folder_off', 'Dauerhaft synchronisieren geht in der <strong>WMap-App</strong> (Android, Linux, macOS, Windows) und in Chrome bzw. Edge. '
-        + 'Hier kannst du einmal importieren oder alles als ZIP exportieren.', 'warn')}
+      <h3><span class="msr">folder</span> ${t('sync.folder.title')}</h3>
+      ${status('folder_off', t('sync.folder.unsupported'), 'warn')}
       <div class="sync-actions">${importButton()}${exportButton}</div>
       ${zipLink}
       ${TREE}
@@ -119,14 +107,13 @@ async function folderHtml() {
   const i = await folder.info().catch((err) => ({ connected: false, error: { message: err.message } }));
   if (!i.connected) {
     return `<section>
-      <h3><span class="msr">folder</span> Ordner</h3>
-      ${connecting ? status('sync', 'Ordner wird verbunden …', 'busy')
-        : importing ? status('sync', 'Importiere …', 'busy')
-          : status('folder', 'Kein Ordner synchronisiert. Nimm einen Ordner, den dein Sync-Programm abgleicht (Nextcloud, Proton Drive, Google Drive, Syncthing …) – '
-            + 'dann haben alle deine Geräte dieselben Touren, Wege, Verbindungen, Lesezeichen und Einstellungen.')}
-      ${i.error ? status('error', `Fehler: ${esc(i.error.message)}`, 'error') : ''}
+      <h3><span class="msr">folder</span> ${t('sync.folder.title')}</h3>
+      ${connecting ? status('sync', t('sync.folder.connecting'), 'busy')
+        : importing ? status('sync', t('sync.folder.importing'), 'busy')
+          : status('folder', t('sync.folder.none'))}
+      ${i.error ? status('error', t('sync.error.message', { error: esc(i.error.message) }), 'error') : ''}
       <div class="sync-actions">
-        <button type="button" class="button primary" data-act="connect" ${connecting ? 'disabled' : ''}><span class="msr">sync</span> Ordner synchronisieren</button>
+        <button type="button" class="button primary" data-act="connect" ${connecting ? 'disabled' : ''}><span class="msr">sync</span> ${t('sync.folder.connect')}</button>
         ${importButton()}
         ${exportButton}
       </div>
@@ -137,30 +124,29 @@ async function folderHtml() {
   const again = i.permission !== 'granted';
   const busy = folder.busy || connecting;
   const list = await tracks.all().catch(() => []);
-  const shelf = { total: list.length, cards: list.filter((t) => t.stub).length };
+  const shelf = { total: list.length, cards: list.filter((x) => x.stub).length };
   const p = folder.progress;
   return `<section>
-    <h3><span class="msr">folder_open</span> Ordner</h3>
-    ${status('folder_open', `Synchronisiert mit <strong>${esc(i.name)}</strong>`)}
+    <h3><span class="msr">folder_open</span> ${t('sync.folder.title')}</h3>
+    ${status('folder_open', t('sync.folder.connected', { name: esc(i.name) }))}
     ${busy ? `<div class="folder-progress">${status('sync', progressText(p), 'busy')}${progressBar(p)}</div>`
-      : again ? status('folder_managed', 'Der Browser braucht wieder deine Erlaubnis für den Ordner.', 'warn')
-        : i.pending ? status('sync_problem', 'Der letzte Abgleich wurde unterbrochen – er läuft beim nächsten Öffnen einer Seite weiter.', 'warn')
-          : status('schedule', `Letzter Abgleich: ${when(i.last)}${i.last ? ` – ${esc(syncSummary(i.result))}` : ''}`)}
-    ${busy ? '<p class="settings-hint">Du kannst WMap weiter benutzen. Wechselst du die Seite, macht die nächste dort weiter, wo dieser Abgleich aufgehört hat.</p>' : ''}
-    ${i.error && !busy ? status('error', `Fehler am ${when(i.error.at)}: ${esc(i.error.message)}`, 'error') : ''}
-    ${i.inbox.length && !busy ? `<div class="folder-inbox">${status('drive_folder_upload', `${i.inbox.length === 1 ? 'Eine neue Datei liegt' : `${i.inbox.length} neue Dateien liegen`} im Ordner und ${i.inbox.length === 1 ? 'wartet' : 'warten'} auf deine Entscheidung: ${esc(i.inbox.slice(0, 3).map((x) => x.file).join(', '))}${i.inbox.length > 3 ? ' …' : ''}`, 'warn')}
-      <div class="sync-actions"><button type="button" class="button primary" data-act="inbox"><span class="msr">checklist</span> Neue Dateien ansehen</button></div></div>` : ''}
+      : again ? status('folder_managed', t('sync.folder.permission'), 'warn')
+        : i.pending ? status('sync_problem', t('sync.folder.pending'), 'warn')
+          : status('schedule', i.last ? t('sync.last_with', { when: when(i.last), result: esc(syncSummary(i.result)) }) : t('sync.last', { when: when(i.last) }))}
+    ${busy ? `<p class="settings-hint">${t('sync.folder.busy_hint')}</p>` : ''}
+    ${i.error && !busy ? status('error', t('sync.folder.error_at', { when: when(i.error.at), error: esc(i.error.message) }), 'error') : ''}
+    ${i.inbox.length && !busy ? `<div class="folder-inbox">${status('drive_folder_upload', t('sync.folder.inbox.state', { n: i.inbox.length, files: esc(i.inbox.slice(0, 3).map((x) => x.file).join(', ')), more: i.inbox.length > 3 ? ' …' : '' }), 'warn')}
+      <div class="sync-actions"><button type="button" class="button primary" data-act="inbox"><span class="msr">checklist</span> ${t('sync.folder.inbox.view')}</button></div></div>` : ''}
     ${brokenHtml(i)}
     <div class="sync-actions">
-      <button type="button" class="button${again ? ' primary' : ''}" data-act="sync" ${busy ? 'disabled' : ''}><span class="msr">sync</span> ${again ? 'Erlauben und abgleichen' : 'Jetzt abgleichen'}</button>
-      <button type="button" class="button" data-act="change" ${busy ? 'disabled' : ''}><span class="msr">drive_file_move</span> Ordner ändern</button>
+      <button type="button" class="button${again ? ' primary' : ''}" data-act="sync" ${busy ? 'disabled' : ''}><span class="msr">sync</span> ${again ? t('sync.folder.allow_sync') : t('sync.folder.sync_now')}</button>
+      <button type="button" class="button" data-act="change" ${busy ? 'disabled' : ''}><span class="msr">drive_file_move</span> ${t('sync.folder.change')}</button>
       ${exportButton}
-      <button type="button" class="button" data-act="disconnect"><span class="msr">link_off</span> Trennen</button>
+      <button type="button" class="button" data-act="disconnect"><span class="msr">link_off</span> ${t('sync.folder.disconnect.button')}</button>
     </div>
-    ${autoSelect('folder-auto', folder.auto, 'Beim Öffnen gleicht WMap ab und kurz nach jeder Änderung; auf Wunsch zusätzlich alle 30 Minuten, solange WMap offen ist.')}
+    ${autoSelect('folder-auto', folder.auto, t('sync.folder.auto_hint'))}
     <label class="settings-select">
-      <span><strong>In der App behalten</strong><small>Aufgezeichnete Touren aus dieser Zeit liegen ganz in der App, ältere nur im Ordner – in der App bleibt eine Karteikarte (Name, Strecke, Zeit, grober Verlauf), der Rest kommt beim Öffnen aus dem Ordner.
-        Was du in „Meine Touren“ als „offline verfügbar“ markierst, bleibt immer ganz in der App. Geplante Touren bleiben es ohnehin.${shelf.cards ? ` Gerade: ${shelf.cards} von ${shelf.total} nur im Ordner.` : ''}</small></span>
+      <span><strong>${t('sync.folder.keep.title')}</strong><small>${t('sync.folder.keep.hint')}${shelf.cards ? t('sync.folder.keep.shelf', { cards: shelf.cards, total: shelf.total }) : ''}</small></span>
       <select name="folder-keep">${KEEP.map(([v, l]) => `<option value="${v}" ${v === folder.keep ? 'selected' : ''}>${l}</option>`).join('')}</select>
     </label>
     ${TREE}
@@ -175,22 +161,22 @@ async function healthHtml() {
   const last = healthSync.last();
   const busy = healthSyncing();
   const line = !st.available ? status('block', esc(st.reason), 'warn')
-    : !st.read ? status('favorite', 'Noch nicht freigegeben – WMap darf Health Connect noch nicht lesen.', 'warn')
-      : status('check_circle', `Freigegeben${st.routes ? ', Routen immer' : ', Routen mit Rückfrage'}${st.values ? ', mit Puls &amp; Co.' : ''}`);
+    : !st.read ? status('favorite', t('sync.health.not_granted'), 'warn')
+      : status('check_circle', `${t('sync.health.granted.title')}${st.routes ? t('sync.health.granted.routes_always') : t('sync.health.granted.routes_ask')}${st.values ? t('sync.health.granted.values') : ''}`);
   const bar = busy ? progressBar(progress) : '';
   return `<section>
     <h3><span class="msr">favorite</span> Health Connect</h3>
     ${line}
-    ${busy ? status('sync', progress?.n ? `Übernehme ${progress.i} von ${progress.n} Trainings …` : 'Lese Health Connect …', 'busy')
-      : status('schedule', `Letzter Abgleich: ${when(last?.at)}${last?.at && !last.error ? ` – ${last.added ? `${last.added} importiert` : 'nichts Neues'}${last.denied ? `, ${last.denied} Routen nicht freigegeben` : ''}` : ''}`)}
-    ${last?.error && !busy ? status('error', `Fehler: ${esc(last.error)}`, 'error') : ''}
+    ${busy ? status('sync', progress?.n ? t('sync.health.taking', { i: progress.i, n: progress.n }) : t('sync.health.reading'), 'busy')
+      : status('schedule', last?.at && !last.error ? t('sync.last_with', { when: when(last.at), result: `${last.added ? t('sync.health.imported', { n: last.added }) : t('sync.health.nothing_new')}${last.denied ? t('sync.health.denied', { n: last.denied }) : ''}` }) : t('sync.last', { when: when(last?.at) }))}
+    ${last?.error && !busy ? status('error', t('sync.error.message', { error: esc(last.error) }), 'error') : ''}
     ${bar}
     <div class="sync-actions">
-      <button type="button" class="button primary" data-act="health" ${busy || !st.available ? 'disabled' : ''}><span class="msr">${busy ? 'sync' : 'download'}</span> ${busy ? 'Hole Trainings …' : 'Trainings holen'}</button>
-      <button type="button" class="button" data-act="perms"><span class="msr">verified_user</span> Berechtigungen</button>
+      <button type="button" class="button primary" data-act="health" ${busy || !st.available ? 'disabled' : ''}><span class="msr">${busy ? 'sync' : 'download'}</span> ${busy ? t('sync.health.fetching') : t('sync.health.fetch')}</button>
+      <button type="button" class="button" data-act="perms"><span class="msr">verified_user</span> ${t('sync.health.permissions')}</button>
     </div>
-    ${last?.denied && !busy ? status('info', 'Für Routen mit Rückfrage: in Health Connect WMap antippen und die Trainingsrouten auf „Immer erlauben“ stellen.') : ''}
-    ${autoSelect('health-auto', healthSync.auto, 'Neue Trainings mit Route kommen von selbst als Wege dazu – ohne Rückfragen.')}
+    ${last?.denied && !busy ? status('info', t('sync.health.denied_hint')) : ''}
+    ${autoSelect('health-auto', healthSync.auto, t('sync.health.auto_hint'))}
   </section>`;
 }
 
@@ -199,62 +185,62 @@ async function healthHtml() {
 /** Welche Aufzeichnung je doppelter Tour bleibt und von welcher die Gesundheitsdaten kommen (IDs) – gemerkt, solange die Seite offen ist */
 const dupKeep = new Set();
 const dupVals = new Set();
-const VALUE_NAME = { hr: 'Puls', cad: 'Frequenz', pow: 'Leistung' };
+const VALUE_NAME = { hr: t('sync.dups.values.hr'), cad: t('sync.dups.values.cad'), pow: t('sync.dups.values.pow') };
 
 /** Woher eine Aufzeichnung kommt – „Health Connect · Zepp“, „GPX-Datei“, „Mit WMap aufgezeichnet“ */
-const dupOrigin = (t) => (t.kind === 'health' ? `Health Connect${t.source?.app ? ` · ${appName(t.source.app)}` : ''}`
-  : t.kind === 'gpx' ? 'GPX-Datei' : t.kind === 'nav' ? 'Bei der Navigation aufgezeichnet' : 'Mit WMap aufgezeichnet');
-const dupPoints = (t) => (t.stub ? t.n : t.times?.length) || 0;
+const dupOrigin = (x) => (x.kind === 'health' ? (x.source?.app ? t('sync.dups.origin.health_app', { app: appName(x.source.app) }) : t('sync.dups.origin.health'))
+  : x.kind === 'gpx' ? t('sync.dups.origin.gpx') : x.kind === 'nav' ? t('sync.dups.origin.nav') : t('sync.dups.origin.wmap'));
+const dupPoints = (x) => (x.stub ? x.n : x.times?.length) || 0;
 /** Strecke: Kilometer, Dauer, wie fein aufgezeichnet */
-const dupFacts = (t) => [
-  fmtDistance(t.length), fmtDuration((trackEnd(t) - t.start) / 1000),
-  dupPoints(t) ? `${dupPoints(t).toLocaleString('de-DE')} Punkte` : '',
+const dupFacts = (x) => [
+  fmtDistance(x.length), fmtDuration((trackEnd(x) - x.start) / 1000),
+  dupPoints(x) ? t('sync.dups.points', { count: dupPoints(x).toLocaleString(locale) }) : '',
 ].filter(Boolean).join(' · ');
 /** Gesundheitsdaten: was gemessen wurde, beim Puls der Schnitt */
-function dupValues(t) {
-  const hr = (t.hr ?? []).filter((v) => v > 0);
-  return valueKinds(t).map((k) => (k === 'hr' && hr.length ? `Puls (Ø ${Math.round(hr.reduce((a, b) => a + b, 0) / hr.length)})` : VALUE_NAME[k])).join(' · ');
+function dupValues(x) {
+  const hr = (x.hr ?? []).filter((v) => v > 0);
+  return valueKinds(x).map((k) => (k === 'hr' && hr.length ? t('sync.dups.values.hr_avg', { avg: Math.round(hr.reduce((a, b) => a + b, 0) / hr.length) }) : VALUE_NAME[k])).join(' · ');
 }
-const dupDate = (t) => new Date(t.start).toLocaleString('de-DE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+const dupDate = (x) => new Date(x.start).toLocaleString(locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 async function duplicatesHtml() {
   if (folder.busy || healthSyncing()) return '';
   const d = await findDuplicates().catch(() => null);
   if (!d?.count) return '';
   const what = [
-    d.tracks.length ? `${d.tracks.reduce((n, g) => n + g.length - 1, 0)} aufgezeichnete` : '',
-    d.tours.length ? `${d.tours.reduce((n, g) => n + g.length - 1, 0)} geplante` : '',
-  ].filter(Boolean).join(' und ');
+    d.tracks.length ? t('sync.dups.recorded', { n: d.tracks.reduce((n, g) => n + g.length - 1, 0) }) : '',
+    d.tours.length ? t('sync.dups.planned', { n: d.tours.reduce((n, g) => n + g.length - 1, 0) }) : '',
+  ].filter(Boolean).join(t('sync.dups.and'));
   // Zu wählen gibt es nur bei zwei verschiedenen Aufzeichnungen (Uhr und Handy);
   // dieselbe Aufzeichnung zweimal (aus dem Ordner wieder eingelesen) braucht keine Frage
   const groups = d.tracks.map((g, i) => {
-    if (g.every((t) => sameTrack(g[0], t))) return '';
-    const keep = g.find((t) => dupKeep.has(t.id)) ?? g[0];
+    if (g.every((x) => sameTrack(g[0], x))) return '';
+    const keep = g.find((x) => dupKeep.has(x.id)) ?? g[0];
     // Gesundheitsdaten: zu wählen nur, wenn mehrere Aufzeichnungen welche haben
-    const measured = g.filter((t) => valueKinds(t).length);
-    const from = measured.find((t) => dupVals.has(t.id)) ?? (measured.includes(keep) ? keep : measured[0]);
+    const measured = g.filter((x) => valueKinds(x).length);
+    const from = measured.find((x) => dupVals.has(x.id)) ?? (measured.includes(keep) ? keep : measured[0]);
     return `<fieldset class="dup-group">
-      <legend>${esc(keep.name || 'Ohne Namen')} <small>${esc(dupDate(keep))}</small></legend>
-      <p class="dup-q"><span class="msr">route</span> Strecke (GPS) von</p>
-      ${g.map((t) => `<label class="dup-option">
-        <input type="radio" name="dup-${i}" value="${esc(t.id)}" ${t === keep ? 'checked' : ''}>
-        <span><strong>${esc(dupOrigin(t))}</strong><small>${esc(dupFacts(t))}</small></span>
+      <legend>${esc(keep.name || t('sync.dups.no_name'))} <small>${esc(dupDate(keep))}</small></legend>
+      <p class="dup-q"><span class="msr">route</span> ${t('sync.dups.route_from')}</p>
+      ${g.map((x) => `<label class="dup-option">
+        <input type="radio" name="dup-${i}" value="${esc(x.id)}" ${x === keep ? 'checked' : ''}>
+        <span><strong>${esc(dupOrigin(x))}</strong><small>${esc(dupFacts(x))}</small></span>
       </label>`).join('')}
-      ${measured.length > 1 ? `<p class="dup-q"><span class="msr">monitor_heart</span> Gesundheitsdaten von</p>
-      ${measured.map((t) => `<label class="dup-option dup-values">
-        <input type="radio" name="dupv-${i}" value="${esc(t.id)}" ${t === from ? 'checked' : ''}>
-        <span><strong>${esc(dupOrigin(t))}</strong><small>${esc(dupValues(t))}</small></span>
+      ${measured.length > 1 ? `<p class="dup-q"><span class="msr">monitor_heart</span> ${t('sync.dups.values_from')}</p>
+      ${measured.map((x) => `<label class="dup-option dup-values">
+        <input type="radio" name="dupv-${i}" value="${esc(x.id)}" ${x === from ? 'checked' : ''}>
+        <span><strong>${esc(dupOrigin(x))}</strong><small>${esc(dupValues(x))}</small></span>
       </label>`).join('')}`
-    : measured.length ? `<p class="dup-q dup-one"><span class="msr">monitor_heart</span> Gesundheitsdaten: ${esc(dupOrigin(measured[0]))} – ${esc(dupValues(measured[0]))}</p>` : ''}
+    : measured.length ? `<p class="dup-q dup-one"><span class="msr">monitor_heart</span> ${t('sync.dups.values_one', { origin: esc(dupOrigin(measured[0])), values: esc(dupValues(measured[0])) })}</p>` : ''}
     </fieldset>`;
   }).join('');
   return `<section class="sync-dups" id="doppelt">
-    <h3><span class="msr">content_copy</span> Doppelte Touren</h3>
-    ${status('content_copy', `${what} ${d.count === 1 ? 'Tour gibt' : 'Touren gibt'} es doppelt – etwa mit der Uhr und dem Handy aufgezeichnet oder aus Health Connect und aus dem Ordner.`, 'warn')}
-    ${groups ? `<p class="settings-hint">Diese Touren gibt es aus mehreren Quellen. Wähle je Tour, wessen Strecke bleibt – ihre Zeit und Kilometer gelten. Gesundheitsdaten (Puls, Frequenz, Leistung) kommen dazu; haben mehrere Aufzeichnungen welche, wählst du auch, von welcher.</p>
+    <h3><span class="msr">content_copy</span> ${t('sync.dups.title')}</h3>
+    ${status('content_copy', t('sync.dups.state', { what, n: d.count }), 'warn')}
+    ${groups ? `<p class="settings-hint">${t('sync.dups.hint')}</p>
     <div class="dup-list">${groups}</div>` : ''}
     <div class="sync-actions">
-      <button type="button" class="button primary" data-act="dedupe"><span class="msr">merge</span> Zusammenführen</button>
+      <button type="button" class="button primary" data-act="dedupe"><span class="msr">merge</span> ${t('sync.dups.merge.button')}</button>
     </div>
   </section>`;
 }
@@ -265,12 +251,12 @@ async function render() {
   painting ??= (async () => {
     await null;
     root.innerHTML = `${await folderHtml()}${await healthHtml()}${await duplicatesHtml()}
-      <p class="settings-hint sync-note"><span class="msr">lock</span> Alles bleibt auf deinen Geräten – WMap hat dafür keinen Server. Was im Ordner liegt, gleicht nur dein eigenes Sync-Programm ab.</p>`;
+      <p class="settings-hint sync-note"><span class="msr">lock</span> ${t('sync.note')}</p>`;
   })().finally(() => { painting = null; });
   return painting;
 }
 
-const importText = (r) => (r.imported ? `${r.imported} übernommen${r.skipped ? `, ${r.skipped} gab es schon` : ''}` : r.skipped ? 'Alles schon da' : 'Keine GPX-Dateien im Ordner');
+const importText = (r) => (r.imported ? `${t('sync.import.taken', { n: r.imported })}${r.skipped ? t('sync.import.skipped', { n: r.skipped }) : ''}` : r.skipped ? t('sync.import.all_there') : t('sync.import.none'));
 
 /* ── Knöpfe ───────────────────────────────────────────────────────────────── */
 
@@ -279,43 +265,43 @@ root.addEventListener('click', async (e) => {
   if (!act) return;
   if (act === 'connect' || act === 'change') {
     if (act === 'change') {
-      const v = await ask({ icon: 'drive_file_move', title: 'Anderen Ordner nehmen?', text: 'WMap gleicht danach mit dem neuen Ordner ab und schreibt alles hinein. Der alte Ordner bleibt, wie er ist.',
-        buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Ordner wählen', primary: true }] });
+      const v = await ask({ icon: 'drive_file_move', title: t('sync.folder.change_ask.title'), text: t('sync.folder.change_ask.text'),
+        buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'yes', label: t('sync.folder.change_ask.button'), primary: true }] });
       if (v !== 'yes') return;
     }
     connecting = true; render();
     try {
       const r = await folder.connect();
-      if (r?.needsPermission) toast('Ohne Erlaubnis kein Abgleich');
-      else if (r) toast(`Ordner verbunden – ${syncSummary(r)}`);
-    } catch (err) { if (err.name !== 'AbortError') toast(`Verbinden ging nicht: ${err.message}`); }
+      if (r?.needsPermission) toast(t('sync.toast.no_permission'));
+      else if (r) toast(t('sync.toast.connected', { result: syncSummary(r) }));
+    } catch (err) { if (err.name !== 'AbortError') toast(t('sync.toast.connect_failed', { error: err.message })); }
     connecting = false; render();
   }
   if (act === 'inbox') { offerInbox((await folder.info()).inbox, true); return; }
   if (act === 'others') { offerOthers((await folder.info()).others, true); return; }
   if (act === 'reveal') {
-    folder.reveal('Unbekannte Dateien').catch(() => toast('Der Dateimanager ließ sich nicht öffnen – der Ordner heißt „Unbekannte Dateien“'));
+    folder.reveal('Unbekannte Dateien').catch(() => toast(t('sync.toast.reveal_failed')));
     return;
   }
   if (act === 'sync') {
     try {
       const r = await folder.sync({ interactive: true });
-      if (r?.needsPermission) toast('Ohne Erlaubnis kein Abgleich');
-      else if (r) toast(`Abgeglichen – ${syncSummary(r)}`);
-    } catch (err) { toast(`Abgleich ging nicht: ${err.message}`); }
+      if (r?.needsPermission) toast(t('sync.toast.no_permission'));
+      else if (r) toast(t('sync.toast.synced', { result: syncSummary(r) }));
+    } catch (err) { toast(t('sync.toast.sync_failed', { error: err.message })); }
     render();
   }
   if (act === 'disconnect') {
-    const v = await ask({ icon: 'link_off', title: 'Ordner trennen?', text: 'WMap gleicht dann nicht mehr ab. Die Dateien im Ordner bleiben, wie sie sind; Touren, die nur im Ordner lagen, holt WMap vorher in die App.',
-      buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Trennen', primary: true }] });
+    const v = await ask({ icon: 'link_off', title: t('sync.folder.disconnect.title'), text: t('sync.folder.disconnect.text'),
+      buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'yes', label: t('sync.folder.disconnect.button'), primary: true }] });
     if (v !== 'yes') return;
     await folder.disconnect();
-    toast('Ordner getrennt – die Dateien bleiben, wo sie sind');
+    toast(t('sync.folder.disconnect.done'));
     render();
   }
   if (act === 'import') {
     importing = true; render();
-    try { toast(importText(await importFolder())); } catch (err) { if (err.name !== 'AbortError') toast(`Importieren ging nicht: ${err.message}`); }
+    try { toast(importText(await importFolder())); } catch (err) { if (err.name !== 'AbortError') toast(t('sync.toast.import_failed', { error: err.message })); }
     importing = false; render();
   }
   if (act === 'health') {
@@ -324,7 +310,7 @@ root.addEventListener('click', async (e) => {
     render();
     try {
       const r = await p;
-      toast(r.added ? `${r.added} ${r.added === 1 ? 'Training' : 'Trainings'} importiert` : 'Nichts Neues in Health Connect');
+      toast(r.added ? t('sync.health.toast_added', { n: r.added }) : t('sync.health.toast_nothing'));
     } catch (err) { toast(String(err?.message ?? err)); }
     progress = null;
     render();
@@ -332,73 +318,73 @@ root.addEventListener('click', async (e) => {
   if (act === 'perms') { await showPermissions({ reason: 'health' }); render(); }
   if (act === 'dedupe') {
     const d = await findDuplicates();
-    const v = await ask({ icon: 'merge', title: `${d.count} doppelte ${d.count === 1 ? 'Tour' : 'Touren'} zusammenführen?`,
-      text: 'Von jeder doppelten Tour bleibt die gewählte Strecke mit den gewählten Gesundheitsdaten. Auf anderen Geräten verschwinden die Doppelten beim nächsten Abgleich ebenfalls.',
-      buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Zusammenführen', primary: true }] });
+    const v = await ask({ icon: 'merge', title: t('sync.dups.merge.title', { n: d.count }),
+      text: t('sync.dups.merge.text'),
+      buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'yes', label: t('sync.dups.merge.button'), primary: true }] });
     if (v !== 'yes') return;
     const picked = (sel) => [...root.querySelectorAll(`${sel} input:checked`)].map((el) => el.value);
     const n = await removeDuplicates(picked('.dup-option:not(.dup-values)'), picked('.dup-values'));
     dupKeep.clear();
     dupVals.clear();
-    toast(`${n} doppelte ${n === 1 ? 'Tour' : 'Touren'} zusammengeführt`);
+    toast(t('sync.dups.merge.done', { n }));
     render();
   }
   if (act === 'backup') {
     const format = await ask({
-      icon: 'folder_zip', title: 'Exportieren als', className: 'stacked',
-      text: 'Alle Touren in einer ZIP-Datei. Aufgezeichnete Touren als GPX (enthält alles, was WMap weiß) oder als FIT (Format der Sportuhren: Punkte, Puls, Frequenz, Leistung, Runden, Sportart). Geplante Touren sind immer GPX.',
+      icon: 'folder_zip', title: t('sync.export.title'), className: 'stacked',
+      text: t('sync.export.text'),
       buttons: [
-        { value: 'gpx', label: 'Aufzeichnungen als GPX', icon: 'draft', primary: true },
-        { value: 'fit', label: 'Aufzeichnungen als FIT', icon: 'watch' },
-        { value: 'no', label: 'Abbrechen' },
+        { value: 'gpx', label: t('sync.export.gpx'), icon: 'draft', primary: true },
+        { value: 'fit', label: t('sync.export.fit'), icon: 'watch' },
+        { value: 'no', label: t('common.cancel') },
       ],
     });
     if (format !== 'gpx' && format !== 'fit') return;
     zipBackup({ format }).then((blob) => download(`wmap-sicherung-${new Date().toISOString().slice(0, 10)}${format === 'fit' ? '-fit' : ''}.zip`, blob, 'application/zip'))
-      .catch((err) => toast(`Sicherung ging nicht: ${err.message}`));
+      .catch((err) => toast(t('sync.toast.backup_failed', { error: err.message })));
   }
 });
 
 root.addEventListener('change', async (e) => {
-  const t = e.target;
-  if (t.closest('.dup-option')) {
+  const target = e.target;
+  if (target.closest('.dup-option')) {
     // Wahl merken – die Seite zeichnet sich bei jedem Abgleich neu
-    const set = t.closest('.dup-values') ? dupVals : dupKeep;
-    for (const el of t.closest('.dup-group').querySelectorAll(`input[name="${t.name}"]`)) set.delete(el.value);
-    set.add(t.value);
+    const set = target.closest('.dup-values') ? dupVals : dupKeep;
+    for (const el of target.closest('.dup-group').querySelectorAll(`input[name="${target.name}"]`)) set.delete(el.value);
+    set.add(target.value);
     return;
   }
-  if (t.name === 'folder-keep') {
-    folder.keep = t.value;
-    toast(t.value === 'all' ? 'Alle Touren bleiben ganz in der App' : `In der App: ${Object.fromEntries(KEEP)[t.value].toLowerCase()} – Älteres liegt im Ordner`);
+  if (target.name === 'folder-keep') {
+    folder.keep = target.value;
+    toast(target.value === 'all' ? t('sync.folder.keep.toast_all') : t('sync.folder.keep.toast', { span: Object.fromEntries(KEEP)[target.value].toLowerCase() }));
     folder.sync().catch(() => {}).finally(render);
     return;
   }
-  const label = Object.fromEntries(AUTO)[t.value];
-  if (t.name === 'folder-auto') { folder.auto = t.value; toast(`Ordner: ${label}`); }
-  if (t.name === 'health-auto') {
-    healthSync.auto = t.value;
-    toast(`Health Connect: ${label}`);
-    if (t.value !== 'off' && !healthSyncing()) syncHealth({ quiet: true }).catch(() => {}).finally(render);
+  const label = Object.fromEntries(AUTO)[target.value];
+  if (target.name === 'folder-auto') { folder.auto = target.value; toast(t('sync.toast.auto_folder', { label })); }
+  if (target.name === 'health-auto') {
+    healthSync.auto = target.value;
+    toast(t('sync.toast.auto_health', { label }));
+    if (target.value !== 'off' && !healthSyncing()) syncHealth({ quiet: true }).catch(() => {}).finally(render);
     render();
   }
-  const inp = t.closest('[data-file]');
+  const inp = target.closest('[data-file]');
   if (!inp) return;
   // Leerer Ordner: der Browser meldet dann gar keine Dateien – trotzdem Bescheid geben
-  if (!inp.files?.length) { toast(inp.dataset.file === 'folder' ? 'In dem Ordner sind keine Dateien' : 'Keine Datei gewählt'); return; }
+  if (!inp.files?.length) { toast(inp.dataset.file === 'folder' ? t('sync.toast.folder_empty') : t('sync.toast.no_file')); return; }
   try {
     if (inp.dataset.file === 'folder') {
       toast(importText(await importFolder(inp.files)));
     } else {
       const f = inp.files[0];
       const n = /\.zip$/i.test(f.name) || f.type === 'application/zip' ? await restoreZip(f) : await restore(await f.text());
-      toast(`${n} Einträge aus der Sicherung übernommen`);
+      toast(t('sync.toast.restored', { n }));
     }
   } catch (err) { toast(err.message); }
   inp.value = '';
 });
 // Ordnerwahl abgebrochen oder leer (manche Browser melden dann kein „change“)
-root.addEventListener('cancel', (e) => { if (e.target.matches?.('[data-file="folder"]')) toast('Kein Ordner gewählt'); }, true);
+root.addEventListener('cancel', (e) => { if (e.target.matches?.('[data-file="folder"]')) toast(t('sync.toast.no_folder')); }, true);
 
 addEventListener('wmap:folder', () => render());
 addEventListener('wmap:folder-progress', (e) => {
@@ -411,7 +397,7 @@ addEventListener('wmap:folder-progress', (e) => {
 async function firstSync() {
   const i = await folder.info().catch(() => null);
   if (i?.connected && !i.last && !folder.busy && i.permission === 'granted') {
-    folder.sync().then((r) => { if (r) toast(`Ordner verbunden – ${syncSummary(r)}`); }).catch((err) => toast(`Abgleich ging nicht: ${err.message}`));
+    folder.sync().then((r) => { if (r) toast(t('sync.toast.connected', { result: syncSummary(r) })); }).catch((err) => toast(t('sync.toast.sync_failed', { error: err.message })));
   }
 }
 addEventListener('wmap:health', () => render());

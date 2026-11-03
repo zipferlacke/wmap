@@ -7,6 +7,7 @@ import { clock } from '../ui/share.js';
 import { toast } from '../ui/dialogs.js';
 import { distance, esc } from '../core/geo.js';
 import { $, afterLayout, fitTo, map } from './core.js';
+import { locale, t } from '../core/i18n.js';
 
 // Haltestelle → Linien; eine davon komplett auf der Karte
 export const transitLine = mountTransitLine(map);
@@ -80,10 +81,10 @@ async function loadEarlier() {
       if (found.length) break;
     }
     if (stop !== s) return;
-    if (found.length) s.deps = [...found, ...s.deps]; else toast('Keine früheren Abfahrten gefunden');
+    if (found.length) s.deps = [...found, ...s.deps]; else toast(t('stops.departures.earlier.none'));
   } catch (err) {
     if (err.name === 'AbortError' || stop !== s) return;
-    toast('Frühere Abfahrten gerade nicht abrufbar – bitte gleich noch einmal versuchen');
+    toast(t('stops.departures.earlier.failed'));
   }
   s.earlierBusy = false;
   paintStop();
@@ -127,7 +128,7 @@ function platformsOf(s) {
     by.get(k).add(d.platformId);
   }
   return [...by].map(([label, ids]) => ({ label, ids }))
-    .sort((a, b) => String(a.label).localeCompare(String(b.label), 'de', { numeric: true }));
+    .sort((a, b) => String(a.label).localeCompare(String(b.label), locale, { numeric: true }));
 }
 
 /*
@@ -150,10 +151,10 @@ function paintStop() {
     const chip = (v, label, icon = '') => `<button type="button" class="chip" data-pick="${esc(v)}" aria-pressed="${pick === v}">${icon ? `<span class="msr">${icon}</span>` : ''}${esc(label)}</button>`;
     // Nur „Hier“ und „Alle Steige“ – einzelne Steige machen große Bahnhöfe unübersichtlich
     const chips = side ? `<div class="chip-row dep-filter">
-      ${chip('here', `Hier${hereLabel ? ` · Steig ${hereLabel}` : ''}`, 'my_location')}
-      ${chip('all', 'Alle Steige')}
+      ${chip('here', hereLabel ? t('stops.departures.filter.here_platform', { platform: hereLabel }) : t('stops.departures.filter.here'), 'my_location')}
+      ${chip('all', t('stops.departures.filter.all'))}
     </div>` : '';
-    box.innerHTML = `<h3 class="section-title">Abfahrten</h3>${chips}${departuresHtml(s, deps, pick !== 'all')}`;
+    box.innerHTML = `<h3 class="section-title">${t('stops.departures.title')}</h3>${chips}${departuresHtml(s, deps, pick !== 'all')}`;
     if (s.activeLine) {
       box.querySelector(`[data-key="${CSS.escape(String(s.active))}"]`)
         ?.insertAdjacentHTML('afterend', s.activeLine.course ? tripDetailHtml(s.activeLine) : lineStopsHtml(s.activeLine));
@@ -161,8 +162,8 @@ function paintStop() {
     return;
   }
   let lines;
-  if (s.error) lines = `<h3 class="section-title">Linien hier</h3><p class="muted">Gerade nicht abrufbar (${esc(s.error)})</p>`;
-  else if (!s.all) lines = '<h3 class="section-title">Linien hier</h3><p class="muted"><span class="msr spin">progress_activity</span> Welche Linien hier halten …</p>';
+  if (s.error) lines = `<h3 class="section-title">${t('stops.lines.title')}</h3><p class="muted">${t('stops.lines.unavailable', { error: esc(s.error) })}</p>`;
+  else if (!s.all) lines = `<h3 class="section-title">${t('stops.lines.title')}</h3><p class="muted"><span class="msr spin">progress_activity</span> ${t('stops.lines.loading')}</p>`;
   else if (!s.all.length) lines = '';
   else {
     // Ohne Fahrplan (Ausland, EFA gestört): die Linien aus OSM
@@ -171,9 +172,9 @@ function paintStop() {
     const other = lineCount(s.all) > lineCount(s.here) && s.here.length;
     lines = transitHtml(list, {
       active: s.active, all: s.more,
-      title: osmHere ? `Linien an diesem Steig${s.side ? ` (${s.side})` : ''}` : s.here.length ? 'Alle Linien der Haltestelle' : 'Linien hier',
+      title: osmHere ? (s.side ? t('stops.lines.at_platform_side', { side: s.side }) : t('stops.lines.at_platform')) : s.here.length ? t('stops.lines.all') : t('stops.lines.title'),
       extra: other ? `<button type="button" class="link-button transit-scope" data-transit="scope">${osmHere
-        ? `<span class="msr">unfold_more</span> Alle ${lineCount(s.all)} Linien der Haltestelle` : '<span class="msr">unfold_less</span> Nur dieser Steig'}</button>` : '',
+        ? `<span class="msr">unfold_more</span> ${t('stops.lines.all_count', { n: lineCount(s.all) })}` : `<span class="msr">unfold_less</span> ${t('stops.lines.only_platform')}`}</button>` : '',
     });
   }
   box.innerHTML = lines;
@@ -188,10 +189,10 @@ function tripDetailHtml({ stops, next }) {
 }
 
 function departuresHtml(s, deps, filtered) {
-  if (s.depError) return `<p class="muted">Fahrplan gerade nicht abrufbar (${esc(s.depError)})</p>`;
-  if (!deps) return '<p class="muted"><span class="msr spin">progress_activity</span> Fahrplan wird geladen …</p>';
-  const earlierBtn = s.deps.length ? `<button type="button" class="button transit-more dep-earlier" data-transit="earlier"${s.earlierBusy ? ' disabled' : ''}><span class="msr${s.earlierBusy ? ' spin' : ''}">${s.earlierBusy ? 'progress_activity' : 'expand_less'}</span> Frühere Abfahrten</button>` : '';
-  if (!deps.length) return `${earlierBtn}<p class="muted">An diesem Steig in nächster Zeit keine Abfahrten</p>`;
+  if (s.depError) return `<p class="muted">${t('stops.departures.unavailable', { error: esc(s.depError) })}</p>`;
+  if (!deps) return `<p class="muted"><span class="msr spin">progress_activity</span> ${t('stops.departures.loading')}</p>`;
+  const earlierBtn = s.deps.length ? `<button type="button" class="button transit-more dep-earlier" data-transit="earlier"${s.earlierBusy ? ' disabled' : ''}><span class="msr${s.earlierBusy ? ' spin' : ''}">${s.earlierBusy ? 'progress_activity' : 'expand_less'}</span> ${t('stops.departures.earlier.title')}</button>` : '';
+  if (!deps.length) return `${earlierBtn}<p class="muted">${t('stops.departures.none')}</p>`;
   const now = Date.now();
   // Frühere zählen nicht mit: „Frühere Abfahrten“ soll keine späteren aus der Liste schieben
   const earlier = deps.filter((x) => +x.time < s.firstDep).length;
@@ -203,13 +204,13 @@ function departuresHtml(s, deps, filtered) {
     return `<li><button type="button" class="dep-row${at < now ? ' dep-past' : ''}" data-dep="${s.deps.indexOf(x)}" data-key="${esc(tripKey(x))}" aria-pressed="${tripKey(x) === s.active}">
       <time>${clock(x.time)}${x.delay ? `<b class="${x.delay > 0 ? 'late' : 'early'}">${x.delay > 0 ? '+' : ''}${x.delay}</b>` : ''}</time>
       <span class="transit-badge" style="--c:${esc(rel ? colorOf(rel) : x.color)}">${esc(x.line)}</span>
-      <span class="dep-to">${x.cancelled ? '<s>' : ''}${esc(x.to)}${x.cancelled ? '</s> fällt aus' : ''}</span>
-      <small>${mins >= 0 && mins < 60 ? `in ${mins} min` : ''}${x.platform ? ` · Steig ${esc(x.platform)}` : ''}</small>
+      <span class="dep-to">${x.cancelled ? '<s>' : ''}${esc(x.to)}${x.cancelled ? `</s> ${t('stops.departures.cancelled')}` : ''}</span>
+      <small>${mins >= 0 && mins < 60 ? t('stops.departures.in_minutes', { n: mins }) : ''}${x.platform ? ` · ${t('stops.departures.platform', { platform: esc(x.platform) })}` : ''}</small>
     </button></li>`;
   }).join('');
   return `${earlierBtn}<ul class="dep-list">${rows}</ul>
-    ${deps.length > 12 + earlier && !s.depMore ? '<button type="button" class="button transit-more" data-transit="deps"><span class="msr">expand_more</span> Weitere Abfahrten</button>' : ''}
-    <p class="muted dep-source">Fahrplan: NVBW EFA-BW${deps.some((x) => x.delay !== null) ? ' · mit Echtzeit' : ''}${filtered ? ' · nur dieser Steig' : ''}</p>`;
+    ${deps.length > 12 + earlier && !s.depMore ? `<button type="button" class="button transit-more" data-transit="deps"><span class="msr">expand_more</span> ${t('stops.departures.more')}</button>` : ''}
+    <p class="muted dep-source">${t('stops.departures.source.title')}${deps.some((x) => x.delay !== null) ? ` · ${t('stops.departures.source.realtime')}` : ''}${filtered ? ` · ${t('stops.departures.source.platform_only')}` : ''}</p>`;
 }
 
 $('[data-view="place"] .place-transit').addEventListener('click', async (e) => {
@@ -245,7 +246,7 @@ $('[data-view="place"] .place-transit').addEventListener('click', async (e) => {
     if (line.bounds) afterLayout(() => fitTo(line.bounds.flat(), 16));
   } catch (err) {
     if (err.name === 'AbortError') return;
-    toast(`Linie gerade nicht abrufbar (${err.message})`);
+    toast(t('lines.toast.unavailable', { error: err.message }));
     paintStop();
   }
 });
@@ -278,13 +279,13 @@ async function showTrip(x, btn) {
     // Ersatz: Linie aus OSM (dauert länger)
     await stop.osm;
     const rel = stop === mine && relFor(x, stop.all ?? []);
-    if (!rel) { toast(`Verlauf von ${x.line} gerade nicht abrufbar`); paintStop(); return; }
+    if (!rel) { toast(t('stops.departures.trip_unavailable', { line: x.line })); paintStop(); return; }
     try {
       const line = await transitLine.show(rel.id, { from: stop.point });
       if (stop !== mine) return;
       stop.active = key; stop.activeLine = line;
       paintStop();
       if (line.bounds) afterLayout(() => fitTo(line.bounds.flat(), 16));
-    } catch (e2) { if (e2.name !== 'AbortError') { toast(`Linie gerade nicht abrufbar (${e2.message})`); paintStop(); } }
+    } catch (e2) { if (e2.name !== 'AbortError') { toast(t('lines.toast.unavailable', { error: e2.message })); paintStop(); } }
   }
 }

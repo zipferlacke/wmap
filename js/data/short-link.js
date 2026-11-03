@@ -15,6 +15,7 @@
  */
 import { api } from '../services/api.js';
 import { pageUrl } from '../ui/share.js';
+import { t } from '../core/i18n.js';
 
 const PAGE = { weg: ['wege.html', 'weg'], tour: ['tour.html', 't'] };
 export const COLLAB_OPEN = 'wmap.collabOpen';     // sessionStorage: gerade geöffneter Link zum Mitplanen
@@ -67,7 +68,7 @@ export async function resolveShort() {
     return true;
   } catch (err) {
     history.replaceState(null, '', `${location.pathname}${location.search}`);
-    return err?.name === 'OperationError' ? 'Der Link ist unvollständig – der Schlüssel passt nicht' : err.message || 'Der Link ließ sich nicht öffnen';
+    return err?.name === 'OperationError' ? t('share.link.error.key') : err.message || t('share.link.error.open');
   }
 }
 
@@ -75,7 +76,7 @@ export async function resolveShort() {
 
 /** Tour zum Mitplanen hochladen → { url, collab: { id, key, token, rev } } */
 export async function collabLink(code, editor = null) {
-  if (!canSeal()) throw new Error('Gemeinsam planen geht nur über https');
+  if (!canSeal()) throw new Error(t('share.collab.error.https'));
   const key = newKey();
   const { id, token } = await api(['share', 'put'], { kind: 'tour', code: await seal(code, key), edit: true });
   if (editor) await api(['share', 'update'], { id, token, code: await seal(code, key), rev: 1, editor }).catch(() => null);
@@ -94,9 +95,9 @@ export async function collabGet(c) {
 /** Chip: geteilt bzw. eingeladen, wie lange noch → { icon, text, gone } (Listen in pages/wege.js, Planer) */
 export function collabState(c) {
   const days = c.expires ? Math.ceil((c.expires * 1000 - Date.now()) / 864e5) : null;
-  const left = days == null ? '' : days > 0 ? ` · noch ${days} ${days === 1 ? 'Tag' : 'Tage'}` : '';
-  if (c.gone || (days != null && days <= 0)) return { icon: 'link_off', text: 'Teilen abgelaufen', gone: true };
-  return c.own ? { icon: 'group', text: `Geteilt${left}` } : { icon: 'group_add', text: `${c.by ? `Eingeladen von ${c.by}` : 'Eingeladen'}${left}` };
+  const left = days == null ? '' : days > 0 ? ` · ${t('share.collab.days_left', { n: days })}` : '';
+  if (c.gone || (days != null && days <= 0)) return { icon: 'link_off', text: t('share.collab.expired'), gone: true };
+  return c.own ? { icon: 'group', text: `${t('share.collab.shared')}${left}` } : { icon: 'group_add', text: `${c.by ? t('share.collab.invited_by', { by: c.by }) : t('share.collab.invited')}${left}` };
 }
 
 /** Eigene Änderung zurückschreiben (auf Stand c.rev) → { ok: true, rev } | { ok: false, rev, code, editor } */

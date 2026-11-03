@@ -13,6 +13,7 @@
  */
 import { OSM_AUTH, APP_VERSION } from '../core/config.js';
 import { local } from '../data/store.js';
+import { locale, t } from '../core/i18n.js';
 
 const SERVER_KEY = 'wmap.osm.server';
 const tokenKey = (s) => `wmap.osm.token.${s}`;
@@ -55,7 +56,7 @@ const random = (n) => b64url(crypto.getRandomValues(new Uint8Array(n)));
 export async function login() {
   const conf = account.conf();
   const clientId = account.clientId();
-  if (!clientId) throw new Error('Für diese App ist noch keine OSM-Client-ID eingetragen (Einstellungen)');
+  if (!clientId) throw new Error(t('osm.login.no_client'));
   const verifier = random(48);
   // Wohin oauth.html den Code zurückgibt: diese WMap (localhost, App, Web)
   const home = location.href.split(/[?#]/)[0].replace(/[^/]*$/, '');
@@ -100,8 +101,8 @@ export function finishLogin() {
 async function exchange({ code, state, error }) {
   const pending = local.get(PENDING);
   local.set(PENDING, null);
-  if (error) throw new Error(error === 'access_denied' ? 'Anmeldung abgebrochen' : `Anmeldung fehlgeschlagen: ${error}`);
-  if (!pending || pending.state !== state) throw new Error('Anmeldung ungültig – bitte noch einmal');
+  if (error) throw new Error(error === 'access_denied' ? t('osm.login.cancelled') : t('osm.login.failed_with', { error }));
+  if (!pending || pending.state !== state) throw new Error(t('osm.login.invalid'));
   account.setServer(pending.server);
   const conf = account.conf();
   const res = await fetch(`${conf.web}/oauth2/token`, {
@@ -113,7 +114,7 @@ async function exchange({ code, state, error }) {
     }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.access_token) throw new Error(data.error_description || 'Anmeldung fehlgeschlagen');
+  if (!res.ok || !data.access_token) throw new Error(data.error_description || t('osm.login.failed'));
   local.set(tokenKey(pending.server), data.access_token);
   const me = await api('/user/details.json').then((r) => r.json());
   const user = { name: me.user?.display_name ?? '?', id: me.user?.id };
@@ -122,7 +123,7 @@ async function exchange({ code, state, error }) {
   // Testserver), bleibt man trotzdem bei OSM angemeldet
   let wmapError;
   try {
-    if (!data.id_token) throw new Error('OpenStreetMap hat keine Anmeldung fürs WMap-Konto mitgeschickt');
+    if (!data.id_token) throw new Error(t('osm.login.no_id_token'));
     const { konto } = await import('../services/konto.js');
     await konto.connect(data.id_token, user.name);
   } catch (err) { wmapError = err.message; }
@@ -140,8 +141,8 @@ async function api(path, { method = 'GET', body, type } = {}) {
     },
     body,
   });
-  if (res.status === 401) { account.logout(); throw new Error('OSM-Anmeldung abgelaufen – bitte neu anmelden'); }
-  if (!res.ok) throw new Error(`OSM: ${res.status} ${(await res.text().catch(() => '')).slice(0, 120)}`);
+  if (res.status === 401) { account.logout(); throw new Error(t('osm.login.expired')); }
+  if (!res.ok) throw new Error(t('osm.error.status', { status: res.status, text: (await res.text().catch(() => '')).slice(0, 120) }));
   return res;
 }
 
@@ -191,7 +192,7 @@ function applyEdits(elements, edits) {
  */
 export async function upload({ edits = [], notes = [], creates = [] }, { comment, source = 'survey' }) {
   // Hinweise gehen auch ohne Konto (anonym) – Änderungen an der Karte nicht
-  if ((edits.length || creates.length) && !account.loggedIn()) throw new Error('Nicht bei OSM angemeldet');
+  if ((edits.length || creates.length) && !account.loggedIn()) throw new Error(t('osm.error.not_logged_in'));
   const out = { changeset: null, applied: [], conflicts: [], notes: [] };
 
   if (edits.length || creates.length) {
@@ -209,7 +210,7 @@ export async function upload({ edits = [], notes = [], creates = [] }, { comment
     out.conflicts = conflicts;
 
     if (changes.length || creates.length) {
-      const tags = { created_by: `WMap ${APP_VERSION}`, comment, source, locale: 'de-DE' };
+      const tags = { created_by: `WMap ${APP_VERSION}`, comment, source, locale };
       const cs = await api('/changeset/create', {
         method: 'PUT', type: 'text/xml',
         body: `<osm><changeset>${Object.entries(tags).map(([k, v]) => `<tag k="${x(k)}" v="${x(v)}"/>`).join('')}</changeset></osm>`,

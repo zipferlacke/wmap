@@ -18,6 +18,7 @@
 import { PROFILES } from '../core/config.js';
 import { encodePolyline, nearestOnLine, pointAt, bearing, destination } from '../core/geo.js';
 import { request, costingOptions } from '../services/routing.js';
+import { locale } from '../core/i18n.js';
 
 // Valhalla nimmt nicht beliebig lange Linien – in Stücken abfragen
 const CHUNK = 3000;
@@ -34,7 +35,7 @@ export async function routeExtras(route, profile, { signal } = {}) {
         ...base,
         filters: { attributes: ['edge.speed_limit', 'edge.traffic_signal', 'edge.length', 'edge.traversability', 'edge.lane_count', 'edge.road_class'], action: 'include' },
       }, signal, 'trace_attributes').catch(() => null),
-      costing === 'auto' ? request({ ...base, format: 'osrm', language: 'de-DE' }, signal, 'trace_route').catch(() => null) : null,
+      costing === 'auto' ? request({ ...base, format: 'osrm', language: locale }, signal, 'trace_route').catch(() => null) : null,
     ]);
 
     if (attrs?.edges?.length) {

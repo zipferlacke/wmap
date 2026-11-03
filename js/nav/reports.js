@@ -9,13 +9,14 @@
  */
 import { REPORTS } from '../core/config.js';
 import { local } from '../data/store.js';
+import { t } from '../core/i18n.js';
 
 export const REPORT_KINDS = {
-  jam: { label: 'Stau', icon: 'traffic', color: '#e8590c' },
-  accident: { label: 'Unfall', icon: 'car_crash', color: '#e03131' },
-  roadworks: { label: 'Baustelle', icon: 'construction', color: '#f08c00' },
-  hazard: { label: 'Gefahr', icon: 'warning', color: '#e8590c' },
-  closure: { label: 'Sperrung', icon: 'block', color: '#e03131' },
+  jam: { label: t('traffic.kinds.jam'), icon: 'traffic', color: '#e8590c' },
+  accident: { label: t('traffic.kinds.accident'), icon: 'car_crash', color: '#e03131' },
+  roadworks: { label: t('traffic.kinds.roadworks'), icon: 'construction', color: '#f08c00' },
+  hazard: { label: t('traffic.kinds.hazard'), icon: 'warning', color: '#e8590c' },
+  closure: { label: t('traffic.kinds.closure'), icon: 'block', color: '#e03131' },
 };
 
 const LOCAL = 'wmap.reports';

@@ -19,6 +19,7 @@
  */
 import { store } from '../data/db.js';
 import { APP_VERSION } from '../core/config.js';
+import { t } from '../core/i18n.js';
 
 const kv = store('kv');
 const KEY = 'extensions';
@@ -56,7 +57,7 @@ export async function runExtensions({ map, toast, appNav }) {
       const mod = await import(/* @vite-ignore */ url);
       await mod.activate?.(api);
     } catch (err) {
-      toast(`Erweiterung „${x.name}“ ließ sich nicht starten: ${err.message}`);
+      toast(t('layers.extensions.failed', { name: x.name, error: err.message }));
     }
   }
 }

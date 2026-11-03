@@ -58,7 +58,9 @@ with Browser(1200, 850) as b:
     shown3 = b.wait(f"{ROWS}.includes('fresh3')", 6)
     check('3. beim Zurück steht der neue Weg in der Liste', shown3)
     # 4. Zeitformat gemessener Dauern (core/geo.js fmtTime): unter einer Stunde auf die Sekunde, darüber auf die Minute
-    fmt = b.d.execute_async_script("const done = arguments[0]; import('./js/core/geo.js').then(({ fmtTime }) => done([42, 60, 335, 2112, 3599.4, 3600, 3725, 5400].map(fmtTime)))")
+    # In der Seite selbst: aus der Sandbox von Selenium wäre geo.js ein zweites Modul ohne geladene Texte
+    b.js("window.__fmt = null; const s = document.createElement('script'); s.type = 'module'; s.textContent = \"import { fmtTime } from './js/core/geo.js'; window.__fmt = [42, 60, 335, 2112, 3599.4, 3600, 3725, 5400].map(fmtTime);\"; document.head.append(s);")
+    fmt = b.wait('return window.__fmt', 20)
     print('Zeiten:', fmt)
     check('4. Dauer: unter 1 h mit Sekunden, ab 1 h auf die Minute', fmt == ['42 s', '1 min', '5 min 35 s', '35 min 12 s', '59 min 59 s', '1 h', '1 h 2 min', '1 h 30 min'], fmt)
     row = b.js("return document.querySelector('.wege-table tr[data-id] .w-num small')?.textContent")

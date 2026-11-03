@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Plugins – WMap</title>
+    <title data-i18n="plugins.page_title">Plugins – WMap</title>
     <meta name="description" content="Eigene Kartenebenen und Erweiterungen für WMap, dazu fertige Ebenen wie Luftbilder und die geologische Karte.">
     <!-- Vorschau beim Teilen (WhatsApp, Signal, Telegram …): kleines Logo statt großem Bild -->
     <meta property="og:type" content="website">
@@ -34,10 +34,10 @@
 -->
 <body class="dash-page plugins-page">
     <header class="dash-head">
-        <h1>Plugins</h1>
+        <h1 data-i18n="plugins.title">Plugins</h1>
         <form class="tour-search plug-search" role="search" onsubmit="return false">
             <span class="msr">search</span>
-            <input type="search" placeholder="Plugins durchsuchen" aria-label="Plugins durchsuchen">
+            <input type="search" placeholder="Plugins durchsuchen" data-i18n-placeholder="plugins.search" aria-label="Plugins durchsuchen" data-i18n-aria-label="plugins.search">
         </form>
     </header>
 
@@ -46,18 +46,18 @@
         <section class="plug-grid" aria-live="polite"></section>
         <section class="plug-detail" hidden></section>
         <section class="plug-add">
-            <h2><span class="msr">add_circle</span> Hinzufügen</h2>
+            <h2><span class="msr">add_circle</span> <span data-i18n="plugins.add.title">Hinzufügen</span></h2>
             <div class="plug-add-row">
-                <label class="button"><span class="msr">upload_file</span> GeoJSON-Datei<input type="file" accept=".geojson,.json,application/geo+json,application/json" multiple hidden data-add="files"></label>
-                <button type="button" class="button" data-add="plugin-folder"><span class="msr">create_new_folder</span> Plugin-Ordner hinzufügen</button>
-                <label class="button" hidden><span class="msr">drive_folder_upload</span> Ordner einlesen<input type="file" webkitdirectory multiple hidden data-add="folder-once"></label>
-                <button type="button" class="button" data-add="source"><span class="msr">add_link</span> Adresse (auch mit Passwort)</button>
-                <button type="button" class="button" data-add="script"><span class="msr">bolt</span> Erweiterung per Adresse</button>
-                <button type="button" class="button" data-add="offer"><span class="msr">publish</span> Plugin anbieten</button>
+                <label class="button"><span class="msr">upload_file</span> <span data-i18n="plugins.add.file">GeoJSON-Datei</span><input type="file" accept=".geojson,.json,application/geo+json,application/json" multiple hidden data-add="files"></label>
+                <button type="button" class="button" data-add="plugin-folder"><span class="msr">create_new_folder</span> <span data-i18n="plugins.add.folder">Plugin-Ordner hinzufügen</span></button>
+                <label class="button" hidden><span class="msr">drive_folder_upload</span> <span data-i18n="plugins.add.folder_once">Ordner einlesen</span><input type="file" webkitdirectory multiple hidden data-add="folder-once"></label>
+                <button type="button" class="button" data-add="source"><span class="msr">add_link</span> <span data-i18n="plugins.add.source">Adresse (auch mit Passwort)</span></button>
+                <button type="button" class="button" data-add="script"><span class="msr">bolt</span> <span data-i18n="plugins.add.script">Erweiterung per Adresse</span></button>
+                <button type="button" class="button" data-add="offer"><span class="msr">publish</span> <span data-i18n="plugins.add.offer">Plugin anbieten</span></button>
             </div>
             <div class="plug-folders"></div>
-            <p class="plug-howto"><a href="./plugin-anleitung.html"><span class="msr">menu_book</span> So baust du ein Plugin – Aufbau eines Plugin-Ordners</a></p>
-            <p class="muted">Eigene Ebenen bleiben nur auf diesem Gerät. „Plugin anbieten“ stellt eine Ebene oder Erweiterung in den Katalog – privat (nur für dich, auf allen Geräten) oder öffentlich; das braucht ein WMap-Konto.</p>
+            <p class="plug-howto"><a href="./plugin-anleitung.html"><span class="msr">menu_book</span> <span data-i18n="plugins.add.howto">So baust du ein Plugin – Aufbau eines Plugin-Ordners</span></a></p>
+            <p class="muted" data-i18n="plugins.add.hint">Eigene Ebenen bleiben nur auf diesem Gerät. „Plugin anbieten“ stellt eine Ebene oder Erweiterung in den Katalog – privat (nur für dich, auf allen Geräten) oder öffentlich; das braucht ein WMap-Konto.</p>
         </section>
     </main>
 

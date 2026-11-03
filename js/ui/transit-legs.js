@@ -11,42 +11,43 @@
  */
 import { clock } from './share.js';
 import { fmtDistance, esc, cumulative } from '../core/geo.js';
+import { locale, t } from '../core/i18n.js';
 
-export const legBadge = (l) => (l.walk ? '<span class="msr leg-walk" title="Fußweg">directions_walk</span>'
+export const legBadge = (l) => (l.walk ? `<span class="msr leg-walk" title="${t('transit_legs.walk')}">directions_walk</span>`
   : `<span class="transit-badge" style="--c:${l.color ?? '#e8590c'}">${esc(l.line || l.product)}</span>`);
-export const changesText = (x) => (x.changes ? `${x.changes} × umsteigen` : 'ohne Umsteigen');
+export const changesText = (x) => (x.changes ? t('transit_legs.changes', { n: x.changes }) : t('transit_legs.no_change'));
 const lateText = (min) => (min > 0 ? ` <span class="late">+${min}</span>` : '');
-const minutes = (s) => `${Math.max(1, Math.round(s / 60))} min`;
+const minutes = (s) => `${Math.max(1, Math.round(s / 60))} ${t('common.units.min')}`;
 
 /** Wie heißt das Verkehrsmittel im Satz: „Bus 91 nehmen“, „ICE 783 nehmen“ */
 function vehicle(l) {
-  const kind = { 5: 'Bus', 6: 'Bus', 7: 'Schnellbus', 4: 'Tram', 3: 'Stadtbahn', 2: 'U-Bahn', 1: 'S-Bahn', 9: 'Fähre', 19: 'Bürgerbus', 10: 'Rufbus', 17: 'Ersatzverkehr' }[l.cls];
+  const kind = { 5: 'bus', 6: 'bus', 7: 'express_bus', 4: 'tram', 3: 'light_rail', 2: 'subway', 1: 'suburban', 9: 'ferry', 19: 'community_bus', 10: 'on_call_bus', 17: 'replacement' }[l.cls];
   const line = l.line || l.product;
   // Züge tragen die Art schon im Namen (ICE 783, RE 2, RB 83)
-  return kind && !/^[A-Za-z]{1,4}\s?\d/.test(line) ? `${kind} ${line}` : line;
+  return kind && !/^[A-Za-z]{1,4}\s?\d/.test(line) ? `${t(`transit_legs.vehicle.${kind}`)} ${line}` : line;
 }
 
 const legMeters = (l) => l.distance || (l.coords?.length > 1 ? cumulative(l.coords).at(-1) : 0);
 
 function walkDetail(l) {
-  const steps = l.steps?.length ? l.steps : [{ text: `Zu Fuß nach ${l.to}`, distance: l.distance }];
+  const steps = l.steps?.length ? l.steps : [{ text: t('transit_legs.walk_to', { to: l.to }), distance: l.distance }];
   return `<ol class="leg-steps">${steps.map((x) => `<li>${esc(x.text)}${x.distance ? ` <small>${fmtDistance(x.distance)}</small>` : ''}</li>`).join('')}</ol>`;
 }
 
 function rideDetail(l) {
   const n = l.stopList?.length ?? 0;
   return `<ol class="leg-stops">${(l.stopList ?? []).map((x, i) => `<li class="${i === 0 || i === n - 1 ? 'end' : ''}">
-    <time>${x.time ? clock(x.time) : ''}</time><span>${esc(x.name)}</span>${x.platform && (i === 0 || i === n - 1) ? `<small>Steig ${esc(x.platform)}</small>` : ''}</li>`).join('')}</ol>`;
+    <time>${x.time ? clock(x.time) : ''}</time><span>${esc(x.name)}</span>${x.platform && (i === 0 || i === n - 1) ? `<small>${t('transit_legs.platform', { n: esc(x.platform) })}</small>` : ''}</li>`).join('')}</ol>`;
 }
 
 /**
- * @param t       transit-Teil der Route bzw. gemerkte Verbindung ({ legs })
+ * @param trip    transit-Teil der Route bzw. gemerkte Verbindung ({ legs })
  * @param open    Nummer des aufgeklappten Abschnitts oder null
  * @param change  gewünschte Umsteigezeit (min) – darunter gilt es als knapp
  */
-export function transitLegsHtml(t, open = null, change = 5) {
+export function transitLegsHtml(trip, open = null, change = 5) {
   let prev = null;
-  return t.legs.map((l, i) => {
+  return trip.legs.map((l, i) => {
     const gap = !l.walk && prev ? Math.round((l.dep - prev.arr) / 60000) : null;
     const at = prev?.to;
     if (!l.walk) prev = l;
@@ -54,15 +55,15 @@ export function transitLegsHtml(t, open = null, change = 5) {
     const m = legMeters(l);
     let title, sub;
     if (l.walk) {
-      const speed = m && secs > 60 ? ` · ${(m / secs * 3.6).toLocaleString('de-DE', { maximumFractionDigits: 1 })} km/h` : '';
-      title = `Zu Fuß nach ${l.to}`;
+      const speed = m && secs > 60 ? ` · ${(m / secs * 3.6).toLocaleString(locale, { maximumFractionDigits: 1 })} ${t('common.units.kmh')}` : '';
+      title = t('transit_legs.walk_to', { to: l.to });
       sub = `${minutes(secs)}${m ? ` · ${fmtDistance(m)}` : ''}${speed}`;
     } else {
-      title = `${vehicle(l)} nehmen${l.to_ ? ` → ${l.to_}` : ''}`;
-      sub = `${l.from}${l.platform ? ` (Steig ${l.platform})` : ''} → ${l.to}${l.platformTo ? ` (Steig ${l.platformTo})` : ''}, an ${clock(l.arr)}`;
+      title = t('transit_legs.take', { vehicle: vehicle(l), to: l.to_ ? ` → ${l.to_}` : '' });
+      sub = t('transit_legs.ride', { from: l.from, platform: l.platform ? ` (${t('transit_legs.platform', { n: l.platform })})` : '', to: l.to, platform_to: l.platformTo ? ` (${t('transit_legs.platform', { n: l.platformTo })})` : '', time: clock(l.arr) });
     }
-    const facts = l.walk ? '' : `<small class="leg-facts">${l.stops} ${l.stops === 1 ? 'Halt' : 'Halte'} · ${minutes(secs)}${m ? ` · ${fmtDistance(m)}` : ''}</small>`;
-    return `${gap !== null ? `<li class="leg-change${gap < change ? ' tight' : ''}"><span class="msr">transfer_within_a_station</span> ${gap} min zum Umsteigen${at ? ` in ${esc(at)}` : ''}</li>` : ''}
+    const facts = l.walk ? '' : `<small class="leg-facts">${t('transit_legs.stops', { n: l.stops })} · ${minutes(secs)}${m ? ` · ${fmtDistance(m)}` : ''}</small>`;
+    return `${gap !== null ? `<li class="leg-change${gap < change ? ' tight' : ''}"><span class="msr">transfer_within_a_station</span> ${t('transit_legs.gap', { n: gap, at: at ? ` in ${esc(at)}` : '' })}</li>` : ''}
     <li class="leg${l.walk ? ' walk' : ''}${open === i ? ' open' : ''}" data-leg="${i}" style="--c:${l.walk ? 'var(--muted)' : (l.color ?? '#e8590c')}">
       <button type="button" class="leg-head" aria-expanded="${open === i}">
         <time>${clock(l.dep)}${lateText(l.delay)}</time>${legBadge(l)}

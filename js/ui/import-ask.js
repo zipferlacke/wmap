@@ -30,15 +30,16 @@ import { ask } from './dialogs.js';
 import { askMerge } from './merge-ask.js';
 import { bulk } from '../data/tracks.js';
 import { takeFile, prepareMerge } from '../data/import-files.js';
+import { locale, t } from '../core/i18n.js';
 
 /** Die Frage für alle → 'best' | 'each' | 'skip' (nur mit `skip`: Beschriftung des Knopfs) | null */
-export async function askAll({ title, text, later = 'Abbrechen', icon = 'library_add', auto = false, skip = null }) {
+export async function askAll({ title, text, later = t('common.cancel'), icon = 'library_add', auto = false, skip = null }) {
   const how = await ask({
     auto, icon, title, className: 'import-ask stacked',
-    text: `${text} Überall die genaueren Daten übernehmen?`,
+    text: t('import.ask.all.text', { text }),
     buttons: [
-      { value: 'best', label: 'Ja, überall die genaueren Daten', icon: 'done_all', primary: true },
-      { value: 'each', label: 'Selbst einstellen', icon: 'checklist' },
+      { value: 'best', label: t('import.ask.all.best'), icon: 'done_all', primary: true },
+      { value: 'each', label: t('import.ask.all.each'), icon: 'checklist' },
       ...(skip ? [{ value: 'skip', label: skip, icon: 'block' }] : []),
       { value: 'no', label: later },
     ],
@@ -47,22 +48,22 @@ export async function askAll({ title, text, later = 'Abbrechen', icon = 'library
 }
 
 /** Ordner: „250 neue Dateien … Übernehmen?“ → 'take' | 'each' | 'skip' | null (später) */
-export async function askNew({ title, text, later = 'Später', icon = 'drive_folder_upload', auto = false }) {
+export async function askNew({ title, text, later = t('common.later'), icon = 'drive_folder_upload', auto = false }) {
   const how = await ask({
     auto, icon, title, className: 'import-ask stacked',
-    text: `${text} Übernehmen?`,
+    text: t('import.ask.new.text', { text }),
     buttons: [
-      { value: 'take', label: 'Alle übernehmen', icon: 'done_all', primary: true },
-      { value: 'each', label: 'Auswählen', icon: 'checklist' },
-      { value: 'skip', label: 'Nicht importieren', icon: 'block' },
+      { value: 'take', label: t('import.ask.new.take'), icon: 'done_all', primary: true },
+      { value: 'each', label: t('import.ask.new.each'), icon: 'checklist' },
+      { value: 'skip', label: t('import.ask.skip'), icon: 'block' },
       { value: 'no', label: later },
     ],
   });
   return ['take', 'each', 'skip'].includes(how) ? how : null;
 }
 
-const day = (t) => new Date(t).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: 'numeric' });
-const km = (m) => `${(m / 1000).toFixed(m < 9950 ? 1 : 0).replace('.', ',')} km`;
+const day = (t) => new Date(t).toLocaleDateString(locale, { day: 'numeric', month: 'numeric', year: 'numeric' });
+const km = (m) => { const d = m < 9950 ? 1 : 0; return `${(m / 1000).toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: false })} ${t('common.units.km')}`; };
 
 /**
  * Neue Dateien: [{ file, kind: 'new' | 'tour', start, length, has: [{ key, detail, on }], look }] – `has`: was die Datei
@@ -80,14 +81,14 @@ export async function askNewFiles(items, opts = {}) {
     const last = i >= items.length - 1;
     const what = [x.start && day(x.start), x.length > 0 && km(x.length)].filter(Boolean).join(', ');
     const r = await askMerge(x.look ?? {}, x.has ?? [], {
-      title: items.length > 1 ? `Neue Datei (${i + 1} von ${items.length})` : 'Neue Datei',
-      icon: 'download', cancel: false, go: last ? 'Übernehmen' : 'Weiter',
-      from: `„${x.file}“${what ? ` (${what})` : ''}. Was willst du übernehmen?`,
-      note: x.kind === 'tour' ? 'Eine geplante Tour – ohne Zeiten.' : x.has?.length ? 'Strecke, Zeit und Kilometer kommen immer mit.' : 'Nur die Strecke – sonst keine Messwerte in der Datei.',
+      title: items.length > 1 ? t('import.ask.file.title_n', { i: i + 1, n: items.length }) : t('import.ask.file.title'),
+      icon: 'download', cancel: false, go: last ? t('import.ask.file.take') : t('common.next'),
+      from: t('import.ask.file.from', { file: x.file, what: what ? ` (${what})` : '' }),
+      note: x.kind === 'tour' ? t('import.ask.file.planned') : x.has?.length ? t('import.ask.file.always') : t('import.ask.file.only_route'),
       extra: [
-        ...(last ? [] : [{ value: 'same', label: 'Für alle Dateien so übernehmen', icon: 'done_all', picks: true }]),
-        { value: 'skip', label: 'Nicht importieren', icon: 'block' },
-        { value: 'later', label: 'Später weitermachen', icon: 'schedule' },
+        ...(last ? [] : [{ value: 'same', label: t('import.ask.same'), icon: 'done_all', picks: true }]),
+        { value: 'skip', label: t('import.ask.skip'), icon: 'block' },
+        { value: 'later', label: t('import.ask.continue_later'), icon: 'schedule' },
       ],
     });
     if (!r || r === 'later') { out.rest = 'later'; return out; }
@@ -106,12 +107,12 @@ export async function askOne(keep, list, { fileName = '', from = null, newName =
   const last = i >= n - 1;
   const r = await askMerge(keep, list, {
     fileName, from, newName, oldName, cancel: false,
-    title: n > 1 ? `Zusammenführen (${i + 1} von ${n})` : 'Zusammenführen',
-    go: last ? 'Zusammenführen' : 'Weiter',
-    extra: last ? [{ value: 'later', label: 'Später weitermachen', icon: 'schedule' }] : [
-      { value: 'same', label: 'Für alle Dateien so übernehmen', icon: 'done_all', picks: true },
-      { value: 'best', label: 'Für alle die genaueren Daten', icon: 'auto_awesome' },
-      { value: 'later', label: 'Später weitermachen', icon: 'schedule' },
+    title: n > 1 ? t('import.merge.title_n', { i: i + 1, n }) : t('import.merge.title'),
+    go: last ? t('import.merge.title') : t('common.next'),
+    extra: last ? [{ value: 'later', label: t('import.ask.continue_later'), icon: 'schedule' }] : [
+      { value: 'same', label: t('import.ask.same'), icon: 'done_all', picks: true },
+      { value: 'best', label: t('import.ask.all_best'), icon: 'auto_awesome' },
+      { value: 'later', label: t('import.ask.continue_later'), icon: 'schedule' },
     ],
   });
   return r === null ? 'later' : r?.value === 'same' ? { same: r.picks } : r;
@@ -124,7 +125,7 @@ export async function askOne(keep, list, { fileName = '', from = null, newName =
  * `skip`: Knopf „Nicht importieren“ in der ersten Frage (Ordner).
  * → null (abgebrochen) | { rest: 'best' | 'later' | 'skip' | Haken, files: Map(item → 'take' | 'later' | Haken) }
  */
-export async function askFiles(items, { title, text, later = 'Abbrechen', icon, auto = false, always = false, skip = null } = {}) {
+export async function askFiles(items, { title, text, later = t('common.cancel'), icon, auto = false, always = false, skip = null } = {}) {
   const merges = items.filter((x) => x.kind === 'merge');
   const out = { rest: 'best', files: new Map() };
   if (!merges.length && !always) return out;
@@ -155,8 +156,8 @@ export async function importAsk(entries, { step = null } = {}) {
   const items = todo.map((f) => ({ f, file: f.name, kind: f.dup ? 'merge' : 'new', prepare: () => prepareMerge(f) }));
   const merge = items.filter((x) => x.kind === 'merge').length, fresh = items.length - merge;
   const decided = await askFiles(items, {
-    title: `${items.length} Dateien`,
-    text: `${[fresh && `${fresh} ${fresh === 1 ? 'neue Tour' : 'neue Touren'}`, merge && `${merge} zu einer Tour, die es schon gibt`].filter(Boolean).join(', ')}.`,
+    title: t('import.ask.files_title', { n: items.length }),
+    text: `${[fresh && t('import.ask.new_tours', { n: fresh }), merge && t('import.ask.to_existing', { n: merge })].filter(Boolean).join(', ')}.`,
   });
   if (!decided) return null;
   const out = { saved: 0, merged: 0, later: 0 };
@@ -177,9 +178,9 @@ export async function importAsk(entries, { step = null } = {}) {
 /** Ergebnis in Worten */
 export function importSummary(out) {
   const parts = [
-    out.saved && `${out.saved} ${out.saved === 1 ? 'Tour' : 'Touren'} übernommen`,
-    out.merged && `${out.merged} zusammengeführt`,
-    out.later && `${out.later} ${out.later === 1 ? 'bleibt' : 'bleiben'} für später`,
+    out.saved && t('import.summary.saved', { n: out.saved }),
+    out.merged && t('import.summary.merged', { n: out.merged }),
+    out.later && t('import.summary.later', { n: out.later }),
   ].filter(Boolean);
-  return parts.length ? parts.join(', ') : 'Nichts Neues – die Touren gibt es schon';
+  return parts.length ? parts.join(', ') : t('import.summary.nothing');
 }

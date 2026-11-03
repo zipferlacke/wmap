@@ -14,6 +14,7 @@ import { clearPlace, featureFromPoint, showPlace } from './place.js';
 import { clearReach } from './reach.js';
 import { leaveRouteMode } from './route-plan.js';
 import { openSheet, remember } from './views.js';
+import { t } from '../core/i18n.js';
 
 /* ── Kategorie ────────────────────────────────────────────────────────────── */
 
@@ -30,10 +31,10 @@ export async function runCategory(cat, placeText = null, { bounds = null, label 
   if (!area && placeText) {
     try {
       const [f] = await geocode.search(placeText, { center: map.getCenter().toArray(), zoom: map.getZoom(), limit: 1 });
-      if (!f) { toast(`„${placeText}“ nicht gefunden`); return; }
+      if (!f) { toast(t('search.toast.not_found', { text: placeText })); return; }
       area = {
         bounds: extentToBounds(f.properties.extent) ?? bboxAround(f.geometry.coordinates, 3000),
-        label: `in ${geocode.describe(f).title}`,
+        label: t('map.in_place', { place: geocode.describe(f).title }),
       };
       fit = true;
     } catch (err) { toast(err.message); return; }
@@ -48,13 +49,13 @@ export async function runCategory(cat, placeText = null, { bounds = null, label 
       : runCategory(cat, null, { ...area, fit: true, push: false })));
   }
   if (rememberAs) {
-    recent.add({ kind: 'category', category: cat.id, place: placeText, title: cat.label, subtitle: placeText ? `in ${placeText}` : 'in der Nähe' });
+    recent.add({ kind: 'category', category: cat.id, place: placeText, title: cat.label, subtitle: placeText ? t('map.in_place', { place: placeText }) : t('category.recent_nearby') });
   }
   q.value = cat.label;
   $('#q-clear').hidden = false;
   $('#search-here').hidden = true;
   $('.cat-title', view).innerHTML = `<span class="msr" style="color:${cat.color}">${cat.icon}</span> ${esc(cat.label)}`;
-  $('.cat-sub', view).textContent = `Suche ${area.label} …`;
+  $('.cat-sub', view).textContent = t('category.searching', { area: area.label });
   $('.cat-list', view).innerHTML = '';
   openSheet('category');
   if (fit) afterLayout(() => fitTo(area.bounds, 15));
@@ -74,11 +75,12 @@ export async function runCategory(cat, placeText = null, { bounds = null, label 
     numberHits(points);
     showHl({ shapes, points });
     const hidden = all.length - points.length;
+    const hiddenText = hidden ? ` · ${t('category.hidden', { n: hidden })}` : '';
     $('.cat-sub', view).textContent = !final
-      ? `${points.length} gefunden ${area.label} …`
-      : points.length ? `${points.length}${all.length >= 400 ? '+' : ''} gefunden ${area.label}${hidden ? ` · ${hidden} ausgeblendet` : ''}`
-        : `Keine ${cat.label} ${area.label}${hidden ? ` · ${hidden} ausgeblendet` : ''}`;
-    renderResultList($('.cat-list', view), points.slice(0, 80), cat, (p) => `${fmtDistance(p.properties.dist)} entfernt`,
+      ? t('category.found_so_far', { n: points.length, area: area.label })
+      : points.length ? `${t('category.found', { n: `${points.length}${all.length >= 400 ? '+' : ''}`, area: area.label })}${hiddenText}`
+        : `${t('category.none', { category: cat.label, area: area.label })}${hiddenText}`;
+    renderResultList($('.cat-list', view), points.slice(0, 80), cat, (p) => t('category.distance', { distance: fmtDistance(p.properties.dist) }),
       { filter: f, redo: () => { if (state.category?.category === cat) show(allShapes, all, final); } });
   };
 
@@ -108,8 +110,8 @@ export async function runCategory(cat, placeText = null, { bounds = null, label 
     if (!current_()) return;
     // Overpass ausgefallen: die Treffer aus den Kacheln bleiben stehen
     // Mit Treffern aus den Kacheln still bleiben – nur fehlende Flächen erwähnen
-    $('.cat-sub', view).textContent = !fromTiles.length ? `${err.message} – bitte gleich noch einmal`
-      : `${fromTiles.length} gefunden ${area.label}${cat.kind === 'point' ? '' : ' · Umrisse gerade nicht abrufbar'}`;
+    $('.cat-sub', view).textContent = !fromTiles.length ? t('category.failed', { error: err.message })
+      : `${t('category.found', { n: fromTiles.length, area: area.label })}${cat.kind === 'point' ? '' : ` · ${t('category.no_shapes')}`}`;
   }
 }
 
@@ -236,13 +238,13 @@ export function filterHits(points, shapes = []) {
 function filterChips(f) {
   const chips = [];
   if (f.hours || f.closed) {
-    chips.push(`<button type="button" class="chip" data-hf="open" aria-pressed="${hitFilter.open}"><span class="msr">schedule</span> Nur offene${
-      hitFilter.open && f.closed ? ` <small>${f.closed} zu</small>` : ''}</button>`);
+    chips.push(`<button type="button" class="chip" data-hf="open" aria-pressed="${hitFilter.open}"><span class="msr">schedule</span> ${t('category.filter.only_open')}${
+      hitFilter.open && f.closed ? ` <small>${t('category.filter.closed', { n: f.closed })}</small>` : ''}</button>`);
   }
   if (f.priv) {
-    chips.push(`<button type="button" class="chip" data-hf="priv" aria-pressed="${hitFilter.priv}"><span class="msr">lock</span> Auch private <small>${f.priv}</small></button>`);
+    chips.push(`<button type="button" class="chip" data-hf="priv" aria-pressed="${hitFilter.priv}"><span class="msr">lock</span> ${t('category.filter.also_private')} <small>${f.priv}</small></button>`);
   }
-  return chips.length ? `<li class="hit-filters chip-row" role="group" aria-label="Filter">${chips.join('')}</li>` : '';
+  return chips.length ? `<li class="hit-filters chip-row" role="group" aria-label="${t('category.filter.title')}">${chips.join('')}</li>` : '';
 }
 
 /**
@@ -254,7 +256,7 @@ export function renderResultList(ul, points, cat, meta, { filter = null, redo = 
     const info = describePoi(parseTags(p.properties.tags), { name: p.properties.name });
     const c = cat?.byName ? info.category ?? cat : cat ?? info.category;
     // Der Zugang steht schon als Hinweis da – nicht noch einmal als Angabe
-    const known = info.facts.filter((f) => !f.unknown && !f.value.includes('\n') && !(info.access.text && f.label === 'Zugang')).slice(0, 2).map((f) => f.value);
+    const known = info.facts.filter((f) => !f.unknown && !f.value.includes('\n') && !(info.access.text && f.label === t('poi.facts.access'))).slice(0, 2).map((f) => f.value);
     // Ausgegraut (privat, geschlossen – filterHits): auch in der Liste grau
     const grey = p.properties.color === GREY;
     return `<li${grey ? ' class="hit-muted"' : ''}><button type="button" data-i="${i}">

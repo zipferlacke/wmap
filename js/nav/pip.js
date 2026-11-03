@@ -20,6 +20,7 @@
  * Gespiegelt wird die Anweisung (#nav .nav-banner); ein MutationObserver hält
  * das Fenster aktuell, die Navigation selbst weiß davon nichts.
  */
+import { locale } from '../core/i18n.js';
 const ANDROID = () => typeof window.WMapAndroid?.enterPip === 'function';
 const DOC_PIP = 'documentPictureInPicture' in window;
 const VIDEO_PIP = !DOC_PIP && document.pictureInPictureEnabled && 'captureStream' in HTMLCanvasElement.prototype;
@@ -84,7 +85,7 @@ export class NavPip {
     const win = await window.documentPictureInPicture.requestWindow(mapEl ? { width: 360, height: 520 } : { width: 340, height: 190 });
     // Stile der App mitnehmen – so sieht das Banner genauso aus
     for (const el of document.querySelectorAll('link[rel="stylesheet"], style')) win.document.head.append(el.cloneNode(true));
-    win.document.documentElement.lang = 'de';
+    win.document.documentElement.lang = locale.split('-')[0];
     win.document.documentElement.className = document.documentElement.className;
     win.document.body.className = mapEl ? 'pip-body pip-map' : 'pip-body';
     this.#box = win.document.createElement('div');

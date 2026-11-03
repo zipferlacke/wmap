@@ -14,9 +14,10 @@ import * as osm from '../osm/objects.js';
 import { toast } from '../ui/dialogs.js';
 import { map, state } from './core.js';
 import { showPoint } from './place.js';
+import { t } from '../core/i18n.js';
 
-const KIND = { latlon: 'Koordinate', mgrs: 'MGRS', utm: 'UTM', plus: 'Plus Code' };
-const PAGE = { 'tour.html': 'Tour', 'wege.html': 'Aufzeichnung oder Liste', 'index.html': 'Ort oder Route', 'entdecken.html': 'Entdecken' };
+const KIND = { latlon: t('search.direct.kinds.latlon'), mgrs: t('search.direct.kinds.mgrs'), utm: t('search.direct.kinds.utm'), plus: t('search.direct.kinds.plus'), link: t('search.direct.kinds.link') };
+const PAGE = { 'tour.html': t('search.direct.pages.tour'), 'wege.html': t('search.direct.pages.tracks'), 'index.html': t('search.direct.pages.map'), 'entdecken.html': t('search.direct.pages.discover') };
 
 const pointFeature = (p, name, extra = {}) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: p }, properties: { name, _point: true, ...extra } });
 
@@ -62,10 +63,10 @@ async function osmCenter({ type, id }, signal) {
 }
 
 export async function directItems(text, onPick, { main = false, signal } = {}) {
-  const t = String(text ?? '').trim();
-  if (!t) return null;
+  const typed = String(text ?? '').trim();
+  if (!typed) return null;
 
-  let c = parseCoords(t);
+  let c = parseCoords(typed);
   let missed = false;
   if (c?.short) {
     const [ref, miss] = await plusRef(c.rest, signal);
@@ -73,32 +74,32 @@ export async function directItems(text, onPick, { main = false, signal } = {}) {
     c = { point: recoverPlus(c.short, ref), kind: 'plus', title: [c.short, c.rest].filter(Boolean).join(' ') };
   }
   if (c?.point) {
-    const item = pointItem(c.point, { title: c.title ?? (c.kind === 'mgrs' ? fmtMgrs(c.point) : c.kind === 'latlon' ? fmtLatLon(c.point) : t), kind: c.kind }, onPick, main);
-    if (missed) item.subtitle = `„${parseCoords(t).rest}“ nicht gefunden – nahe der Kartenmitte · ${item.subtitle}`;
+    const item = pointItem(c.point, { title: c.title ?? (c.kind === 'mgrs' ? fmtMgrs(c.point) : c.kind === 'latlon' ? fmtLatLon(c.point) : typed), kind: c.kind }, onPick, main);
+    if (missed) item.subtitle = `${t('search.direct.plus_place_missing', { text: parseCoords(typed).rest })} · ${item.subtitle}`;
     return [item];
   }
 
-  const link = parseMapLink(t);
+  const link = parseMapLink(typed);
   if (!link) return null;
   if (link.wmap) {
     if (!main) return [];
     const page = link.wmap.slice(2).split(/[?#]/)[0];
-    return [{ icon: 'link', title: 'WMap-Link öffnen', subtitle: PAGE[page] ?? page, type: 'Link', run: () => { location.href = link.wmap; } }];
+    return [{ icon: 'link', title: t('search.direct.wmap_link'), subtitle: PAGE[page] ?? page, type: KIND.link, run: () => { location.href = link.wmap; } }];
   }
   if (link.short) {
     return [{
-      icon: 'link_off', title: 'Kurzlink – den kann nur Google auflösen', subtitle: 'Link im Browser öffnen und die lange Adresse einfügen', type: 'Link',
-      run: () => toast('Kurzlinks (maps.app.goo.gl) löst nur Google auf: im Browser öffnen, dann die lange Adresse kopieren'),
+      icon: 'link_off', title: t('search.direct.short_link.title'), subtitle: t('search.direct.short_link.subtitle'), type: KIND.link,
+      run: () => toast(t('search.direct.short_link.toast')),
     }];
   }
   if (link.osm) {
     const at = await osmCenter(link.osm, signal).catch(() => null);
-    if (!at) return [{ icon: 'error', title: 'Dieses OSM-Objekt gibt es nicht (mehr)', type: 'Link', run: () => {} }];
+    if (!at) return [{ icon: 'error', title: t('search.direct.osm.missing'), type: KIND.link, run: () => {} }];
     const name = at.tags.name ?? '';
     const f = { type: 'Feature', geometry: { type: 'Point', coordinates: at.point }, properties: { name: name || fmtLatLon(at.point), osm_type: link.osm.type, osm_id: link.osm.id, _tags: at.tags } };
-    return [{ icon: 'location_on', title: name || `OSM-Objekt ${link.osm.id}`, subtitle: [fmtLatLon(at.point), fmtMgrs(at.point)].join(' · '), type: 'OSM', point: at.point, run: () => onPick(f) }];
+    return [{ icon: 'location_on', title: name || t('search.direct.osm.object', { id: link.osm.id }), subtitle: [fmtLatLon(at.point), fmtMgrs(at.point)].join(' · '), type: 'OSM', point: at.point, run: () => onPick(f) }];
   }
-  if (link.point) return [pointItem(link.point, { kind: 'Link', name: link.name, zoom: link.zoom, view: link.view }, onPick, main)];
+  if (link.point) return [pointItem(link.point, { kind: 'link', name: link.name, zoom: link.zoom, view: link.view }, onPick, main)];
   if (link.query) return { query: link.query };
   return null;
 }

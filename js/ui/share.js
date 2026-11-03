@@ -22,6 +22,7 @@ import { packJson, unpackJson, local } from '../data/store.js';
 import { ask } from './dialogs.js';
 import { esc } from '../core/geo.js';
 import { PUBLIC_URL } from '../core/config.js';
+import { locale, t } from '../core/i18n.js';
 
 const NAME_KEY = 'wmap.myname';
 // Android-App: das WebView hat weder navigator.share noch eine verlässliche
@@ -32,7 +33,7 @@ const web = /^https?:$/.test(location.protocol) && location.hostname !== 'tauri.
 const base = () => {
   if (web) return `${location.origin}${location.pathname.replace(/[^/]*$/, '')}index.html`;
   // Desktop-App: tauri://localhost kann niemand öffnen
-  if (!PUBLIC_URL) throw new Error('Teilen geht in der Desktop-App erst mit PUBLIC_URL in core/config.js');
+  if (!PUBLIC_URL) throw new Error(t('share.error.desktop'));
   return `${PUBLIC_URL}index.html`;
 };
 const r5 = (v) => +v.toFixed(5);
@@ -64,7 +65,7 @@ export async function routeUrl({ profile, waypoints }) {
 
 export async function readRoute(code) {
   const o = await unpackJson(code);
-  return { profile: o.p, waypoints: (o.w ?? []).map(([lon, lat, label]) => ({ label: label || 'Geteilter Punkt', point: [lon, lat], me: false })) };
+  return { profile: o.p, waypoints: (o.w ?? []).map(([lon, lat, label]) => ({ label: label || t('share.route.shared_point'), point: [lon, lat], me: false })) };
 }
 
 /** Street View: Standpunkt, Blickrichtung und Neigung → Link */
@@ -85,25 +86,25 @@ export async function share({ title, text = '', url: make, short = null, note = 
   let url;
   try { url = typeof make === 'function' ? await make() : make; } catch (err) { toast?.(err.message); return null; }
   const wmap = url;
-  if (geo?.point) url = `${geoUri(geo.point, geo.name)}\n(WMap: ${wmap})`;
+  if (geo?.point) url = `${geoUri(geo.point, geo.name)}\n(${t('share.wmap_link', { url: wmap })})`;
   const full = text ? `${text}\n${url}` : url;
   const system = androidApp || !!navigator.share;
-  const shown = geo?.point ? `<span class="share-url">${esc(geoUri(geo.point, geo.name))}</span><span class="share-url share-wmap">(WMap: ${esc(wmap)})</span>` : `<span class="share-url">${esc(url)}</span>`;
+  const shown = geo?.point ? `<span class="share-url">${esc(geoUri(geo.point, geo.name))}</span><span class="share-url share-wmap">(${t('share.wmap_link', { url: esc(wmap) })})</span>` : `<span class="share-url">${esc(url)}</span>`;
   const choice = await ask({
     icon: 'share', title, className: 'stacked',
     html: `<div class="share-preview">${text ? `<p>${esc(text)}</p>` : ''}${shown}</div>${note ? `<p class="muted share-note">${esc(note)}</p>` : ''}`,
     buttons: [
-      ...(system ? [{ value: 'share', label: 'Teilen …', icon: 'share', primary: true }] : []),
-      ...(text ? [{ value: 'text', label: 'Text mit Link kopieren', icon: 'content_copy', primary: !system }] : []),
-      { value: 'link', label: 'Nur Link kopieren', icon: 'link', primary: !system && !text },
-      ...(short && url.length > SHORT_FROM ? [{ value: 'short', label: 'Kurzen Link erstellen', icon: 'compress' }] : []),
-      { value: 'no', label: 'Abbrechen' },
+      ...(system ? [{ value: 'share', label: t('share.menu.share'), icon: 'share', primary: true }] : []),
+      ...(text ? [{ value: 'text', label: t('share.menu.copy_text'), icon: 'content_copy', primary: !system }] : []),
+      { value: 'link', label: t('share.menu.copy_link'), icon: 'link', primary: !system && !text },
+      ...(short && url.length > SHORT_FROM ? [{ value: 'short', label: t('share.menu.short'), icon: 'compress' }] : []),
+      { value: 'no', label: t('common.cancel') },
     ],
   });
   if (choice === 'short') {
     let small;
-    try { small = await short(); } catch (err) { toast?.(err.message || 'Der kurze Link ließ sich nicht anlegen'); return share({ title, text, url }, toast); }
-    return share({ title, text, url: small, note: 'Kurzer Link: Die Tour liegt dafür 30 Tage auf dem WMap-Server – danach geht der Link nicht mehr.' }, toast);
+    try { small = await short(); } catch (err) { toast?.(err.message || t('share.short.failed')); return share({ title, text, url }, toast); }
+    return share({ title, text, url: small, note: t('share.short.note') }, toast);
   }
   if (choice === 'share') {
     try {
@@ -113,11 +114,11 @@ export async function share({ title, text = '', url: make, short = null, note = 
       return 'shared';
     } catch (err) {
       if (err.name === 'AbortError') return null;             // selbst abgebrochen
-      return copy(full, 'Text mit Link kopiert', title, toast);
+      return copy(full, t('share.copied.text'), title, toast);
     }
   }
-  if (choice === 'text') return copy(full, 'Text mit Link kopiert', title, toast);
-  if (choice === 'link') return copy(url, 'Link kopiert', title, toast);
+  if (choice === 'text') return copy(full, t('share.copied.text'), title, toast);
+  if (choice === 'link') return copy(url, t('share.copied.link'), title, toast);
   return null;
 }
 
@@ -146,11 +147,11 @@ async function copy(value, done, title, toast) {
   try {
     if (androidApp) await core.invoke('plugin:browser|copy', { title, text: value });
     else await navigator.clipboard.writeText(value);
-    toast?.(`${done} – jetzt einfügen und senden`);
+    toast?.(t('share.copied.then', { done }));
   } catch {
-    await ask({ icon: 'content_copy', title, text: 'Kopieren ging nicht – bitte selbst markieren und kopieren:',
+    await ask({ icon: 'content_copy', title, text: t('share.copied.failed'),
       html: `<textarea class="share-link" readonly rows="${Math.min(6, value.split('\n').length + 2)}" onfocus="this.select()">${esc(value)}</textarea>`,
-      buttons: [{ value: 'ok', label: 'Fertig', primary: true }] });
+      buttons: [{ value: 'ok', label: t('common.done'), primary: true }] });
   }
   return 'copied';
 }
@@ -160,10 +161,10 @@ export async function myName() {
   const known = local.get(NAME_KEY);
   if (known) return known;
   const v = await ask({
-    icon: 'badge', title: 'Wie heißt du?',
-    text: 'Der Name steht in der Anfrage, damit man weiß, wer fragt. Er bleibt auf diesem Gerät.',
-    html: '<input class="share-name" type="text" maxlength="40" autocomplete="given-name" placeholder="Vorname">',
-    buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'ok', label: 'Weiter', primary: true }],
+    icon: 'badge', title: t('share.my_name.title'),
+    text: t('share.my_name.text'),
+    html: `<input class="share-name" type="text" maxlength="40" autocomplete="given-name" placeholder="${t('share.my_name.placeholder')}">`,
+    buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'ok', label: t('common.next'), primary: true }],
     read: (dlg) => dlg.querySelector('.share-name').value.trim(),
   });
   if (!v || v === 'no') return null;
@@ -171,4 +172,4 @@ export async function myName() {
   return v;
 }
 
-export const clock = (ms) => new Date(ms).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+export const clock = (ms) => new Date(ms).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });

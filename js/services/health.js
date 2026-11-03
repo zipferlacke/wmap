@@ -24,6 +24,7 @@
 import { tracks, buildTrack, guessProfile, sameTrack, defaultName, healthGone, healthTrackId, bulk } from '../data/tracks.js';
 import { local, inSw } from '../data/store.js';
 import { tauri } from '../core/tauri.js';
+import { t } from '../core/i18n-text.js';
 
 // Im Service Worker über die Brücke der App (core/tauri.js) – dort erst nach tauri.ready() bekannt
 const available = () => tauri.here && /Android/i.test(navigator.userAgent);
@@ -39,33 +40,33 @@ const ASKED = 'wmap.health.asked';
 /** Art des Trainings (Health Connect) → Profil in WMap; sonst am Tempo erkennen */
 const PROFILE = { biking: 'bike', hiking: 'hike', walking: 'walk', running: 'foot' };
 
-/** Art des Trainings (Namen wie in Health Connect): Name und Symbol (Material Symbols) */
+/** Art des Trainings (Namen wie in Health Connect): Symbol (Material Symbols); der Name steht unter services.health.types */
 const TYPES = {
-  walking: ['Gehen', 'directions_walk'], hiking: ['Wandern', 'hiking'], snowshoeing: ['Schneeschuh', 'snowshoeing'],
-  running: ['Laufen', 'directions_run'], running_treadmill: ['Laufband', 'directions_run'],
-  biking: ['Radfahren', 'directions_bike'], biking_stationary: ['Heimtrainer', 'pedal_bike'],
-  wheelchair: ['Rollstuhl', 'accessible'], skating: ['Skaten', 'roller_skating'], ice_skating: ['Eislaufen', 'ice_skating'],
-  skiing: ['Ski', 'downhill_skiing'], snowboarding: ['Snowboard', 'snowboarding'],
-  rowing: ['Rudern', 'rowing'], rowing_machine: ['Rudergerät', 'rowing'], paddling: ['Paddeln', 'kayaking'],
-  sailing: ['Segeln', 'sailing'], surfing: ['Surfen', 'surfing'], scuba_diving: ['Tauchen', 'scuba_diving'],
-  swimming_open_water: ['Schwimmen', 'pool'], swimming_pool: ['Schwimmbad', 'pool'], water_polo: ['Wasserball', 'pool'],
-  paragliding: ['Gleitschirm', 'paragliding'], rock_climbing: ['Klettern', 'landscape'], golf: ['Golf', 'golf_course'],
-  frisbee_disc: ['Frisbee', 'sports'], soccer: ['Fußball', 'sports_soccer'], football_american: ['Football', 'sports_football'],
-  football_australian: ['Australian Football', 'sports_football'], rugby: ['Rugby', 'sports_rugby'],
-  basketball: ['Basketball', 'sports_basketball'], volleyball: ['Volleyball', 'sports_volleyball'], handball: ['Handball', 'sports_handball'],
-  baseball: ['Baseball', 'sports_baseball'], softball: ['Softball', 'sports_baseball'], cricket: ['Cricket', 'sports_cricket'],
-  tennis: ['Tennis', 'sports_tennis'], table_tennis: ['Tischtennis', 'sports_tennis'], badminton: ['Badminton', 'sports_tennis'],
-  squash: ['Squash', 'sports_tennis'], racquetball: ['Racquetball', 'sports_tennis'],
-  ice_hockey: ['Eishockey', 'sports_hockey'], roller_hockey: ['Rollhockey', 'sports_hockey'],
-  martial_arts: ['Kampfsport', 'sports_martial_arts'], boxing: ['Boxen', 'sports_mma'], fencing: ['Fechten', 'sports_kabaddi'],
-  dancing: ['Tanzen', 'music_note'], gymnastics: ['Turnen', 'sports_gymnastics'], yoga: ['Yoga', 'self_improvement'],
-  pilates: ['Pilates', 'self_improvement'], stretching: ['Dehnen', 'accessibility_new'], meditation: ['Meditation', 'self_improvement'],
-  guided_breathing: ['Atemübung', 'air'], elliptical: ['Crosstrainer', 'fitness_center'],
-  stair_climbing: ['Treppensteigen', 'stairs'], stair_climbing_machine: ['Stepper', 'stairs'],
-  weightlifting: ['Gewichtheben', 'fitness_center'], strength_training: ['Krafttraining', 'fitness_center'],
-  calisthenics: ['Calisthenics', 'fitness_center'], high_intensity_interval_training: ['HIIT', 'fitness_center'],
-  boot_camp: ['Bootcamp', 'fitness_center'], exercise_class: ['Kurs', 'groups'],
-  workout: ['Workout', 'fitness_center'], other_workout: ['Training', 'fitness_center'],
+  walking: 'directions_walk', hiking: 'hiking', snowshoeing: 'snowshoeing',
+  running: 'directions_run', running_treadmill: 'directions_run',
+  biking: 'directions_bike', biking_stationary: 'pedal_bike',
+  wheelchair: 'accessible', skating: 'roller_skating', ice_skating: 'ice_skating',
+  skiing: 'downhill_skiing', snowboarding: 'snowboarding',
+  rowing: 'rowing', rowing_machine: 'rowing', paddling: 'kayaking',
+  sailing: 'sailing', surfing: 'surfing', scuba_diving: 'scuba_diving',
+  swimming_open_water: 'pool', swimming_pool: 'pool', water_polo: 'pool',
+  paragliding: 'paragliding', rock_climbing: 'landscape', golf: 'golf_course',
+  frisbee_disc: 'sports', soccer: 'sports_soccer', football_american: 'sports_football',
+  football_australian: 'sports_football', rugby: 'sports_rugby',
+  basketball: 'sports_basketball', volleyball: 'sports_volleyball', handball: 'sports_handball',
+  baseball: 'sports_baseball', softball: 'sports_baseball', cricket: 'sports_cricket',
+  tennis: 'sports_tennis', table_tennis: 'sports_tennis', badminton: 'sports_tennis',
+  squash: 'sports_tennis', racquetball: 'sports_tennis',
+  ice_hockey: 'sports_hockey', roller_hockey: 'sports_hockey',
+  martial_arts: 'sports_martial_arts', boxing: 'sports_mma', fencing: 'sports_kabaddi',
+  dancing: 'music_note', gymnastics: 'sports_gymnastics', yoga: 'self_improvement',
+  pilates: 'self_improvement', stretching: 'accessibility_new', meditation: 'self_improvement',
+  guided_breathing: 'air', elliptical: 'fitness_center',
+  stair_climbing: 'stairs', stair_climbing_machine: 'stairs',
+  weightlifting: 'fitness_center', strength_training: 'fitness_center',
+  calisthenics: 'fitness_center', high_intensity_interval_training: 'fitness_center',
+  boot_camp: 'fitness_center', exercise_class: 'groups',
+  workout: 'fitness_center', other_workout: 'fitness_center',
 };
 /**
  * Trainings ohne Strecke (Geräte, Halle). Manche Apps (Zepp) hängen trotzdem
@@ -78,9 +79,8 @@ const INDOOR = new Set(['running_treadmill', 'biking_stationary', 'rowing_machin
   'gymnastics', 'dancing', 'martial_arts', 'boxing', 'fencing', 'table_tennis', 'badminton', 'squash', 'racquetball']);
 const noRoute = (s) => s.route === 'none' || (s.route === 'consent' && INDOOR.has(s.type));
 
-export const TYPE_NAME = Object.fromEntries(Object.entries(TYPES).map(([k, [n]]) => [k, n]));
-export const typeName = (type) => TYPES[type]?.[0] ?? (type ? type.replace(/_/g, ' ') : 'Training');
-export const typeIcon = (type) => TYPES[type]?.[1] ?? 'fitness_center';
+export const typeName = (type) => (TYPES[type] ? t(`services.health.types.${type}`) : (type ? type.replace(/_/g, ' ') : t('services.health.types.other_workout')));
+export const typeIcon = (type) => TYPES[type] ?? 'fitness_center';
 
 const APP_NAME = {
   'com.google.android.apps.fitness': 'Google Fit', 'com.fitbit.FitbitMobile': 'Fitbit',
@@ -96,10 +96,10 @@ export const appName = (pkg) => APP_NAME[pkg] ?? pkg?.split('.').slice(-2).join(
 
 /** Was freigegeben ist: read (Trainings), routes (Routen immer erlaubt) */
 export async function healthStatus() {
-  if (!available()) return { available: false, reason: 'Nur in der Android-App' };
+  if (!available()) return { available: false, reason: t('services.health.error.android_only') };
   const st = await call('status');
   if (!st.available) {
-    return { available: false, reason: st.sdkStatus === 2 ? 'Health Connect muss erst aktualisiert werden' : 'Health Connect gibt es auf diesem Gerät nicht' };
+    return { available: false, reason: st.sdkStatus === 2 ? t('services.health.error.update_needed') : t('services.health.error.not_on_device') };
   }
   const has = (p) => !!st.granted?.includes(p);
   return { available: true, read: has(READ), routes: has(ROUTES), values: has(VALUES) };
@@ -130,7 +130,7 @@ export async function healthSessions({ days = 3650 } = {}) {
     const { showPermissions } = await import('../ui/permissions.js');
     await showPermissions({ reason: 'health' });
     st = await healthStatus();
-    if (!st.read) throw new Error('Ohne Freigabe für Trainings kann WMap nichts lesen');
+    if (!st.read) throw new Error(t('services.health.error.no_access'));
   } else if (!st.values && once(ASKED)) {
     // Neu: Puls & Co. – einmal nachfragen, ablehnen ist in Ordnung
     await call('request_access').catch(() => {});
@@ -140,8 +140,8 @@ export async function healthSessions({ days = 3650 } = {}) {
 }
 
 /** „Rudern am Dienstagabend“ – das Wort aus der Art, der Rest wie bei eigenen Wegen */
-const WORD = { running: 'Lauf', running_treadmill: 'Lauf', hiking: 'Wanderung', biking: 'Radtour', walking: 'Spaziergang' };
-const nameFor = (type, t) => defaultName(t.profile, t.start).replace(/^\S+/, WORD[type] ?? typeName(type));
+const WORD = { running: 'run', running_treadmill: 'run', hiking: 'hike', biking: 'ride', walking: 'walk' };
+const nameFor = (type, track) => defaultName(track.profile, track.start, WORD[type] ? t(`tracks.names.words.${WORD[type]}`) : typeName(type));
 
 /** Schon übernommen (gleiche ID) oder übernommen und wieder gelöscht? – für den Überblick vor dem Import */
 export async function knownHealthIds() {
@@ -325,7 +325,7 @@ async function runSync({ quiet = false, onProgress } = {}) {
   try {
     const st = await healthStatus();
     if (!st.available) throw new Error(st.reason);
-    if (!st.read) throw new Error('Health Connect ist noch nicht freigegeben');
+    if (!st.read) throw new Error(t('services.health.error.not_granted'));
     const { sessions } = await call('sessions', { days: 3650 });
     const known = await knownHealthIds();
     const fresh = sessions.filter((s) => !noRoute(s) && !known.has(s.id)).sort((a, b) => b.start - a.start);

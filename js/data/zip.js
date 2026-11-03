@@ -8,6 +8,7 @@
  * GPX schrumpft dabei auf etwa ein Viertel –, sonst unkomprimiert. Lesen
  * kann beides, also auch ZIPs von anderen Programmen.
  */
+import { t } from '../core/i18n-text.js';
 const enc = new TextEncoder();
 
 let table = null;
@@ -95,7 +96,7 @@ export async function readZip(blob) {
   // Ende des Inhaltsverzeichnisses von hinten suchen
   let e = buf.length - 22;
   while (e >= 0 && view.getUint32(e, true) !== 0x06054b50) e -= 1;
-  if (e < 0) throw new Error('Das ist keine ZIP-Datei');
+  if (e < 0) throw new Error(t('backup.error.not_zip'));
   const count = view.getUint16(e + 10, true);
   let p = view.getUint32(e + 16, true);
   const dec = new TextDecoder();
@@ -115,7 +116,7 @@ export async function readZip(blob) {
       async bytes() {
         if (method === 0) return body;
         if (method === 8) return stream(body, 'in', 'deflate-raw');
-        throw new Error(`${path}: Packverfahren ${method} geht nicht`);
+        throw new Error(t('backup.error.zip_method', { path, method }));
       },
       async text() { return dec.decode(await this.bytes()); },
     });
