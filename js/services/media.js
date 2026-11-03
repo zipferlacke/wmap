@@ -11,6 +11,7 @@
 import { API, TANKERKOENIG_KEY } from '../core/config.js';
 import { local } from '../data/store.js';
 import { distance } from '../core/geo.js';
+import { t } from '../core/i18n.js';
 
 const WIDTH = 640;
 const filePath = (name) => `${API.commons}/${encodeURIComponent(name.replace(/^File:/i, '').trim())}?width=${WIDTH}`;
@@ -84,7 +85,7 @@ export async function fuelPrices([lon, lat], { signal } = {}) {
   Object.entries({ lat, lng: lon, rad: 1, sort: 'dist', type: 'all', apikey: key })
     .forEach(([k, v]) => u.searchParams.set(k, String(v)));
   const d = await json(u, signal);
-  if (!d.ok) throw new Error(d.message || 'Tankerkönig antwortet nicht');
+  if (!d.ok) throw new Error(d.message || t('services.media.fuel_no_answer'));
   // Die OSM-Tankstelle und die gemeldete liegen selten exakt übereinander
   const s = (d.stations ?? []).find((x) => distance([lon, lat], [x.lng, x.lat]) < 150);
   return s ? { e5: s.e5, e10: s.e10, diesel: s.diesel, open: s.isOpen, name: s.brand || s.name } : null;

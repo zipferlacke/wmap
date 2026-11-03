@@ -113,6 +113,7 @@ import { devLog } from '../core/devlog.js';
 import { tauri } from '../core/tauri.js';
 import { parseXml } from '../core/xml.js';
 import { inSw } from './store.js';
+import { locale, t } from '../core/i18n-text.js';
 // Seite: Gleicht der Service Worker ab (js/sw/sync.js)? Dann geht die Arbeit dorthin – ein Seitenwechsel bricht sie
 // nicht ab. Ohne ihn (erster Besuch, alter Browser, Tests mit _useBackend) wie früher hier
 const link = inSw ? null : import('../core/sw-link.js');
@@ -168,7 +169,7 @@ async function load() {
   if (!conf && nativeHere()) {
     const i = await call('info').catch(() => null);
     if (i?.connected) {
-      conf = { id: KEY, native: true, name: i.name ?? 'Ordner', index: {}, last: null, result: null, error: null };
+      conf = { id: KEY, native: true, name: i.name ?? t('sync.folder.fallback_name'), index: {}, last: null, result: null, error: null };
       await kv.put(conf).catch(() => {});
     }
   }
@@ -311,7 +312,7 @@ export const folder = {
         if (/abgebrochen|cancel/i.test(String(err))) throw Object.assign(new Error('abgebrochen'), { name: 'AbortError' });
         throw new Error(String(err?.message ?? err));
       }
-      conf = { id: KEY, native: true, name: r.name ?? 'Ordner', index: {}, last: null, result: null, error: null };
+      conf = { id: KEY, native: true, name: r.name ?? t('sync.folder.fallback_name'), index: {}, last: null, result: null, error: null };
     } else {
       const handle = await window.showDirectoryPicker({ id: 'wmap', mode: 'readwrite', startIn: 'documents' });
       conf = { id: KEY, handle, name: handle.name, index: {}, last: null, result: null, error: null };
@@ -339,7 +340,7 @@ export const folder = {
   /** Den verbundenen Ordner (bzw. einen Unterordner) im Dateimanager zeigen – nur in der App */
   async reveal(path = '') {
     const c = await load();
-    if (!c?.native) throw new Error('Geht nur in der App');
+    if (!c?.native) throw new Error(t('sync.folder.error.app_only'));
     await call('reveal', { path });
   },
 
@@ -1113,21 +1114,21 @@ const localHash = (entry) => (entry.item.stub ? entry.item.fhash : hash(serializ
  * (Zeitmessung in der Ansicht).
  */
 export async function readTrack(stub, onStep) {
-  onStep?.('Einstellung laden', { sync: !!progress });
+  onStep?.(t('sync.folder.step.load_setting'), { sync: !!progress });
   const c = await load();
-  if (!c) throw new Error('Der Ordner ist nicht verbunden');
+  if (!c) throw new Error(t('sync.folder.error.not_connected'));
   const be = backendOf(c);
-  onStep?.('Ordner prüfen');
-  if (await be.permission(false).catch(() => 'gone') !== 'granted') throw new Error('Der Ordner ist gerade nicht erreichbar');
+  onStep?.(t('sync.folder.step.check_folder'));
+  if (await be.permission(false).catch(() => 'gone') !== 'granted') throw new Error(t('sync.folder.error.unreachable'));
   const paths = Object.keys(c.index ?? {}).filter((p) => c.index[p].id === stub.id);
   const path = paths.find((p) => c.index[p].ours) ?? paths[0];
-  if (!path) throw new Error('Die Datei zu diesem Weg fehlt im Ordner');
-  onStep?.('Datei lesen', { path });
+  if (!path) throw new Error(t('sync.folder.error.file_missing'));
+  onStep?.(t('sync.folder.step.read_file'), { path });
   const text = await textOfFile(be, path);
-  onStep?.('auswerten', { kb: Math.round(text.length / 1024) });
-  const [t] = parseGpx(text);
-  if (!t) throw new Error('Die Datei im Ordner ließ sich nicht lesen');
-  return fromFile(stub, t);
+  onStep?.(t('sync.folder.step.evaluate'), { kb: Math.round(text.length / 1024) });
+  const [parsed] = parseGpx(text);
+  if (!parsed) throw new Error(t('sync.folder.error.file_unreadable'));
+  return fromFile(stub, parsed);
 }
 
 /** Pfad ohne „ (2)“ und ohne Groß/klein – dieselbe Datei, ein zweites Mal geschrieben */
@@ -1289,7 +1290,7 @@ const FIT_META = ['name', 'sport', 'profile', 'color', 'hidden', 'description'];
 /** Verschieben: über den Zugang, sonst (ältere App, Tests) lesen, schreiben, löschen – das geht nur mit Text */
 async function moveFile(be, path, to) {
   if (be.move) { try { return await be.move(path, to); } catch (err) { if (isFit(path)) throw err; } }
-  if (isFit(path)) throw new Error('Verschieben braucht die neue App');
+  if (isFit(path)) throw new Error(t('sync.folder.error.move_needs_app'));
   const at = await be.write(to, await be.read(path));
   await be.remove(path);
   return at;
@@ -1545,8 +1546,8 @@ export async function importFolder(fileList = null) {
     throw new Error(String(err?.message ?? err));
   }
   // Gewählt wird hier, eingelesen im Service Worker (die Dateien holt er über die Seite, core/tauri.js)
-  if (sw) return sw('sync:import-slot', { name: picked.name ?? 'Ordner' });
-  return importSlot(picked.name ?? 'Ordner');
+  if (sw) return sw('sync:import-slot', { name: picked.name ?? t('sync.folder.fallback_name') });
+  return importSlot(picked.name ?? t('sync.folder.fallback_name'));
 }
 
 /** App: den eben gewählten Ordner (Platz „import“) einlesen, danach freigeben */
@@ -1624,19 +1625,19 @@ export async function restoreZip(file) {
 export function syncSummary(r) {
   if (!r) return '';
   // (Wie viele nur noch als Karteikarte in der App liegen, steht auf der Seite – nicht in jeder Meldung)
-  const parts = [r.imported && `${r.imported} übernommen`, r.written && `${r.written} gespeichert`, r.removed && `${r.removed} gelöscht`,
-    r.moved && `${r.moved} umgezogen`, r.merged && `${r.merged} doppelte zusammengelegt`, r.skipped && `${r.skipped} nicht importiert`, r.settings === 'imported' && 'Einstellungen übernommen'].filter(Boolean);
-  return parts.length ? parts.join(', ') : 'alles aktuell';
+  const parts = [r.imported && t('sync.summary.imported', { n: r.imported }), r.written && t('sync.summary.written', { n: r.written }), r.removed && t('sync.summary.removed', { n: r.removed }),
+    r.moved && t('sync.summary.moved', { n: r.moved }), r.merged && t('sync.summary.merged', { n: r.merged }), r.skipped && t('sync.summary.skipped', { n: r.skipped }), r.settings === 'imported' && t('sync.summary.settings')].filter(Boolean);
+  return parts.length ? parts.join(', ') : t('sync.summary.nothing');
 }
 
 /** Wie lange der Abgleich gedauert hat und womit: „4,2 s – auflisten 0,3 s · 93 gelesen 2,8 s · …“ */
 export function syncTimes(r) {
-  const t = r?.times;
-  if (!t) return '';
-  const s = (ms) => `${(ms / 1000).toFixed(ms < 9950 ? 1 : 0).replace('.', ',')} s`;
-  const parts = [t.list[0] && `auflisten ${s(t.list[1])}`, t.read[0] && `${t.read[0]} gelesen ${s(t.read[1])}`,
-    t.write[0] && `${t.write[0]} geschrieben ${s(t.write[1])}`, t.remove[0] && `${t.remove[0]} gelöscht ${s(t.remove[1])}`].filter(Boolean);
-  return `${s(t.total)}${parts.length ? ` – ${parts.join(' · ')}` : ''}`;
+  const times = r?.times;
+  if (!times) return '';
+  const s = (ms) => { const d = ms < 9950 ? 1 : 0; return `${(ms / 1000).toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: false })} ${t('common.units.s')}`; };
+  const parts = [times.list[0] && t('sync.times.list', { time: s(times.list[1]) }), times.read[0] && t('sync.times.read', { n: times.read[0], time: s(times.read[1]) }),
+    times.write[0] && t('sync.times.write', { n: times.write[0], time: s(times.write[1]) }), times.remove[0] && t('sync.times.remove', { n: times.remove[0], time: s(times.remove[1]) })].filter(Boolean);
+  return `${s(times.total)}${parts.length ? ` – ${parts.join(' · ')}` : ''}`;
 }
 
 /**

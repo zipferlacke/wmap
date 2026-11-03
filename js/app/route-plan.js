@@ -15,12 +15,13 @@ import { clearReach } from './reach.js';
 import { clearRoutes, computeRoutes, fitRoute, routeCtl } from './route-results.js';
 import { cancelSuggestions, keyNav, mapPlaces, placeSuggestions, recentItems, savedItems, suggest, withSaved } from './search.js';
 import { back, closeAll, closeSheet, openSheet, remember, stack } from './views.js';
+import { t } from '../core/i18n.js';
 
 /* ══════════════════════════════════════════════════════════════════════════
    Routenplanung
    ══════════════════════════════════════════════════════════════════════════ */
 
-const me = () => ({ label: 'Mein Standort', point: null, me: true });
+const me = () => ({ label: t('map.my_location'), point: null, me: true });
 const empty = () => ({ label: '', point: null, me: false });
 export const isSet = (w) => w.me || !!w.point;
 
@@ -39,7 +40,7 @@ export function enterRoute({ to = null, from = null, waypoints = null, push = tr
   if (!state.waypoints.length) state.waypoints = [me(), empty()];
   if (from) state.waypoints[0] = from;
   if (to) state.waypoints[state.waypoints.length - 1] = to;
-  for (const wp of [from, to]) if (wp?.label === 'Punkt auf der Karte') nameLater(wp);
+  for (const wp of [from, to]) if (wp?.label === t('map.point_on_map')) nameLater(wp);
   if (push && !wasRoute) {
     remember('route', () => {
       if (state.mode !== 'route') enterRoute({ waypoints: state.waypoints.map((w) => ({ ...w })), push: false });
@@ -83,7 +84,7 @@ export function compactRoute(on) {
   if (!on) return;
   const first = state.waypoints[0];
   const last = state.waypoints.at(-1);
-  $('.route-line-from').textContent = first?.me ? 'Mein Standort' : first?.label ?? '';
+  $('.route-line-from').textContent = first?.me ? t('map.my_location') : first?.label ?? '';
   $('.route-line-to').textContent = `${last?.label ?? ''}${state.waypoints.length > 2 ? ` (+${state.waypoints.length - 2})` : ''}`;
   $('.route-line-profile').textContent = PROFILES[state.profile]?.icon ?? 'directions';
 }
@@ -166,9 +167,9 @@ setProfile(state.profile);
 let wpMarkers = [];
 
 function wpKind(i) {
-  if (i === 0) return { kind: 'start', icon: 'trip_origin', placeholder: 'Start wählen' };
-  if (i === state.waypoints.length - 1) return { kind: 'dest', icon: 'location_on', placeholder: 'Ziel wählen' };
-  return { kind: 'via', icon: 'radio_button_checked', placeholder: 'Zwischenziel wählen' };
+  if (i === 0) return { kind: 'start', icon: 'trip_origin', placeholder: t('route.waypoint.start') };
+  if (i === state.waypoints.length - 1) return { kind: 'dest', icon: 'location_on', placeholder: t('route.waypoint.destination') };
+  return { kind: 'via', icon: 'radio_button_checked', placeholder: t('route.waypoint.via') };
 }
 
 function renderWaypoints() {
@@ -188,7 +189,7 @@ function renderWaypoints() {
   wpMarkers = state.waypoints.map((w, i) => {
     if (!w.point) return null;
     // Im Auto steht am eigenen Standort schon der Pfeil – der Startpunkt läge darüber
-    if (CAR && i === 0 && w.label === 'Mein Standort') return null;
+    if (CAR && i === 0 && w.label === t('map.my_location')) return null;
     const k = wpKind(i);
     const m = new maplibregl.Marker({
       element: markerEl(k.kind, k.icon, k.kind === 'via' ? String(i) : ''),
@@ -196,7 +197,7 @@ function renderWaypoints() {
       draggable: true,
     }).setLngLat(w.point).addTo(map);
     m.on('dragend', () => {
-      setWaypoint(i, { label: 'Punkt auf der Karte', point: m.getLngLat().toArray(), me: false }, { reverse: true });
+      setWaypoint(i, { label: t('map.point_on_map'), point: m.getLngLat().toArray(), me: false }, { reverse: true });
     });
     return m;
   }).filter(Boolean);
@@ -227,7 +228,7 @@ function nameLater(wp) {
 
 const updateRouteSuggestions = debounce(async (input, i) => {
   const extra = [{
-    icon: 'my_location', color: ROUTE_COLOR, title: 'Mein Standort', subtitle: 'aktueller GPS-Standort',
+    icon: 'my_location', color: ROUTE_COLOR, title: t('map.my_location'), subtitle: t('route.waypoint.my_location_hint'),
     run: () => setWaypoint(i, me()),
   }];
   const onPlace = (f) => setWaypoint(i, placeWaypoint(f));
@@ -271,7 +272,7 @@ wpList.addEventListener('keydown', async (e) => {
   if (/^mein standort$/i.test(text)) { setWaypoint(i, me()); return; }
   try {
     const [f] = await geocode.search(text, { center: map.getCenter().toArray(), zoom: map.getZoom(), limit: 1 });
-    if (f) setWaypoint(i, placeWaypoint(f)); else toast(`„${text}“ nicht gefunden`);
+    if (f) setWaypoint(i, placeWaypoint(f)); else toast(t('search.toast.not_found', { text }));
   } catch (err) {
     const [f] = err.unreachable ? mapPlaces(text, { limit: 1 }) : [];
     if (f) setWaypoint(i, placeWaypoint(f)); else toast(err.message);

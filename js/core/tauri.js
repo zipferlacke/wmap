@@ -7,6 +7,7 @@
  *   tauri.here      gibt es die Plugins? (Service Worker: erst nach `await tauri.ready()`)
  *   tauri.invoke(cmd, args)   wie core.invoke('plugin:folder|list', { … })
  */
+import { t } from './i18n-text.js';
 const page = typeof window !== 'undefined';
 const core = page ? window.__TAURI__?.core : null;
 const GONE = Symbol('weg');
@@ -39,7 +40,7 @@ function ask(client, msg) {
 async function viaPage(msg) {
   for (;;) {
     const c = await messenger();
-    if (!c) throw new Error('Keine Seite von WMap offen');
+    if (!c) throw new Error(t('sync.error.no_page'));
     const r = await ask(c, msg);
     if (r !== GONE) return r;
   }
@@ -60,7 +61,7 @@ export const tauri = {
     if (page) return core.invoke(cmd, args);
     const r = await viaPage({ type: 'tauri', cmd, args });
     // Wie in der Seite: abgelehnt mit dem Text des Plugins
-    if (!r?.ok) throw new Error(r?.err ?? 'Befehl ging nicht');
+    if (!r?.ok) throw new Error(r?.err ?? t('sync.error.command'));
     return r.data;
   },
 };

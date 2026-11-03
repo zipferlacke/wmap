@@ -78,7 +78,10 @@ addEventListener('popstate', (e) => {
 
 /* Ein sichtbarer Knopf mit [data-back] (nach dem Laden gesucht – auch einer, den die Seite erst anlegt) */
 const visible = (el) => !!el && !el.closest('[hidden], [inert]') && el.getClientRects().length > 0;
-addEventListener('load', () => {
+addEventListener('load', async () => {
+  // Module, die auf die Texte warten (top-level await in core/i18n.js), laufen erst nach „load“ – ihr Knopf käme zu spät
+  await import('./i18n.js');
+  await new Promise((ok) => { setTimeout(ok); });
   if (press || !document.querySelector('[data-back]')) return;
   trapBack(() => {
     const el = [...document.querySelectorAll('[data-back]')].find(visible);

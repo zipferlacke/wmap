@@ -13,15 +13,16 @@
  * Mit Route übernimmt die Navigation Pfeil und Kamera (nav/navigation.js);
  * Tempo und Limit kommen dann von ihr.
  */
+import { askServer } from '../services/servers.js';
 import { trustedSpeed, glideMarker } from '../core/smooth.js';
 import { distance } from '../core/geo.js';
-import { API } from '../core/config.js';
 import { map, state, SIMULATING } from '../app/core.js';
 import { nav } from '../app/nav.js';
 import { alongMap } from '../app/ask-along.js';
 import { trace } from '../data/trace.js';
 import { local } from '../data/store.js';
 import { timed } from './carlog.js';
+import { t } from '../core/i18n.js';
 
 const ROADS = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service'];
 const SNAP_M = 30;
@@ -67,8 +68,8 @@ function nearest(p, heading, layer) {
         if (!len2) continue;
         // Grob vorsortieren: Abschnitt weit weg → weiter
         if (Math.min(Math.abs(a[0]), Math.abs(b[0])) > 200 && Math.sign(a[0]) === Math.sign(b[0])) continue;
-        const t = Math.max(0, Math.min(1, -(a[0] * vx + a[1] * vy) / len2));
-        const q = [a[0] + t * vx, a[1] + t * vy];
+        const frac = Math.max(0, Math.min(1, -(a[0] * vx + a[1] * vy) / len2));
+        const q = [a[0] + frac * vx, a[1] + frac * vy];
         const d = Math.hypot(q[0], q[1]);
         if (d > SNAP_M) continue;
         const dir = bearingOf(line[i - 1], line[i]);
@@ -139,7 +140,7 @@ async function lookUpLimit(point, street) {
   limit = { ...limit, at: now, point, street };
   try {
     const loc = { lat: point[1], lon: point[0], radius: 25, ...(heading !== null ? { heading: Math.round(heading), heading_tolerance: 60 } : {}) };
-    const res = await fetch(`${API.valhalla}/locate`, {
+    const res = await askServer('valhalla', '/locate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ locations: [loc], costing: 'auto', verbose: true }),
     });
@@ -157,7 +158,7 @@ function camera(point, kmh, dt) {
   map.easeTo({
     center: point, zoom, pitch: flat ? 0 : 50, bearing: heading ?? map.getBearing(),
     padding: { top: ins.top + free * 0.5, bottom: ins.bottom + 16, left: ins.left, right: ins.right },
-    duration: Math.max(300, Math.min(1500, dt)), easing: (t) => t,
+    duration: Math.max(300, Math.min(1500, dt)), easing: (frac) => frac,
   });
 }
 
@@ -231,7 +232,7 @@ export function startDrive() {
   if (watch !== null || !navigator.geolocation) return;
   watch = navigator.geolocation.watchPosition(onFix, (err) => {
     watch = null;
-    if (err.code === 1) window.wmapCarToast?.('Standort am Handy in WMap erlauben');
+    if (err.code === 1) window.wmapCarToast?.(t('car.allow_location'));
   }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
 }
 

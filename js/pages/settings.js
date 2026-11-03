@@ -24,6 +24,7 @@ import { konto } from '../services/konto.js';
 import { myOsmStats, allOsmStats, statsText } from '../osm/stats.js';
 import { toast } from '../ui/dialogs.js';
 import { permissionsHere, showPermissions } from '../ui/permissions.js';
+import { lang, languages, locale, setLanguage, t } from '../core/i18n.js';
 
 const root = document.querySelector('.settings');
 // Browser am Rechner (Firefox, Chrome, Edge): WMap für „geo:“-Links anmelden.
@@ -32,109 +33,116 @@ const geoHandler = 'registerProtocolHandler' in navigator && !window.__TAURI__;
 
 let loginError = '';   // an Ort und Stelle zeigen, nicht nur kurz als Meldung
 let jumped = false;    // #osm: einmal hinscrollen, nicht bei jedem Neuzeichnen
+const langs = await languages();
 const render = () => {
   const user = account.user();
   // Testserver: nur Karte bearbeiten, ein WMap-Konto gibt es dort nicht
   const osmIn = account.loggedIn(), wmapIn = konto.loggedIn() || account.server() !== 'live';
   root.innerHTML = `
     <section>
-      <h3>Darstellung</h3>
+      <h3>${t('settings.look.title')}</h3>
       <label class="settings-select">
-        <span><strong>Hell oder dunkel</strong><small>Für Karte und App. „Wie das System“ folgt dem Modus deines Geräts, auch wenn er abends wechselt.</small></span>
+        <span><strong>${t('settings.look.theme.title')}</strong><small>${t('settings.look.theme.hint')}</small></span>
         <select name="theme">
-          ${[['system', 'Wie das System'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([v, l]) => `<option value="${v}" ${theme.get() === v ? 'selected' : ''}>${l}</option>`).join('')}
+          ${[['system', t('settings.look.theme.options.system')], ['light', t('settings.look.theme.options.light')], ['dark', t('settings.look.theme.options.dark')]].map(([v, l]) => `<option value="${v}" ${theme.get() === v ? 'selected' : ''}>${l}</option>`).join('')}
         </select>
       </label>
-      ${geoHandler ? `<button type="button" class="button settings-row" data-act="geo"><span class="msr">pin_drop</span> Karten-Links (geo:) mit WMap öffnen</button>` : ''}
-      ${permissionsHere ? `<button type="button" class="button settings-row" data-act="perms"><span class="msr">verified_user</span> Berechtigungen – Standort, Health Connect</button>` : ''}
+      ${langs.length > 1 ? `<label class="settings-select">
+        <span><strong>${t('settings.look.language.title')}</strong></span>
+        <select name="language">
+          ${langs.map((l) => `<option value="${l.code}" ${lang === l.code ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}
+        </select>
+      </label>` : ''}
+      ${geoHandler ? `<button type="button" class="button settings-row" data-act="geo"><span class="msr">pin_drop</span> ${t('settings.look.geo')}</button>` : ''}
+      ${permissionsHere ? `<button type="button" class="button settings-row" data-act="perms"><span class="msr">verified_user</span> ${t('settings.look.permissions')}</button>` : ''}
     </section>
 
     <section>
-      <h3>Unterwegs</h3>
-      ${toggle('offline', 'Karte für die Navigation offline speichern',
-        'Beim Start der Navigation wird die Karte entlang der Strecke geladen – Funklöcher fallen dann nicht auf.', offlineSetting.get())}
+      <h3>${t('settings.way.title')}</h3>
+      ${toggle('offline', t('settings.way.offline.title'),
+        t('settings.way.offline.hint'), offlineSetting.get())}
       <label class="settings-select">
-        <span><strong>Zoom in der Navigation</strong><small>Automatisch: in der Stadt nah, auf der Autobahn weiter weg, vor dem Abbiegen näher heran.</small></span>
+        <span><strong>${t('settings.way.zoom.title')}</strong><small>${t('settings.way.zoom.hint')}</small></span>
         <select name="navzoom">
-          ${[['auto', 'Automatisch'], ['near', 'Näher'], ['far', 'Mehr Überblick']].map(([v, l]) => `<option value="${v}" ${navSettings.zoom === v ? 'selected' : ''}>${l}</option>`).join('')}
+          ${[['auto', t('settings.way.zoom.options.auto')], ['near', t('settings.way.zoom.options.near')], ['far', t('settings.way.zoom.options.far')]].map(([v, l]) => `<option value="${v}" ${navSettings.zoom === v ? 'selected' : ''}>${l}</option>`).join('')}
         </select>
       </label>
-      ${toggle('nav3d', '3D-Ansicht in der Navigation', 'Geneigt aus Fahrersicht; aus: flach von oben.', navSettings.threeD)}
+      ${toggle('nav3d', t('settings.way.nav3d.title'), t('settings.way.nav3d.hint'), navSettings.threeD)}
       <div class="settings-select settings-along">
-        <span><strong>Kurze Fragen unterwegs</strong><small>„Neuer Weg?“, „Gesperrt?“, „Gibt es … noch?“, „Immer noch Stau?“ als kleine Pille, die von selbst verschwindet – in der Navigation und mit dem Standortpunkt auf der Karte, unbeantwortet danach unter Mitmachen. Nur mit Mitmachen.</small></span>
-        <span class="settings-checks">${[['foot', 'Zu Fuß'], ['bike', 'Rad'], ['car', 'Auto']].map(([m, l]) => `
+        <span><strong>${t('settings.way.along.title')}</strong><small>${t('settings.way.along.hint')}</small></span>
+        <span class="settings-checks">${[['foot', t('settings.way.along.options.foot')], ['bike', t('settings.way.along.options.bike')], ['car', t('settings.way.along.options.car')]].map(([m, l]) => `
           <label><input type="checkbox" name="along" value="${m}" ${alongSetting.get(m) ? 'checked' : ''}> ${l}</label>`).join('')}</span>
       </div>
-      ${toggle('saver', 'Datensparmodus', 'Keine 3D-Höhendaten und keine Offline-Karten.', dataSaver())}
-      ${window.WMapAndroid?.shareSet ? toggle('carlog', 'Android Auto: Fahrt protokollieren', 'Für die Fehlersuche, wenn die Karte im Auto hängt: schreibt je Fahrt eine Datei nach Download/WMap. Gilt ab dem nächsten Start von WMap im Auto.', window.WMapAndroid.shareGet('carlog') === '1') : ''}
-      <button type="button" class="button settings-row" data-act="voice"><span class="msr">record_voice_over</span> Stimme für Ansagen</button>
-      <button type="button" class="button settings-row" data-act="fuel"><span class="msr">local_gas_station</span> Spritpreise einrichten</button>
-      <a class="button settings-row" href="./offline.html"><span class="msr">download_for_offline</span> Offline-Karten: Gebiete aufs Gerät laden</a>
+      ${toggle('saver', t('settings.way.saver.title'), t('settings.way.saver.hint'), dataSaver())}
+      ${window.WMapAndroid?.shareSet ? toggle('carlog', t('settings.way.carlog.title'), t('settings.way.carlog.hint'), window.WMapAndroid.shareGet('carlog') === '1') : ''}
+      <button type="button" class="button settings-row" data-act="voice"><span class="msr">record_voice_over</span> ${t('settings.way.voice')}</button>
+      <button type="button" class="button settings-row" data-act="fuel"><span class="msr">local_gas_station</span> ${t('settings.way.fuel.title')}</button>
+      <a class="button settings-row" href="./offline.html"><span class="msr">download_for_offline</span> ${t('settings.way.offline_maps')}</a>
     </section>
 
     <section id="osm">
-      <h3>Konto</h3>
-      <p class="settings-hint">WMap nimmt dein OpenStreetMap-Konto – zum Eintragen und Verbessern von Orten, zum Teilen und Bewerten von Touren und für eigene Plugins. Bei WMap gibt es kein eigenes Passwort; alles andere geht ohne Konto.</p>
+      <h3>${t('settings.account.title')}</h3>
+      <p class="settings-hint">${t('settings.account.intro')}</p>
       <div class="settings-account">
         ${osmIn && wmapIn
-          ? `<p><span class="msr">account_circle</span> Angemeldet als <strong>${esc(user?.name ?? konto.user()?.name ?? '?')}</strong></p>
-             <button type="button" class="button" data-act="logout">Abmelden</button>`
+          ? `<p><span class="msr">account_circle</span> ${t('settings.account.signed_in', { name: `<strong>${esc(user?.name ?? konto.user()?.name ?? '?')}</strong>` })}</p>
+             <button type="button" class="button" data-act="logout">${t('settings.account.logout')}</button>`
           : !account.clientId()
-            ? `<p class="settings-error"><span class="msr">info</span> Die Anmeldung ist hier noch nicht eingerichtet: WMap braucht eine OAuth-Client-ID von ${esc(account.conf().web.replace(/^https:\/\//, ''))} (siehe „Für Entwickler“). Bis dahin kannst du Antworten anonym als Hinweis senden.</p>`
+            ? `<p class="settings-error"><span class="msr">info</span> ${t('settings.account.not_set_up', { web: esc(account.conf().web.replace(/^https:\/\//, '')) })}</p>`
             : osmIn || wmapIn
-              ? `<p><span class="msr">sync_problem</span> <span>${osmIn ? `Bei OpenStreetMap angemeldet als <strong>${esc(user?.name ?? '?')}</strong>, das WMap-Konto fehlt noch` : 'Die Anmeldung bei OpenStreetMap fehlt'} – bitte einmal neu anmelden.</span></p>
-                 <button type="button" class="button primary" data-act="login"><span class="msr">login</span> Neu anmelden</button>
-                 <button type="button" class="button" data-act="logout">Abmelden</button>`
-              : `<p>${queue.size() ? `${queue.size()} Antworten warten aufs Hochladen.` : 'Noch kein Konto? Das legst du bei der Anmeldung auf openstreetmap.org an.'}</p>
-                 <button type="button" class="button primary" data-act="login"><span class="msr">login</span> Mit OpenStreetMap anmelden</button>`}
+              ? `<p><span class="msr">sync_problem</span> <span>${osmIn ? t('settings.account.wmap_missing', { name: `<strong>${esc(user?.name ?? '?')}</strong>` }) : t('settings.account.login_missing')} – ${t('settings.account.login_again')}</span></p>
+                 <button type="button" class="button primary" data-act="login"><span class="msr">login</span> ${t('settings.account.relogin')}</button>
+                 <button type="button" class="button" data-act="logout">${t('settings.account.logout')}</button>`
+              : `<p>${queue.size() ? t('settings.account.queue', { n: queue.size() }) : t('settings.account.none')}</p>
+                 <button type="button" class="button primary" data-act="login"><span class="msr">login</span> ${t('settings.account.login')}</button>`}
         ${loginError ? `<p class="settings-error"><span class="msr">error</span> ${esc(loginError)}</p>` : ''}
       </div>
-      <a class="button settings-row" href="./deleteKonto.html"><span class="msr">delete_forever</span> Konto löschen – mit Touren, Plugins und Bewertungen</a>
+      <a class="button settings-row" href="./deleteKonto.html"><span class="msr">delete_forever</span> ${t('settings.account.delete')}</a>
       <details class="settings-dev" ${account.clientId() ? '' : 'open'}>
-        <summary>Für Entwickler</summary>
-        <label>Server
+        <summary>${t('settings.account.developer.title')}</summary>
+        <label>${t('settings.account.developer.server')}
           <select data-act="server">${Object.entries(OSM_AUTH).map(([k, v]) => `<option value="${k}" ${account.server() === k ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select>
         </label>
-        <label>OAuth-Client-ID
-          <input type="text" data-act="client" value="${esc(account.clientId())}" placeholder="bei ${esc(account.conf().web.replace(/^https:\/\//, ''))} registrieren" spellcheck="false">
+        <label>${t('settings.account.developer.client.title')}
+          <input type="text" data-act="client" value="${esc(account.clientId())}" placeholder="${t('settings.account.developer.client.hint', { web: esc(account.conf().web.replace(/^https:\/\//, '')) })}" spellcheck="false">
         </label>
-        <p>Weiterleitungs-URL: <code>${esc(account.redirectUri())}</code></p>
-        <p>Das WMap-Konto geht nur mit openstreetmap.org und der Client-ID von WMap; auf dem Testserver kannst du nur Karte bearbeiten ausprobieren.</p>
+        <p>${t('settings.account.developer.redirect')}: <code>${esc(account.redirectUri())}</code></p>
+        <p>${t('settings.account.developer.hint')}</p>
       </details>
     </section>
 
     <section>
-      <h3>Mitmachen bei OpenStreetMap</h3>
-      ${toggle('contribute', 'Weg aufzeichnen und danach fragen',
-        'WMap merkt sich auf diesem Gerät, wo du warst (14 Tage), und fragt danach kurz nach – z. B. ob ein Parkplatz etwas kostet. Nichts verlässt das Gerät, bevor du antwortest und hochlädst.',
+      <h3>${t('settings.contribute.title')}</h3>
+      ${toggle('contribute', t('settings.contribute.trace.title'),
+        t('settings.contribute.trace.hint'),
         contribute.get())}
-      <button type="button" class="button settings-row" data-act="clear-trace"><span class="msr">delete</span> Aufzeichnung löschen</button>
-      ${toggle('anon', 'Ohne Konto als Hinweis senden',
-        'Ohne Konto gehen deine Antworten anonym als Hinweis an OpenStreetMap – Mapper tragen sie dann ein. Mit Konto direkt in die Karte.',
+      <button type="button" class="button settings-row" data-act="clear-trace"><span class="msr">delete</span> ${t('settings.contribute.clear')}</button>
+      ${toggle('anon', t('settings.contribute.anon.title'),
+        t('settings.contribute.anon.hint'),
         anonNotes.get())}
       <p class="settings-hint osm-stats">${statsLine()}</p>
     </section>
 
     <section>
-      <h3>Daten</h3>
-      ${toggle('history', 'Jede Navigation merken',
-        'Auch normale Navigationen landen unter Aufgezeichnete Touren. Geplante Touren, die du startest, und „Aufzeichnen“ werden immer gespeichert.',
+      <h3>${t('settings.data.title')}</h3>
+      ${toggle('history', t('settings.data.history.title'),
+        t('settings.data.history.hint'),
         historySetting.get())}
       <label class="settings-select">
-        <span><strong>Aufgezeichnete Touren auf der Karte</strong><small>Welche unter „Meine Touren“ von selbst auf der Karte liegen. Ältere stehen weiter in der Liste; dort lässt sich jedes Jahr und jede Tour einzeln ein- und ausblenden. Je älter eine Tour, desto blasser ist sie gezeichnet.</small></span>
+        <span><strong>${t('settings.data.trackshow.title')}</strong><small>${t('settings.data.trackshow.hint')}</small></span>
         <select name="trackshow">
           ${SHOW_OPTIONS.map(([v, l]) => `<option value="${v}" ${trackShow.get() === v ? 'selected' : ''}>${l}</option>`).join('')}
         </select>
       </label>
-      <a class="button settings-row" href="./sync.html"><span class="msr">sync</span> Sicherung &amp; Synchronisation – Ordner, Health Connect, ZIP</a>
-      <a class="button settings-row" href="./wege.html"><span class="msr">timeline</span> Aufgezeichnete Wege ansehen</a>
-      <button type="button" class="button settings-row" data-act="history"><span class="msr">history</span> Suchverlauf löschen</button>
+      <a class="button settings-row" href="./sync.html"><span class="msr">sync</span> ${t('settings.data.sync')}</a>
+      <a class="button settings-row" href="./wege.html"><span class="msr">timeline</span> ${t('settings.data.tracks')}</a>
+      <button type="button" class="button settings-row" data-act="history"><span class="msr">history</span> ${t('settings.data.clear_history')}</button>
     </section>
 
     <section>
-      <h3>Darstellung der Karte</h3>
+      <h3>${t('settings.map.title')}</h3>
       <label class="settings-select">
-        <span><strong>Schärfe der Karte</strong><small>Wie fein die Karte gezeichnet wird (Pixeldichte). Höher: Schrift, Linien und Häuser schärfer – braucht aber mehr Arbeitsspeicher und Akku, und die Karte läuft weniger flüssig. Niedriger: sparsamer und flüssiger, dafür etwas unscharf. Dieser Bildschirm hat ${String(Math.round((window.devicePixelRatio || 1) * 100) / 100).replace('.', ',')}. Gilt ab dem nächsten Öffnen der Karte.</small></span>
+        <span><strong>${t('settings.map.sharpness.title')}</strong><small>${t('settings.map.sharpness.hint', { dpr: (Math.round((window.devicePixelRatio || 1) * 100) / 100).toLocaleString(locale) })}</small></span>
         <select name="sharpness">
           ${SHARPNESS.map(([v, l]) => `<option value="${v}" ${sharpness.get() === v ? 'selected' : ''}>${l}</option>`).join('')}
         </select>
@@ -149,32 +157,33 @@ const render = () => {
 
 // Zurück von der Anmeldung (App): osm/login-return.js löst ein, hier neu zeichnen
 addEventListener('wmap:login', (e) => {
-  loginError = e.detail.wmapError ? `Bei OpenStreetMap angemeldet, aber das WMap-Konto ging nicht: ${e.detail.wmapError}` : '';
+  loginError = e.detail.wmapError ? t('settings.account.wmap_failed', { error: e.detail.wmapError }) : '';
   render();
 });
 
 root.addEventListener('change', (e) => {
-  const t = e.target;
-  if (t.name === 'offline') offlineSetting.set(t.checked);
-  if (t.name === 'theme') theme.set(t.value);
-  if (t.name === 'navzoom') navSettings.zoom = t.value;
-  if (t.name === 'nav3d') navSettings.threeD = t.checked;
+  const el = e.target;
+  if (el.name === 'language') { setLanguage(el.value); location.reload(); }
+  if (el.name === 'offline') offlineSetting.set(el.checked);
+  if (el.name === 'theme') theme.set(el.value);
+  if (el.name === 'navzoom') navSettings.zoom = el.value;
+  if (el.name === 'nav3d') navSettings.threeD = el.checked;
   // Liegt im gemeinsamen Speicher von Android – das Auto liest es dort (tools/android/car/CarLog.kt)
-  if (t.name === 'carlog') window.WMapAndroid?.shareSet?.('carlog', t.checked ? '1' : '');
-  if (t.name === 'along') alongSetting.set(t.value, t.checked);
-  if (t.name === 'saver') {
+  if (el.name === 'carlog') window.WMapAndroid?.shareSet?.('carlog', el.checked ? '1' : '');
+  if (el.name === 'along') alongSetting.set(el.value, el.checked);
+  if (el.name === 'saver') {
     // Die Karte schaltet beim nächsten Öffnen (map/map.js liest dieselbe Einstellung)
-    local.set('wmap.datasaver', t.checked);
-    toast(t.checked ? 'Datensparmodus an – keine 3D-Höhendaten' : 'Datensparmodus aus');
+    local.set('wmap.datasaver', el.checked);
+    toast(el.checked ? t('settings.toast.saver_on') : t('settings.toast.saver_off'));
   }
-  if (t.name === 'contribute') contribute.set(t.checked);
-  if (t.name === 'anon') anonNotes.set(t.checked);
-  if (t.name === 'history') historySetting.set(t.checked);
+  if (el.name === 'contribute') contribute.set(el.checked);
+  if (el.name === 'anon') anonNotes.set(el.checked);
+  if (el.name === 'history') historySetting.set(el.checked);
   // Neuer Zeitraum: von Hand ein- und ausgeblendete Jahre gelten nicht weiter
-  if (t.name === 'sharpness') { sharpness.set(t.value); toast('Gilt ab dem nächsten Öffnen der Karte'); }
-  if (t.name === 'trackshow') { trackShow.set(t.value); local.set('wmap.tracks.years', {}); }
-  if (t.dataset.act === 'server') { account.setServer(t.value); render(); }
-  if (t.dataset.act === 'client') { account.setClientId(t.value); loginError = ''; render(); }
+  if (el.name === 'sharpness') { sharpness.set(el.value); toast(t('settings.toast.next_open')); }
+  if (el.name === 'trackshow') { trackShow.set(el.value); local.set('wmap.tracks.years', {}); }
+  if (el.dataset.act === 'server') { account.setServer(el.value); render(); }
+  if (el.dataset.act === 'client') { account.setClientId(el.value); loginError = ''; render(); }
 });
 root.addEventListener('click', async (e) => {
   const b = e.target.closest('button[data-act]');
@@ -186,18 +195,18 @@ root.addEventListener('click', async (e) => {
   if (act === 'geo') {
     try {
       navigator.registerProtocolHandler('geo', new URL('./index.html?geo=%s', location.href).href);
-      toast('Der Browser fragt jetzt, ob WMap Karten-Links öffnen darf');
-    } catch (err) { toast(`Geht in diesem Browser nicht (${err.message})`); }
+      toast(t('settings.toast.geo'));
+    } catch (err) { toast(t('settings.toast.geo_failed', { error: err.message })); }
   }
-  if (act === 'history') { recent.clear(); toast('Suchverlauf gelöscht'); }
-  if (act === 'clear-trace') { trace.clear(); toast('Aufzeichnung gelöscht'); }
+  if (act === 'history') { recent.clear(); toast(t('settings.toast.history_cleared')); }
+  if (act === 'clear-trace') { trace.clear(); toast(t('settings.toast.trace_cleared')); }
   if (act === 'logout') { await konto.logout(); render(); }
   if (act === 'login') {
     loginError = '';
     try {
       const user = await login();
-      if (user.wmapError) loginError = `Bei OpenStreetMap angemeldet, aber das WMap-Konto ging nicht: ${user.wmapError}`;
-      else toast(`Angemeldet als ${user.name}`);
+      if (user.wmapError) loginError = t('settings.account.wmap_failed', { error: user.wmapError });
+      else toast(t('settings.toast.signed_in', { name: user.name }));
     } catch (err) { loginError = err.message; }
     render();
   }
@@ -209,9 +218,9 @@ function statsLine() {
   const mine = statsText(myOsmStats());
   const all = allStats && statsText(allStats.osm);
   return [
-    mine ? `Du hast über WMap ${esc(mine)}.` : 'Noch keine Beiträge von diesem Gerät.',
-    all ? `Alle zusammen: ${esc(all)}.` : '',
-  ].filter(Boolean).join(' ') + ' <span class="muted">Gezählt wird anonym, nur die Anzahl – ohne Konto, Gerät oder Ort.</span>';
+    mine ? t('settings.contribute.stats.mine', { stats: esc(mine) }) : t('settings.contribute.stats.none'),
+    all ? t('settings.contribute.stats.all', { stats: esc(all) }) : '',
+  ].filter(Boolean).join(' ') + ` <span class="muted">${t('settings.contribute.stats.anon_count')}</span>`;
 }
 allOsmStats().then((s) => {
   allStats = s;
@@ -220,11 +229,10 @@ allOsmStats().then((s) => {
 }).catch(() => {});
 
 function setFuelKey() {
-  const key = prompt('Tankerkönig-API-Schlüssel (kostenlos unter creativecommons.tankerkoenig.de).\n'
-    + 'Er bleibt nur in diesem Browser gespeichert. Leer lassen zum Entfernen.', fuelKey());
+  const key = prompt(t('settings.way.fuel.prompt'), fuelKey());
   if (key === null) return;
   local.set('wmap.tankerkoenig', key.trim());
-  toast(key.trim() ? 'Spritpreise eingerichtet' : 'Spritpreise ausgeschaltet');
+  toast(key.trim() ? t('settings.toast.fuel_on') : t('settings.toast.fuel_off'));
 }
 
 function toggle(name, label, hint, on) {

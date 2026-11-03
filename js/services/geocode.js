@@ -4,14 +4,18 @@
  * Photon ist für „Suchen beim Tippen“ gebaut und verzeiht Tippfehler
  * („Götingen“, „Hauptstrase“). Mit lat/lon wird nach Nähe gewichtet.
  */
-import { API } from '../core/config.js';
+import { askServer } from './servers.js';
+import { locale, t, words } from '../core/i18n.js';
 
-const STATION_WORDS = /\b(hbf|hauptbahnhof|bahnhof|bhf|station)\b\.?/i;
+// Photon kennt nur diese Sprachen, sonst die des Landes
+export const PHOTON_LANG = ['de', 'en', 'fr'].includes(locale.split('-')[0]) ? locale.split('-')[0] : 'default';
+
+const STATION_WORDS = new RegExp(`(?<![\\p{L}\\p{N}])(${words('search.geocode.station_words').join('|')})(?![\\p{L}\\p{N}])\\.?`, 'iu');
 
 async function photon(q, { center, zoom, limit, signal, bbox, tag } = {}) {
-  const u = new URL('/api', API.photon);
+  const u = new URL('/api', 'https://photon');
   u.searchParams.set('q', q);
-  u.searchParams.set('lang', 'de');
+  u.searchParams.set('lang', PHOTON_LANG);
   u.searchParams.set('limit', String(limit));
   if (tag) u.searchParams.set('osm_tag', tag);
   if (center) {
@@ -20,32 +24,26 @@ async function photon(q, { center, zoom, limit, signal, bbox, tag } = {}) {
     if (zoom !== undefined) u.searchParams.set('zoom', String(Math.round(Math.max(4, Math.min(16, zoom)))));
   }
   if (bbox) u.searchParams.set('bbox', bbox.map((v) => v.toFixed(5)).join(','));
-  return (await ask(u, signal)).features ?? [];
+  return (await ask(u.pathname + u.search, signal)).features ?? [];
 }
 
 /*
  * Photon ist ein Gemeinschaftsdienst – ab und zu nicht erreichbar oder überlastet. Der Browser meldet dann nur
- * „Failed to fetch“; damit kann niemand etwas anfangen. Darum einmal von selbst wiederholen, danach eine Meldung,
- * die sagt, was los ist – mit `unreachable`, damit die Suche auf das ausweichen kann, was die Karte kennt.
+ * „Failed to fetch“; damit kann niemand etwas anfangen. Wiederholen und Wechseln übernimmt services/servers.js, danach
+ * eine Meldung, die sagt, was los ist – mit `unreachable`, damit die Suche auf das ausweichen kann, was die Karte kennt.
  */
-const RETRY_MS = 800;
-async function ask(url, signal) {
-  for (let again = true; ; again = false) {
-    try {
-      const res = await fetch(url, { signal });
-      // Anfrage falsch: Wiederholen hilft nicht
-      if (res.ok) return await res.json();
-      if (res.status < 429 || res.status === 501) throw Object.assign(new Error(`Suche fehlgeschlagen (${res.status})`), { final: true });
-    } catch (err) {
-      if (err.name === 'AbortError' || err.final) throw err;
-    }
-    if (!again) break;
-    await new Promise((ok) => { setTimeout(ok, RETRY_MS); });
-    if (signal?.aborted) throw new DOMException('Abgebrochen', 'AbortError');
+async function ask(path, signal) {
+  try {
+    const res = await askServer('photon', path, { signal });
+    if (res.ok) return await res.json();
+    // Anfrage falsch: Wiederholen hilft nicht
+    if (res.status < 429 || res.status === 501) throw Object.assign(new Error(t('search.geocode.failed', { status: res.status })), { final: true });
+  } catch (err) {
+    if (err.name === 'AbortError' || err.final) throw err;
   }
   const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-  throw Object.assign(new Error(offline ? 'Keine Verbindung zum Netz – die Suche braucht das Internet'
-    : 'Die Suche ist gerade nicht erreichbar – Punkt auf der Karte antippen oder gleich noch einmal versuchen'), { unreachable: true });
+  throw Object.assign(new Error(offline ? t('search.geocode.offline')
+    : t('search.geocode.unreachable')), { unreachable: true });
 }
 
 /** So weit um die Kartenmitte gilt ein Treffer als „um die Ecke“ und steht vor Treffern von weiter weg */
@@ -87,12 +85,12 @@ export async function search(q, { center, zoom, limit = 7, signal, bbox } = {}) 
 }
 
 export async function reverse([lon, lat], { signal } = {}) {
-  const u = new URL('/reverse', API.photon);
+  const u = new URL('/reverse', 'https://photon');
   u.searchParams.set('lon', lon.toFixed(6));
   u.searchParams.set('lat', lat.toFixed(6));
-  u.searchParams.set('lang', 'de');
+  u.searchParams.set('lang', PHOTON_LANG);
   u.searchParams.set('limit', '1');
-  return (await ask(u, signal)).features?.[0] ?? null;
+  return (await ask(u.pathname + u.search, signal)).features?.[0] ?? null;
 }
 
 /** Statistik- und Verwaltungsflächen („Bahnhof-Ost, statistical“) sucht niemand. */
@@ -117,18 +115,9 @@ function dedupe(features) {
 
 /* ── Anzeige ──────────────────────────────────────────────────────────────── */
 
-const TYPE_LABEL = {
-  city: 'Stadt', town: 'Stadt', village: 'Dorf', hamlet: 'Ortsteil', suburb: 'Stadtteil',
-  river: 'Fluss', stream: 'Bach', canal: 'Kanal', lake: 'See', water: 'Gewässer', peak: 'Gipfel',
-  station: 'Bahnhof', halt: 'Haltepunkt', bus_stop: 'Haltestelle', parking: 'Parkplatz', fuel: 'Tankstelle',
-  restaurant: 'Restaurant', cafe: 'Café', bakery: 'Bäckerei', supermarket: 'Supermarkt', pitch: 'Sportplatz',
-  park: 'Park', forest: 'Wald', wood: 'Wald', castle: 'Burg', museum: 'Museum', hotel: 'Hotel',
-  school: 'Schule', hospital: 'Krankenhaus', pharmacy: 'Apotheke', charging_station: 'Ladesäule',
-  place_of_worship: 'Kirche', viewpoint: 'Aussichtspunkt', playground: 'Spielplatz', residential: 'Straße',
-  primary: 'Straße', secondary: 'Straße', tertiary: 'Straße', unclassified: 'Straße', living_street: 'Straße',
-  service: 'Weg', footway: 'Fußweg', path: 'Weg', track: 'Feldweg', cycleway: 'Radweg', motorway: 'Autobahn',
-  administrative: 'Gebiet', state: 'Bundesland', country: 'Land', county: 'Landkreis', house: 'Adresse',
-};
+const TYPE_LABEL = Object.fromEntries(
+  ['city', 'town', 'village', 'hamlet', 'suburb', 'river', 'stream', 'canal', 'lake', 'water', 'peak', 'station', 'halt', 'bus_stop', 'parking', 'fuel', 'restaurant', 'cafe', 'bakery', 'supermarket', 'pitch', 'park', 'forest', 'wood', 'castle', 'museum', 'hotel', 'school', 'hospital', 'pharmacy', 'charging_station', 'place_of_worship', 'viewpoint', 'playground', 'residential', 'primary', 'secondary', 'tertiary', 'unclassified', 'living_street', 'service', 'footway', 'path', 'track', 'cycleway', 'motorway', 'administrative', 'state', 'country', 'county', 'house'].map((k) => [k, t(`search.geocode.types.${k}`)]),
+);
 
 const TYPE_ICON = {
   place: 'location_city', waterway: 'waves', natural: 'landscape', railway: 'train', highway: 'add_road',
@@ -139,14 +128,14 @@ const TYPE_ICON = {
 export function describe(feature) {
   const p = feature.properties ?? {};
   const street = [p.street, p.housenumber].filter(Boolean).join(' ');
-  const title = p.name || street || p.city || 'Ort';
+  const title = p.name || street || p.city || t('search.geocode.place');
   // Der Ort, in dem es liegt, vor der Gemeinde: „Rittmarshausen, Gleichen“ statt nur „Gleichen“
   const town = p.city || p.town || p.village;
   const part = p.district && p.district !== town && p.district !== p.name ? p.district : null;
   const place = [p.postcode, [part, town].filter(Boolean).join(', ')].filter(Boolean).join(' ');
   const parts = [p.name && street ? street : null, place !== title ? place : null,
     p.city ? null : p.county, p.state].filter(Boolean);
-  const type = TYPE_LABEL[p.osm_value] ?? (p.housenumber ? 'Adresse' : null);
+  const type = TYPE_LABEL[p.osm_value] ?? (p.housenumber ? TYPE_LABEL.house : null);
   const icon = p.housenumber ? 'home' : (TYPE_ICON[p.osm_key] ?? 'location_on');
   return { title, subtitle: [...new Set(parts)].slice(0, 2).join(', '), type, icon };
 }

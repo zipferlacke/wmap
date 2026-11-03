@@ -6,9 +6,15 @@ jedes Lesen dauert 600 ms – so läuft der Abgleich lange genug, um mittendrin 
    jede Datei wird genau einmal gelesen (nicht neu angefangen), am Ende sind alle 40 da.
 3. Neue Dateien im Ordner, Abgleich angestoßen: Meine Touren zeigt sie ohne Neuladen.
 4. Eine Tour hier gespeichert: Der Service Worker schreibt sie in den Ordner (sync:soon, über den Boten).
-5. Einstellung von einem anderen Gerät (settings.json): kommt im localStorage der offenen Seite an."""
+5. Einstellung von einem anderen Gerät (settings.json): kommt im localStorage der offenen Seite an.
+6. Texte im Service Worker: core/i18n.js nicht erreichbar, kein t() beim Laden; frisch gestartet (gerade erst
+   schlafen gelegt) kommt die erste Meldung als Text, nie als Schlüssel – in der Sprache der Seite, ohne Datei auf dem
+   Server aus dem Speicher der Fassung."""
+import json
+import re
 import sys
 import time
+from pathlib import Path
 from common import Browser
 
 PRELOAD = """() => {
@@ -67,6 +73,50 @@ def idle(b, seconds=90):
     return None
 
 
+ROOT = Path(__file__).resolve().parent.parent
+EXTRA = ROOT / 'appdata/lang/en_GB.json'
+
+
+def sw_modules():
+    """Alles, was js/sw/sync.js fest lädt"""
+    seen, todo = set(), [ROOT / 'js/sw/sync.js']
+    while todo:
+        f = todo.pop().resolve()
+        if f in seen:
+            continue
+        seen.add(f)
+        for rel in re.findall(r"^(?:import|export) (?:[^;]*? from )?'(\.[^']+)';", f.read_text(encoding='utf-8'), re.M):
+            todo.append(f.parent / rel)
+    return seen
+
+
+# Beim ersten Aufruf nach dem Schlafen legen: eine Datei, die keine ZIP ist – ihr Fehler ist Text aus der Sprachdatei
+ZIP_ERROR = """const done = arguments[0];
+import('./js/core/sw-link.js').then((m) => m.swCall('sync:restore-zip', { file: new File(['kein zip'], 'x.zip') }))
+  .then((r) => done('kein Fehler: ' + JSON.stringify(r)), (e) => done(e.message));"""
+
+
+# Ein ganz neuer Service Worker: Nichts ist geladen, wenn der erste Auftrag kommt. Danach `prepare` (etwa in den Speicher legen)
+RESTART = """const done = arguments[0];
+(async () => {
+  const old = await navigator.serviceWorker.getRegistration();
+  const url = old.active.scriptURL;
+  await old.unregister();
+  const reg = await navigator.serviceWorker.register(url, { type: 'module' });
+  const w = reg.installing ?? reg.waiting ?? reg.active;
+  if (w.state !== 'activated') await new Promise((r) => w.addEventListener('statechange', () => { if (w.state === 'activated') r(); }));
+  done(true);
+})().catch((e) => done(String(e)));"""
+
+
+def sw_error(b, before=None):
+    assert b.d.execute_async_script(RESTART) is True
+    if before:
+        b.d.execute_async_script(before)
+    b.open('dashboard.html', wait=0)
+    return b.d.execute_async_script(ZIP_ERROR)
+
+
 with Browser(width=420, height=900) as b:
     checks = {}
     b.d.script.add_preload_script(PRELOAD)
@@ -123,6 +173,36 @@ with Browser(width=420, height=900) as b:
     lap = b.wait("return localStorage.getItem('wmap.lapsize') === '\"500\"'", 20)
     print('Rundenlänge hier:', b.js("return localStorage.getItem('wmap.lapsize')"))
     checks['5. Einstellung aus dem Ordner kommt in der Seite an'] = bool(lap)
+
+    # 6. Texte im Service Worker
+    mods = sw_modules()
+    names = sorted(str(m.relative_to(ROOT)) for m in mods)
+    print('Service Worker lädt:', len(names), 'Module')
+    checks['6. core/i18n.js nicht vom Service Worker erreichbar'] = 'js/core/i18n.js' not in names and 'js/core/i18n-text.js' in names
+    # Oben im Modul (keine Einrückung, keine Funktion): dort gäbe es noch keine Texte
+    early = [f'{m.name}: {l[:60]}' for m in mods for l in m.read_text(encoding='utf-8').split('\n')
+             if re.match(r'(export )?(const|let) ', l) and re.search(r"\bt\(['`]", l) and not re.search(r"=>|get \w+\(\)", l.split("t('")[0])]
+    print('t() beim Laden:', early)
+    checks['6. kein t() beim Laden der Module'] = not early
+    first = sw_error(b)
+    print('Erste Meldung nach dem Aufwachen:', first)
+    checks['6. frisch gestartet: Text, kein Schlüssel'] = first == 'Das ist keine ZIP-Datei'
+    try:
+        EXTRA.write_text(json.dumps({'_meta': {'name': 'English', 'locale': 'en-GB'}, 'backup': {'error': {'not_zip': 'That is no ZIP'}}}), encoding='utf-8')
+        b.js("localStorage.setItem('wmap.lang', 'en_GB')")
+        english = sw_error(b)
+        print('Sprache der Seite:', english)
+        checks['6. Meldung in der Sprache der Seite'] = english == 'That is no ZIP'
+        # Eine Sprache, die der Server nicht hat, nur im Speicher
+        b.js("localStorage.setItem('wmap.lang', 'fr_FR')")
+        stored = sw_error(b, """const done = arguments[0];
+          caches.open('wmap-app-test').then((c) => c.put(new URL('appdata/lang/fr_FR.json', location.href).href,
+            new Response(JSON.stringify({ _meta: { name: 'Français', locale: 'fr-FR' }, backup: { error: { not_zip: 'Stored: no ZIP' } } }), { headers: { 'Content-Type': 'application/json' } }))).then(() => done())""")
+        print('Aus dem Speicher:', stored)
+        checks['6. Sprachdatei aus dem Speicher der Fassung'] = stored == 'Stored: no ZIP'
+    finally:
+        EXTRA.unlink(missing_ok=True)
+        b.js("localStorage.removeItem('wmap.lang')")
 
     for k, v in checks.items():
         print(('ok    ' if v else 'FALSCH') + ' ' + k)

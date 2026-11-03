@@ -10,6 +10,7 @@
  */
 import { local } from './store.js';
 import { simplify } from '../core/geo.js';
+import { t } from '../core/i18n.js';
 
 const SETTING = 'wmap.offline';
 
@@ -161,7 +162,7 @@ export async function saveRouteOffline(map, route, { onProgress } = {}) {
   // darf keinen anmelden) käme `ready` nie – dann lädt die Seite selbst vor
   const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
   const { template, urls } = styleAssets(map);
-  if (!template) throw new Error('Kartenquelle noch nicht geladen');
+  if (!template) throw new Error(t('offline.error.source_not_loaded'));
 
   let tiles = tilesAlong(route.coords, ZOOMS, BUFFER);
   // Sehr lange Strecken: den Rand ganz nah dran weglassen

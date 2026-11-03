@@ -16,6 +16,11 @@
 import * as echarts from '../../libs/echarts/echarts.esm.min.js';
 import { Diagramm, setIcons } from '../../libs/wuefl-libs/diagramm/diagramm.js';
 import { echartsRenderer } from '../../libs/wuefl-libs/diagramm/renderer-echarts.js';
+import { locale, t } from '../core/i18n.js';
+import { perLanguage } from '../core/i18n-text.js';
+
+// Für die Anzeige beim Überfahren des Diagramms
+const kmUnit = perLanguage(() => t('common.units.km'));
 
 setIcons('default-msr');
 
@@ -151,26 +156,26 @@ export class ElevationProfile {
     this.#points = thin(route.elevation);
     const { min, max } = axisRange(route.minEle, route.maxEle);
     const chip = (icon, value, title) => ({
-      value, unit: 'm', decimals: 0, color: GREEN,
+      value, unit: t('common.units.m'), decimals: 0, color: GREEN,
       label: `<span class="msr" title="${title}">${icon}</span>`,
     });
 
     this.#config({
       card: false,
       legend: { hidden: true },
-      x_axis: { type: 'value', unit: 'km', decimals: route.length < 5000 ? 1 : 0 },
-      y_axes: [{ unit: 'm', min, max, split_number: 3 }],
+      x_axis: { type: 'value', unit: t('common.units.km'), decimals: route.length < 5000 ? 1 : 0 },
+      y_axes: [{ unit: t('common.units.m'), min, max, split_number: 3 }],
       chips: [
-        chip('north_east', route.ascent, 'Anstieg'),
-        chip('south_east', route.descent, 'Abstieg'),
-        chip('vertical_align_top', route.maxEle, 'Höchster Punkt'),
-        chip('vertical_align_bottom', route.minEle, 'Tiefster Punkt'),
+        chip('north_east', route.ascent, t('elevation.chips.ascent')),
+        chip('south_east', route.descent, t('elevation.chips.descent')),
+        chip('vertical_align_top', route.maxEle, t('elevation.chips.highest')),
+        chip('vertical_align_bottom', route.minEle, t('elevation.chips.lowest')),
       ],
       series: [{
-        key: 'hoehe', name: 'Höhe', data: this.#points,
-        color: GREEN, fill: 'gradient', smooth: false, decimals: 0, unit: 'm',
+        key: 'hoehe', name: t('elevation.height'), data: this.#points,
+        color: GREEN, fill: 'gradient', smooth: false, decimals: 0, unit: t('common.units.m'),
       }],
-    }, { icon: 'landscape', title: 'Höhenmeter' });
+    }, { icon: 'landscape', title: t('elevation.title') });
   }
 
   /**
@@ -190,7 +195,7 @@ export class ElevationProfile {
     this.#config({
       card: false,
       legend: { hidden: true },
-      x_axis: { type: 'value', unit: 'km', decimals: length < 5000 ? 1 : 0 },
+      x_axis: { type: 'value', unit: t('common.units.km'), decimals: length < 5000 ? 1 : 0 },
       y_axes: [{ unit, min: Math.max(0, Math.floor(lo - pad)), max: Math.ceil(hi + pad), split_number: 3 }],
       chips: chips.map(([ic, value, title]) => ({
         value, unit, decimals, color, label: `<span class="msr" title="${title}">${ic}</span>`,
@@ -222,7 +227,7 @@ export class ElevationProfile {
     this.#config({
       card: false,
       legend: { hidden: true },
-      x_axis: { type: 'value', unit: 'km', decimals: length < 5000 ? 1 : 0 },
+      x_axis: { type: 'value', unit: t('common.units.km'), decimals: length < 5000 ? 1 : 0 },
       y_axes: series.map((m) => ({ unit: m.unit, ...range(m), split_number: 3 })),
       // Je Reihe der Durchschnitt in ihrer Farbe
       chips: series.filter((m) => m.mean != null).map((m) => ({
@@ -243,7 +248,7 @@ export class ElevationProfile {
    *            smooth? } – `x.labels`: x sind die Zahlen 1, 2, 3 … mit diesen Namen an der Achse; `x.mark`:
    *            { x, color } – dieser Punkt der ersten Reihe groß (der aktuelle Lauf in der Entwicklung)
    */
-  showSeries({ unit, decimals = 0, icon, title, x = { unit: 'km' }, series, smooth = true }) {
+  showSeries({ unit, decimals = 0, icon, title, x = { unit: t('common.units.km') }, series, smooth = true }) {
     this.#xLabels = x.labels ?? null;
     this.#mark = x.mark ?? null;
     this.#emph = null;
@@ -292,7 +297,7 @@ export class ElevationProfile {
     this.#config({
       card: false,
       legend: { hidden: true },
-      x_axis: { type: 'value', unit: 'km', decimals: length < 5000 ? 1 : 0 },
+      x_axis: { type: 'value', unit: t('common.units.km'), decimals: length < 5000 ? 1 : 0 },
       y_axes: used.map((k) => ({ unit: kinds[k].unit, ...range(k), split_number: 3 })),
       chips: [],
       series: thinned.map((m, i) => {
@@ -317,7 +322,7 @@ export class ElevationProfile {
       const v = valueAt(m.points, x);
       if (v != null) val.set(`${m.kind}:${m.group}`, v);
     }
-    const num = (v, k) => v.toLocaleString('de-DE', { minimumFractionDigits: k.decimals ?? 0, maximumFractionDigits: k.decimals ?? 0 });
+    const num = (v, k) => v.toLocaleString(locale, { minimumFractionDigits: k.decimals ?? 0, maximumFractionDigits: k.decimals ?? 0 });
     const tag = (g) => `<i>${label(g)}</i>${g === best ? '▲' : g === worst ? '▼' : ''}`;
     const rows = used.map((ki) => {
       const k = kinds[ki], own = val.get(`${ki}:${focus}`);
@@ -327,7 +332,7 @@ export class ElevationProfile {
       return `<div class="cmp-tip-row"><span class="cmp-tip-kind" style="color:${k.color}">${k.name}</span>
         ${own != null ? `<b>${tag(focus)} ${num(own, k)} <small>${k.unit}</small></b>` : ''}<span class="cmp-tip-others">${others}</span></div>`;
     }).join('');
-    const km = Number.isFinite(x) ? `${x.toLocaleString('de-DE', { maximumFractionDigits: 1 })} km` : '';
+    const km = Number.isFinite(x) ? `${x.toLocaleString(locale, { maximumFractionDigits: 1 })} ${kmUnit()}` : '';
     return `<div class="cmp-tip"><strong>${km}</strong>${rows}</div>`;
   }
 

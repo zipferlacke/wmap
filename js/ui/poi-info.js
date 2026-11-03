@@ -10,6 +10,7 @@
 import { CATEGORIES, searchFilters } from '../core/categories.js';
 import { esc } from '../core/geo.js';
 import { iconForTags } from '../map/poi-icons.js';
+import { t } from '../core/i18n.js';
 
 /* ── Welche Kategorie passt zu den Tags? ──────────────────────────────────── */
 
@@ -38,74 +39,74 @@ export function inCategory(cat, tags = {}) {
 
 /* ── Werte übersetzen ─────────────────────────────────────────────────────── */
 
-const YES_NO = { yes: 'ja', no: 'nein', limited: 'eingeschränkt', designated: 'ja', only: 'ausschließlich' };
+const YES_NO = { yes: t('poi.values.yes_no.yes'), no: t('poi.values.yes_no.no'), limited: t('poi.values.yes_no.limited'), designated: t('poi.values.yes_no.designated'), only: t('poi.values.yes_no.only') };
 const SURFACE = {
-  asphalt: 'Asphalt', paved: 'befestigt', concrete: 'Beton', 'concrete:plates': 'Betonplatten',
-  paving_stones: 'Pflastersteine', sett: 'Kopfsteinpflaster', cobblestone: 'Kopfsteinpflaster',
-  unhewn_cobblestone: 'Feldsteinpflaster', compacted: 'verdichtet', fine_gravel: 'Feinschotter',
-  gravel: 'Schotter', pebblestone: 'Kies', unpaved: 'unbefestigt', dirt: 'Erde', earth: 'Erde',
-  ground: 'Naturboden', grass: 'Rasen', grass_paver: 'Rasengitter', sand: 'Sand', wood: 'Holz',
-  metal: 'Metall', mud: 'Schlamm', rock: 'Fels', artificial_turf: 'Kunstrasen', tartan: 'Tartan',
+  asphalt: t('poi.values.surface.asphalt'), paved: t('poi.values.surface.paved'), concrete: t('poi.values.surface.concrete'), 'concrete:plates': t('poi.values.surface.concrete_plates'),
+  paving_stones: t('poi.values.surface.paving_stones'), sett: t('poi.values.surface.sett'), cobblestone: t('poi.values.surface.cobblestone'),
+  unhewn_cobblestone: t('poi.values.surface.unhewn_cobblestone'), compacted: t('poi.values.surface.compacted'), fine_gravel: t('poi.values.surface.fine_gravel'),
+  gravel: t('poi.values.surface.gravel'), pebblestone: t('poi.values.surface.pebblestone'), unpaved: t('poi.values.surface.unpaved'), dirt: t('poi.values.surface.dirt'), earth: t('poi.values.surface.earth'),
+  ground: t('poi.values.surface.ground'), grass: t('poi.values.surface.grass'), grass_paver: t('poi.values.surface.grass_paver'), sand: t('poi.values.surface.sand'), wood: t('poi.values.surface.wood'),
+  metal: t('poi.values.surface.metal'), mud: t('poi.values.surface.mud'), rock: t('poi.values.surface.rock'), artificial_turf: t('poi.values.surface.artificial_turf'), tartan: t('poi.values.surface.tartan'),
 };
 const PARKING = {
-  surface: 'Parkplatz', 'multi-storey': 'Parkhaus', underground: 'Tiefgarage', street_side: 'Straßenrand',
-  lane: 'Parkstreifen', rooftop: 'Parkdeck', carports: 'Carports', garage_boxes: 'Garagen',
+  surface: t('poi.values.parking.surface'), 'multi-storey': t('poi.values.parking.multi_storey'), underground: t('poi.values.parking.underground'), street_side: t('poi.values.parking.street_side'),
+  lane: t('poi.values.parking.lane'), rooftop: t('poi.values.parking.rooftop'), carports: t('poi.values.parking.carports'), garage_boxes: t('poi.values.parking.garage_boxes'),
 };
 const ACCESS = {
-  yes: 'öffentlich', public: 'öffentlich', customers: 'nur Kunden', private: 'privat',
-  permissive: 'geduldet', permit: 'mit Genehmigung', destination: 'nur Anlieger', residents: 'nur Anwohner',
-  no: 'kein Zugang',
+  yes: t('poi.values.access.yes'), public: t('poi.values.access.public'), customers: t('poi.values.access.customers'), private: t('poi.values.access.private'),
+  permissive: t('poi.values.access.permissive'), permit: t('poi.values.access.permit'), destination: t('poi.values.access.destination'), residents: t('poi.values.access.residents'),
+  no: t('poi.values.access.no'),
 };
 const SOCKETS = {
-  type2: 'Typ 2', type2_combo: 'CCS', chademo: 'CHAdeMO', schuko: 'Schuko', tesla_supercharger: 'Tesla',
-  type2_cable: 'Typ 2 (Kabel)', cee_blue: 'CEE blau',
+  type2: t('poi.values.sockets.type2'), type2_combo: t('poi.values.sockets.type2_combo'), chademo: t('poi.values.sockets.chademo'), schuko: t('poi.values.sockets.schuko'), tesla_supercharger: t('poi.values.sockets.tesla_supercharger'),
+  type2_cable: t('poi.values.sockets.type2_cable'), cee_blue: t('poi.values.sockets.cee_blue'),
 };
 const FUELS = {
-  diesel: 'Diesel', octane_95: 'Super', e10: 'E10', octane_98: 'Super Plus', lpg: 'Autogas',
-  cng: 'Erdgas', adblue: 'AdBlue', hydrogen: 'Wasserstoff', HGV_diesel: 'LKW-Diesel',
+  diesel: t('poi.values.fuels.diesel'), octane_95: t('poi.values.fuels.octane_95'), e10: t('poi.values.fuels.e10'), octane_98: t('poi.values.fuels.octane_98'), lpg: t('poi.values.fuels.lpg'),
+  cng: t('poi.values.fuels.cng'), adblue: t('poi.values.fuels.adblue'), hydrogen: t('poi.values.fuels.hydrogen'), HGV_diesel: t('poi.values.fuels.HGV_diesel'),
 };
 
 const tr = (map, v) => (v ? v.split(';').map((x) => map[x.trim()] ?? x.trim()).join(', ') : null);
 
-function fee(t) {
-  if (!t.fee) return null;
-  const base = t.fee === 'no' ? 'kostenlos' : t.fee === 'yes' ? 'kostenpflichtig' : tr(YES_NO, t.fee);
-  return t.charge && t.fee !== 'no' ? `${base} (${t.charge})` : base;
+function fee(tg) {
+  if (!tg.fee) return null;
+  const base = tg.fee === 'no' ? t('poi.values.fee.no') : tg.fee === 'yes' ? t('poi.values.fee.yes') : tr(YES_NO, tg.fee);
+  return tg.charge && tg.fee !== 'no' ? `${base} (${tg.charge})` : base;
 }
 
-const PAYMENT = { cash: 'bar', debit_cards: 'EC-Karte', credit_cards: 'Kreditkarte', contactless: 'kontaktlos', app: 'App' };
+const PAYMENT = { cash: t('poi.values.payment.cash'), debit_cards: t('poi.values.payment.debit_cards'), credit_cards: t('poi.values.payment.credit_cards'), contactless: t('poi.values.payment.contactless'), app: t('poi.values.payment.app') };
 
-function payment(t) {
-  const list = Object.keys(PAYMENT).filter((k) => t[`payment:${k}`] === 'yes').map((k) => PAYMENT[k]);
+function payment(tg) {
+  const list = Object.keys(PAYMENT).filter((k) => tg[`payment:${k}`] === 'yes').map((k) => PAYMENT[k]);
   return list.length ? list.join(', ') : null;
 }
 
-function sockets(t) {
+function sockets(tg) {
   const out = [];
   for (const [k, name] of Object.entries(SOCKETS)) {
-    const n = t[`socket:${k}`];
+    const n = tg[`socket:${k}`];
     if (!n || n === 'no') continue;
-    const kw = t[`socket:${k}:output`];
+    const kw = tg[`socket:${k}:output`];
     out.push(`${n !== 'yes' ? `${n}× ` : ''}${name}${kw ? ` (${kw})` : ''}`);
   }
   return out.length ? out.join(', ') : null;
 }
 
-function fuels(t) {
-  const list = Object.keys(FUELS).filter((k) => t[`fuel:${k}`] === 'yes').map((k) => FUELS[k]);
+function fuels(tg) {
+  const list = Object.keys(FUELS).filter((k) => tg[`fuel:${k}`] === 'yes').map((k) => FUELS[k]);
   return list.length ? list.join(', ') : null;
 }
 
 /* ── Öffnungszeiten ───────────────────────────────────────────────────────── */
 
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-const DAYS_DE = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+const DAYS_DE = [t('common.weekdays.short.mo'), t('common.weekdays.short.tu'), t('common.weekdays.short.we'), t('common.weekdays.short.th'), t('common.weekdays.short.fr'), t('common.weekdays.short.sa'), t('common.weekdays.short.su')];
 const DAY = '(?:Mo|Tu|We|Th|Fr|Sa|Su)';
 const DAY_LIST = new RegExp(`^(${DAY}(?:-${DAY})?(?:,${DAY}(?:-${DAY})?)*)\\s*(.*)$`);
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const MONTHS_DE = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
-const MONTHS_LONG = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+const MONTHS_DE = [t('common.months.short.jan'), t('common.months.short.feb'), t('common.months.short.mar'), t('common.months.short.apr'), t('common.months.short.may'), t('common.months.short.jun'), t('common.months.short.jul'), t('common.months.short.aug'), t('common.months.short.sep'), t('common.months.short.oct'), t('common.months.short.nov'), t('common.months.short.dec')];
+const MONTHS_LONG = [t('common.months.long.jan'), t('common.months.long.feb'), t('common.months.long.mar'), t('common.months.long.apr'), t('common.months.long.may'), t('common.months.long.jun'), t('common.months.long.jul'), t('common.months.long.aug'), t('common.months.long.sep'), t('common.months.long.oct'), t('common.months.long.nov'), t('common.months.long.dec')];
 const MON = `(?:${MONTHS.join('|')})`;
 const SEASON = new RegExp(`^(${MON}(?:-${MON})?(?:,${MON}(?:-${MON})?)*):?\\s+`);
 
@@ -145,7 +146,7 @@ function season(oh) {
   }
   const months = spec ? {
     set: expandMonths(spec),
-    text: spec.split(',').map((p) => p.split('-').map((x) => MONTHS_LONG[MONTHS.indexOf(x)]).join(' bis ')).join(', '),
+    text: spec.split(',').map((p) => p.split('-').map((x) => MONTHS_LONG[MONTHS.indexOf(x)]).join(` ${t('poi.hours.until')} `)).join(', '),
   } : null;
   return { oh: rules.join('; '), months };
 }
@@ -182,10 +183,10 @@ export function parseWeek(oh) {
     let spans = [];
     if (!/^(off|closed)$/i.test(rest)) {
       for (const part of rest.split(',')) {
-        const t = part.trim().match(/^(\d{1,2}):(\d\d)-(\d{1,2}):(\d\d)\+?$/);
-        if (!t) return null;
-        const a = toMin(t[1], t[2]);
-        let b = toMin(t[3], t[4]);
+        const tg = part.trim().match(/^(\d{1,2}):(\d\d)-(\d{1,2}):(\d\d)\+?$/);
+        if (!tg) return null;
+        const a = toMin(tg[1], tg[2]);
+        let b = toMin(tg[3], tg[4]);
         if (b <= a) b += 1440;                 // über Mitternacht
         spans.push([a, b]);
       }
@@ -214,10 +215,10 @@ export function openState(oh, now = new Date()) {
 
 function statusText(state) {
   if (!state) return null;
-  if (state.always) return 'Rund um die Uhr geöffnet';
-  if (state.open) return `Jetzt geöffnet · bis ${state.until}`;
-  if (state.offSeason) return `Geschlossen · geöffnet ${state.offSeason}`;
-  return state.next ? `Geschlossen · öffnet um ${state.next}` : 'Heute geschlossen';
+  if (state.always) return t('poi.hours.status.always');
+  if (state.open) return t('poi.hours.status.open', { until: state.until });
+  if (state.offSeason) return t('poi.hours.status.off_season', { when: state.offSeason });
+  return state.next ? t('poi.hours.status.next', { next: state.next }) : t('poi.hours.status.today_closed');
 }
 
 /**
@@ -252,43 +253,43 @@ export function hoursTable(oh, now = new Date()) {
   const today = (now.getDay() + 6) % 7;
   const rows = DAYS_DE.map((d, i) => {
     const spans = week[i];
-    const text = spans === null ? '–' : !spans.length ? 'geschlossen'
-      : spans.map(([a, b]) => (a === 0 && b === 1440 ? 'ganztägig' : `${fmtMin(a)}–${b === 1440 ? '24:00' : fmtMin(b)}`)).join(', ');
+    const text = spans === null ? '–' : !spans.length ? t('poi.hours.closed')
+      : spans.map(([a, b]) => (a === 0 && b === 1440 ? t('poi.hours.all_day') : `${fmtMin(a)}–${b === 1440 ? '24:00' : fmtMin(b)}`)).join(', ');
     return `<tr class="${i === today ? 'today' : ''}${spans && !spans.length ? ' closed' : ''}"><th>${d}</th><td>${text}</td></tr>`;
   }).join('');
   const ph = s.oh.split(';').map((r) => r.trim()).find((r) => /^PH\b/.test(r));
   const notes = [
-    s.months ? `Geöffnet ${s.months.text}` : null,
-    ph ? `Feiertage: ${formatHours(ph).replace(/^Feiertag\s*/, '')}` : null,
+    s.months ? t('poi.hours.open_months', { months: s.months.text }) : null,
+    ph ? t('poi.hours.holidays', { hours: formatHours(ph).replace(new RegExp(`^${t('poi.hours.holiday')}\\s*`), '') }) : null,
   ].filter(Boolean);
   const note = notes.length ? `<caption>${notes.map(esc).join('<br>')}</caption>` : '';
   return `<table class="poi-hours">${note}<tbody>${rows}</tbody></table>`;
 }
 
 /** Links, die es zu einem Ort gibt – Website, Speisekarte, Programm, soziale Netze. */
-function links(t) {
+function links(tg) {
   const out = [];
   const add = (url, label, icon) => { if (url && /^https?:\/\//.test(url) && !out.some((l) => l.url === url)) out.push({ url, label, icon }); };
-  add(t.website ?? t['contact:website'] ?? t.url, 'Website', 'language');
-  const phone = (t.phone ?? t['contact:phone'])?.split(';')[0].trim();
+  add(tg.website ?? tg['contact:website'] ?? tg.url, t('poi.links.website'), 'language');
+  const phone = (tg.phone ?? tg['contact:phone'])?.split(';')[0].trim();
   if (phone) out.push({ url: `tel:${phone.replace(/[^+\d]/g, '')}`, label: phone, icon: 'call' });
-  add(t['website:menu'] ?? t.menu, 'Speisekarte', 'menu_book');
+  add(tg['website:menu'] ?? tg.menu, t('poi.links.menu'), 'menu_book');
   // Kulturvereine, Kinos, Theater: manche verlinken ihr Programm eigens
-  add(t['website:events'] ?? t['contact:events'] ?? t['event:website'], 'Programm', 'event');
-  add(t['contact:instagram'] && !t['contact:instagram'].startsWith('http') ? `https://instagram.com/${t['contact:instagram'].replace(/^@/, '')}` : t['contact:instagram'], 'Instagram', 'photo_camera');
-  add(t['contact:facebook'] && !t['contact:facebook'].startsWith('http') ? `https://facebook.com/${t['contact:facebook']}` : t['contact:facebook'], 'Facebook', 'group');
+  add(tg['website:events'] ?? tg['contact:events'] ?? tg['event:website'], t('poi.links.events'), 'event');
+  add(tg['contact:instagram'] && !tg['contact:instagram'].startsWith('http') ? `https://instagram.com/${tg['contact:instagram'].replace(/^@/, '')}` : tg['contact:instagram'], t('poi.links.instagram'), 'photo_camera');
+  add(tg['contact:facebook'] && !tg['contact:facebook'].startsWith('http') ? `https://facebook.com/${tg['contact:facebook']}` : tg['contact:facebook'], t('poi.links.facebook'), 'group');
   return out;
 }
 
 /** Lesbar auf Deutsch, eine Regel je Zeile. */
 export function formatHours(oh) {
   if (!oh) return null;
-  if (oh.trim() === '24/7') return 'rund um die Uhr';
+  if (oh.trim() === '24/7') return t('poi.hours.always');
   return oh.split(';').map((r) => r.trim()).filter(Boolean).map((r) => r
     .replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su)\b/g, (d) => DAYS_DE[DAYS.indexOf(d)])
-    .replace(/\bPH\b/g, 'Feiertag').replace(/\bSH\b/g, 'Schulferien')
+    .replace(/\bPH\b/g, t('poi.hours.holiday')).replace(/\bSH\b/g, t('poi.hours.school_holidays'))
     .replace(new RegExp(`\\b${MON}\\b`, 'g'), (m) => MONTHS_DE[MONTHS.indexOf(m)])
-    .replace(/\b(off|closed)\b/gi, 'geschlossen')
+    .replace(/\b(off|closed)\b/gi, t('poi.hours.closed'))
     .replace(/-/g, '–')
     .replace(/,(?=\S)/g, ', ')).join('\n');
 }
@@ -301,7 +302,7 @@ export function formatHours(oh) {
  *   { key: 'payment:', kind: 'flags', options }   je Wert ein Häkchen (…=yes)
  *   { key: 'socket:', kind: 'sockets' }           je Stecker Anzahl und Leistung
  */
-const JA_NEIN = { yes: 'ja', no: 'nein' };
+const JA_NEIN = { yes: t('poi.values.yes_no.yes'), no: t('poi.values.yes_no.no') };
 const E = {
   num: (key, ph = '') => ({ key, kind: 'number', ph }),
   text: (key, ph = '') => ({ key, kind: 'text', ph }),
@@ -312,47 +313,47 @@ export const EDIT_SOCKETS = SOCKETS;
 
 // [Beschriftung, Icon, Wert aus Tags, Pflicht?, Bearbeiten]
 const F = {
-  hours: ['Öffnungszeiten', 'schedule', (t) => formatHours(t.opening_hours), false, { key: 'opening_hours', kind: 'hours' }],
-  hoursReq: ['Öffnungszeiten', 'schedule', (t) => formatHours(t.opening_hours), true, { key: 'opening_hours', kind: 'hours' }],
-  fee: ['Gebühr', 'payments', fee, true, E.pick('fee', { no: 'kostenlos', yes: 'kostenpflichtig' })],
-  surface: ['Belag', 'texture', (t) => tr(SURFACE, t.surface), true, E.pick('surface', SURFACE)],
-  access: ['Zugang', 'lock_open', (t) => tr(ACCESS, t.access), false, E.pick('access', ACCESS)],
-  operator: ['Betreiber', 'business', (t) => t.operator ?? t.brand, false, E.text('operator', 'z. B. Stadtwerke Göttingen')],
-  phone: ['Telefon', 'call', (t) => t.phone ?? t['contact:phone'], false, { key: 'phone', kind: 'text' }],
-  cuisine: ['Küche', 'restaurant_menu', (t) => t.cuisine?.replaceAll(';', ', ').replaceAll('_', ' '), false, E.text('cuisine', 'z. B. italian;pizza')],
-  payment: ['Bezahlung', 'credit_card', payment, false, E.flags('payment:', PAYMENT)],
-  ele: ['Höhe', 'landscape', (t) => (t.ele ? `${Math.round(Number(t.ele))} m` : null), false, E.num('ele', 'Meter über dem Meer')],
+  hours: [t('poi.facts.hours'), 'schedule', (tg) => formatHours(tg.opening_hours), false, { key: 'opening_hours', kind: 'hours' }],
+  hoursReq: [t('poi.facts.hours'), 'schedule', (tg) => formatHours(tg.opening_hours), true, { key: 'opening_hours', kind: 'hours' }],
+  fee: [t('poi.facts.fee'), 'payments', fee, true, E.pick('fee', { no: t('poi.values.fee.no'), yes: t('poi.values.fee.yes') })],
+  surface: [t('poi.facts.surface'), 'texture', (tg) => tr(SURFACE, tg.surface), true, E.pick('surface', SURFACE)],
+  access: [t('poi.facts.access'), 'lock_open', (tg) => tr(ACCESS, tg.access), false, E.pick('access', ACCESS)],
+  operator: [t('poi.facts.operator'), 'business', (tg) => tg.operator ?? tg.brand, false, E.text('operator', t('poi.edit_hint.operator'))],
+  phone: [t('poi.facts.phone'), 'call', (tg) => tg.phone ?? tg['contact:phone'], false, { key: 'phone', kind: 'text' }],
+  cuisine: [t('poi.facts.cuisine'), 'restaurant_menu', (tg) => tg.cuisine?.replaceAll(';', ', ').replaceAll('_', ' '), false, E.text('cuisine', t('poi.edit_hint.cuisine'))],
+  payment: [t('poi.facts.payment'), 'credit_card', payment, false, E.flags('payment:', PAYMENT)],
+  ele: [t('poi.facts.ele'), 'landscape', (tg) => (tg.ele ? `${Math.round(Number(tg.ele))} ${t('common.units.m')}` : null), false, E.num('ele', t('poi.edit_hint.ele'))],
 };
 
 const SCHEMA = {
   parking: [
     // capacity = alle Stellplätze, nicht die gerade freien
-    ['Stellplätze (gesamt)', 'local_parking', (t) => t.capacity, true, E.num('capacity', 'alle, nicht nur die freien')],
+    [t('poi.facts.capacity'), 'local_parking', (tg) => tg.capacity, true, E.num('capacity', t('poi.edit_hint.capacity'))],
     F.fee,
     F.hours,
     F.surface,
-    ['Art', 'garage', (t) => tr(PARKING, t.parking), false, E.pick('parking', PARKING)],
-    ['Höchstparkdauer', 'timer', (t) => t.maxstay, false, E.text('maxstay', 'z. B. 2 hours')],
-    ['Behindertenparkplätze', 'accessible', (t) => t['capacity:disabled'], false, E.num('capacity:disabled')],
-    ['Ladeplätze', 'ev_station', (t) => t['capacity:charging'], false, E.num('capacity:charging')],
+    [t('poi.facts.kind'), 'garage', (tg) => tr(PARKING, tg.parking), false, E.pick('parking', PARKING)],
+    [t('poi.facts.maxstay'), 'timer', (tg) => tg.maxstay, false, E.text('maxstay', t('poi.edit_hint.maxstay'))],
+    [t('poi.facts.disabled'), 'accessible', (tg) => tg['capacity:disabled'], false, E.num('capacity:disabled')],
+    [t('poi.facts.charging'), 'ev_station', (tg) => tg['capacity:charging'], false, E.num('capacity:charging')],
     F.access,
   ],
-  fuel: [F.operator, F.hoursReq, ['Kraftstoffe', 'local_gas_station', fuels, false, E.flags('fuel:', FUELS)], F.payment,
-    ['Shop', 'storefront', (t) => tr(YES_NO, t.shop), false, E.pick('shop', JA_NEIN)]],
+  fuel: [F.operator, F.hoursReq, [t('poi.facts.fuels'), 'local_gas_station', fuels, false, E.flags('fuel:', FUELS)], F.payment,
+    [t('poi.facts.shop'), 'storefront', (tg) => tr(YES_NO, tg.shop), false, E.pick('shop', JA_NEIN)]],
   charging: [
-    ['Ladepunkte', 'ev_station', (t) => t.capacity, true, E.num('capacity', 'Fahrzeuge, die gleichzeitig laden können')],
-    ['Stecker', 'electrical_services', sockets, true, { key: 'socket:', kind: 'sockets' }],
+    [t('poi.facts.charge_points'), 'ev_station', (tg) => tg.capacity, true, E.num('capacity', t('poi.edit_hint.charge_points'))],
+    [t('poi.facts.sockets'), 'electrical_services', sockets, true, { key: 'socket:', kind: 'sockets' }],
     F.fee, F.operator, F.hours, F.access, F.payment,
   ],
   toilets: [F.fee, F.hours],          // Rollstuhl, Wickeltisch: bei der Ausstattung
-  water: [['Trinkwasser', 'water_drop', (t) => tr(YES_NO, t.drinking_water ?? 'yes'), false, E.pick('drinking_water', JA_NEIN)],
-    ['Saisonal', 'event', (t) => tr(YES_NO, t.seasonal), false, E.pick('seasonal', JA_NEIN)]],
-  bikeparking: [['Stellplätze (gesamt)', 'pedal_bike', (t) => t.capacity, true, E.num('capacity')],
-    ['Überdacht', 'roofing', (t) => tr(YES_NO, t.covered), false, E.pick('covered', JA_NEIN)], F.fee],
+  water: [[t('poi.facts.water'), 'water_drop', (tg) => tr(YES_NO, tg.drinking_water ?? 'yes'), false, E.pick('drinking_water', JA_NEIN)],
+    [t('poi.facts.seasonal'), 'event', (tg) => tr(YES_NO, tg.seasonal), false, E.pick('seasonal', JA_NEIN)]],
+  bikeparking: [[t('poi.facts.capacity'), 'pedal_bike', (tg) => tg.capacity, true, E.num('capacity')],
+    [t('poi.facts.covered'), 'roofing', (tg) => tr(YES_NO, tg.covered), false, E.pick('covered', JA_NEIN)], F.fee],
   peak: [F.ele],
   viewpoint: [F.ele],
   soccer: [F.surface, F.access],
-  playground: [F.surface, ['Mindestalter', 'child_care', (t) => t.min_age, false, E.num('min_age', 'Jahre')]],
+  playground: [F.surface, [t('poi.facts.min_age'), 'child_care', (tg) => tg.min_age, false, E.num('min_age', t('poi.edit_hint.min_age'))]],
 };
 for (const id of ['bakery', 'cafe', 'restaurant', 'fastfood', 'icecream', 'pub']) {
   SCHEMA[id] = [F.hoursReq, F.cuisine, F.phone];
@@ -375,31 +376,31 @@ export function editFields(tags = {}) {
  * bietet dieselben zum Setzen an (dazu „no“ = Nein).
  */
 export const TRAITS = [
-  ['delivery', 'Lieferdienst', { yes: 'Lieferdienst', only: 'Nur Lieferung' }],
-  ['takeaway', 'Zum Mitnehmen', { yes: 'Zum Mitnehmen', only: 'Nur zum Mitnehmen' }],
-  ['organic', 'Bio', { yes: 'Bio', only: 'Nur Bio' }],
-  ['diet:vegan', 'Vegan', { yes: 'Vegane Auswahl', only: 'Vegan' }],
-  ['diet:vegetarian', 'Vegetarisch', { yes: 'Vegetarische Auswahl', only: 'Vegetarisch' }],
-  ['drive_through', 'Drive-in', { yes: 'Drive-in' }],
+  ['delivery', t('poi.traits.delivery.name'), { yes: t('poi.traits.delivery.name'), only: t('poi.traits.delivery.only') }],
+  ['takeaway', t('poi.traits.takeaway.name'), { yes: t('poi.traits.takeaway.name'), only: t('poi.traits.takeaway.only') }],
+  ['organic', t('poi.traits.organic.name'), { yes: t('poi.traits.organic.name'), only: t('poi.traits.organic.only') }],
+  ['diet:vegan', t('poi.traits.vegan.name'), { yes: t('poi.traits.vegan.yes'), only: t('poi.traits.vegan.name') }],
+  ['diet:vegetarian', t('poi.traits.vegetarian.name'), { yes: t('poi.traits.vegetarian.yes'), only: t('poi.traits.vegetarian.name') }],
+  ['drive_through', t('poi.traits.drive_through.name'), { yes: t('poi.traits.drive_through.name') }],
 ];
-const traitsOf = (t) => TRAITS.map(([k, , txt]) => txt[t[k]]).filter(Boolean);
+const traitsOf = (tg) => TRAITS.map(([k, , txt]) => txt[tg[k]]).filter(Boolean);
 
 /**
  * Ausstattung – als Chips unter den Angaben. [Schlüssel, Name im Bearbeiten, Icon, Tags → Text | null]
  * Außenplätze zählen bei jedem Wert außer „no“ (terrace, pedestrian_zone … sagt nur, wo sie sind).
  */
 export const EQUIPMENT = [
-  ['wheelchair', 'Rollstuhlgerecht', 'accessible', (t) => ({ yes: 'Rollstuhlgerecht', designated: 'Rollstuhlgerecht', limited: 'Teilweise rollstuhlgerecht', no: 'Nicht rollstuhlgerecht' })[t.wheelchair] ?? null],
-  ['outdoor_seating', 'Außenplätze', 'deck', (t) => (t.outdoor_seating && t.outdoor_seating !== 'no' ? 'Außenplätze' : null)],
-  ['toilets', 'Toiletten', 'wc', (t) => (t.toilets !== 'yes' ? null
-    : ['customers', 'permissive'].includes(t['toilets:access']) ? 'Toiletten für Gäste'
-      : ['yes', 'public'].includes(t['toilets:access']) ? 'Öffentliche Toiletten' : 'Toiletten')],
-  ['changing_table', 'Wickeltisch', 'baby_changing_station', (t) => (t.changing_table === 'yes' ? 'Wickeltisch' : null)],
-  ['internet_access', 'WLAN', 'wifi', (t) => (['wlan', 'yes'].includes(t.internet_access) ? 'WLAN' : null)],
-  ['air_conditioning', 'Klimaanlage', 'ac_unit', (t) => (t.air_conditioning === 'yes' ? 'Klimaanlage' : null)],
-  ['dog', 'Hunde erlaubt', 'pets', (t) => (['yes', 'leashed'].includes(t.dog) ? 'Hunde erlaubt' : null)],
+  ['wheelchair', t('poi.equipment.wheelchair.yes'), 'accessible', (tg) => ({ yes: t('poi.equipment.wheelchair.yes'), designated: t('poi.equipment.wheelchair.yes'), limited: t('poi.equipment.wheelchair.limited'), no: t('poi.equipment.wheelchair.no') })[tg.wheelchair] ?? null],
+  ['outdoor_seating', t('poi.equipment.outdoor'), 'deck', (tg) => (tg.outdoor_seating && tg.outdoor_seating !== 'no' ? t('poi.equipment.outdoor') : null)],
+  ['toilets', t('poi.equipment.toilets.name'), 'wc', (tg) => (tg.toilets !== 'yes' ? null
+    : ['customers', 'permissive'].includes(tg['toilets:access']) ? t('poi.equipment.toilets.guests')
+      : ['yes', 'public'].includes(tg['toilets:access']) ? t('poi.equipment.toilets.public') : t('poi.equipment.toilets.name'))],
+  ['changing_table', t('poi.equipment.changing'), 'baby_changing_station', (tg) => (tg.changing_table === 'yes' ? t('poi.equipment.changing') : null)],
+  ['internet_access', t('poi.equipment.wlan'), 'wifi', (tg) => (['wlan', 'yes'].includes(tg.internet_access) ? t('poi.equipment.wlan') : null)],
+  ['air_conditioning', t('poi.equipment.air'), 'ac_unit', (tg) => (tg.air_conditioning === 'yes' ? t('poi.equipment.air') : null)],
+  ['dog', t('poi.equipment.dog'), 'pets', (tg) => (['yes', 'leashed'].includes(tg.dog) ? t('poi.equipment.dog') : null)],
 ];
-const equipmentOf = (t) => EQUIPMENT.map(([k, , icon, get]) => ({ icon: k === 'wheelchair' && t.wheelchair === 'no' ? 'not_accessible' : icon, text: get(t) })).filter((e) => e.text);
+const equipmentOf = (tg) => EQUIPMENT.map(([k, , icon, get]) => ({ icon: k === 'wheelchair' && tg.wheelchair === 'no' ? 'not_accessible' : icon, text: get(tg) })).filter((e) => e.text);
 
 /**
  * Wer darf hin (access)? → { kind: 'public' | 'limited' | 'private', text } – privat heißt: für einen selbst nicht
@@ -407,9 +408,9 @@ const equipmentOf = (t) => EQUIPMENT.map(([k, , icon, get]) => ({ icon: k === 'w
  * Trefferlisten blenden private aus (app/category.js filterHits), eingeschränkte stehen mit Hinweis da.
  */
 const ACCESS_NOTE = {
-  customers: ['limited', 'Nur für Kunden'], destination: ['limited', 'Nur für Anlieger'], delivery: ['limited', 'Nur Lieferverkehr'],
-  private: ['private', 'Privat – nicht öffentlich'], no: ['private', 'Kein Zugang'], residents: ['private', 'Nur für Anwohner'],
-  permit: ['private', 'Nur mit Genehmigung'],
+  customers: ['limited', t('poi.access_note.customers')], destination: ['limited', t('poi.access_note.destination')], delivery: ['limited', t('poi.access_note.delivery')],
+  private: ['private', t('poi.access_note.private')], no: ['private', t('poi.access_note.no')], residents: ['private', t('poi.access_note.residents')],
+  permit: ['private', t('poi.access_note.permit')],
 };
 export function accessOf(tags = {}) {
   const [kind, text] = ACCESS_NOTE[tags.access] ?? ['public', null];
@@ -426,15 +427,15 @@ export function describePoi(tags = {}, { name, fallbackType } = {}) {
   const facts = [];
   for (const [label, icon, get, required, edit] of schema) {
     const value = get(tags);
-    if (value || required) facts.push({ label, icon, value: value ?? 'unbekannt', unknown: !value });
+    if (value || required) facts.push({ label, icon, value: value ?? t('poi.card.unknown'), unknown: !value });
   }
   const web = tags.website ?? tags['contact:website'] ?? tags.url;
   return {
-    look: category ? { icon: category.icon, color: category.color } : iconForTags(tags),
+    look: iconForTags(tags) ?? (category ? { icon: category.icon, color: category.color } : null),
     hours: tags.opening_hours ?? null,
     links: links(tags),
     category,
-    name: name || tags.name || tags.brand || category?.one || fallbackType || 'Ort',
+    name: name || tags.name || tags.brand || category?.one || fallbackType || t('poi.card.place'),
     type: category?.one ?? fallbackType ?? null,
     traits: traitsOf(tags),
     equipment: equipmentOf(tags),
@@ -456,15 +457,15 @@ export function poiCard(info, { compact = false } = {}) {
   const table = compact ? null : hoursTable(info.hours);
   // Telefon steht oben bei den Links (antippen ruft an)
   // Nichts doppelt: Zugang steht schon als Badge, eine Art gleich der unter dem Namen („Parkplatz“) fällt weg
-  const dup = (f) => (info.access?.text && f.label === 'Zugang') || (!f.unknown && info.type && f.value.toLowerCase() === info.type.toLowerCase());
+  const dup = (f) => (info.access?.text && f.label === t('poi.facts.access')) || (!f.unknown && info.type && f.value.toLowerCase() === info.type.toLowerCase());
   const facts = (compact ? info.facts.slice(0, 5) : info.facts)
-    .filter((f) => !dup(f) && !(table && f.label === 'Öffnungszeiten') && !(!compact && f.label === 'Telefon' && !f.unknown));
+    .filter((f) => !dup(f) && !(table && f.label === t('poi.facts.hours')) && !(!compact && f.label === t('poi.facts.phone') && !f.unknown));
   // Im Sheet: Bekanntes als Badges, Unbekanntes in einer Zeile – keine grauen Kacheln mit „unbekannt“
   const known = facts.filter((f) => !f.unknown), unknown = facts.filter((f) => f.unknown);
   const badges = known.length ? `<ul class="poi-badges">${known.map((f) => `
         <li class="${f.value.includes('\n') ? 'multi' : ''}"><span class="msr">${f.icon}</span><span class="b-label">${esc(f.label)}</span>
         <b>${esc(f.value).replaceAll('\n', '<br>')}</b></li>`).join('')}</ul>` : '';
-  const missing = unknown.length ? `<p class="poi-unknown"><span class="msr">help</span>Noch unbekannt: ${unknown.map((f) => esc(f.label)).join(' · ')}</p>` : '';
+  const missing = unknown.length ? `<p class="poi-unknown"><span class="msr">help</span>${t('poi.card.still_unknown')} ${unknown.map((f) => esc(f.label)).join(' · ')}</p>` : '';
   return `
     <div class="poi-card${compact ? ' compact' : ''}">
       <header>
@@ -480,8 +481,8 @@ export function poiCard(info, { compact = false } = {}) {
         <div class="${f.unknown ? 'unknown' : ''}"><dt><span class="msr">${f.icon}</span>${esc(f.label)}</dt>
         <dd>${esc(f.value).replaceAll('\n', '<br>')}</dd></div>`).join('')}</dl>` : ''}
       ${compact ? '' : badges + missing}
-      ${!compact && info.equipment?.length ? `<div class="poi-equip"><h4><span class="msr">checklist</span> Ausstattung</h4><div>${info.equipment.map((e) => `
+      ${!compact && info.equipment?.length ? `<div class="poi-equip"><h4><span class="msr">checklist</span> ${t('poi.card.equipment')}</h4><div>${info.equipment.map((e) => `
         <span class="chip"><span class="msr">${e.icon}</span>${esc(e.text)}</span>`).join('')}</div></div>` : ''}
-      ${table ? `<div class="poi-hours-wrap"><h4><span class="msr">schedule</span> Öffnungszeiten</h4>${table}</div>` : ''}
+      ${table ? `<div class="poi-hours-wrap"><h4><span class="msr">schedule</span> ${t('poi.facts.hours')}</h4>${table}</div>` : ''}
     </div>`;
 }

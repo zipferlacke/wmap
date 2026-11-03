@@ -22,6 +22,7 @@
 import { tracks, sameActivity, trackEnd } from './tracks.js';
 import { tours } from './store.js';
 import { fmtDistance, fmtTime } from '../core/geo.js';
+import { t } from '../core/i18n-text.js';
 
 const VALUES = ['hr', 'cad', 'pow'];
 // Karteikarte (Weg liegt nur im Ordner): sie weiß, welche Messwerte die Datei hat
@@ -146,30 +147,31 @@ export function enrich(keep, file, { shape = false, values = false } = {}) {
  * Je Angabe auch, wie sie auf beiden Seiten aussieht (`old`: was bisher da ist, `new`: was die Datei bzw. die
  * doppelte Aufzeichnung hat) – für die Wahl „Neu“ oder „Bisher“ in ui/merge-ask.js
  */
-const shapeText = (t, n) => [t.length > 0 && fmtDistance(t.length), (t.moving || (t.end - t.start) / 1000) > 0 && fmtTime(t.moving || (t.end - t.start) / 1000), `${n} Punkte`].filter(Boolean).join(' · ');
+const shapeText = (x, n) => [x.length > 0 && fmtDistance(x.length), (x.moving || (x.end - x.start) / 1000) > 0 && fmtTime(x.moving || (x.end - x.start) / 1000), t('tracks.duplicates.points', { n })].filter(Boolean).join(' · ');
 const unit = { hr: ' bpm', cad: '/min', pow: ' W' };
+const inFile = () => t('tracks.duplicates.where.file');
 export function choices(keep, file) {
   const [here, there] = [pointCount(keep), pointCount(file)];
   const out = [];
-  if (here !== there) out.push({ key: 'shape', detail: `${Math.abs(there - here)} Punkte ${there > here ? 'mehr' : 'weniger'} in der Datei (${there} statt ${here})`, on: there > here,
+  if (here !== there) out.push({ key: 'shape', detail: t(there > here ? 'tracks.duplicates.points_more' : 'tracks.duplicates.points_fewer', { n: Math.abs(there - here), there, here, where: inFile() }), on: there > here,
     old: shapeText(keep, here), new: shapeText(file, there) });
   for (const k of VALUES) {
     if (!hasValues(file, k)) continue;
     const [a, b] = [meanOf(keep, k), meanOf(file, k)];
-    if (!hasValues(keep, k)) out.push({ key: k, detail: `fehlt hier – in der Datei Ø ${Math.round(b)}`, on: true, old: 'keine', new: `Ø ${Math.round(b)}${unit[k]}` });
-    else if (Math.abs(a - b) > Math.max(a, b) * 0.03) out.push({ key: k, detail: `Ø ${Math.round(b)} in der Datei, Ø ${Math.round(a)} hier`, on: there > here, old: `Ø ${Math.round(a)}${unit[k]}`, new: `Ø ${Math.round(b)}${unit[k]}` });
+    if (!hasValues(keep, k)) out.push({ key: k, detail: t('tracks.duplicates.value_missing', { where: inFile(), avg: Math.round(b) }), on: true, old: t('tracks.duplicates.none'), new: `Ø ${Math.round(b)}${unit[k]}` });
+    else if (Math.abs(a - b) > Math.max(a, b) * 0.03) out.push({ key: k, detail: t('tracks.duplicates.value_differs', { there: Math.round(b), where: inFile(), here: Math.round(a) }), on: there > here, old: `Ø ${Math.round(a)}${unit[k]}`, new: `Ø ${Math.round(b)}${unit[k]}` });
   }
   if (file.marks?.length) {
-    if (!keep.marks?.length) out.push({ key: 'marks', detail: `${file.marks.length + 1} Runden in der Datei, hier keine`, on: true, old: 'keine', new: `${file.marks.length + 1} Runden` });
-    else if (JSON.stringify(keep.marks) !== JSON.stringify(file.marks)) out.push({ key: 'marks', detail: `${file.marks.length + 1} Runden in der Datei, ${keep.marks.length + 1} hier`, on: false, old: `${keep.marks.length + 1} Runden`, new: `${file.marks.length + 1} Runden` });
+    if (!keep.marks?.length) out.push({ key: 'marks', detail: t('tracks.duplicates.laps_new', { n: file.marks.length + 1, where: inFile() }), on: true, old: t('tracks.duplicates.none'), new: t('tracks.duplicates.laps', { n: file.marks.length + 1 }) });
+    else if (JSON.stringify(keep.marks) !== JSON.stringify(file.marks)) out.push({ key: 'marks', detail: t('tracks.duplicates.laps_differ', { there: file.marks.length + 1, where: inFile(), here: keep.marks.length + 1 }), on: false, old: t('tracks.duplicates.laps', { n: keep.marks.length + 1 }), new: t('tracks.duplicates.laps', { n: file.marks.length + 1 }) });
   }
   return out;
 }
 
 /** Neue Datei: welche Messwerte sie hat → [{ key: 'hr' | 'cad' | 'pow' | 'marks', detail, on: true }] (Rückfrage „Auswählen“) */
-export function dataOf(t) {
-  const out = VALUES.filter((k) => hasValues(t, k)).map((k) => ({ key: k, detail: `Ø ${Math.round(meanOf(t, k))}${k === 'pow' ? ' W' : ''} in der Datei`, on: true }));
-  if (t.marks?.length) out.push({ key: 'marks', detail: `${t.marks.length + 1} Runden in der Datei`, on: true });
+export function dataOf(track) {
+  const out = VALUES.filter((k) => hasValues(track, k)).map((k) => ({ key: k, detail: `Ø ${Math.round(meanOf(track, k))}${k === 'pow' ? ' W' : ''} ${inFile()}`, on: true }));
+  if (track.marks?.length) out.push({ key: 'marks', detail: t('tracks.duplicates.laps_in_file', { n: track.marks.length + 1, where: inFile() }), on: true });
   return out;
 }
 
@@ -293,7 +295,7 @@ export async function resolveDuplicates(pick = null) {
     for (const other of group.slice(1)) {
       // Karteikarte, deren Datei gerade nicht zu lesen ist: bleibt für später
       if (keep.stub || other.stub) continue;
-      const list = choices(keep, other).map((x) => ({ ...x, detail: x.detail.replace('in der Datei', 'in der doppelten') }));
+      const list = choices(keep, other).map((x) => ({ ...x, detail: x.detail.replace(inFile(), t('tracks.duplicates.where.double')) }));
       const p = pick && offers(keep, other).length ? await pick(keep, other, list) : null;
       if (p === 'abort') return null;
       if (p === 'later') continue;

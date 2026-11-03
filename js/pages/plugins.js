@@ -26,25 +26,26 @@ import { pluginFolders, folderMode } from '../data/plugin-folders.js';
 import { ask, toast } from '../ui/dialogs.js';
 import { esc } from '../core/geo.js';
 import { PRESETS, legendHtml } from '../map/presets.js';
+import { locale, t } from '../core/i18n.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 mountAppBar();
 
 const FILTERS = [
-  ['all', 'apps', 'Alle'],
-  ['layer', 'layers', 'Kartenebenen'],
-  ['extension', 'bolt', 'Erweiterungen'],
-  ['own', 'folder', 'Eigene'],
-  ['active', 'check_circle', 'Aktiv'],
+  ['all', 'apps', t('plugins.filter.all')],
+  ['layer', 'layers', t('plugins.filter.layer')],
+  ['extension', 'bolt', t('plugins.filter.extension')],
+  ['own', 'folder', t('plugins.filter.own')],
+  ['active', 'check_circle', t('plugins.filter.active')],
 ];
-const KIND_LABEL = { layer: 'Kartenebene', extension: 'Erweiterung', own: 'Eigene Ebene' };
-const TYPE = { geojson: 'Daten (GeoJSON)', raster: 'Kartenkacheln', stored: 'Messdaten, hier gespeichert', script: 'JavaScript' };
+const KIND_LABEL = { layer: t('plugins.kind.layer'), extension: t('plugins.kind.extension'), own: t('plugins.kind.own') };
+const TYPE = { geojson: t('plugins.type.geojson'), raster: t('plugins.type.raster'), stored: t('plugins.type.stored'), script: t('plugins.type.script') };
 
 /* Eingebaut: die Wegenetze von Waymarked Trails – dieselben Schalter wie im Ebenen-Menü */
 const BUILTIN = [
-  { key: 'hiking', icon: 'hiking', name: 'Wanderwege', text: 'Alle markierten Wanderwege – vom Rundweg bis zum Europäischen Fernwanderweg, mit ihren Zeichen.' },
-  { key: 'cycling', icon: 'directions_bike', name: 'Radwege', text: 'Markierte Radrouten: Radfernwege, regionale und örtliche Routen.' },
-  { key: 'mtb', icon: 'landscape', name: 'Mountainbike', text: 'Ausgeschilderte Mountainbike-Strecken.' },
+  { key: 'hiking', icon: 'hiking', name: t('plugins.builtin.hiking.name'), text: t('plugins.builtin.hiking.text') },
+  { key: 'cycling', icon: 'directions_bike', name: t('plugins.builtin.cycling.name'), text: t('plugins.builtin.cycling.text') },
+  { key: 'mtb', icon: 'landscape', name: t('plugins.builtin.mtb.name'), text: t('plugins.builtin.mtb.text') },
 ];
 
 let filter = new URLSearchParams(location.search).get('f') || 'all';
@@ -63,14 +64,14 @@ async function load() {
 
   items = [
     ...BUILTIN.map((b) => ({
-      id: `wmt-${b.key}`, kind: 'layer', icon: b.icon, name: b.name, operator: 'Waymarked Trails', type: 'Kartenkacheln',
-      description: `${b.text} Daten aus OpenStreetMap, gezeichnet von waymarkedtrails.org (CC BY-SA).`, builtin: b.key,
+      id: `wmt-${b.key}`, kind: 'layer', icon: b.icon, name: b.name, operator: 'Waymarked Trails', type: t('plugins.type.raster'),
+      description: t('plugins.builtin.description', { text: b.text }), builtin: b.key,
       active: !!state[b.key], url: 'https://waymarkedtrails.org',
     })),
     ...PRESETS.map((p) => {
       const installed = own.find((l) => l.source?.presetId === p.id);
       return {
-        id: p.id, kind: 'layer', icon: p.icon, name: p.name, operator: p.operator, type: 'Kartenkacheln',
+        id: p.id, kind: 'layer', icon: p.icon, name: p.name, operator: p.operator, type: t('plugins.type.raster'),
         description: p.text, attribution: p.attribution.replace(/<[^>]+>/g, ''), url: p.url, preset: p, installed, active: !!installed,
       };
     }),
@@ -85,14 +86,14 @@ async function load() {
       };
     }),
     ...exts.filter((x) => !x.pluginId).map((x) => ({
-      id: `x${x.id}`, kind: 'extension', icon: 'bolt', name: x.name, operator: x.operator || 'du selbst', type: 'JavaScript',
-      description: x.folder ? (x.description || `Aus deinem Plugin-Ordner: ${x.path}`) : 'Selbst per Adresse hinzugefügt.', url: x.url, ext: x, active: !!x.active, localOnly: true,
+      id: `x${x.id}`, kind: 'extension', icon: 'bolt', name: x.name, operator: x.operator || t('plugins.source.self'), type: t('plugins.type.script'),
+      description: x.folder ? (x.description || t('plugins.source.ext_folder', { path: x.path })) : t('plugins.source.ext_url'), url: x.url, ext: x, active: !!x.active, localOnly: true,
     })),
     ...own.filter((l) => !['plugin', 'preset'].includes(l.source?.kind)).map((l) => ({
       id: `l${l.id}`, kind: 'own', icon: l.raster ? 'grid_on' : 'scatter_plot', name: l.name,
-      operator: l.operator || (l.source?.kind === 'url' ? new URL(l.source.url).hostname : l.source?.folder ? 'aus einem Plugin-Ordner' : l.source?.path ? 'aus einem Ordner' : 'aus einer Datei'),
-      type: l.raster ? (l.raster.auth ? 'Kartenkacheln, privat' : 'Kartenkacheln') : `${(l.count ?? 0).toLocaleString('de-DE')} Objekte`,
-      description: l.description || (l.source?.path ? `Datei: ${l.source.path}` : l.source?.url ?? ''), attribution: l.attribution, layer: l, active: !!(l.onMain && l.visible),
+      operator: l.operator || (l.source?.kind === 'url' ? new URL(l.source.url).hostname : l.source?.folder ? t('plugins.source.plugin_folder') : l.source?.path ? t('plugins.source.folder') : t('plugins.source.file')),
+      type: l.raster ? (l.raster.auth ? t('plugins.type.raster_private') : t('plugins.type.raster')) : t('plugins.type.objects', { count: (l.count ?? 0).toLocaleString(locale) }),
+      description: l.description || (l.source?.path ? t('plugins.source.file_path', { path: l.source.path }) : l.source?.url ?? ''), attribution: l.attribution, layer: l, active: !!(l.onMain && l.visible),
     })),
   ];
 }
@@ -123,11 +124,11 @@ function paintGrid() {
         <small>${esc([i.operator, KIND_LABEL[i.kind]].filter(Boolean).join(' · '))}</small>
         ${i.description ? `<span class="plug-desc">${esc(i.description)}</span>` : ''}
       </span>
-      ${i.active ? '<span class="plug-badge"><span class="msr">check</span> Aktiv</span>' : ''}
+      ${i.active ? `<span class="plug-badge"><span class="msr">check</span> ${t('plugins.filter.active')}</span>` : ''}
     </button>`).join('')
-    : `<p class="muted plug-empty">${filter === 'own' ? 'Noch keine eigenen Ebenen – unten eine GeoJSON-Datei, einen Ordner oder eine Adresse hinzufügen.'
-      : filter === 'active' ? 'Noch nichts aktiv.' : 'Nichts gefunden.'}</p>`;
-  if (serverError && filter !== 'own') $('.plug-grid').insertAdjacentHTML('beforeend', `<p class="muted">Katalog gerade nicht erreichbar: ${esc(serverError)}</p>`);
+    : `<p class="muted plug-empty">${filter === 'own' ? t('plugins.list.empty_own')
+      : filter === 'active' ? t('plugins.list.empty_active') : t('plugins.list.empty')}</p>`;
+  if (serverError && filter !== 'own') $('.plug-grid').insertAdjacentHTML('beforeend', `<p class="muted">${t('plugins.list.server_error', { error: esc(serverError) })}</p>`);
 }
 
 /* ── Ein Plugin groß ──────────────────────────────────────────────────────── */
@@ -136,7 +137,7 @@ function showDetail(id, { push = true } = {}) {
   const i = items.find((x) => x.id === id);
   if (!i) { showList({ push }); return; }
   if (push) history.pushState({ id }, '', `?id=${encodeURIComponent(id)}`);
-  document.title = `${i.name} – Plugins – WMap`;
+  document.title = t('plugins.detail.page_title', { name: i.name });
   $('.plug-grid').hidden = true;
   $('.plug-filter').hidden = true;
   $('.plug-add').hidden = true;
@@ -144,30 +145,30 @@ function showDetail(id, { push = true } = {}) {
   box.hidden = false;
   const facts = [
     ['category', i.type ? `${KIND_LABEL[i.kind]} · ${i.type}` : KIND_LABEL[i.kind]],
-    ['business', i.operator && `Anbieter: ${i.operator}`],
-    ['event', i.dataDate && `Stand der Daten: ${i.dataDate}`],
+    ['business', i.operator && t('plugins.detail.operator', { operator: i.operator })],
+    ['event', i.dataDate && t('plugins.detail.data_date', { date: i.dataDate })],
     ['copyright', i.attribution],
-    ['mail', i.contact && `Kontakt: ${i.contact}`],
-    ['lock', i.status === 'private' ? 'Privat – nur für dich' : i.kind === 'own' || i.localOnly ? 'Nur auf diesem Gerät' : ''],
+    ['mail', i.contact && t('plugins.detail.contact', { contact: i.contact })],
+    ['lock', i.status === 'private' ? t('plugins.detail.private') : i.kind === 'own' || i.localOnly ? t('plugins.detail.local') : ''],
   ].filter(([, v]) => v);
   box.innerHTML = `
-    <button type="button" class="button plug-back" data-act="back"><span class="msr">arrow_back</span> Alle Plugins</button>
+    <button type="button" class="button plug-back" data-act="back"><span class="msr">arrow_back</span> ${t('plugins.detail.back')}</button>
     <div class="plug-hero">
       <span class="msr plug-icon big kind-${i.kind}">${i.icon}</span>
       <div><h2>${esc(i.name)}</h2><p class="muted">${esc(i.operator ?? '')}</p></div>
     </div>
     <div class="plug-actions">
       <button type="button" class="button ${i.active ? '' : 'primary'}" data-act="toggle">
-        <span class="msr">${i.active ? 'toggle_off' : 'toggle_on'}</span> ${i.active ? 'Deaktivieren' : 'Aktivieren'}</button>
-      ${i.kind === 'own' ? `<a class="button" href="./ebenen.html"><span class="msr">map</span> Auf der Karte ansehen</a>` : ''}
-      ${i.kind === 'own' || i.localOnly || i.mine ? '<button type="button" class="button" data-act="delete"><span class="msr">delete</span> Löschen</button>' : ''}
+        <span class="msr">${i.active ? 'toggle_off' : 'toggle_on'}</span> ${i.active ? t('plugins.detail.deactivate') : t('plugins.detail.activate')}</button>
+      ${i.kind === 'own' ? `<a class="button" href="./ebenen.html"><span class="msr">map</span> ${t('plugins.detail.on_map')}</a>` : ''}
+      ${i.kind === 'own' || i.localOnly || i.mine ? `<button type="button" class="button" data-act="delete"><span class="msr">delete</span> ${t('common.delete')}</button>` : ''}
     </div>
-    ${i.kind === 'extension' ? `<p class="plug-warn"><span class="msr">warning</span> Eine Erweiterung ist Programmcode. Aktiv darf sie alles, was WMap darf – auch deinen Standort sehen. Aktiviere nur, was du kennst und dem Anbieter vertraust.</p>` : ''}
+    ${i.kind === 'extension' ? `<p class="plug-warn"><span class="msr">warning</span> ${t('plugins.detail.warning')}</p>` : ''}
     ${i.description ? `<p class="plug-long">${esc(i.description)}</p>` : ''}
     ${opacityHtml(i)}
     ${i.preset ? legendHtml(i.preset) : ''}
     <ul class="plug-facts">${facts.map(([icon, v]) => `<li><span class="msr">${icon}</span>${esc(v)}</li>`).join('')}</ul>
-    ${i.url ? `<p class="muted plug-url">Quelle: ${/^https?:/.test(i.url) ? `<a href="${esc(i.url.split('{')[0])}" target="_blank" rel="noopener">${esc(i.url)}</a>` : esc(i.url)}</p>` : ''}`;
+    ${i.url ? `<p class="muted plug-url">${t('plugins.detail.source', { url: /^https?:/.test(i.url) ? `<a href="${esc(i.url.split('{')[0])}" target="_blank" rel="noopener">${esc(i.url)}</a>` : esc(i.url) })}</p>` : ''}`;
   window.scrollTo({ top: 0 });
 }
 
@@ -179,9 +180,9 @@ function opacityHtml(i) {
   const l = layerOf(i);
   if (!l) return '';
   const v = Math.round((l.opacity ?? (l.raster ? 0.7 : 1)) * 100);
-  return `<label class="plug-opacity"><span class="msr">opacity</span><span>Deckkraft</span>
-      <input type="range" min="10" max="100" step="5" value="${v}" data-act="opacity" aria-label="Deckkraft in Prozent">
-      <output>${v} %</output></label>`;
+  return `<label class="plug-opacity"><span class="msr">opacity</span><span>${t('plugins.detail.opacity.title')}</span>
+      <input type="range" min="10" max="100" step="5" value="${v}" data-act="opacity" aria-label="${t('plugins.detail.opacity.label')}">
+      <output>${t('plugins.detail.opacity.value', { v })}</output></label>`;
 }
 
 let opacityTimer = null;
@@ -191,7 +192,7 @@ document.addEventListener('input', (e) => {
   const l = layerOf(items.find((x) => x.id === id) ?? {});
   if (!l) return;
   l.opacity = Number(e.target.value) / 100;
-  e.target.nextElementSibling.textContent = `${e.target.value} %`;
+  e.target.nextElementSibling.textContent = t('plugins.detail.opacity.value', { v: e.target.value });
   // Gespeichert wird kurz nach dem Loslassen; die Karte nimmt es beim nächsten Öffnen
   clearTimeout(opacityTimer);
   opacityTimer = setTimeout(() => layers.put(l).catch((err) => toast(err.message)), 300);
@@ -199,7 +200,7 @@ document.addEventListener('input', (e) => {
 
 function showList({ push = true } = {}) {
   if (push) history.pushState(null, '', filter === 'all' ? './plugins.html' : `?f=${filter}`);
-  document.title = 'Plugins – WMap';
+  document.title = t('plugins.page_title');
   $('.plug-detail').hidden = true;
   $('.plug-grid').hidden = false;
   $('.plug-filter').hidden = false;
@@ -220,9 +221,9 @@ async function toggle(i) {
     await layers.put(i.layer);
   } else if (i.kind === 'extension') {
     if (on) {
-      const v = await ask({ icon: 'warning', title: `„${i.name}“ aktivieren?`,
-        text: `Die Erweiterung ${i.url ? `lädt Programmcode von ${new URL(i.url).hostname}` : `aus deinem Plugin-Ordner (${i.ext?.path ?? ''})`} und darf in WMap alles – auch deinen Standort sehen. Nur aktivieren, wenn du dem Anbieter vertraust.`,
-        buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Aktivieren', primary: true }] });
+      const v = await ask({ icon: 'warning', title: t('plugins.activate.title', { name: i.name }),
+        text: i.url ? t('plugins.activate.text_url', { host: new URL(i.url).hostname }) : t('plugins.activate.text_folder', { path: i.ext?.path ?? '' }),
+        buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'yes', label: t('plugins.detail.activate'), primary: true }] });
       if (v !== 'yes') return;
     }
     const ext = i.ext ?? i.installed ?? { id: `s${i.server.id}`, name: i.name, url: i.url, operator: i.operator, pluginId: i.server.id };
@@ -238,7 +239,7 @@ async function toggle(i) {
   } else {
     await layers.remove(i.installed.id);
   }
-  toast(on ? `„${i.name}“ ist aktiv – auf der Karte im Ebenen-Menü` : `„${i.name}“ ist aus`);
+  toast(on ? t('plugins.toast.active', { name: i.name }) : t('plugins.toast.off', { name: i.name }));
   await load();
   showDetail(i.id, { push: false });
 }
@@ -252,21 +253,21 @@ async function installLayer(i) {
     if (p.source_type === 'raster') l = rasterLayer({ name: p.name, tiles: p.source_url, attribution: p.attribution, source });
     else {
       const text = p.source_type === 'stored' ? JSON.stringify(await api(['plugins', 'data'], { id: p.id }))
-        : await fetch(p.source_url).then((r) => { if (!r.ok) throw new Error(`Anbieter antwortet mit ${r.status}`); return r.text(); });
+        : await fetch(p.source_url).then((r) => { if (!r.ok) throw new Error(t('plugins.error.status', { status: r.status })); return r.text(); });
       l = newLayer(text, { name: p.name, source, index: Date.now() % 8 });
     }
     l.onMain = true;
     await layers.put(l);
   } catch (err) {
-    toast(err.name === 'TypeError' ? 'Anbieter nicht erreichbar (oder erlaubt keinen Abruf aus dem Browser)' : err.message);
+    toast(err.name === 'TypeError' ? t('plugins.error.unreachable') : err.message);
     throw err;
   }
 }
 
 async function remove(i) {
-  const v = await ask({ icon: 'delete', title: `„${i.name}“ löschen?`,
-    text: i.mine && i.server ? 'Das Plugin verschwindet aus dem Katalog – für alle.' : 'Es verschwindet von diesem Gerät.',
-    buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Löschen', primary: true }] });
+  const v = await ask({ icon: 'delete', title: t('plugins.delete.title', { name: i.name }),
+    text: i.mine && i.server ? t('plugins.delete.server') : t('plugins.delete.local'),
+    buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'yes', label: t('common.delete'), primary: true }] });
   if (v !== 'yes') return;
   try {
     if (i.kind === 'own') await layers.remove(i.layer.id);
@@ -275,7 +276,7 @@ async function remove(i) {
       await api(['plugins', 'delete'], { id: i.server.id });
       if (i.installed) await (i.kind === 'extension' ? extensions.remove(i.installed.id) : layers.remove(i.installed.id));
     }
-    toast('Gelöscht');
+    toast(t('plugins.delete.done'));
   } catch (err) { toast(err.message); }
   await load();
   showList();
@@ -285,17 +286,17 @@ async function remove(i) {
 
 async function addScript() {
   const v = await ask({
-    icon: 'bolt', title: 'Erweiterung per Adresse',
-    html: `<p class="muted">Ein JavaScript-Modul (https, .js/.mjs) mit <code>export function activate(wmap)</code>. Es läuft erst, wenn du es aktivierst.</p>
+    icon: 'bolt', title: t('plugins.add.script'),
+    html: `<p class="muted">${t('plugins.script.hint')}</p>
       <div class="plugin-form">
-        <label>Name<input type="text" name="name" maxlength="120"></label>
-        <label>Adresse<input type="text" name="url" inputmode="url" placeholder="https://…/erweiterung.js"></label>
+        <label>${t('plugins.script.name')}<input type="text" name="name" maxlength="120"></label>
+        <label>${t('plugins.script.url.title')}<input type="text" name="url" inputmode="url" placeholder="${t('plugins.script.url.placeholder')}"></label>
       </div>`,
-    buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'ok', label: 'Hinzufügen', primary: true }],
+    buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'ok', label: t('plugins.script.add'), primary: true }],
     read: (dlg) => Object.fromEntries([...dlg.querySelectorAll('.plugin-form [name]')].map((x) => [x.name, x.value.trim()])),
   });
   if (!v || v === 'no') return;
-  if (!/^https:\/\/\S+\.m?js(\?\S*)?$/.test(v.url)) { toast('Bitte eine https-Adresse zu einer .js-Datei'); return; }
+  if (!/^https:\/\/\S+\.m?js(\?\S*)?$/.test(v.url)) { toast(t('plugins.script.bad_url')); return; }
   const id = `u${Date.now().toString(36)}`;
   await extensions.set({ id, name: v.name || new URL(v.url).pathname.split('/').pop(), url: v.url, operator: new URL(v.url).hostname, active: false });
   await load();
@@ -303,28 +304,28 @@ async function addScript() {
 }
 
 async function offer() {
-  if (!await ensureLogin('Zum Anbieten eines Plugins')) return;
+  if (!await ensureLogin(t('plugins.offer.login_reason'))) return;
   const v = await ask({
-    icon: 'publish', title: 'Plugin anbieten',
-    html: `<p class="muted">Eine Kartenebene oder Erweiterung, die bei dir oder einem Anbieter liegt. Eigene Messdaten lädst du unter „Eigene Ebenen“ als Plugin hoch.</p>
+    icon: 'publish', title: t('plugins.add.offer'),
+    html: `<p class="muted">${t('plugins.offer.hint')}</p>
       <div class="plugin-form">
-        <label>Name<input type="text" name="name" maxlength="120" required></label>
-        <label>Beschreibung<textarea name="description" rows="3" maxlength="2000"></textarea></label>
-        <label>Anbieter<input type="text" name="operator" maxlength="120" value="${esc(konto.user()?.name ?? '')}"></label>
-        <label>Kontakt (Web oder E-Mail)<input type="text" name="contact" maxlength="200"></label>
-        <label>Art<select name="source_type"><option value="geojson">GeoJSON-Link</option><option value="raster">Kartenkacheln oder WMS</option><option value="script">Erweiterung (JavaScript)</option></select></label>
-        <label>Link (https)<input type="text" name="source_url" inputmode="url" placeholder="https://…"></label>
-        <label>Namensnennung<input type="text" name="attribution" maxlength="300" placeholder="© …"></label>
-        <label>Stand der Daten<input type="month" name="data_date"></label>
-        <label class="plugin-public"><input type="checkbox" name="publish"> Öffentlich anbieten – sonst nur für dich</label>
+        <label>${t('plugins.offer.name')}<input type="text" name="name" maxlength="120" required></label>
+        <label>${t('plugins.offer.description')}<textarea name="description" rows="3" maxlength="2000"></textarea></label>
+        <label>${t('plugins.offer.operator')}<input type="text" name="operator" maxlength="120" value="${esc(konto.user()?.name ?? '')}"></label>
+        <label>${t('plugins.offer.contact')}<input type="text" name="contact" maxlength="200"></label>
+        <label>${t('plugins.offer.kind.title')}<select name="source_type"><option value="geojson">${t('plugins.offer.kind.geojson')}</option><option value="raster">${t('plugins.offer.kind.raster')}</option><option value="script">${t('plugins.offer.kind.script')}</option></select></label>
+        <label>${t('plugins.offer.link')}<input type="text" name="source_url" inputmode="url" placeholder="https://…"></label>
+        <label>${t('plugins.offer.attribution')}<input type="text" name="attribution" maxlength="300" placeholder="© …"></label>
+        <label>${t('plugins.offer.data_date')}<input type="month" name="data_date"></label>
+        <label class="plugin-public"><input type="checkbox" name="publish"> ${t('plugins.offer.publish')}</label>
       </div>`,
-    buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'ok', label: 'Speichern', primary: true }],
+    buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'ok', label: t('common.save'), primary: true }],
     read: (dlg) => Object.fromEntries([...dlg.querySelectorAll('.plugin-form [name]')].map((x) => [x.name, x.type === 'checkbox' ? x.checked : x.value.trim()])),
   });
   if (!v || v === 'no') return;
   try {
     const r = await api(['plugins', 'save'], v);
-    toast(r.status === 'public' ? 'Veröffentlicht – für alle im Katalog' : 'Gespeichert – nur für dich');
+    toast(r.status === 'public' ? t('plugins.offer.published') : t('plugins.offer.private'));
     await load();
     showList();
   } catch (err) { toast(err.message); }
@@ -348,7 +349,7 @@ document.addEventListener('click', async (e) => {
   if (add === 'offer') offer();
   if (add === 'plugin-folder') {
     try { const r = await pluginFolders.add({ index: items.length }); folderLoaded(r.folder.name, r); } catch (err) {
-      if (err.name !== 'AbortError') toast(`Ordner ging nicht: ${err.message}`);
+      if (err.name !== 'AbortError') toast(t('plugins.folders.add_failed', { error: err.message }));
     }
   }
   const fa = e.target.closest('[data-folder-act]');
@@ -361,8 +362,8 @@ document.addEventListener('click', async (e) => {
       fa.disabled = false;
     }
     if (fa.dataset.folderAct === 'remove') {
-      const v = await ask({ icon: 'folder_off', title: `„${name}“ entfernen?`, text: 'WMap vergisst den Ordner und nimmt die Ebenen und Erweiterungen daraus wieder weg. Die Dateien im Ordner bleiben.',
-        buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Entfernen', primary: true }] });
+      const v = await ask({ icon: 'folder_off', title: t('plugins.folders.remove.title', { name }), text: t('plugins.folders.remove.text'),
+        buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'yes', label: t('plugins.folders.remove.button'), primary: true }] });
       if (v === 'yes') { await pluginFolders.remove(id); await load(); showList(); paintFolders(); }
     }
   }
@@ -383,8 +384,8 @@ document.addEventListener('change', async (e) => {
 
 /** Nach dem Einlesen eines Plugin-Ordners */
 async function folderLoaded(name, { layers: nl = 0, extensions: ne = 0, failed = [] }) {
-  const what = [nl ? `${nl} ${nl === 1 ? 'Ebene' : 'Ebenen'}` : '', ne ? `${ne} ${ne === 1 ? 'Erweiterung' : 'Erweiterungen'}` : ''].filter(Boolean).join(' und ');
-  toast(`${what ? `${what} aus „${name}“` : `In „${name}“ nichts gefunden`}${failed.length ? ` – nicht lesbar: ${failed.slice(0, 3).join(', ')}` : ''}`);
+  const what = [nl ? t('plugins.folders.layers', { n: nl }) : '', ne ? t('plugins.folders.extensions', { n: ne }) : ''].filter(Boolean).join(t('plugins.folders.and'));
+  toast(`${what ? t('plugins.folders.loaded', { what, name }) : t('plugins.folders.nothing', { name })}${failed.length ? t('plugins.folders.unreadable', { files: failed.slice(0, 3).join(', ') }) : ''}`);
   await load();
   filter = 'own';
   showList();
@@ -402,20 +403,20 @@ async function paintFolders() {
   add.hidden = folderMode === 'once';
   if (once) once.hidden = folderMode !== 'once';
   if (folderMode === 'once') {
-    box.innerHTML = '<p class="muted"><span class="msr">info</span> Dieser Browser kann einen Ordner nur einmal einlesen, nicht merken – das können die App sowie Chrome und Edge. Neu einlesen: einfach denselben Ordner noch einmal wählen.</p>';
+    box.innerHTML = `<p class="muted"><span class="msr">info</span> ${t('plugins.folders.once_hint')}</p>`;
     return;
   }
   const list = await pluginFolders.list();
-  box.innerHTML = list.length ? `<h3>Plugin-Ordner</h3><ul>${list.map((f) => `
+  box.innerHTML = list.length ? `<h3>${t('plugins.folders.title')}</h3><ul>${list.map((f) => `
     <li data-folder="${esc(f.id)}" data-name="${esc(f.name)}"><span class="msr">folder</span><strong>${esc(f.name)}</strong>
-      <button type="button" class="button" data-folder-act="reload"><span class="msr">refresh</span> Neu einlesen</button>
-      <button type="button" class="button" data-folder-act="remove" title="Ordner entfernen" aria-label="Ordner entfernen"><span class="msr">folder_off</span></button></li>`).join('')}</ul>` : '';
+      <button type="button" class="button" data-folder-act="reload"><span class="msr">refresh</span> ${t('plugins.folders.reload')}</button>
+      <button type="button" class="button" data-folder-act="remove" title="${t('plugins.folders.remove.label')}" aria-label="${t('plugins.folders.remove.label')}"><span class="msr">folder_off</span></button></li>`).join('')}</ul>` : '';
 }
 paintFolders();
 
 async function loaded({ added, failed }) {
-  toast(added.length ? `${added.length} ${added.length === 1 ? 'Ebene' : 'Ebenen'} geladen${failed.length ? ` – ${failed.length} ließen sich nicht lesen` : ''}`
-    : failed.length ? `Keine gültige GeoJSON-Datei (${failed.slice(0, 3).join(', ')})` : 'Keine GeoJSON-Dateien gefunden');
+  toast(added.length ? `${t('plugins.files.loaded', { n: added.length })}${failed.length ? t('plugins.files.some_failed', { n: failed.length }) : ''}`
+    : failed.length ? t('plugins.files.invalid', { files: failed.slice(0, 3).join(', ') }) : t('plugins.files.none'));
   await load();
   filter = 'own';
   showList();

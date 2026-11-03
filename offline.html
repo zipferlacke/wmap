@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Offline-Karten – WMap</title>
+    <title data-i18n="offline.page_title">Offline-Karten – WMap</title>
     <meta name="description" content="Gebiete aufs Gerät laden – WMap funktioniert unterwegs auch ohne Netz.">
     <!-- Vorschau beim Teilen (WhatsApp, Signal, Telegram …): kleines Logo statt großem Bild -->
     <meta property="og:type" content="website">
@@ -27,24 +27,24 @@
 
 <body class="tour-page offline-page">
     <header class="tour-head panel">
-        <a class="button" data-back data-shape="round no-background" href="./offline-daten.html" title="Zu „Offline“">
+        <a class="button" data-back data-shape="round no-background" href="./offline-daten.html" title="Zu „Offline“" data-i18n-title="offline.back">
             <span class="msr">arrow_back</span>
         </a>
-        <h1 class="tour-name">Offline-Karten</h1>
+        <h1 class="tour-name" data-i18n="offline.title">Offline-Karten</h1>
     </header>
 
     <main>
         <section id="map"></section>
 
-        <dialog id="sheet" class="dialog sheet tour-panel" aria-label="Offline-Karten">
-            <button type="button" class="sheet-grip" aria-label="Höhe ändern: ziehen, doppelt tippen für ganz auf oder zu"></button>
+        <dialog id="sheet" class="dialog sheet tour-panel" aria-label="Offline-Karten" data-i18n-aria-label="offline.panel_label">
+            <button type="button" class="sheet-grip" aria-label="Höhe ändern: ziehen, doppelt tippen für ganz auf oder zu" data-i18n-aria-label="common.sheet.grip"></button>
             <section class="view">
                 <!-- Liste der Gebiete -->
                 <div class="area-home">
                     <div class="tour-bar area-bar">
-                        <button type="button" class="button primary" data-act="new"><span class="msr">add_location_alt</span> Neues Gebiet</button>
+                        <button type="button" class="button primary" data-act="new"><span class="msr">add_location_alt</span> <span data-i18n="offline.new.button">Neues Gebiet</span></button>
                     </div>
-                    <p class="muted area-intro">Gebiete, die ganz auf dem Gerät liegen – für unterwegs ohne Netz.
+                    <p class="muted area-intro" data-i18n="offline.intro">Gebiete, die ganz auf dem Gerät liegen – für unterwegs ohne Netz.
                         Sie bleiben, bis du sie löschst, und lassen sich jederzeit neu laden.</p>
                     <ul class="area-list"></ul>
                     <p class="muted area-usage"></p>
@@ -52,23 +52,23 @@
 
                 <!-- Neues Gebiet: Form wählen, Größe sehen, laden -->
                 <form class="area-new" hidden>
-                    <h2><span class="msr">add_location_alt</span> Neues Gebiet</h2>
-                    <div class="area-shape" role="group" aria-label="Form">
-                        <button type="button" class="chip" data-shape="rect" aria-pressed="true"><span class="msr">crop_square</span> Rechteck</button>
-                        <button type="button" class="chip" data-shape="free" aria-pressed="false"><span class="msr">polyline</span> Freie Form</button>
+                    <h2><span class="msr">add_location_alt</span> <span data-i18n="offline.new.title">Neues Gebiet</span></h2>
+                    <div class="area-shape" role="group" aria-label="Form" data-i18n-aria-label="offline.new.shape.label">
+                        <button type="button" class="chip" data-shape="rect" aria-pressed="true"><span class="msr">crop_square</span> <span data-i18n="offline.new.shape.rect">Rechteck</span></button>
+                        <button type="button" class="chip" data-shape="free" aria-pressed="false"><span class="msr">polyline</span> <span data-i18n="offline.new.shape.free">Freie Form</span></button>
                     </div>
                     <p class="muted area-hint"></p>
                     <div class="area-free-tools" hidden>
-                        <button type="button" class="button" data-act="remove"><span class="msr">delete</span> Letzten Punkt löschen</button>
-                        <button type="button" class="button" data-act="clear"><span class="msr">restart_alt</span> Neu anfangen</button>
+                        <button type="button" class="button" data-act="remove"><span class="msr">delete</span> <span data-i18n="offline.new.remove_last">Letzten Punkt löschen</span></button>
+                        <button type="button" class="button" data-act="clear"><span class="msr">restart_alt</span> <span data-i18n="offline.new.restart">Neu anfangen</span></button>
                     </div>
-                    <label class="area-field">Name<input type="text" name="name" maxlength="80" placeholder="z. B. Harz"></label>
-                    <label class="area-field">Detail<select name="detail"></select></label>
-                    <label class="area-check"><input type="checkbox" name="terrain"> Gelände mitnehmen – Schummerung und 3D</label>
+                    <label class="area-field"><span data-i18n="offline.new.name.title">Name</span><input type="text" name="name" maxlength="80" placeholder="z. B. Harz" data-i18n-placeholder="offline.new.name.placeholder"></label>
+                    <label class="area-field"><span data-i18n="offline.new.detail">Detail</span><select name="detail"></select></label>
+                    <label class="area-check"><input type="checkbox" name="terrain"> <span data-i18n="offline.new.terrain">Gelände mitnehmen – Schummerung und 3D</span></label>
                     <p class="area-estimate"></p>
                     <div class="confirm-actions">
-                        <button type="button" class="button" data-act="cancel">Abbrechen</button>
-                        <button type="submit" class="button primary" data-act="save"><span class="msr">download</span> Herunterladen</button>
+                        <button type="button" class="button" data-act="cancel" data-i18n="common.cancel">Abbrechen</button>
+                        <button type="submit" class="button primary" data-act="save"><span class="msr">download</span> <span data-i18n="offline.new.download">Herunterladen</span></button>
                     </div>
                 </form>
             </section>

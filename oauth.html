@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>WMap – Anmeldung</title>
+    <title data-i18n="oauth.page_title">WMap – Anmeldung</title>
     <meta name="robots" content="noindex">
 </head>
 <body style="font-family: system-ui, sans-serif; padding: 2rem; text-align: center;">
-    <p>Anmeldung bei OpenStreetMap …</p>
+    <p data-i18n="oauth.text">Anmeldung bei OpenStreetMap …</p>
     <script>
         // Rückkehr von OpenStreetMap: Code an WMap weitergeben
         const p = new URLSearchParams(location.search);
@@ -34,5 +34,6 @@
             location.replace(to);
         }
     </script>
+    <script type="module" src="./js/core/i18n.js"></script>
 </body>
 </html>

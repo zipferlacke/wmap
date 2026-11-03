@@ -10,6 +10,7 @@ import { local } from '../data/store.js';
 import { ask } from '../ui/dialogs.js';
 import { esc } from '../core/geo.js';
 import { account, login } from '../osm/api.js';
+import { t } from '../core/i18n.js';
 
 const USER = 'wmap.user';
 
@@ -57,25 +58,25 @@ function forget() {
  * Seite (osm/login-return.js), der Aufruf hier endet dann nicht.
  * @param why  wofür, z. B. „Zum Bewerten“
  */
-export async function ensureLogin(why = 'Dafür') {
+export async function ensureLogin(why = t('services.konto.login.why_default')) {
   if (konto.loggedIn() && account.loggedIn()) return konto.user();
   if (!account.clientId()) {
-    await ask({ icon: 'info', title: 'Anmeldung nicht eingerichtet', text: 'Für diese WMap fehlt noch die OpenStreetMap-Client-ID (Einstellungen → Konto → Für Entwickler).', buttons: [{ value: 'ok', label: 'OK', primary: true }] });
+    await ask({ icon: 'info', title: t('services.konto.no_client.title'), text: t('services.konto.no_client.text'), buttons: [{ value: 'ok', label: t('common.ok'), primary: true }] });
     return null;
   }
   const v = await ask({
-    icon: 'account_circle', title: 'Mit OpenStreetMap anmelden',
-    html: `<p>${esc(why)} brauchst du ein Konto. WMap nimmt dafür dein OpenStreetMap-Konto – bei WMap gibt es kein eigenes Passwort.</p>
-      <p class="muted">Noch keins? Das legst du bei der Anmeldung auf openstreetmap.org an. Damit kannst du auch Orte in der Karte eintragen und verbessern.</p>`,
-    buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Anmelden', primary: true }],
+    icon: 'account_circle', title: t('services.konto.login.title'),
+    html: `${t('services.konto.login.text', { why: esc(why) })}
+      <p class="muted">${t('services.konto.login.hint')}</p>`,
+    buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'yes', label: t('services.konto.login.button'), primary: true }],
   });
   if (v !== 'yes') return null;
   try {
     const user = await login();
-    if (!konto.loggedIn()) throw new Error(user.wmapError ?? 'Der WMap-Server hat die Anmeldung nicht angenommen');
+    if (!konto.loggedIn()) throw new Error(user.wmapError ?? t('services.konto.login.rejected'));
     return konto.user();
   } catch (err) {
-    await ask({ icon: 'error', title: 'Anmelden ging nicht', text: err.message, buttons: [{ value: 'ok', label: 'OK', primary: true }] });
+    await ask({ icon: 'error', title: t('services.konto.login.failed'), text: err.message, buttons: [{ value: 'ok', label: t('common.ok'), primary: true }] });
   }
   return null;
 }

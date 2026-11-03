@@ -12,7 +12,7 @@ import time
 from common import Browser
 
 SRC = open('../js/map/poi-icons.js', encoding='utf-8').read()
-GLYPHS = sorted({g.strip(" '") for n in re.findall(r"\[\[([^\]]+)\]", SRC) for g in n.split(',')})
+GLYPHS = sorted({g for n in re.findall(r"\[\[([^\]]+)\]", SRC) for g in re.findall(r"'([a-z0-9_]+)'", n)})
 
 with Browser(500, 800) as b:
     checks = {}

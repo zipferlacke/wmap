@@ -26,6 +26,7 @@ import { clearRoutes } from './route-results.js';
 import { suggest } from './search.js';
 import { loadSharedReports } from './traffic-along.js';
 import { closeSheet, openSheet, remember, stack } from './views.js';
+import { t } from '../core/i18n.js';
 
 /* ══════════════════════════════════════════════════════════════════════════
    Navigation
@@ -38,8 +39,8 @@ export const nav = new Navigation(map, $('#nav'), {
     alongStop();
     // Fahrt in „Meine Wege“ merken
     if (recorder.kind === 'nav') {
-      recorder.stop().then((t) => {
-        if (t) toast(`Fahrt gespeichert (${fmtDistance(t.length)})`, { action: { label: 'Ansehen', run: () => { location.href = `./wege.html?id=${encodeURIComponent(t.id)}`; } } });
+      recorder.stop().then((track) => {
+        if (track) toast(t('nav.record.drive_saved', { distance: fmtDistance(track.length) }), { action: { label: t('common.view'), run: () => { location.href = `./wege.html?id=${encodeURIComponent(track.id)}`; } } });
       }).catch(() => {});
     }
     // Mitmachen: Fahrt abschließen und schauen, ob es Fragen gibt
@@ -69,12 +70,12 @@ export const nav = new Navigation(map, $('#nav'), {
   onReport: (point) => reportHere(point),
   // Ankunft teilen: wohin, wann – und wo man gerade ist
   onShare: ({ point, to, eta }) => {
-    const where = navDestination ? navDestination.split(',')[0] : 'mein Ziel';
+    const where = navDestination ? navDestination.split(',')[0] : t('nav.share.my_destination');
     share({
-      title: 'Ich bin unterwegs',
-      text: `Ich bin unterwegs nach ${where} – Ankunft ca. ${clock(eta)} Uhr. Hier bin ich gerade:`,
-      url: () => placeUrl(point ?? to, 'Unterwegs', { at: Date.now() }),
-      geo: { point: point ?? to, name: 'Unterwegs' },
+      title: t('nav.share.title'),
+      text: t('nav.share.text', { where, time: clock(eta) }),
+      url: () => placeUrl(point ?? to, t('nav.share.place'), { at: Date.now() }),
+      geo: { point: point ?? to, name: t('nav.share.place') },
     }, toast);
   },
   // Abgewichen: „Gesperrt?“ erst, wenn man wirklich ≥ 100 m neben der alten Route ist (ask-along.js)
@@ -89,7 +90,7 @@ const pip = new NavPip($('#nav'), { map });
 autoPip();
 if (pipSupported()) {
   $('.nav-pip').hidden = false;
-  $('.nav-pip').addEventListener('click', () => pip.toggle().catch((err) => toast(`Bild in Bild ging nicht: ${err.message}`)));
+  $('.nav-pip').addEventListener('click', () => pip.toggle().catch((err) => toast(t('nav.pip_failed', { error: err.message }))));
   // Wo der Browser es kann: beim Wechsel in eine andere App von selbst
   try { navigator.mediaSession?.setActionHandler('enterpictureinpicture', () => { if (nav.active) pip.toggle().catch(() => {}); }); } catch { /* nicht unterstützt */ }
 }
@@ -97,7 +98,7 @@ if (pipSupported()) {
 let navDestination = '';
 /** Gerade navigierte geplante Tour (app.js, „?tour=“) – wird immer aufgezeichnet */
 let tourNavigated = null;
-export const navTour = { set: (t) => { tourNavigated = t; } };
+export const navTour = { set: (tour) => { tourNavigated = tour; } };
 $('.start-nav').addEventListener('click', () => startNav());
 
 // Ans Auto senden: die Route mit der gewählten Alternative – statt „Starten“ am Handy
@@ -126,13 +127,13 @@ function paintRec() {
   recButton.classList.toggle('on', on && !recorder.paused);
   recButton.classList.toggle('paused', on && recorder.paused);
   recButton.querySelector('.msr').textContent = on && recorder.paused ? 'pause_circle' : 'radio_button_checked';
-  recButton.title = !on ? 'Aufzeichnen' : recorder.paused ? 'Aufzeichnung pausiert' : 'Aufzeichnung läuft';
+  recButton.title = !on ? t('nav.buttons.record') : recorder.paused ? t('nav.record.paused') : t('nav.record.running');
 }
 function startRecording() {
   if (recorder.active || SIMULATING) return false;
   recorder.start({
     kind: 'nav', profile: state.profile,
-    name: tourNavigated?.name ?? (navDestination ? `Nach ${navDestination.split(',')[0]}` : ''),
+    name: tourNavigated?.name ?? (navDestination ? t('nav.record.track_name', { place: navDestination.split(',')[0] }) : ''),
     from: state.waypoints[0]?.label ?? '', to: navDestination, keep: true,
   });
   paintRec();
@@ -142,27 +143,27 @@ function startRecording() {
 recorder.stopHandlers.nav = () => { if (!document.querySelector('dialog.userDialog.confirm[open]')) recButton.click(); };
 recButton.addEventListener('click', async () => {
   if (recorder.kind !== 'nav') {
-    if (recorder.active) { toast('Es läuft schon eine Aufzeichnung'); return; }
+    if (recorder.active) { toast(t('nav.record.already')); return; }
     if (!SIMULATING) await recordingNotice();
-    if (startRecording()) toast('Aufzeichnung läuft'); else toast('In der Simulation wird nicht aufgezeichnet');
+    if (startRecording()) toast(t('nav.record.running')); else toast(t('nav.record.simulation'));
     return;
   }
   const v = await ask({
-    icon: 'radio_button_checked', title: recorder.paused ? 'Aufzeichnung pausiert' : 'Aufzeichnung läuft', className: 'stacked',
-    text: 'Die Navigation läuft dabei weiter.',
+    icon: 'radio_button_checked', title: recorder.paused ? t('nav.record.paused') : t('nav.record.running'), className: 'stacked',
+    text: t('nav.record.dialog.text'),
     buttons: [
-      { value: 'pause', label: recorder.paused ? 'Weiter aufzeichnen' : 'Pause', icon: recorder.paused ? 'play_arrow' : 'pause', primary: true },
-      { value: 'stop', label: 'Beenden und speichern', icon: 'stop' },
-      { value: 'discard', label: 'Verwerfen', icon: 'delete' },
-      { value: 'no', label: 'Abbrechen' },
+      { value: 'pause', label: recorder.paused ? t('nav.record.dialog.resume') : t('nav.record.dialog.pause'), icon: recorder.paused ? 'play_arrow' : 'pause', primary: true },
+      { value: 'stop', label: t('nav.record.dialog.stop'), icon: 'stop' },
+      { value: 'discard', label: t('nav.record.dialog.discard'), icon: 'delete' },
+      { value: 'no', label: t('common.cancel') },
     ],
   });
-  if (v === 'pause') { recorder.pause(!recorder.paused); toast(recorder.paused ? 'Aufzeichnung pausiert' : 'Aufzeichnung läuft weiter'); }
+  if (v === 'pause') { recorder.pause(!recorder.paused); toast(recorder.paused ? t('nav.record.paused') : t('nav.record.continues')); }
   if (v === 'stop') {
-    const t = await recorder.stop().catch(() => null);
-    toast(t ? `Aufzeichnung gespeichert (${fmtDistance(t.length)})` : 'Zu kurz zum Speichern');
+    const track = await recorder.stop().catch(() => null);
+    toast(track ? t('nav.record.saved', { distance: fmtDistance(track.length) }) : t('nav.record.too_short'));
   }
-  if (v === 'discard') { recorder.discard(); toast('Aufzeichnung verworfen'); }
+  if (v === 'discard') { recorder.discard(); toast(t('nav.record.discarded')); }
   paintRec();
 });
 paintRec();
@@ -182,9 +183,9 @@ export async function startNav() {
   let record = historySetting.get();
   if (tourNavigated && !SIMULATING && !recorder.active) {
     record = CAR || await ask({
-      icon: 'radio_button_checked', title: 'Tour aufzeichnen?',
-      text: 'Die Strecke landet mit Zeit und Tempo unter „Aufgezeichnete Touren“. Anhalten, beenden oder später starten kannst du unterwegs mit dem Aufnahme-Knopf rechts.',
-      buttons: [{ value: 'no', label: 'Ohne Aufzeichnung' }, { value: 'yes', label: 'Aufzeichnen', icon: 'radio_button_checked', primary: true }],
+      icon: 'radio_button_checked', title: t('nav.record.ask.title'),
+      text: t('nav.record.ask.text'),
+      buttons: [{ value: 'no', label: t('nav.record.ask.no') }, { value: 'yes', label: t('nav.buttons.record'), icon: 'radio_button_checked', primary: true }],
     }) === 'yes';
   }
   // Erst der Hinweis zur Benachrichtigung (und das Fenster von Android) – dann geht es los
@@ -202,9 +203,9 @@ let offlineJob = null;
 const offlineBadge = $('#nav .nav-offline');
 function paintOffline(state, text = '') {
   const [icon, title] = {
-    loading: ['download', 'Karte für die Strecke wird gespeichert'],
-    ok: ['offline_pin', 'Karte für die Strecke ist offline gespeichert'],
-    off: ['cloud_off', 'Offline – neu berechnen geht erst wieder mit Netz'],
+    loading: ['download', t('nav.offline.loading')],
+    ok: ['offline_pin', t('nav.offline.ok')],
+    off: ['cloud_off', t('nav.offline.off')],
   }[state] ?? [];
   offlineBadge.hidden = !icon;
   offlineBadge.className = `nav-offline ${state ?? ''}`;
@@ -244,7 +245,7 @@ $('.navsearch-cats').addEventListener('click', async (e) => {
   if (!cat || !r) return;
   $$('.navsearch-cats .chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.cat === cat.id)));
   const list = $('.navsearch-list');
-  list.innerHTML = `<li class="muted">Suche ${esc(cat.label)} vor dir …</li>`;
+  list.innerHTML = `<li class="muted">${t('nav.search_along.searching', { category: esc(cat.label) })}</li>`;
   navSearchCtl?.abort();
   navSearchCtl = new AbortController();
   // Nur, was noch vor einem liegt (höchstens 150 km)
@@ -261,10 +262,10 @@ $('.navsearch-cats').addEventListener('click', async (e) => {
     const ahead = f.points;
     numberHits(ahead, 60);
     showPois(map, ahead);
-    renderResultList(list, ahead.slice(0, 60), cat, (p) => `in ${fmtDistance(p.properties.along)} · ${fmtDistance(p.properties.offset)} abseits`,
+    renderResultList(list, ahead.slice(0, 60), cat, (p) => t('nav.search_along.distance', { along: fmtDistance(p.properties.along), offset: fmtDistance(p.properties.offset) }),
       { filter: f, redo: () => { if (!signal.aborted) render(points, final); } });
     if (!ahead.length) {
-      list.insertAdjacentHTML('beforeend', `<li class="muted">${final ? `Keine ${esc(cat.label)} vor dir an der Strecke` : `Suche ${esc(cat.label)} vor dir …`}</li>`);
+      list.insertAdjacentHTML('beforeend', `<li class="muted">${final ? t('nav.search_along.none', { category: esc(cat.label) }) : t('nav.search_along.searching', { category: esc(cat.label) })}</li>`);
     }
   };
   // Sofort aus den Kacheln (meist schon offline gespeichert), Overpass ergänzt
@@ -298,9 +299,9 @@ export async function resumeNav() {
   // Ein Link mit eigenem Ziel (auch die Screenshots) geht vor
   if (!saved || nav.active || /[?&](view|q|from|to|reach)=/.test(location.search)) return;
   const answer = await ask({
-    auto: true, icon: 'navigation', title: 'Navigation fortsetzen?',
-    text: saved.destination ? `Weiter nach ${saved.destination}.` : 'Die letzte Fahrt wurde nicht beendet.',
-    buttons: [{ value: 'no', label: 'Beenden' }, { value: 'yes', label: 'Fortsetzen', icon: 'navigation', primary: true }],
+    auto: true, icon: 'navigation', title: t('nav.resume.title'),
+    text: saved.destination ? t('nav.resume.to', { place: saved.destination }) : t('nav.resume.unfinished'),
+    buttons: [{ value: 'no', label: t('nav.resume.stop') }, { value: 'yes', label: t('nav.resume.go'), icon: 'navigation', primary: true }],
   });
   if (answer !== 'yes') { forgetNav(); return; }
   const route = { ...saved.route, cum: cumulative(saved.route.coords) };

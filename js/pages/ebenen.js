@@ -10,6 +10,7 @@ import { ask, toast } from '../ui/dialogs.js';
 import { local } from '../data/store.js';
 import { layers, newLayer, showLayer, hideLayer, colorExpr, numericProps, mapLayerIds, propertyTable, RAMP } from '../map/layers.js';
 import { esc } from '../core/geo.js';
+import { locale, t } from '../core/i18n.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 
@@ -44,34 +45,34 @@ function fit(l) {
 function paint() {
   const ul = $('.layer-list');
   if (!list.length) {
-    ul.innerHTML = '<li class="muted layer-empty">Noch keine Ebenen. Lade eine GeoJSON-Datei – z. B. aus QGIS exportiert.</li>';
+    ul.innerHTML = `<li class="muted layer-empty">${t('ebenen.list.empty')}</li>`;
     return;
   }
   ul.innerHTML = list.map((l) => {
     const nums = l.raster ? [] : numericProps(l.data);
     const [, prop] = colorExpr(l);
     const legend = prop ? `<div class="layer-legend"><span>${fmt(prop.min)}</span><i style="background:linear-gradient(90deg,${RAMP.join(',')})"></i><span>${fmt(prop.max)}</span></div>` : '';
-    const src = l.source?.kind === 'url' ? `von ${esc(new URL(l.source.url).hostname)}` : l.source?.kind === 'plugin' ? `Plugin von ${esc(l.source.operator ?? '?')}` : 'aus Datei';
+    const src = l.source?.kind === 'url' ? t('ebenen.list.source.url', { host: esc(new URL(l.source.url).hostname) }) : l.source?.kind === 'plugin' ? t('ebenen.list.source.plugin', { operator: esc(l.source.operator ?? '?') }) : t('ebenen.list.source.file');
     return `<li class="layer" data-id="${esc(l.id)}">
       <div class="layer-head">
-        ${l.raster ? '<span class="msr layer-raster">grid_on</span>' : `<label class="layer-color" title="Farbe"><input type="color" value="${esc(l.color)}" data-act="color"></label>`}
-        <div class="layer-name"><strong>${esc(l.name)}</strong><small>${l.raster ? 'Kartenkacheln' : `${l.count.toLocaleString('de-DE')} Objekte`} · ${src}</small></div>
-        <button type="button" class="button" data-shape="round no-background" data-act="visible" title="${l.visible ? 'Ausblenden' : 'Einblenden'}"><span class="msr">${l.visible ? 'visibility' : 'visibility_off'}</span></button>
-        <button type="button" class="button" data-shape="round no-background" data-act="fit" title="Hinzoomen"><span class="msr">zoom_in_map</span></button>
+        ${l.raster ? '<span class="msr layer-raster">grid_on</span>' : `<label class="layer-color" title="${t('ebenen.list.color')}"><input type="color" value="${esc(l.color)}" data-act="color"></label>`}
+        <div class="layer-name"><strong>${esc(l.name)}</strong><small>${l.raster ? t('ebenen.list.tiles') : t('ebenen.list.objects', { count: l.count.toLocaleString(locale) })} · ${src}</small></div>
+        <button type="button" class="button" data-shape="round no-background" data-act="visible" title="${l.visible ? t('ebenen.list.hide') : t('ebenen.list.show')}"><span class="msr">${l.visible ? 'visibility' : 'visibility_off'}</span></button>
+        <button type="button" class="button" data-shape="round no-background" data-act="fit" title="${t('ebenen.list.fit')}"><span class="msr">zoom_in_map</span></button>
       </div>
       <div class="layer-opts">
-        ${l.raster ? `<label>Deckkraft <input type="range" min="0.1" max="1" step="0.1" value="${l.opacity ?? 0.7}" data-act="opacity"></label>` : ''}
-        ${nums.length ? `<label>Farbe nach <select data-act="colorby"><option value="">– eine Farbe –</option>${nums.map((p) => `<option value="${esc(p.key)}" ${l.colorBy === p.key ? 'selected' : ''}>${esc(p.key)}</option>`).join('')}</select></label>` : ''}
-        <label class="layer-main"><input type="checkbox" data-act="main" ${l.onMain ? 'checked' : ''}> Auch auf der Hauptkarte</label>
-        ${l.raster ? '' : '<button type="button" class="link-button" data-act="plugin"><span class="msr">cloud_upload</span> Als Plugin</button>'}
-        <button type="button" class="link-button" data-act="delete"><span class="msr">delete</span> Löschen</button>
+        ${l.raster ? `<label>${t('ebenen.list.opacity')} <input type="range" min="0.1" max="1" step="0.1" value="${l.opacity ?? 0.7}" data-act="opacity"></label>` : ''}
+        ${nums.length ? `<label>${t('ebenen.list.color_by.title')} <select data-act="colorby"><option value="">${t('ebenen.list.color_by.single')}</option>${nums.map((p) => `<option value="${esc(p.key)}" ${l.colorBy === p.key ? 'selected' : ''}>${esc(p.key)}</option>`).join('')}</select></label>` : ''}
+        <label class="layer-main"><input type="checkbox" data-act="main" ${l.onMain ? 'checked' : ''}> ${t('ebenen.list.on_main')}</label>
+        ${l.raster ? '' : `<button type="button" class="link-button" data-act="plugin"><span class="msr">cloud_upload</span> ${t('ebenen.list.as_plugin')}</button>`}
+        <button type="button" class="link-button" data-act="delete"><span class="msr">delete</span> ${t('common.delete')}</button>
       </div>
       ${legend}
     </li>`;
   }).join('');
 }
 
-const fmt = (v) => v.toLocaleString('de-DE', { maximumFractionDigits: 2 });
+const fmt = (v) => v.toLocaleString(locale, { maximumFractionDigits: 2 });
 
 async function update(l) {
   await layers.put(l);
@@ -88,8 +89,8 @@ $('.layer-list').addEventListener('click', async (e) => {
   if (b.dataset.act === 'fit') fit(l);
   if (b.dataset.act === 'plugin') asPlugin(l);
   if (b.dataset.act === 'delete') {
-    const v = await ask({ icon: 'delete', title: `„${l.name}“ löschen?`, text: 'Die Ebene verschwindet von diesem Gerät.',
-      buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Löschen', primary: true }] });
+    const v = await ask({ icon: 'delete', title: t('ebenen.delete.title', { name: l.name }), text: t('ebenen.delete.text'),
+      buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'yes', label: t('common.delete'), primary: true }] });
     if (v !== 'yes') return;
     await layers.remove(l.id);
     hideLayer(map, l.id);
@@ -115,26 +116,26 @@ $('.layer-list').addEventListener('change', (e) => {
  */
 async function asPlugin(l) {
   const text = JSON.stringify(l.data);
-  if (text.length > 2e6) { toast('Zu groß für ein Plugin (max. 2 MB) – bitte als Link anbieten'); return; }
+  if (text.length > 2e6) { toast(t('ebenen.plugin.too_big')); return; }
   const { ensureLogin, konto } = await import('../services/konto.js');
   const { api } = await import('../services/api.js');
-  if (!await ensureLogin('Zum Hochladen als Plugin')) return;
+  if (!await ensureLogin(t('ebenen.plugin.login_reason'))) return;
   const v = await ask({
-    icon: 'cloud_upload', title: 'Als Plugin sichern',
+    icon: 'cloud_upload', title: t('ebenen.plugin.title'),
     html: `<div class="plugin-form">
-        <label>Name<input type="text" name="name" maxlength="120" value="${esc(l.name)}"></label>
-        <label>Beschreibung<textarea name="description" rows="2" maxlength="2000" placeholder="Was zeigt die Ebene? Wie gemessen?"></textarea></label>
-        <label>Anbieter<input type="text" name="operator" maxlength="120" value="${esc(konto.user()?.name ?? '')}"></label>
-        <label>Stand der Daten<input type="month" name="data_date"></label>
-        <label class="plugin-public"><input type="checkbox" name="publish"> Öffentlich anbieten – sonst nur für dich</label>
+        <label>${t('ebenen.plugin.name')}<input type="text" name="name" maxlength="120" value="${esc(l.name)}"></label>
+        <label>${t('ebenen.plugin.description.title')}<textarea name="description" rows="2" maxlength="2000" placeholder="${t('ebenen.plugin.description.placeholder')}"></textarea></label>
+        <label>${t('ebenen.plugin.operator')}<input type="text" name="operator" maxlength="120" value="${esc(konto.user()?.name ?? '')}"></label>
+        <label>${t('ebenen.plugin.data_date')}<input type="month" name="data_date"></label>
+        <label class="plugin-public"><input type="checkbox" name="publish"> ${t('ebenen.plugin.publish')}</label>
       </div>`,
-    buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'ok', label: 'Hochladen', primary: true }],
+    buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'ok', label: t('ebenen.plugin.upload'), primary: true }],
     read: (dlg) => Object.fromEntries([...dlg.querySelectorAll('.plugin-form [name]')].map((i) => [i.name, i.type === 'checkbox' ? i.checked : i.value.trim()])),
   });
   if (!v || v === 'no') return;
   try {
     const r = await api(['plugins', 'save'], { ...v, source_type: 'stored', data: text });
-    toast(r.status === 'public' ? 'Als Plugin veröffentlicht' : 'Hochgeladen – nur für dich (auch auf anderen Geräten)');
+    toast(r.status === 'public' ? t('ebenen.plugin.published') : t('ebenen.plugin.private'));
   } catch (err) { toast(err.message); }
 }
 
@@ -143,7 +144,7 @@ async function add(text, meta) {
   try {
     const l = newLayer(text, { ...meta, index: list.length });
     await layers.put(l);
-    toast(`„${l.name}“ geladen – ${l.count.toLocaleString('de-DE')} Objekte`);
+    toast(t('ebenen.add.loaded', { name: l.name, count: l.count.toLocaleString(locale) }));
     await load({ fitTo: l.id });
   } catch (err) { toast(err.message); }
 }
@@ -154,18 +155,18 @@ $('[data-act="file"]').addEventListener('change', async (e) => {
 });
 $('[data-act="url"]').addEventListener('click', async () => {
   const url = await ask({
-    icon: 'link', title: 'GeoJSON von einem Link',
-    text: 'Der Server muss den Abruf aus dem Browser erlauben (CORS). Die Daten werden einmal geladen und gespeichert.',
+    icon: 'link', title: t('ebenen.add.link.title'),
+    text: t('ebenen.add.link.text'),
     html: '<input type="text" class="url-input" placeholder="https://…/daten.geojson" inputmode="url">',
-    buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'ok', label: 'Laden', primary: true }],
+    buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'ok', label: t('ebenen.add.link.load'), primary: true }],
     read: (dlg) => dlg.querySelector('.url-input').value.trim(),
   });
   if (!url || url === 'no') return;
   try {
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`Der Server antwortet mit ${res.status}`);
-    await add(await res.text(), { name: decodeURIComponent(url.split('/').pop().replace(/\.(geo)?json.*$/i, '')) || 'Ebene', source: { kind: 'url', url } });
-  } catch (err) { toast(err.message.includes('NetworkError') || err.name === 'TypeError' ? 'Nicht abrufbar – vielleicht erlaubt der Server keinen Abruf aus dem Browser (CORS)' : err.message); }
+    if (!res.ok) throw new Error(t('ebenen.add.link.status', { status: res.status }));
+    await add(await res.text(), { name: decodeURIComponent(url.split('/').pop().replace(/\.(geo)?json.*$/i, '')) || t('ebenen.add.default_name'), source: { kind: 'url', url } });
+  } catch (err) { toast(err.message.includes('NetworkError') || err.name === 'TypeError' ? t('ebenen.add.link.cors') : err.message); }
 });
 
 /* Antippen: alle Werte des Objekts */
@@ -176,8 +177,8 @@ map.on('click', (e) => {
   if (!f) { box.hidden = true; return; }
   const l = list.find((x) => f.layer.id.startsWith(`own-${x.id}-`));
   box.hidden = false;
-  box.innerHTML = `<header><strong>${esc(f.properties.name ?? f.properties.Name ?? f.properties.title ?? l?.name ?? 'Objekt')}</strong>
-    <button type="button" class="button" data-shape="round no-background" data-act="close-info" title="Schließen"><span class="msr">close</span></button></header>
+  box.innerHTML = `<header><strong>${esc(f.properties.name ?? f.properties.Name ?? f.properties.title ?? l?.name ?? t('ebenen.info.object'))}</strong>
+    <button type="button" class="button" data-shape="round no-background" data-act="close-info" title="${t('common.close')}"><span class="msr">close</span></button></header>
     ${propertyTable(f.properties)}`;
   sheet.querySelector('.view').scrollTop = 0;
 });

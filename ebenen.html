@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Eigene Ebenen – WMap</title>
+    <title data-i18n="ebenen.page_title">Eigene Ebenen – WMap</title>
     <meta name="description" content="Eigene Kartenebenen in WMap: GeoJSON, GPX und mehr.">
     <!-- Vorschau beim Teilen (WhatsApp, Signal, Telegram …): kleines Logo statt großem Bild -->
     <meta property="og:type" content="website">
@@ -27,26 +27,26 @@
 
 <body class="tour-page ebenen-page">
     <header class="tour-head panel">
-        <a class="button" data-back data-shape="round no-background" href="./index.html" title="Zur Karte">
+        <a class="button" data-back data-shape="round no-background" href="./index.html" title="Zur Karte" data-i18n-title="ebenen.back">
             <span class="msr">arrow_back</span>
         </a>
-        <h1 class="tour-name">Eigene Ebenen</h1>
+        <h1 class="tour-name" data-i18n="ebenen.title">Eigene Ebenen</h1>
     </header>
 
     <main>
         <section id="map"></section>
 
-        <dialog id="sheet" class="dialog sheet tour-panel" aria-label="Ebenen">
-            <button type="button" class="sheet-grip" aria-label="Höhe ändern: ziehen, doppelt tippen für ganz auf oder zu"></button>
+        <dialog id="sheet" class="dialog sheet tour-panel" aria-label="Ebenen" data-i18n-aria-label="ebenen.panel_label">
+            <button type="button" class="sheet-grip" aria-label="Höhe ändern: ziehen, doppelt tippen für ganz auf oder zu" data-i18n-aria-label="common.sheet.grip"></button>
             <section class="view">
                 <!-- Angetipptes Objekt: alle Werte -->
                 <div class="feature-info" hidden></div>
 
                 <div class="tour-bar ebenen-bar">
-                    <label class="button primary"><span class="msr">upload_file</span> GeoJSON laden<input type="file" accept=".geojson,.json,application/geo+json,application/json" multiple hidden data-act="file"></label>
-                    <button type="button" class="button" data-act="url"><span class="msr">link</span> Von Link laden</button>
+                    <label class="button primary"><span class="msr">upload_file</span> <span data-i18n="ebenen.add.file">GeoJSON laden</span><input type="file" accept=".geojson,.json,application/geo+json,application/json" multiple hidden data-act="file"></label>
+                    <button type="button" class="button" data-act="url"><span class="msr">link</span> <span data-i18n="ebenen.add.url">Von Link laden</span></button>
                 </div>
-                <p class="muted ebenen-intro">Eigene Daten als Ebene – z. B. geologische Messpunkte oder Messwerte als GeoJSON.
+                <p class="muted ebenen-intro" data-i18n="ebenen.intro">Eigene Daten als Ebene – z. B. geologische Messpunkte oder Messwerte als GeoJSON.
                     Sie bleiben privat auf diesem Gerät. Zahlenwerte lassen sich als Farbverlauf zeigen.</p>
                 <ul class="layer-list"></ul>
             </section>

@@ -16,6 +16,7 @@
 import { ask } from './dialogs.js';
 import { esc } from '../core/geo.js';
 import { healthAvailable, healthStatus, healthRequest, healthSettings } from '../services/health.js';
+import { t } from '../core/i18n.js';
 
 const core = window.__TAURI__?.core;
 export const permissionsHere = !!core && /Android/i.test(navigator.userAgent);
@@ -98,13 +99,11 @@ async function requestNotification() {
 export async function recordingNotice() {
   if (!permissionsHere || (await notificationState()) !== 'prompt') return;
   const v = await ask({
-    icon: 'notifications', title: 'Hinweis: Aufzeichnen bei ausgeschaltetem Bildschirm', className: 'news',
-    html: `<p>Deine Aufzeichnung läuft weiter, auch wenn der Bildschirm aus ist oder du eine andere App benutzt.</p>
-      <p>Solange sie läuft, zeigt WMap die Benachrichtigung <strong>„WMap zeichnet auf“</strong> – so siehst du jederzeit,
-        dass dein Standort gerade aufgezeichnet wird. Dafür fragt Android gleich, ob WMap Benachrichtigungen senden darf.</p>
-      <p class="muted">WMap schickt sonst keine Benachrichtigungen. Die Aufzeichnung läuft auch ohne – du siehst dann nur
-        nicht, dass sie läuft.</p>`,
-    buttons: [{ value: 'later', label: 'Später' }, { value: 'allow', label: 'Erlauben', icon: 'notifications', primary: true }],
+    icon: 'notifications', title: t('permissions.notice.title'), className: 'news',
+    html: `<p>${t('permissions.notice.p1')}</p>
+      <p>${t('permissions.notice.p2')}</p>
+      <p class="muted">${t('permissions.notice.p3')}</p>`,
+    buttons: [{ value: 'later', label: t('common.later') }, { value: 'allow', label: t('permissions.notice.allow'), icon: 'notifications', primary: true }],
   });
   if (v === 'allow') await requestNotification();
 }
@@ -114,13 +113,12 @@ async function notificationItem() {
   if (st === 'none') return '';
   const denied = st !== 'granted' && noteBlocked;
   return item({
-    id: 'notifications', icon: 'notifications', title: 'Benachrichtigung', state: st,
-    status: st === 'granted' ? 'Erlaubt' : denied ? 'Nicht erlaubt – Android fragt nicht mehr, bitte in den Einstellungen erlauben' : 'Noch nicht erlaubt',
-    text: 'Nur beim Aufzeichnen: „WMap zeichnet auf“ steht in der Leiste, solange dein Weg mitläuft – auch bei '
-      + 'ausgeschaltetem Bildschirm. Die Aufzeichnung läuft auch ohne.',
-    button: st === 'granted' ? ['app', 'settings', 'In den Einstellungen ändern', false]
-      : denied ? ['app', 'settings', 'In den Einstellungen erlauben', true]
-        : ['notifications', 'notifications', 'Benachrichtigung erlauben', false],
+    id: 'notifications', icon: 'notifications', title: t('permissions.notification.title'), state: st,
+    status: st === 'granted' ? t('permissions.status.granted') : denied ? t('permissions.status.blocked') : t('permissions.status.not_yet'),
+    text: t('permissions.notification.text'),
+    button: st === 'granted' ? ['app', 'settings', t('permissions.button.change'), false]
+      : denied ? ['app', 'settings', t('permissions.button.allow_settings'), true]
+        : ['notifications', 'notifications', t('permissions.notification.allow'), false],
   });
 }
 
@@ -131,19 +129,18 @@ const STATE = { granted: 'check_circle', coarse: 'warning', prompt: 'radio_butto
 async function locationItem(reason) {
   const st = await locationState();
   const status = {
-    granted: 'Erlaubt',
-    coarse: 'Nur ungefähr – für Navigation und Aufzeichnung bitte „Genauer Standort“ einschalten',
-    prompt: asked ? 'Nicht erlaubt – Android fragt nicht mehr, bitte in den Einstellungen erlauben' : 'Noch nicht erlaubt',
-    off: 'Der Standort ist am Gerät ausgeschaltet',
+    granted: t('permissions.status.granted'),
+    coarse: t('permissions.location.coarse'),
+    prompt: asked ? t('permissions.status.blocked') : t('permissions.status.not_yet'),
+    off: t('permissions.location.off'),
   }[st];
-  const button = st === 'granted' ? ['app', 'settings', 'In den Einstellungen ändern', false]
-    : st === 'off' ? ['location', 'location_on', 'Standort einschalten', true]
-      : st === 'coarse' || asked ? ['app', 'settings', 'In den Einstellungen erlauben', true]
-        : ['location', 'my_location', 'Standort erlauben', true];
+  const button = st === 'granted' ? ['app', 'settings', t('permissions.button.change'), false]
+    : st === 'off' ? ['location', 'location_on', t('permissions.location.turn_on'), true]
+      : st === 'coarse' || asked ? ['app', 'settings', t('permissions.button.allow_settings'), true]
+        : ['location', 'my_location', t('permissions.location.allow'), true];
   return item({
-    id: 'location', icon: 'my_location', title: 'Standort', state: st, status, wanted: reason === 'location',
-    text: 'Für deinen Punkt auf der Karte, Routen ab „Mein Standort“, die Navigation und das Aufzeichnen von Wegen. '
-      + 'WMap speichert ihn nur auf deinem Gerät.',
+    id: 'location', icon: 'my_location', title: t('permissions.location.title'), state: st, status, wanted: reason === 'location',
+    text: t('permissions.location.text'),
     button,
   });
 }
@@ -152,30 +149,26 @@ async function healthItem(reason) {
   if (!healthAvailable) return '';
   let st;
   try { st = await healthStatus(); } catch (err) { st = { available: false, reason: String(err?.message ?? err) }; }
-  const text = 'Liest Trainings anderer Apps – Fitbit, Strava, Zepp, Samsung Health … – samt Route und Messwerten '
-    + '(Puls, Schritt- und Trittfrequenz, Leistung), damit du sie unter Meine Touren als Wege mit Diagrammen '
-    + 'und Runden siehst. WMap liest nur und schreibt nichts zurück.';
-  if (!st.available) return item({ id: 'health', icon: 'favorite', title: 'Health Connect', state: 'none', status: st.reason, text, wanted: reason === 'health' });
+  const text = t('permissions.health.text');
+  if (!st.available) return item({ id: 'health', icon: 'favorite', title: t('permissions.health.title'), state: 'none', status: st.reason, text, wanted: reason === 'health' });
   if (!st.read) {
     return item({
-      id: 'health', icon: 'favorite', title: 'Health Connect', state: 'prompt', status: 'Noch nicht freigegeben', text, wanted: reason === 'health',
-      button: ['health-request', 'favorite', 'Health Connect freigeben', true],
+      id: 'health', icon: 'favorite', title: t('permissions.health.title'), state: 'prompt', status: t('permissions.health.not_granted'), text, wanted: reason === 'health',
+      button: ['health-request', 'favorite', t('permissions.health.grant'), true],
     });
   }
   const routes = st.routes
-    ? '<p class="perm-hint"><span class="msr">info</span> Zum Ändern oder Widerrufen öffnet sich Health Connect – dort WMap antippen (sonst unter „Weitere Gesundheits-Apps“).</p>'
-    : `<p class="perm-hint"><span class="msr">info</span> Routen: Health Connect fragt noch bei jedem Training einzeln.
-      In Health Connect <strong>WMap → Trainingsrouten</strong> auf „Immer erlauben“ stellen (WMap steht sonst unter „Weitere Gesundheits-Apps“) – dann kommen alle ohne Rückfrage.</p>`;
-  const values = st.values ? '' : `<p class="perm-hint"><span class="msr">info</span> Puls & Co. sind noch nicht freigegeben –
-      ohne sie gibt es zu den Wegen nur Tempo und Höhe.</p>`;
+    ? `<p class="perm-hint"><span class="msr">info</span> ${t('permissions.health.hint_change')}</p>`
+    : `<p class="perm-hint"><span class="msr">info</span> ${t('permissions.health.hint_routes')}</p>`;
+  const values = st.values ? '' : `<p class="perm-hint"><span class="msr">info</span> ${t('permissions.health.hint_values')}</p>`;
   const all = st.routes && st.values;
   return item({
-    id: 'health', icon: 'favorite', title: 'Health Connect', state: all ? 'granted' : 'coarse', wanted: reason === 'health',
-    status: all ? 'Trainings, Routen und Messwerte erlaubt'
-      : [st.routes ? 'Trainings und Routen erlaubt' : 'Trainings erlaubt, Routen mit Rückfrage', st.values ? 'Messwerte erlaubt' : 'Messwerte nicht'].join(' · '),
+    id: 'health', icon: 'favorite', title: t('permissions.health.title'), state: all ? 'granted' : 'coarse', wanted: reason === 'health',
+    status: all ? t('permissions.health.all')
+      : [st.routes ? t('permissions.health.routes_yes') : t('permissions.health.routes_ask'), st.values ? t('permissions.health.values_yes') : t('permissions.health.values_no')].join(' · '),
     text, extra: routes + values,
-    button: !st.values ? ['health-request', 'favorite', 'Puls & Co. freigeben', true]
-      : ['health', 'settings', st.routes ? 'In Health Connect ändern' : 'Health Connect öffnen', !st.routes],
+    button: !st.values ? ['health-request', 'favorite', t('permissions.health.grant_values'), true]
+      : ['health', 'settings', st.routes ? t('permissions.health.change') : t('permissions.health.open'), !st.routes],
   });
 }
 
@@ -191,8 +184,8 @@ function item({ id, icon, title, state, status, text, wanted, button = null, ext
 }
 
 const INTRO = {
-  location: 'Dafür braucht WMap deinen Standort.',
-  health: 'Dafür braucht WMap Zugriff auf Health Connect.',
+  location: t('permissions.intro.location'),
+  health: t('permissions.intro.health'),
 };
 
 /**
@@ -203,11 +196,11 @@ export async function showPermissions({ reason = null } = {}) {
   if (!permissionsHere) return;
   const body = async () => `${await locationItem(reason)}${await notificationItem()}${await healthItem(reason)}`;
   await ask({
-    icon: 'verified_user', title: 'Berechtigungen', className: 'news perms',
-    html: `<p>${esc(INTRO[reason] ?? 'WMap fragt nur, was eine Funktion wirklich braucht.')}
-        Alles lässt sich später unter <strong>Einstellungen → Berechtigungen</strong> ändern.</p>
+    icon: 'verified_user', title: t('permissions.title'), className: 'news perms',
+    html: `<p>${esc(INTRO[reason] ?? t('permissions.intro.default'))}
+        ${t('permissions.intro.change_later')}</p>
       <div class="perm-list">${await body()}</div>`,
-    buttons: [{ value: 'ok', label: reason ? 'Fertig' : 'Weiter', primary: true }],
+    buttons: [{ value: 'ok', label: reason ? t('common.done') : t('common.next'), primary: true }],
     setup(dlg) {
       const list = dlg.querySelector('.perm-list');
       const refresh = async () => { if (dlg.isConnected) list.innerHTML = await body(); };

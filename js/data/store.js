@@ -7,6 +7,7 @@
  */
 import { encodePolyline, decodePolyline } from '../core/geo.js';
 import { store } from './db.js';
+import { t } from '../core/i18n-text.js';
 
 /*
  * Gemeinsam mit dem Service Worker: Der Abgleich (data/folder.js, services/health.js) läuft dort weiter, auch wenn
@@ -224,7 +225,7 @@ export const tours = {
     // Voll? Dann ohne Vorschaubild versuchen – das ist der größte Posten
     const slim = list.map((t) => (t.id === tour.id ? { ...t, preview: null } : t));
     if (local.set(TOURS_KEY, slim)) return { ...tour, preview: null };
-    throw new Error('Speicher voll – Tour konnte nicht gespeichert werden');
+    throw new Error(t('tracks.error.storage_full'));
   },
   remove(id) {
     local.set(TOURS_KEY, local.get(TOURS_KEY, []).filter((t) => t.id !== id));
@@ -282,7 +283,7 @@ export function encodeShare(tour) {
 export async function decodeShare(code) {
   const o = await unpackJson(code);
   return {
-    name: o.n ?? 'Geteilte Tour', description: o.d ?? '', profile: o.p ?? 'hike', points: decodePolyline(o.w, 5),
+    name: o.n ?? t('share.tour.default_name'), description: o.d ?? '', profile: o.p ?? 'hike', points: decodePolyline(o.w, 5),
     ...(o.s ? { fixed: true, shape: o.s } : {}),
     ...(o.o ? { backgrounds: o.o.map(([id, kind, name]) => ({ type: 'way', id, kind, name: name ?? '' })) } : {}),
   };
@@ -304,7 +305,7 @@ export function toGpx(tour, coords, elevationAt = () => null) {
     return `      <trkpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}">${ele !== null ? `<ele>${ele.toFixed(1)}</ele>` : ''}</trkpt>`;
   }).join('\n');
   const wpts = tour.points.map(([lon, lat], i) =>
-    `  <wpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}"><name>${i === 0 ? 'Start' : i === tour.points.length - 1 ? 'Ziel' : `Punkt ${i}`}</name></wpt>`).join('\n');
+    `  <wpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}"><name>${i === 0 ? t('tracks.gpx.start') : i === tour.points.length - 1 ? t('tracks.gpx.goal') : t('tracks.gpx.point', { i })}</name></wpt>`).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="WMap" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata><name>${xml(tour.name)}</name>${tour.description ? `<desc>${xml(tour.description)}</desc>` : ''}<time>${new Date(tour.updated ?? Date.now()).toISOString()}</time>${tour.id ? `<keywords>wmap:${xml(tour.id)}${tour.fixed ? ' wmap-fixed' : ''}</keywords>` : ''}</metadata>

@@ -14,18 +14,19 @@ import { run } from './overpass.js';
 import { encodeShare } from '../data/store.js';
 import { distance, simplify } from '../core/geo.js';
 import { segment } from './routing.js';
+import { t } from '../core/i18n.js';
 
 export const KINDS = {
-  hike: { label: 'Wandern', icon: 'hiking', routes: 'hiking|foot', profile: 'hike' },
-  bike: { label: 'Rad', icon: 'directions_bike', routes: 'bicycle', profile: 'tour' },
-  mtb: { label: 'Mountainbike', icon: 'landscape', routes: 'mtb', profile: 'mtb' },
+  hike: { label: t('services.known_tours.kinds.hike'), icon: 'hiking', routes: 'hiking|foot', profile: 'hike' },
+  bike: { label: t('services.known_tours.kinds.bike'), icon: 'directions_bike', routes: 'bicycle', profile: 'tour' },
+  mtb: { label: t('services.known_tours.kinds.mtb'), icon: 'landscape', routes: 'mtb', profile: 'mtb' },
 };
 
 /* Netz → Bedeutung: große Wege zuerst */
 const NETWORK = {
-  iwn: ['Europäischer Fernwanderweg', 0], nwn: ['Fernwanderweg', 1], rwn: ['Regionaler Wanderweg', 2], lwn: ['Örtlicher Wanderweg', 4],
-  icn: ['Europäischer Radweg', 0], ncn: ['Radfernweg', 1], rcn: ['Regionaler Radweg', 2], lcn: ['Örtlicher Radweg', 4],
-  rhn: ['Regionaler Wanderweg', 2], nhn: ['Fernwanderweg', 1], lhn: ['Örtlicher Wanderweg', 4],
+  iwn: [t('services.known_tours.networks.hike_europe'), 0], nwn: [t('services.known_tours.networks.hike_national'), 1], rwn: [t('services.known_tours.networks.hike_regional'), 2], lwn: [t('services.known_tours.networks.hike_local'), 4],
+  icn: [t('services.known_tours.networks.bike_europe'), 0], ncn: [t('services.known_tours.networks.bike_national'), 1], rcn: [t('services.known_tours.networks.bike_regional'), 2], lcn: [t('services.known_tours.networks.bike_local'), 4],
+  rhn: [t('services.known_tours.networks.hike_regional'), 2], nhn: [t('services.known_tours.networks.hike_national'), 1], lhn: [t('services.known_tours.networks.hike_local'), 4],
 };
 
 /* ── Waymarked Trails ──────────────────────────────────────────────────────
@@ -36,9 +37,9 @@ const NETWORK = {
 const WMT_HOST = { hike: 'hiking', bike: 'cycling', mtb: 'mtb' };
 const WMT_RANK = { INT: 0, NAT: 1, REG: 2, LOC: 4 };
 const WMT_LABEL = {
-  hike: { INT: 'Europäischer Fernwanderweg', NAT: 'Fernwanderweg', REG: 'Regionaler Wanderweg', LOC: 'Örtlicher Wanderweg' },
-  bike: { INT: 'Europäischer Radweg', NAT: 'Radfernweg', REG: 'Regionaler Radweg', LOC: 'Örtlicher Radweg' },
-  mtb: { INT: 'Internationale MTB-Strecke', NAT: 'Nationale MTB-Strecke', REG: 'Regionale MTB-Strecke', LOC: 'Örtliche MTB-Strecke' },
+  hike: { INT: t('services.known_tours.networks.hike_europe'), NAT: t('services.known_tours.networks.hike_national'), REG: t('services.known_tours.networks.hike_regional'), LOC: t('services.known_tours.networks.hike_local') },
+  bike: { INT: t('services.known_tours.networks.bike_europe'), NAT: t('services.known_tours.networks.bike_national'), REG: t('services.known_tours.networks.bike_regional'), LOC: t('services.known_tours.networks.bike_local') },
+  mtb: { INT: t('services.known_tours.networks.mtb_international'), NAT: t('services.known_tours.networks.mtb_national'), REG: t('services.known_tours.networks.mtb_regional'), LOC: t('services.known_tours.networks.mtb_local') },
 };
 const R = 6378137;
 const toMerc = ([lon, lat]) => [(lon * Math.PI / 180) * R, Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) * R];
@@ -46,7 +47,7 @@ const fromMerc = ([x, y]) => [(x / R) * 180 / Math.PI, (2 * Math.atan(Math.exp(y
 
 async function wmt(kind, path, signal) {
   const r = await fetch(`https://${WMT_HOST[kind]}.waymarkedtrails.org/api/v1/${path}`, { signal });
-  if (!r.ok) throw new Error(r.status === 404 ? 'Route nicht gefunden' : `Waymarked Trails antwortet mit ${r.status}`);
+  if (!r.ok) throw new Error(r.status === 404 ? t('services.known_tours.error.not_found') : t('services.known_tours.error.status', { status: r.status }));
   return r.json();
 }
 
@@ -68,11 +69,11 @@ export async function toursAt(point, kind, { meters = 30, signal } = {}) {
 
 /** Trefferliste von Waymarked Trails → Einträge wie toList */
 function fromWmt(kind, results) {
-  return results.filter((t) => t.type === 'relation').map((t) => ({
-    id: t.id, name: t.name || t.ref || 'Weg ohne Namen', ref: t.ref ?? '',
-    network: WMT_LABEL[kind][t.group] ?? 'Weg', rank: WMT_RANK[t.group] ?? 3,
+  return results.filter((x) => x.type === 'relation').map((x) => ({
+    id: x.id, name: x.name || x.ref || t('services.known_tours.unnamed'), ref: x.ref ?? '',
+    network: WMT_LABEL[kind][x.group] ?? t('services.known_tours.way'), rank: WMT_RANK[x.group] ?? 3,
     length: null, round: false, description: '', dist: null, center: null,
-    symbol: t.symbol_id ? wmtSymbol(kind, t.symbol_id) : null, symbolText: t.symbol_description ?? '',
+    symbol: x.symbol_id ? wmtSymbol(kind, x.symbol_id) : null, symbolText: x.symbol_description ?? '',
   }));
 }
 
@@ -87,7 +88,7 @@ async function wmtLine(id, kind, signal) {
     for (const c of [...(node.main ?? [])].sort((a, b) => (+a.start || 0) - (+b.start || 0))) walk(c);
   };
   walk(d.route ?? {});
-  if (!sections.length) throw new Error('Diese Route hat keinen Verlauf');
+  if (!sections.length) throw new Error(t('services.known_tours.error.no_course'));
   return {
     line: simplify(joinWays(sections), 3),
     sections: sections.map((sec) => simplify(sec, 3)),
@@ -136,14 +137,14 @@ function toList(els, center) {
   return els
     .filter((e) => !/-old$/.test(e.tags.network ?? '') && !/netz|network/i.test(e.tags.name))
     .map((e) => {
-      const t = e.tags;
-      const [label, rank] = NETWORK[t.network] ?? ['Weg', 3];
-      const km = parseFloat(String(t.distance ?? '').replace(',', '.'));
+      const tg = e.tags;
+      const [label, rank] = NETWORK[tg.network] ?? [t('services.known_tours.way'), 3];
+      const km = parseFloat(String(tg.distance ?? '').replace(',', '.'));
       return {
-        id: e.id, name: t.name, ref: t.ref ?? '', network: label, rank,
+        id: e.id, name: tg.name, ref: tg.ref ?? '', network: label, rank,
         length: Number.isFinite(km) ? km * 1000 : null,
-        round: t.roundtrip === 'yes' || /rundweg|rundwanderweg|rundtour/i.test(t.name),
-        description: t.description ?? t['description:de'] ?? '',
+        round: tg.roundtrip === 'yes' || /rundweg|rundwanderweg|rundtour/i.test(tg.name),
+        description: tg.description ?? tg['description:de'] ?? '',
         dist: e.center && center ? distance(center, [e.center.lon, e.center.lat]) : null,
         center: e.center ? [e.center.lon, e.center.lat] : null,
       };
@@ -223,15 +224,15 @@ export async function tourLine(id, { signal, kind = null } = {}) {
     }
   }
   const [rel] = await run(`[out:json][timeout:60];relation(${id});out geom;`, signal);
-  if (!rel) throw new Error('Route nicht gefunden');
+  if (!rel) throw new Error(t('services.known_tours.error.not_found'));
   let ways = waysOf(rel);
   if (!ways.length) {
     const order = rel.members.filter((m) => m.type === 'relation').map((m) => m.ref);
-    if (!order.length) throw new Error('Diese Route hat keinen Verlauf');
-    if (order.length > 60) throw new Error('Dieser Weg ist zu lang für einmal – bitte eine Etappe wählen');
+    if (!order.length) throw new Error(t('services.known_tours.error.no_course'));
+    if (order.length > 60) throw new Error(t('services.known_tours.error.too_long'));
     const kids = await run(`[out:json][timeout:90];relation(${id});rel(r);out geom;`, signal);
     const lines = order.map((ref) => kids.find((k) => k.id === ref)).filter(Boolean).map(waysOf).filter((w) => w.length).map(joinWays);
-    if (!lines.length) throw new Error('Diese Route hat keinen Verlauf');
+    if (!lines.length) throw new Error(t('services.known_tours.error.no_course'));
     ways = lines;
   }
   const line = simplify(joinWays(ways), 3);
@@ -321,8 +322,8 @@ export async function originalRoute(id, kind, { signal } = {}) {
  */
 export async function tourLink(found, kind) {
   const { tags } = await tourLine(found.id, { kind });
-  const desc = [found.network, found.ref && `Markierung ${found.ref}`, tags.symbol, found.description,
-    `Quelle: OpenStreetMap, Route ${found.id}`].filter(Boolean).join(' · ');
+  const desc = [found.network, found.ref && t('services.known_tours.marking', { ref: found.ref }), tags.symbol, found.description,
+    t('services.known_tours.source', { id: found.id })].filter(Boolean).join(' · ');
   const code = await encodeShare({
     name: found.name, description: desc, profile: KINDS[kind].profile, points: [],
     backgrounds: [{ type: 'way', id: found.id, kind, name: found.name }],

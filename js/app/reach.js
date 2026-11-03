@@ -12,6 +12,7 @@ import { $, $$, afterLayout, chipHtml, fitTo, map, markerEl, myPosition, q, show
 import { clearPlace } from './place.js';
 import { leaveRouteMode } from './route-plan.js';
 import { openSheet, remember } from './views.js';
+import { t, locale } from '../core/i18n.js';
 
 /* ══════════════════════════════════════════════════════════════════════════
    Erreichbarkeit
@@ -19,11 +20,11 @@ import { openSheet, remember } from './views.js';
 
 const REACH_VALUES = { time: [5, 10, 15, 30, 60], distance: [1, 2, 5, 10, 25] };
 const REACH_COLORS = ['#2f9e44', '#f59f00', '#e8590c'];     // innen → außen
-export const reach = { origin: null, label: 'Mein Standort', profile: 'bike', metric: 'time', value: 15, cat: null, features: [] };
+export const reach = { origin: null, label: t('map.my_location'), profile: 'bike', metric: 'time', value: 15, cat: null, features: [] };
 let reachCtl = null;
 let reachMarker = null;
 
-export function openReach({ origin = null, label = 'Mein Standort' } = {}, { push = true } = {}) {
+export function openReach({ origin = null, label = t('map.my_location') } = {}, { push = true } = {}) {
   leaveRouteMode();
   clearPlace();
   clearCategory();
@@ -41,7 +42,7 @@ function paintReachControls() {
   const view = $('[data-view="reach"]');
   $$('input[name="reach-profile"]', view).forEach((r) => { r.checked = r.value === reach.profile; });
   $$('input[name="reach-metric"]', view).forEach((r) => { r.checked = r.value === reach.metric; });
-  const unit = reach.metric === 'time' ? 'min' : 'km';
+  const unit = reach.metric === 'time' ? t('reach.unit.min') : t('reach.unit.km');
   $('.reach-values', view).innerHTML = REACH_VALUES[reach.metric].map((v) => `
     <button type="button" class="chip" data-v="${v}" aria-pressed="${v === reach.value}" style="--chip:#2f9e44">${v} ${unit}</button>`).join('');
   $('.reach-cats', view).innerHTML = ['parking', 'bakery', 'supermarket', 'restaurant', 'cafe', 'playground', 'viewpoint', 'charging', 'toilets']
@@ -57,8 +58,8 @@ function reachSteps(v) {
 async function computeReach({ fit = false } = {}) {
   const view = $('[data-view="reach"]');
   const sub = $('.reach-sub', view);
-  const unit = reach.metric === 'time' ? 'min' : 'km';
-  sub.textContent = `Von ${reach.label} · ${PROFILES[reach.profile].label} · wird berechnet …`;
+  const unit = reach.metric === 'time' ? t('reach.unit.min') : t('reach.unit.km');
+  sub.textContent = t('reach.computing', { from: reach.label, profile: PROFILES[reach.profile].label });
   reachCtl?.abort();
   reachCtl = new AbortController();
   const { signal } = reachCtl;
@@ -77,9 +78,9 @@ async function computeReach({ fit = false } = {}) {
     reachMarker?.remove();
     reachMarker = new maplibregl.Marker({ element: markerEl('start', reach.origin ? 'place' : 'my_location') })
       .setLngLat(origin).addTo(map);
-    sub.textContent = `Von ${reach.label} · ${PROFILES[reach.profile].label} · bis ${reach.value} ${unit}`;
+    sub.textContent = t('reach.result', { from: reach.label, profile: PROFILES[reach.profile].label, value: reach.value, unit });
     $('.reach-legend', view).innerHTML = [...features].reverse().map((f) => `
-      <span><i style="background:${f.properties.color}"></i>bis ${String(f.properties.value).replace('.', ',')} ${unit}</span>`).join('');
+      <span><i style="background:${f.properties.color}"></i>${t('reach.up_to', { value: Number(f.properties.value).toLocaleString(locale), unit })}</span>`).join('');
     if (fit && features[0]) afterLayout(() => fitTo(bbox(outerRings(features[0].geometry).flat())));
     if (reach.cat) searchInReach(reach.cat);
   } catch (err) {
@@ -104,9 +105,9 @@ async function searchInReach(cat) {
   const list = $('.reach-list');
   const outer = reach.features[0];
   if (!outer) return;
-  list.innerHTML = `<li class="muted">Suche ${esc(cat.label)} im erreichbaren Bereich …</li>`;
+  list.innerHTML = `<li class="muted">${t('reach.searching', { category: esc(cat.label) })}</li>`;
   const signal = reachCtl?.signal;
-  const unit = reach.metric === 'time' ? 'min' : 'km';
+  const unit = reach.metric === 'time' ? t('reach.unit.min') : t('reach.unit.km');
   const small = [...reach.features].reverse();              // kleinste zuerst
   const ring = outerRings(outer.geometry).sort((a, b) => b.length - a.length)[0];
   // Nach Ring (5/10/15 min) einsortieren; Kachel-Treffer erst auf die Fläche beschneiden
@@ -122,10 +123,10 @@ async function searchInReach(cat) {
     const { points } = f;
     numberHits(points);
     showHl({ points });
-    renderResultList(list, points.slice(0, 80), cat, (p) => `bis ${String(p.properties.reach).replace('.', ',')} ${unit}`,
+    renderResultList(list, points.slice(0, 80), cat, (p) => t('reach.up_to', { value: Number(p.properties.reach).toLocaleString(locale), unit }),
       { filter: f, redo: () => { if (reach.cat === cat) render(all, final); } });
     if (!points.length) {
-      list.insertAdjacentHTML('beforeend', `<li class="muted">${final ? `Keine ${esc(cat.label)} erreichbar` : `Suche ${esc(cat.label)} im erreichbaren Bereich …`}</li>`);
+      list.insertAdjacentHTML('beforeend', `<li class="muted">${final ? t('reach.none', { category: esc(cat.label) }) : t('reach.searching', { category: esc(cat.label) })}</li>`);
     }
   };
   // Sofort aus den Kacheln, Overpass ergänzt

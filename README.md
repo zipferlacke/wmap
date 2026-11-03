@@ -247,6 +247,24 @@ zur zuvor besuchten Seite zu gehen.
     erstem und letztem Bahnhof und Abfahrt. Reine Bus-/Tramfahrten haben
     keinen Link (Verbund, Deutschlandticket).
 
+## Sprachen
+
+Alle Texte stehen in `appdata/lang/<sprache>.json` (`de_DE.json`), verschachtelt wie auf dem Bildschirm; im Code
+`t('settings.look.theme.title')`, im HTML `data-i18n` (`js/core/i18n.js`). Neue Sprache: `de_DE.json` kopieren, unter
+`_meta` Name und `locale` setzen, übersetzen, `python3 appdata/version.py` laufen lassen. Fehlendes bleibt Deutsch.
+Dazu gehören auch Listen mit Wörtern, die Eingaben auswerten (`categories.*.terms`, `lines.words`,
+`search.words.filler`, `tracks.names.filler`, die deutschen werden immer mitverstanden), die Meldungen des Servers im
+Wortlaut (`server`, dort nur die Werte in anderen Sprachen ändern) und optional `news` für Neuigkeiten
+(`welcome`, `changes`, `messages`). Immer Deutsch: Hinweise und Kommentare an OpenStreetMap (`tBase`), Ordner- und
+Dateinamen im Sync-Ordner. Noch nicht übersetzbar: die nativen Android-Auto-Texte (`tools/android/car`).
+
+## Server
+
+Dienste mit einer Liste in `API` (`js/core/config.js`) laufen über `askServer` (`js/services/servers.js`): gemischt,
+beim Ausfall einmal wiederholt, dann der nächste, 10 Minuten Pause. Ein weiterer Server ist nur eine Zeile, er muss
+dieselbe Schnittstelle sprechen und CORS erlauben. Photon, Valhalla und EFA laufen so; Overpass hat seine eigene
+Umschaltung (`services/overpass.js`).
+
 ## 3. Suchen und Orte
 
 - **Suchfeld oben:** Orte, Adressen und Kategorien. Tippfehler werden
@@ -421,7 +439,7 @@ Namen („Nur für Kunden“ – `accessOf` in `js/ui/poi-info.js`).
   Adressen, Punkte auf der Karte, Zwischenziele oder Orte, in die man hineinfährt (Parkplatz, Tankstelle,
   Ladesäule). Gefragt wird Overpass (höchstens 2,5 s, kennt „privat“), sonst zählen die Parkplätze aus den
   Kartenkacheln (`js/app/drive-target.js`).
-- **Routenserver antwortet nicht:** Die Abfrage versucht es nach 1,5 s von selbst noch einmal.
+- **Routenserver antwortet nicht:** Die Abfrage versucht es nach 0,8 s von selbst noch einmal (`services/servers.js`).
   Klappt auch das nicht, steht statt „Load failed“ ein verständlicher Satz da (Server nicht
   erreichbar, überlastet oder kein Netz) und darunter der Knopf **Erneut versuchen**
   (`request` in `js/services/routing.js`, `routeStatus` in `js/app/route-results.js`).

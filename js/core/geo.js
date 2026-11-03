@@ -2,6 +2,7 @@
  * Geometrie ohne Bibliothek: Polyline dekodieren, Abstände, Punkt auf Linie.
  * Koordinaten immer als [lon, lat] wie in GeoJSON und MapLibre.
  */
+import { locale, perLanguage, t } from './i18n-text.js';
 
 const R = 6371008.8;
 const RAD = Math.PI / 180;
@@ -180,19 +181,22 @@ export function bboxAround([lon, lat], r) {
 
 /* ── Anzeige ──────────────────────────────────────────────────────────────── */
 
-const nf = (v, d = 0) => v.toLocaleString('de-DE', { maximumFractionDigits: d, minimumFractionDigits: d });
+const nf = (v, d = 0) => v.toLocaleString(locale, { maximumFractionDigits: d, minimumFractionDigits: d });
+// Einheiten einmal je Sprache holen: Die Anzeige läuft auch in der Navigation dauernd
+const units = perLanguage(() => ({ m: t('common.units.m'), km: t('common.units.km'), h: t('common.units.h'), min: t('common.units.min'), s: t('common.units.s') }));
 
 export function fmtDistance(m) {
-  if (m < 950) return `${nf(Math.max(0, Math.round(m / 10) * 10))} m`;
-  return `${nf(m / 1000, m < 9950 ? 1 : 0)} km`;
+  if (m < 950) return `${nf(Math.max(0, Math.round(m / 10) * 10))} ${units().m}`;
+  return `${nf(m / 1000, m < 9950 ? 1 : 0)} ${units().km}`;
 }
 
 export function fmtDuration(s) {
+  const u = units();
   const min = Math.round(s / 60);
-  if (min < 60) return `${Math.max(1, min)} min`;
+  if (min < 60) return `${Math.max(1, min)} ${u.min}`;
   const h = Math.floor(min / 60);
   const rest = min % 60;
-  return rest ? `${h} h ${rest} min` : `${h} h`;
+  return rest ? `${h} ${u.h} ${rest} ${u.min}` : `${h} ${u.h}`;
 }
 
 /**
@@ -202,19 +206,21 @@ export function fmtDuration(s) {
 export function fmtTime(s) {
   const sec = Math.round(s);
   if (sec >= 3600) return fmtDuration(sec);
+  const u = units();
   const m = Math.floor(sec / 60), r = sec % 60;
-  return m ? (r ? `${m} min ${r} s` : `${m} min`) : `${r} s`;
+  return m ? (r ? `${m} ${u.min} ${r} ${u.s}` : `${m} ${u.min}`) : `${r} ${u.s}`;
 }
 
 /** Entfernung für die Ansage: „In 300 Metern“, „In 1,5 Kilometern“. */
-export function speakDistance(m) {
-  if (m >= 950) return `${nf(Math.round(m / 100) / 10, m < 9950 ? 1 : 0)} Kilometern`;
+/** `form`: '_plain' für die Grundform („300 Meter“ statt „in 300 Metern“) */
+export function speakDistance(m, form = '') {
+  if (m >= 950) return t(`common.speech.kilometers${form}`, { x: nf(Math.round(m / 100) / 10, m < 9950 ? 1 : 0) });
   const step = m > 300 ? 100 : m > 100 ? 50 : 10;
-  return `${Math.max(step, Math.round(m / step) * step)} Metern`;
+  return t(`common.speech.meters${form}`, { x: Math.max(step, Math.round(m / step) * step) });
 }
 
 export function fmtClock(date) {
-  return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 }
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g,

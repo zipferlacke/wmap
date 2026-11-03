@@ -14,6 +14,7 @@ Ziele:
                                 BUILD – Prüfsumme über alle Dateien aus sw-files.json:
                                 ändert sich eine Datei bei gleicher Nummer, ist es
                                 trotzdem ein neuer Service Worker mit eigenem Speicher
+    appdata/lang/languages.json welche Sprachen es gibt (eine Datei je Sprache im selben Ordner)
     appdata/sw-files.json       was der Service Worker vorab lädt (alle Dateien,
                                 die die Seiten über import/@import/url()/src/href
                                 erreichen – aus wuefl-libs nur die genutzten)
@@ -87,7 +88,22 @@ def app_files():
     files = sorted(str(p.relative_to(ROOT)) for p in seen)
     # sw.js selbst nicht: Es trägt BUILD, die Prüfsumme über diese Liste
     files = [x for x in files if not x.startswith(('test/', 'src-tauri/', 'bEnd/')) and x != 'sw.js']
-    return EXTRA + [x for x in files if x not in EXTRA]
+    lang = sorted(str(p.relative_to(ROOT)) for p in (ROOT / 'appdata/lang').glob('*.json'))
+    return EXTRA + lang + [x for x in files if x not in EXTRA and x not in lang]
+
+
+def write_languages(check):
+    """appdata/lang/languages.json: was im Ordner liegt, mit dem Namen aus der Datei"""
+    folder = ROOT / 'appdata/lang'
+    path = folder / 'languages.json'
+    found = [{'code': f.stem, 'name': json.loads(f.read_text(encoding='utf-8'))['_meta']['name']}
+             for f in sorted(folder.glob('*.json')) if f != path]
+    text = json.dumps(found, ensure_ascii=False, indent=1) + '\n'
+    if path.exists() and path.read_text(encoding='utf-8') == text:
+        return None
+    if not check:
+        path.write_text(text, encoding='utf-8')
+    return 'appdata/lang/languages.json: Sprachen neu'
 
 
 LIBS = 'libs/wuefl-libs/'
@@ -157,6 +173,9 @@ def main():
         off.append(f'{rel}: {m.group(2)} → {version}')
         if not check:
             path.write_text(text[:m.start(2)] + version + text[m.end(2):], encoding='utf-8')
+    langs = write_languages(check)
+    if langs:
+        off.append(langs)
     files = write_files(check)
     if files:
         off.append(files)

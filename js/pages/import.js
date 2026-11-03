@@ -33,16 +33,17 @@ import { cadName } from '../data/track-look.js';
 import { encodeShare } from '../data/store.js';
 import { readFiles, takeFile, fileOf } from '../data/import-files.js';
 import { importAsk, importSummary } from '../ui/import-ask.js';
+import { locale, t } from '../core/i18n.js';
 
 const root = document.querySelector('.import');
 const SHARE = 'wmap-share';
-const DAY = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-const km = (m) => `${(m / 1000).toLocaleString('de-DE', { maximumFractionDigits: m < 10000 ? 1 : 0 })} km`;
+const DAY = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+const km = (m) => t('import.unit.km', { v: (m / 1000).toLocaleString(locale, { maximumFractionDigits: m < 10000 ? 1 : 0 }) });
 
 /** [{ name, text, tour, track, id, dup, gain, saved, merged, note, error }] */
 const files = [];
 let busy = null;   // { i, n } während alle übernommen werden
-const valueName = (t, k) => ({ hr: 'Puls', cad: cadName(t), pow: 'Leistung' }[k]);
+const valueName = (track, k) => ({ hr: t('import.values.hr'), cad: cadName(track), pow: t('import.values.pow') }[k]);
 const open = () => files.filter((f) => !f.error && f.track && !f.saved && !f.merged && (!f.dup || f.gain?.any));
 
 /** Neue Dateien ({ name, text } – FIT: { name, bytes }) aufnehmen und prüfen; mehrere: gleich fragen */
@@ -67,29 +68,29 @@ async function takeAll() {
 function card(f, i) {
   if (f.error) {
     return `<section><h3><span class="msr">error</span> ${esc(f.name)}</h3>
-      <p class="sync-status error"><span class="msr">error</span><span>Lässt sich nicht öffnen: ${esc(f.error)}</span></p></section>`;
+      <p class="sync-status error"><span class="msr">error</span><span>${t('import.card.error', { error: esc(f.error) })}</span></p></section>`;
   }
-  const facts = [km(f.tour.stats.length), f.track ? DAY.format(f.track.start) : 'ohne Zeiten'].join(' · ');
+  const facts = [km(f.tour.stats.length), f.track ? DAY.format(f.track.start) : t('import.card.no_times')].join(' · ');
   const g = f.dup && !f.merged ? f.gain : null;
   const recorded = f.saved
-    ? `<a class="button" href="./wege.html?id=${encodeURIComponent(f.saved)}"><span class="msr">visibility</span> Gespeichert – ansehen</a>`
+    ? `<a class="button" href="./wege.html?id=${encodeURIComponent(f.saved)}"><span class="msr">visibility</span> ${t('import.card.saved')}</a>`
     : f.merged
-      ? `<a class="button" href="./wege.html?id=${encodeURIComponent(f.dup.id)}"><span class="msr">visibility</span> Ergänzt – ansehen</a>`
+      ? `<a class="button" href="./wege.html?id=${encodeURIComponent(f.dup.id)}"><span class="msr">visibility</span> ${t('import.card.merged')}</a>`
       : g?.any
-        ? `<button type="button" class="button primary" data-act="merge" data-i="${i}"><span class="msr">merge</span> Mit der vorhandenen Tour zusammenführen …</button>`
+        ? `<button type="button" class="button primary" data-act="merge" data-i="${i}"><span class="msr">merge</span> ${t('import.card.merge')}</button>`
         : f.dup
-          ? `<a class="button" href="./wege.html?id=${encodeURIComponent(f.dup.id)}"><span class="msr">content_copy</span> Gibt es schon – ansehen</a>`
-          : f.track ? `<button type="button" class="button primary" data-act="track" data-i="${i}"><span class="msr">directions_walk</span> Als aufgezeichnete Tour speichern</button>` : '';
+          ? `<a class="button" href="./wege.html?id=${encodeURIComponent(f.dup.id)}"><span class="msr">content_copy</span> ${t('import.card.exists')}</a>`
+          : f.track ? `<button type="button" class="button primary" data-act="track" data-i="${i}"><span class="msr">directions_walk</span> ${t('import.card.save_track')}</button>` : '';
   return `<section>
     <h3><span class="msr">route</span> ${esc(f.tour.name)}</h3>
     <p class="settings-hint">${esc(facts)} · ${esc(f.name)}</p>
-    ${!f.track ? '<p class="settings-hint">Ohne Zeiten in der Datei geht sie nur als geplante Tour.</p>' : ''}
-    ${f.dup && !f.saved ? `<p class="settings-hint">Diesen Weg hast du schon: „${esc(f.dup.name)}“.${g?.any ? ` ${esc(more(f))}` : f.merged ? '' : f.kept ? ' Nichts übernommen – die vorhandenen Werte bleiben.' : ' Die Datei hat nichts, was hier fehlt.'}</p>` : ''}
+    ${!f.track ? `<p class="settings-hint">${t('import.card.plan_only')}</p>` : ''}
+    ${f.dup && !f.saved ? `<p class="settings-hint">${t('import.card.dup.known', { name: esc(f.dup.name) })}${g?.any ? ` ${esc(more(f))}` : f.merged ? '' : f.kept ? ` ${t('import.card.dup.kept')}` : ` ${t('import.card.dup.nothing')}`}</p>` : ''}
     ${f.note ? `<p class="sync-status error"><span class="msr">error</span><span>${esc(f.note)}</span></p>` : ''}
     <div class="sync-actions">
-      ${f.track && !f.saved && !f.merged ? `<button type="button" class="button" data-act="view" data-i="${i}"><span class="msr">visibility</span> Ansehen</button>` : ''}
+      ${f.track && !f.saved && !f.merged ? `<button type="button" class="button" data-act="view" data-i="${i}"><span class="msr">visibility</span> ${t('import.card.view')}</button>` : ''}
       ${recorded}
-      <button type="button" class="button${f.track ? '' : ' primary'}" data-act="tour" data-i="${i}"><span class="msr">edit_road</span> Als geplante Tour öffnen</button>
+      <button type="button" class="button${f.track ? '' : ' primary'}" data-act="tour" data-i="${i}"><span class="msr">edit_road</span> ${t('import.card.open_plan')}</button>
     </div>
   </section>`;
 }
@@ -97,11 +98,11 @@ function card(f, i) {
 /** Was die Datei mehr oder anders hat als der Weg hier – in Worten */
 function more(f) {
   const g = f.gain, out = [];
-  if (g.add.length) out.push(`${g.add.map((k) => valueName(f.dup, k)).join(', ')} (fehlt hier)`);
-  if (g.marks) out.push('Runden der Uhr (fehlen hier)');
-  if (g.points[1] > g.points[0]) out.push(`genauere Strecke (${g.points[1]} statt ${g.points[0]} Punkte)`);
-  if (g.differ.length) out.push(`${g.differ.map((k) => valueName(f.dup, k)).join(', ')} weicht ab`);
-  return out.length ? `Die Datei hat mehr: ${out.join(' · ')}.` : 'Die Datei weicht ab.';
+  if (g.add.length) out.push(t('import.more.missing', { values: g.add.map((k) => valueName(f.dup, k)).join(', ') }));
+  if (g.marks) out.push(t('import.more.marks'));
+  if (g.points[1] > g.points[0]) out.push(t('import.more.points', { file: g.points[1], here: g.points[0] }));
+  if (g.differ.length) out.push(t('import.more.differ', { values: g.differ.map((k) => valueName(f.dup, k)).join(', ') }));
+  return out.length ? t('import.more.has', { list: out.join(' · ') }) : t('import.more.differs');
 }
 
 /** Übersicht über alle Dateien und „Übernehmen …“ */
@@ -111,17 +112,17 @@ function summary() {
   const same = ok.filter((f) => f.dup && !f.gain?.any && !f.merged), did = ok.filter((f) => f.saved || f.merged);
   const bad = files.filter((f) => f.error).length, plain = files.filter((f) => !f.error && !f.track).length;
   const line = [
-    fresh.length && `${fresh.length} neu`, plus.length && `${plus.length} zu einer Tour, die es schon gibt`,
-    same.length && `${same.length} gibt es schon`, did.length && `${did.length} übernommen`,
-    plain && `${plain} ohne Zeiten (nur als geplante Tour)`, bad && `${bad} nicht lesbar`,
+    fresh.length && t('import.summary.fresh', { n: fresh.length }), plus.length && t('import.summary.plus', { n: plus.length }),
+    same.length && t('import.summary.same', { n: same.length }), did.length && t('import.summary.done', { n: did.length }),
+    plain && t('import.summary.plain', { n: plain }), bad && t('import.summary.bad', { n: bad }),
   ].filter(Boolean).join(' · ');
   const todo = fresh.length + plus.length;
   return `<section class="import-all">
-    <h3><span class="msr">library_add</span> ${files.length} Dateien</h3>
+    <h3><span class="msr">library_add</span> ${t('import.summary.title', { n: files.length })}</h3>
     <p class="settings-hint">${esc(line)}</p>
     <div class="sync-actions">
-      ${busy ? `<p class="settings-hint">${busy.i ? `Übernehme ${busy.i} von ${busy.n} …` : 'Warte auf deine Antwort …'}</p>`
-    : todo ? `<button type="button" class="button primary" data-act="all"><span class="msr">done_all</span> ${todo === 1 ? 'Eine Datei' : `Alle ${todo}`} übernehmen …</button>` : ''}
+      ${busy ? `<p class="settings-hint">${busy.i ? t('import.summary.taking', { i: busy.i, n: busy.n }) : t('import.summary.waiting')}</p>`
+    : todo ? `<button type="button" class="button primary" data-act="all"><span class="msr">done_all</span> ${t('import.summary.take', { n: todo })}</button>` : ''}
     </div>
   </section>`;
 }
@@ -138,12 +139,12 @@ async function preview(f, replace = false) {
 
 function render() {
   root.innerHTML = `${files.length > 1 ? summary() : ''}${files.length ? files.map(card).join('') : `<section>
-      <h3><span class="msr">upload_file</span> GPX- oder FIT-Datei öffnen</h3>
-      <p class="settings-hint">Wähle eine GPX- oder FIT-Datei – z. B. von Garmin, Zepp, Komoot oder einer anderen App. Mit Zeiten kannst du sie als aufgezeichnete Tour speichern, sonst als geplante Tour öffnen.</p>
+      <h3><span class="msr">upload_file</span> ${t('import.empty.title')}</h3>
+      <p class="settings-hint">${t('import.empty.text')}</p>
     </section>`}
     <section>
       <div class="sync-actions">
-        <label class="button"><span class="msr">folder_open</span> ${files.length ? 'Weitere Datei wählen' : 'Datei wählen'}<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx"></label>
+        <label class="button"><span class="msr">folder_open</span> ${files.length ? t('import.pick.more') : t('import.pick.first')}<input type="file" accept=".gpx,.fit,application/gpx+xml" multiple hidden data-file="gpx"></label>
       </div>
     </section>`;
 }
@@ -163,9 +164,9 @@ root.addEventListener('click', async (e) => {
       if (!out || out.later) return;   // abgebrochen bzw. später: nichts passiert
       did = out.merged > 0;
     } else did = await takeFile(f);
-    if (!did && !f.note) toast(f.kept ? 'Nichts übernommen – die vorhandenen Werte bleiben' : f.dup ? 'Diesen Weg gibt es schon' : 'Nichts zu übernehmen');
+    if (!did && !f.note) toast(f.kept ? t('import.toast.kept') : f.dup ? t('import.toast.exists') : t('import.toast.nothing'));
     if (did && f.saved && files.length === 1) { location.href = `./wege.html?id=${encodeURIComponent(f.saved)}`; return; }
-    if (did) toast(f.saved ? `„${f.track.name}“ gespeichert` : `„${f.dup.name}“ ergänzt`);
+    if (did) toast(f.saved ? t('import.toast.saved', { name: f.track.name }) : t('import.toast.merged', { name: f.dup.name }));
     render();
   }
   if (b.dataset.act === 'tour') {
@@ -197,7 +198,7 @@ async function incoming() {
       const cache = await caches.open(SHARE);
       for (const req of await cache.keys()) {
         const res = await cache.match(req);
-        got.push(await fileOf(res, decodeURIComponent(res.headers.get('X-Name') ?? 'Datei.gpx')));
+        got.push(await fileOf(res, decodeURIComponent(res.headers.get('X-Name') ?? t('import.default_file'))));
       }
       await caches.delete(SHARE);
     } catch { /* dann eben über die Auswahl */ }

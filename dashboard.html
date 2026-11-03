@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Übersicht – WMap</title>
+    <title data-i18n="dashboard.page_title">Übersicht – WMap</title>
     <meta name="description" content="Karte, Navigation, Bus &amp; Bahn und Tourenplaner auf Basis von OpenStreetMap – ohne Konto, ohne Werbung.">
     <!-- Vorschau beim Teilen (WhatsApp, Signal, Telegram …): kleines Logo statt großem Bild -->
     <meta property="og:type" content="website">
@@ -32,31 +32,31 @@
 -->
 <body class="dash-page">
     <header class="dash-head">
-        <h1>Übersicht</h1>
+        <h1 data-i18n="dashboard.title">Übersicht</h1>
     </header>
 
     <main class="dash">
-        <section class="dash-tiles" aria-label="Ansichten"></section>
+        <section class="dash-tiles" aria-label="Ansichten" data-i18n-aria-label="dashboard.tiles.label"></section>
 
         <section class="dash-store">
-            <h2><span class="msr">storage</span> Gespeichert auf diesem Gerät</h2>
+            <h2><span class="msr">storage</span> <span data-i18n="dashboard.store.title">Gespeichert auf diesem Gerät</span></h2>
             <div class="dash-rows"></div>
         </section>
 
         <section class="dash-thanks">
             <span class="msr dash-thanks-icon">volunteer_activism</span>
             <div>
-                <h2>Danke!</h2>
-                <p>WMap gibt es nur, weil viele Menschen ihre Daten und Dienste offen teilen:</p>
+                <h2 data-i18n="dashboard.thanks.title">Danke!</h2>
+                <p data-i18n="dashboard.thanks.text">WMap gibt es nur, weil viele Menschen ihre Daten und Dienste offen teilen:</p>
                 <ul class="dash-credits"></ul>
-                <p class="dash-support">WMap ist kostenlos, ohne Werbung und ohne Tracking. Wenn sie dir hilft:
-                    <a href="https://paypal.me/wuefl" target="_blank" rel="noopener"><span class="msr">favorite</span> Entwicklung unterstützen</a></p>
+                <p class="dash-support"><span data-i18n="dashboard.thanks.support">WMap ist kostenlos, ohne Werbung und ohne Tracking. Wenn sie dir hilft:</span>
+                    <a href="https://paypal.me/wuefl" target="_blank" rel="noopener"><span class="msr">favorite</span> <span data-i18n="dashboard.thanks.support_link">Entwicklung unterstützen</span></a></p>
             </div>
         </section>
 
-        <p class="dash-about">WMap <button type="button" class="link-button dash-version" title="Was es neu gibt"></button> – Karte und Navigation auf Basis offener Daten ·
-            <a href="https://wuefl.de/impressum.html" target="_blank" rel="noopener">Impressum</a> ·
-            <a href="https://wuefl.de/wmap/datenschutz.html" target="_blank" rel="noopener">Datenschutz</a></p>
+        <p class="dash-about">WMap <button type="button" class="link-button dash-version" title="Was es neu gibt" data-i18n-title="dashboard.about.changelog"></button> <span data-i18n="dashboard.about.text">– Karte und Navigation auf Basis offener Daten</span> ·
+            <a href="https://wuefl.de/impressum.html" target="_blank" rel="noopener" data-i18n="dashboard.about.imprint">Impressum</a> ·
+            <a href="https://wuefl.de/wmap/datenschutz.html" target="_blank" rel="noopener" data-i18n="dashboard.about.privacy">Datenschutz</a></p>
     </main>
 
     <!-- Zurück-Taste: zuerst geladen (js/core/back.js) -->

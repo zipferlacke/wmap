@@ -16,13 +16,14 @@
 import { local } from './store.js';
 import { tileXY, styleAssets } from './offline.js';
 import { STYLE_URL, TERRAIN_TILES } from '../core/config.js';
+import { t } from '../core/i18n.js';
 
 const KEY = 'wmap.areas';
 const PREFIX = 'wmap-area-';
 const BATCH = 120;
 export const DETAIL = {
-  full: { label: 'Alles – Straßen, Wege, Häuser', maxZoom: 14 },
-  overview: { label: 'Übersicht – Orte und große Straßen', maxZoom: 11 },
+  full: { label: t('offline.areas.detail.full'), short: t('offline.areas.detail.full_short'), maxZoom: 14 },
+  overview: { label: t('offline.areas.detail.overview'), short: t('offline.areas.detail.overview_short'), maxZoom: 11 },
 };
 const TERRAIN_MAX = 13;
 /** Mehr Kacheln lädt ein Gebiet nicht – etwa 1–2 GB */
@@ -182,15 +183,15 @@ function send(reg, cache, urls) {
  * onProgress({ done, total, bytes }); Abbruch über `signal`.
  */
 export async function download(map, area, { fresh = false, onProgress, signal } = {}) {
-  if (!('serviceWorker' in navigator)) throw new Error('Offline-Karten gehen in diesem Browser nicht');
+  if (!('serviceWorker' in navigator)) throw new Error(t('offline.areas.error.browser'));
   const reg = await navigator.serviceWorker.ready;
-  const t = tilesOf(area);
-  if (!t) throw new Error('Das Gebiet ist zu groß');
+  const tiles = tilesOf(area);
+  if (!tiles) throw new Error(t('offline.areas.error.too_big'));
   const { template, urls: assets } = styleAssets(map);
-  if (!template) throw new Error('Karte noch nicht geladen');
+  if (!template) throw new Error(t('offline.areas.error.map_not_loaded'));
   const tilejson = map.getStyle().sources?.openmaptiles?.url;
   const urls = [STYLE_URL, ...(tilejson ? [tilejson] : []), ...assets,
-    ...t.vector.map((k) => fill(template, k)), ...t.terrain.map((k) => fill(TERRAIN_TILES, k))];
+    ...tiles.vector.map((k) => fill(template, k)), ...tiles.terrain.map((k) => fill(TERRAIN_TILES, k))];
 
   // Der Browser soll die Karten nicht bei Platzmangel still wegräumen
   navigator.storage?.persist?.().catch(() => {});
@@ -208,13 +209,13 @@ export async function download(map, area, { fresh = false, onProgress, signal } 
     onProgress?.({ done: Math.min(urls.length, i + BATCH), total: urls.length, bytes });
     if (r.full) {
       areas.put({ ...areas.get(area.id), status: 'partial', bytes });
-      throw new Error('Der Speicher ist voll – kleineres Gebiet oder nur Übersicht wählen');
+      throw new Error(t('offline.areas.error.storage_full'));
     }
   }
   const done = !signal?.aborted && failed === 0;
   if (done && oldCache) await caches.delete(oldCache).catch(() => {});
   return areas.put({
-    ...areas.get(area.id), cache, oldCache: done ? null : oldCache, bytes, tiles: t.vector.length + t.terrain.length,
+    ...areas.get(area.id), cache, oldCache: done ? null : oldCache, bytes, tiles: tiles.vector.length + tiles.terrain.length,
     status: done ? 'ok' : 'partial', at: done ? Date.now() : areas.get(area.id)?.at ?? 0, failed,
   });
 }

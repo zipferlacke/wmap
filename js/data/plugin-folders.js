@@ -22,6 +22,7 @@
 import { store } from './db.js';
 import { layers, newLayer, rasterLayer } from '../map/layers.js';
 import { extensions } from '../map/extensions.js';
+import { t } from '../core/i18n.js';
 
 const kv = store('kv');
 const KEY = 'plugin-folders';               // { id, list: [{ id, name, slot? , handle? }] }
@@ -45,7 +46,7 @@ async function saved() {
   if (!list.length && core) {
     const i = await call('info', { slot: 'layers' }).catch(() => null);
     if (i?.connected) {
-      list.push({ id: 'layers', slot: 'layers', name: i.name ?? 'Ordner' });
+      list.push({ id: 'layers', slot: 'layers', name: i.name ?? t('plugins.folder.fallback_name') });
       await kv.put({ id: KEY, list });
     }
   }
@@ -98,7 +99,7 @@ async function importFiles(folderId, files, { index = 0 } = {}) {
   const newLayers = [], newExts = [], failed = [];
   const source = (path, extra = {}) => ({ kind: 'file', path, folder: folderId, ...extra });
   const ext = (path, code, meta = {}) => newExts.push({
-    id: `f-${folderId}-${path}`, name: meta.name || base(path).replace(/\.m?js$/i, ''), operator: meta.operator || 'aus deinem Ordner',
+    id: `f-${folderId}-${path}`, name: meta.name || base(path).replace(/\.m?js$/i, ''), operator: meta.operator || t('plugins.folder.operator'),
     description: meta.description ?? '', code, folder: folderId, path, active: false,
   });
 
@@ -107,11 +108,11 @@ async function importFiles(folderId, files, { index = 0 } = {}) {
     const inDir = (p) => (dir ? `${dir}/${p}` : p);
     let conf;
     try { conf = JSON.parse(await m.text()); } catch { failed.push(m.path); continue; }
-    const meta = { name: conf.name || base(dir) || 'Plugin', description: conf.description ?? '', operator: conf.operator ?? '', attribution: conf.attribution ?? '' };
+    const meta = { name: conf.name || base(dir) || t('plugins.folder.default_name'), description: conf.description ?? '', operator: conf.operator ?? '', attribution: conf.attribution ?? '' };
     try {
       if (conf.type === 'extension' || conf.script) {
         const f = byPath.get(inDir(conf.script ?? 'main.js'));
-        if (!f) throw new Error('script fehlt');
+        if (!f) throw new Error(t('plugins.folder.error.no_script'));
         ext(f.path, await f.text(), meta);
       } else if (conf.tiles) {
         const l = rasterLayer({ name: meta.name, tiles: conf.tiles, attribution: meta.attribution, minzoom: conf.minzoom ?? null, maxzoom: conf.maxzoom ?? null, source: source(m.path, { plugin: dir }) });
@@ -121,7 +122,7 @@ async function importFiles(folderId, files, { index = 0 } = {}) {
         const data = [conf.data ?? []].flat().map(inDir);
         const list = data.length ? data.map((p) => byPath.get(p)).filter(Boolean)
           : files.filter((f) => ownerOf(f.path) === dir && /\.(geo)?json$/i.test(f.path) && base(f.path).toLowerCase() !== MANIFEST);
-        if (!list.length) throw new Error('keine Daten');
+        if (!list.length) throw new Error(t('plugins.folder.error.no_data'));
         for (const f of list) {
           const name = list.length > 1 ? `${meta.name} – ${base(f.path).replace(/\.(geo)?json$/i, '')}` : meta.name;
           const l = newLayer(await f.text(), { name, source: source(f.path, { plugin: dir }), index: index + newLayers.length });
@@ -171,7 +172,7 @@ export const pluginFolders = {
       const slot = `layers${n > 1 ? n : ''}`;
       try {
         const i = await call('pick', { slot });
-        folder = { id: slot, slot, name: i.name ?? 'Ordner' };
+        folder = { id: slot, slot, name: i.name ?? t('plugins.folder.fallback_name') };
       } catch (err) {
         const msg = String(err?.message ?? err);
         throw /abgebrochen|cancel/i.test(msg) ? abort() : new Error(msg);
@@ -185,7 +186,7 @@ export const pluginFolders = {
       for (const f of list) if (f.handle && await f.handle.isSameEntry?.(handle)) return { folder: f, ...(await this.reload(f.id, { index })) };
       folder = { id: `b${Date.now().toString(36)}`, handle, name: handle.name };
     } else {
-      throw new Error('Dieser Browser kann Ordner nur einmal einlesen');
+      throw new Error(t('plugins.folder.error.once'));
     }
     list.push(folder);
     await save(list);
@@ -195,8 +196,8 @@ export const pluginFolders = {
   /** Gemerkten Ordner neu einlesen (braucht im Browser einen Klick). */
   async reload(id, { index = 0 } = {}) {
     const folder = (await saved()).find((f) => f.id === id);
-    if (!folder) throw new Error('Ordner nicht mehr bekannt');
-    if (folder.handle && !await allowed(folder.handle)) throw new Error('Kein Zugriff auf den Ordner – bitte erlauben');
+    if (!folder) throw new Error(t('plugins.folder.error.unknown'));
+    if (folder.handle && !await allowed(folder.handle)) throw new Error(t('plugins.folder.error.no_access'));
     return importFiles(id, await filesOf(folder), { index });
   },
 
@@ -214,7 +215,7 @@ export const pluginFolders = {
   async readOnce(fileList, { index = 0 } = {}) {
     const files = [...fileList].map((f) => ({ path: f.webkitRelativePath.split('/').slice(1).join('/') || f.name, text: () => f.text() }))
       .filter((f) => wanted(f.path) && !f.path.split('/').some((p) => p.startsWith('.')));
-    const name = fileList[0]?.webkitRelativePath?.split('/')[0] || 'Ordner';
+    const name = fileList[0]?.webkitRelativePath?.split('/')[0] || t('plugins.folder.fallback_name');
     // Je Ordnername eine Kennung – erneutes Einlesen ersetzt statt verdoppelt
     return { name, ...(await importFiles(`once-${name}`, files, { index })) };
   },

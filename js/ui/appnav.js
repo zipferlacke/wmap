@@ -6,15 +6,16 @@
  * überall das Banner „Aktualisieren“ (ui/news.js).
  */
 import { appNews } from './news.js';
+import { t } from '../core/i18n.js';
 
 const PAGES = [
-  { href: './dashboard.html', icon: 'dashboard', label: 'Übersicht', match: /dashboard\.html$/ },
-  { href: './index.html', icon: 'map', label: 'Karte', match: /\/(index\.html)?$/ },
-  { href: './wege.html?tab=geplant', icon: 'route', label: 'Meine Touren', match: /wege\.html$/ },
-  { href: './tour.html', icon: 'add_road', label: 'Tour planen', match: /tour\.html$/ },
-  { href: './entdecken.html', icon: 'explore', label: 'Entdecken', match: /entdecken\.html$/ },
-  { href: './plugins.html', icon: 'extension', label: 'Plugins', match: /plugins\.html$/ },
-  { href: './index.html?action=fly', icon: 'flight', label: 'Fliegen', match: null },
+  { href: './dashboard.html', icon: 'dashboard', label: t('common.nav.dashboard'), match: /dashboard\.html$/ },
+  { href: './index.html', icon: 'map', label: t('common.nav.map'), match: /\/(index\.html)?$/ },
+  { href: './wege.html?tab=geplant', icon: 'route', label: t('common.nav.my_tours'), match: /wege\.html$/ },
+  { href: './tour.html', icon: 'add_road', label: t('common.nav.plan_tour'), match: /tour\.html$/ },
+  { href: './entdecken.html', icon: 'explore', label: t('common.nav.discover'), match: /entdecken\.html$/ },
+  { href: './plugins.html', icon: 'extension', label: t('common.nav.plugins'), match: /plugins\.html$/ },
+  { href: './index.html?action=fly', icon: 'flight', label: t('common.nav.fly'), match: null },
 ];
 
 export function mountAppNav() {
@@ -22,7 +23,7 @@ export function mountAppNav() {
   const nav = document.createElement('nav');
   nav.className = 'appnav';
   nav.innerHTML = `
-    <button type="button" class="button appnav-btn" aria-haspopup="menu" aria-expanded="false" title="Menü">
+    <button type="button" class="button appnav-btn" aria-haspopup="menu" aria-expanded="false" title="${t('common.nav.menu')}">
       <span class="msr">apps</span>
     </button>
     <div class="appnav-menu" role="menu" hidden>

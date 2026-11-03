@@ -15,6 +15,7 @@
  */
 import { sidePanel } from './side-panel.js';
 import { mountLayerMenu } from './layer-menu.js';
+import { t } from '../core/i18n.js';
 
 const HOME = './dashboard.html';
 const MAP = './index.html';
@@ -37,8 +38,8 @@ export function mapPage(src, { map, title = '', onFit = () => {}, key = 'wmap.pa
   let fitTimer = null;
   const side = sidePanel(src, {
     title, label: title, key,
-    barLeft: { icon: '<span class="msr">arrow_back</span>', title: 'Zurück zur Übersicht', onClick: () => { if (backTo) backTo(); else location.href = HOME; } },
-    barRight: { icon: '<span class="msr">close</span>', title: 'Schließen – zur Karte', onClick: () => { location.href = MAP; } },
+    barLeft: { icon: '<span class="msr">arrow_back</span>', title: t('map_page.back_dashboard'), onClick: () => { if (backTo) backTo(); else location.href = HOME; } },
+    barRight: { icon: '<span class="msr">close</span>', title: t('map_page.close_to_map'), onClick: () => { location.href = MAP; } },
     onChange: () => { clearTimeout(fitTimer); fitTimer = setTimeout(onFit, 280); },
     onEsc: () => { if (backTo) backTo(); else side.collapse(true); },
   });
@@ -50,7 +51,7 @@ export function mapPage(src, { map, title = '', onFit = () => {}, key = 'wmap.pa
      * Kopfzeile: Titel und – für eine Detailansicht – wohin ← führt. `icon`/`color`: Symbol vor dem Titel;
      * `onRename(name)`: der Titel ist ein Eingabefeld (Enter oder Verlassen speichert)
      */
-    header(text, onBack = null, { icon = null, color = null, onRename = null, placeholder = 'Name' } = {}) {
+    header(text, onBack = null, { icon = null, color = null, onRename = null, placeholder = t('map_page.name') } = {}) {
       const parts = [];
       if (icon) {
         const el = Object.assign(document.createElement('span'), { className: 'msr panel-title-icon', textContent: icon });
@@ -67,7 +68,7 @@ export function mapPage(src, { map, title = '', onFit = () => {}, key = 'wmap.pa
       side.title.replaceChildren(...parts);
       side.title.classList.toggle('panel-title-edit', !!(icon || onRename));
       backTo = onBack;
-      back.title = onBack ? 'Zurück zur Liste' : 'Zurück zur Übersicht';
+      back.title = onBack ? t('map_page.back_list') : t('map_page.back_dashboard');
       panel.classList.toggle('detail', !!onBack);
     },
     get detail() { return !!backTo; },

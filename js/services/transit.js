@@ -17,11 +17,12 @@
 import { run } from './overpass.js';
 import { esc, cumulative, nearestOnLine } from '../core/geo.js';
 import { theme } from '../core/theme.js';
+import { locale, t, words } from '../core/i18n.js';
 
 const KINDS = 'bus|trolleybus|tram|light_rail|subway|train|monorail|share_taxi|ferry';
 /* Ohne eigene Farbe: Bus rot wie auf der ÖPNV-Karte, Schiene blau/violett */
 const COLOR = { bus: '#e03131', trolleybus: '#e03131', share_taxi: '#e8590c', tram: '#9c36b5', light_rail: '#1971c2', subway: '#1864ab', train: '#343a40', monorail: '#1971c2', ferry: '#0c8599' };
-const LABEL = { bus: 'Bus', trolleybus: 'O-Bus', share_taxi: 'Anrufbus', tram: 'Tram', light_rail: 'Stadtbahn', subway: 'U-Bahn', train: 'Zug', monorail: 'Bahn', ferry: 'Fähre' };
+const LABEL = { bus: t('services.transit.kinds.bus'), trolleybus: t('services.transit.kinds.trolleybus'), share_taxi: t('services.transit.kinds.share_taxi'), tram: t('services.transit.kinds.tram'), light_rail: t('services.transit.kinds.light_rail'), subway: t('services.transit.kinds.subway'), train: t('services.transit.kinds.train'), monorail: t('services.transit.kinds.monorail'), ferry: t('services.transit.kinds.ferry') };
 const ICON = { bus: 'directions_bus', trolleybus: 'directions_bus', share_taxi: 'airport_shuttle', tram: 'tram', light_rail: 'train', subway: 'subway', train: 'train', monorail: 'train', ferry: 'directions_boat' };
 // Reihenfolge in der Liste: Schiene vor Bus
 const RANK = ['train', 'subway', 'light_rail', 'monorail', 'tram', 'trolleybus', 'bus', 'share_taxi', 'ferry'];
@@ -70,17 +71,19 @@ export async function linesAt([lon, lat], name, { ref = null, background = false
 /* ── Linie suchen ─────────────────────────────────────────────────────────── */
 
 /* Wörter für eine Linie → Verkehrsarten (null: alle) und wie die Linie dann heißt */
-const LINE_WORDS = {
-  linie: [null, 'Linie'], line: [null, 'Linie'], buslinie: [['bus', 'trolleybus', 'share_taxi'], 'Bus'], bus: [['bus', 'trolleybus', 'share_taxi'], 'Bus'],
-  tram: [['tram', 'light_rail'], 'Tram'], straßenbahn: [['tram', 'light_rail'], 'Tram'], strassenbahn: [['tram', 'light_rail'], 'Tram'], strab: [['tram', 'light_rail'], 'Tram'],
-  stadtbahn: [['light_rail', 'tram'], 'Stadtbahn'], 'u-bahn': [['subway', 'light_rail'], 'U-Bahn'], ubahn: [['subway', 'light_rail'], 'U-Bahn'],
-  's-bahn': [['light_rail', 'train', 'subway'], 'S-Bahn'], sbahn: [['light_rail', 'train', 'subway'], 'S-Bahn'],
+const LINE_KINDS = {
+  line: null, bus: ['bus', 'trolleybus', 'share_taxi'], tram: ['tram', 'light_rail'], light_rail: ['light_rail', 'tram'],
+  subway: ['subway', 'light_rail'], suburban: ['light_rail', 'train', 'subway'], train: ['train', 'light_rail'],
 };
+const lineKind = (k) => [LINE_KINDS[k], t(`lines.labels.${k}`)];
+const LINE_WORDS = Object.fromEntries(['line', 'bus', 'tram', 'light_rail', 'subway', 'suburban']
+  .flatMap((k) => words(`lines.words.${k}`).map((w) => [w.toLowerCase(), lineKind(k)])));
 /* Nummer („11“, „N7“, „154a“) oder ein, zwei Buchstaben („L“) – „Bus nach“ ist keine Linie */
 const LINE_REF = /^([a-z]{0,3}\d{1,4}[a-z]?|[a-z]{1,2})$/i;
-const LINE_GLUED = new RegExp(`^(${Object.keys(LINE_WORDS).join('|')})(\\d{1,4}[a-z]?)$`, 'i');
+const LINE_GLUED = new RegExp(`^(${Object.keys(LINE_WORDS).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(\\d{1,4}[a-z]?)$`, 'i');
 const LINE_BARE = /^(s|u|re|rb)-?(\d{1,3})$/i;
-const BARE_KINDS = { s: [['light_rail', 'train', 'subway'], 'S-Bahn'], u: [['subway', 'light_rail'], 'U-Bahn'], re: [['train', 'light_rail'], 'Zug'], rb: [['train', 'light_rail'], 'Zug'] };
+const BARE_KINDS = { s: lineKind('suburban'), u: lineKind('subway'), re: lineKind('train'), rb: lineKind('train') };
+const PLACE_WORDS = new Set(words('lines.place_words'));
 
 /**
  * Meint der Text eine Linie? → { ref, kinds, label, place } oder null
@@ -95,7 +98,7 @@ export function parseLineQuery(text) {
     else if (LINE_GLUED.test(low)) { const m = low.match(LINE_GLUED); kind = LINE_WORDS[m[1]]; ref = m[2]; }
     else if (LINE_BARE.test(low)) { const m = low.match(LINE_BARE); kind = BARE_KINDS[m[1]]; ref = `${m[1]}${m[2]}`; }
     if (!ref) continue;
-    const place = [...words.slice(0, i), ...words.slice(i + used)].filter((w) => w.toLowerCase() !== 'in').join(' ');
+    const place = [...words.slice(0, i), ...words.slice(i + used)].filter((w) => !PLACE_WORDS.has(w.toLowerCase())).join(' ');
     return { ref: ref.toUpperCase(), kinds: kind[0], label: `${kind[1]} ${ref.toUpperCase()}`, place };
   }
   return null;
@@ -130,7 +133,7 @@ const SHOW = 12;
  * Je Linie eine Zeile, darunter die Richtungen (Hin und Rück sind in OSM
  * zwei Relationen) – jede ein Knopf, der die Linie auf der Karte zeigt.
  */
-export function transitHtml(list, { active = null, all = false, title = 'Linien hier', extra = '' } = {}) {
+export function transitHtml(list, { active = null, all = false, title = t('services.transit.lines_here'), extra = '' } = {}) {
   const byLine = new Map();
   for (const r of list) {
     const key = `${r.route}|${r.ref ?? r.name}`;
@@ -145,15 +148,15 @@ export function transitHtml(list, { active = null, all = false, title = 'Linien 
       const r = rs[0];
       return `<li>
         <span class="transit-badge" style="--c:${esc(colorOf(r))}"><span class="msr">${ICON[r.route] ?? 'directions_bus'}</span>${esc(r.ref ?? '')}</span>
-        <div><strong>${esc(r.ref ? `${LABEL[r.route] ?? 'Linie'} ${r.ref}` : r.name ?? 'Linie')}</strong>
+        <div><strong>${esc(r.ref ? `${LABEL[r.route] ?? t('services.transit.line')} ${r.ref}` : r.name ?? t('services.transit.line'))}</strong>
           ${rs.map((x) => `<button type="button" class="transit-dir" data-line="${x.id}" aria-pressed="${x.id === active}" style="--c:${esc(colorOf(x))}">
             <span class="msr">${x.id === active ? 'visibility' : 'arrow_forward'}</span>
-            <span>${esc(x.from || x.to ? `${x.from ?? '…'} → ${x.to ?? '…'}` : x.name ?? 'Verlauf zeigen')}</span></button>`).join('')}
+            <span>${esc(x.from || x.to ? `${x.from ?? '…'} → ${x.to ?? '…'}` : x.name ?? t('services.transit.show_course'))}</span></button>`).join('')}
           ${r.operator || r.network ? `<small class="muted">${esc([r.operator, r.network].filter(Boolean).join(' · '))}</small>` : ''}
         </div>
       </li>`;
     }).join('')}</ul>
-    ${groups.length > shown.length ? `<button type="button" class="button transit-more" data-transit="all"><span class="msr">expand_more</span> Alle ${groups.length} Linien</button>` : ''}`;
+    ${groups.length > shown.length ? `<button type="button" class="button transit-more" data-transit="all"><span class="msr">expand_more</span> ${t('services.transit.all_lines', { n: groups.length })}</button>` : ''}`;
 }
 
 /* ── Eine Linie auf der Karte ─────────────────────────────────────────────── */
@@ -203,7 +206,7 @@ export function mountTransitLine(map) {
     ctl = new AbortController();
     const els = await run(`[out:json][timeout:25];rel(${id})->.r;.r out geom;node(r.r);out qt;way(r.r:"platform");out tags center qt;`, ctl.signal);
     const rel = els.find((e) => e.type === 'relation' && e.id === id);
-    if (!rel) throw new Error('Linie nicht gefunden');
+    if (!rel) throw new Error(t('services.transit.not_found'));
     const tags = rel.tags ?? {};
     const color = colorOf(tags);
     const named = new Map(els.filter((e) => e.type !== 'relation' && e.tags?.name).map((e) => [`${e.type[0]}${e.id}`, e]));
@@ -319,11 +322,11 @@ function sliceLine(line, cum, a, b) {
 export function lineStopsHtml({ stops, next }) {
   if (!stops.length) return '';
   const nm = (x) => (typeof x === 'string' ? x : x.name);
-  const tm = (x) => (x?.time ? `<time>${x.time.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</time>` : '');
+  const tm = (x) => (x?.time ? `<time>${x.time.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</time>` : '');
   const list = next?.length > 1 ? next : stops;
-  const summary = !next ? `${stops.length} Halte`
-    : next.length > 1 ? `Noch ${next.length - 1} ${next.length === 2 ? 'Halt' : 'Halte'} bis ${esc(nm(next.at(-1)))}${next.at(-1).time ? ` (an ${tm(next.at(-1)).replace(/<\/?time>/g, '')})` : ''}`
-      : `Endet hier – ${stops.length} Halte bis hierher`;
+  const summary = !next ? t('services.transit.stops', { n: stops.length })
+    : next.length > 1 ? t('services.transit.stops_left', { n: next.length - 1, to: esc(nm(next.at(-1))), arrival: next.at(-1).time ? t('services.transit.arrival', { time: tm(next.at(-1)).replace(/<\/?time>/g, '') }) : '' })
+      : t('services.transit.ends_here', { n: stops.length });
   return `<details class="transit-stops"><summary>${summary}</summary>
     <ol>${list.map((x) => `<li>${tm(x)}${esc(nm(x))}</li>`).join('')}</ol></details>`;
 }

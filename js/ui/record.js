@@ -19,6 +19,7 @@ import { PROFILES } from '../core/config.js';
 import { distance, fmtDistance, esc } from '../core/geo.js';
 import { ask } from './dialogs.js';
 import { recordingNotice } from './permissions.js';
+import { locale, t } from '../core/i18n.js';
 
 const KINDS = ['foot', 'hike', 'bike', 'car'];
 
@@ -67,9 +68,9 @@ class RecordUi {
     this.#el.hidden = false;
     this.#el.classList.remove('running');
     this.#el.innerHTML = `
-      <header><h2><span class="msr rec-dot">radio_button_checked</span> Aufzeichnen</h2>
-        <button type="button" class="button" data-shape="round no-background" data-act="close" title="Schließen"><span class="msr">close</span></button></header>
-      <p class="muted">Wie bist du unterwegs? Die Aufzeichnung bleibt auf diesem Gerät.</p>
+      <header><h2><span class="msr rec-dot">radio_button_checked</span> ${t('record.title')}</h2>
+        <button type="button" class="button" data-shape="round no-background" data-act="close" title="${t('common.close')}"><span class="msr">close</span></button></header>
+      <p class="muted">${t('record.choose_hint')}</p>
       <div class="rec-kinds">${KINDS.map((k) => `<button type="button" class="chip" data-kind="${k}"><span class="msr">${PROFILES[k].icon}</span>${esc(PROFILES[k].label)}</button>`).join('')}</div>`;
   }
 
@@ -78,17 +79,17 @@ class RecordUi {
     this.#el.classList.add('running');
     this.#el.innerHTML = `
       <div class="rec-stats">
-        <div><strong class="rec-time">0:00</strong><small>Zeit</small></div>
-        <div><strong class="rec-dist">0 m</strong><small>Strecke</small></div>
-        <div><strong class="rec-speed">–</strong><small>km/h</small></div>
+        <div><strong class="rec-time">0:00</strong><small>${t('record.stats.time')}</small></div>
+        <div><strong class="rec-dist">${fmtDistance(0)}</strong><small>${t('record.stats.distance')}</small></div>
+        <div><strong class="rec-speed">–</strong><small>${t('common.units.kmh')}</small></div>
       </div>
       <div class="rec-buttons">
-        <button type="button" class="button rec-pause" data-shape="round" data-act="pause" title="Pause"><span class="msr">pause</span></button>
-        <button type="button" class="button rec-stop" data-shape="round" data-act="stop" title="Beenden"><span class="msr">stop</span></button>
+        <button type="button" class="button rec-pause" data-shape="round" data-act="pause" title="${t('record.pause')}"><span class="msr">pause</span></button>
+        <button type="button" class="button rec-stop" data-shape="round" data-act="stop" title="${t('record.stop')}"><span class="msr">stop</span></button>
       </div>
       <div class="rec-extra">
-        <button type="button" class="button rec-follow" data-act="follow" hidden title="Karte wieder mit dem Standort mitführen"><span class="msr">my_location</span> Mitführen</button>
-        <button type="button" class="button rec-home" data-act="home" title="Route zurück zum Start der Aufzeichnung"><span class="msr">u_turn_left</span> Zum Start</button>
+        <button type="button" class="button rec-follow" data-act="follow" hidden title="${t('record.follow.title')}"><span class="msr">my_location</span> ${t('record.follow.label')}</button>
+        <button type="button" class="button rec-home" data-act="home" title="${t('record.home.title')}"><span class="msr">u_turn_left</span> ${t('record.home.label')}</button>
       </div>`;
     this.#follow = true;
     document.body.classList.add('recording');
@@ -109,7 +110,7 @@ class RecordUi {
       if (recorder.active) return;
       recorder.start({ kind: 'rec', profile: b.dataset.kind });
       this.show();
-      this.#toast('Aufzeichnung läuft');
+      this.#toast(t('record.toast.running'));
       return;
     }
     if (b.dataset.act === 'pause') {
@@ -121,8 +122,8 @@ class RecordUi {
     if (b.dataset.act === 'follow') { this.#setFollow(true); this.#center(true); }
     if (b.dataset.act === 'home') {
       const start = recorder.points[0];
-      if (!start) { this.#toast('Noch kein Punkt aufgezeichnet'); return; }
-      this.#onRouteTo?.([start[0], start[1]], 'Start der Aufzeichnung');
+      if (!start) { this.#toast(t('record.toast.no_point')); return; }
+      this.#onRouteTo?.([start[0], start[1]], t('record.home.target'));
     }
   }
 
@@ -152,13 +153,13 @@ class RecordUi {
     this.#map.easeTo({ padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: 0 });
     clearInterval(this.#timer);
     this.#line([]);
-    if (name === null) { recorder.discard(); this.#toast('Aufzeichnung verworfen'); return; }
+    if (name === null) { recorder.discard(); this.#toast(t('record.toast.discarded')); return; }
     try {
-      const t = await recorder.stop({ name });
-      if (!t) { this.#toast('Zu kurz zum Speichern'); return; }
-      this.#toast(`„${t.name}“ gespeichert`, { action: { label: 'Ansehen', run: () => { location.href = `./wege.html?id=${encodeURIComponent(t.id)}`; } } });
+      const saved = await recorder.stop({ name });
+      if (!saved) { this.#toast(t('record.toast.too_short')); return; }
+      this.#toast(t('record.toast.saved', { name: saved.name }), { action: { label: t('record.toast.view'), run: () => { location.href = `./wege.html?id=${encodeURIComponent(saved.id)}`; } } });
     } catch (err) {
-      this.#toast(`Speichern ging nicht: ${err.message}`);
+      this.#toast(t('record.toast.save_failed', { reason: err.message }));
     }
   }
 
@@ -178,10 +179,10 @@ class RecordUi {
     let d = 0;
     for (let i = k + 1; i < pts.length; i += 1) d += distance(pts[i - 1], pts[i]);
     const dt = last ? (last[2] - pts[k][2]) / 1000 : 0;
-    $('.rec-speed').textContent = dt > 3 && Date.now() - last[2] < 20000 ? (d / dt * 3.6).toFixed(d / dt * 3.6 < 10 ? 1 : 0).replace('.', ',') : '–';
+    $('.rec-speed').textContent = dt > 3 && Date.now() - last[2] < 20000 ? (d / dt * 3.6).toLocaleString(locale, { minimumFractionDigits: d / dt * 3.6 < 10 ? 1 : 0, maximumFractionDigits: d / dt * 3.6 < 10 ? 1 : 0 }) : '–';
     const pause = $('.rec-pause');
     pause.querySelector('.msr').textContent = info.paused ? 'play_arrow' : 'pause';
-    pause.title = info.paused ? 'Weiter' : 'Pause';
+    pause.title = info.paused ? t('common.next') : t('record.pause');
     this.#el.classList.toggle('paused', !!info.paused);
     this.#line(pts);
   }
@@ -219,7 +220,7 @@ class RecordUi {
     if (this.#watch !== null || !geo.available()) return;
     this.#watch = geo.watch(
       (p) => recorder.add({ point: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy }),
-      (err) => { if (err.code === 1) this.#toast('Standort ist gesperrt – ohne ihn keine Aufzeichnung'); },
+      (err) => { if (err.code === 1) this.#toast(t('record.toast.location_blocked')); },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 },
     );
   }
@@ -245,12 +246,12 @@ function clock(s) {
 /** → Name, null (verwerfen) oder undefined (weiter aufzeichnen). */
 async function askName(suggestion) {
   const v = await ask({
-    icon: 'stop_circle', title: 'Aufzeichnung beenden', className: 'rec-save',
-    html: `<label>Name<input type="text" name="name" value="${esc(suggestion)}" maxlength="80"></label>`,
+    icon: 'stop_circle', title: t('record.finish.title'), className: 'rec-save',
+    html: `<label>${t('record.finish.name')}<input type="text" name="name" value="${esc(suggestion)}" maxlength="80"></label>`,
     buttons: [
-      { value: 'discard', label: 'Verwerfen', icon: 'delete', run: (dlg, done) => { if (confirm('Aufzeichnung wirklich verwerfen?')) done('discard'); } },
-      { value: 'back', label: 'Weiter' },
-      { value: 'save', label: 'Speichern', icon: 'check', primary: true },
+      { value: 'discard', label: t('record.finish.discard'), icon: 'delete', run: (dlg, done) => { if (confirm(t('record.finish.confirm_discard'))) done('discard'); } },
+      { value: 'back', label: t('common.next') },
+      { value: 'save', label: t('record.finish.save'), icon: 'check', primary: true },
     ],
     read: (dlg) => ({ name: dlg.querySelector('input').value.trim() || suggestion }),
     setup: (dlg) => dlg.querySelector('input').select(),

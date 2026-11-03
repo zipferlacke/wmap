@@ -31,6 +31,7 @@ import { ask, toast } from './dialogs.js';
 import { askFiles, askNewFiles } from './import-ask.js';
 import { offerDuplicates } from './duplicates-ask.js';
 import { folder, syncSummary } from '../data/folder.js';
+import { t } from '../core/i18n.js';
 
 const LATER = 'wmap.folder.inbox.later';
 let asking = false;
@@ -48,32 +49,32 @@ export async function offerInbox(list, force = false) {
     if (fresh.length) {
       const decided = await askNewFiles(fresh, {
         auto: !force,
-        title: fresh.length === 1 ? 'Neue Datei im Ordner' : `${fresh.length} neue Dateien im Ordner`,
-        text: `Im verbundenen Ordner ${fresh.length === 1 ? 'liegt eine Datei' : 'liegen Dateien'}, die WMap noch nicht kennt${merges.length ? ` – dazu ${merges.length === 1 ? 'eine' : merges.length} zu einer Tour, die es schon gibt (danach)` : ''}.`,
+        title: t('sync.inbox.fresh.title', { n: fresh.length }),
+        text: t('sync.inbox.fresh.text', { n: fresh.length, also: merges.length ? t('sync.inbox.fresh.also', { n: merges.length }) : '' }),
       });
       if (!decided) { sessionStorage.setItem(LATER, '1'); return; }
       const out = await folder.sync({ interactive: true, decide: { fresh: decided.rest, news: byPath(decided.files) } });
       if (!out || out.needsPermission) return;
       done.push(syncSummary(out));
-      if (decided.rest === 'later') { sessionStorage.setItem(LATER, '1'); toast(`Ordner: ${done.join(' · ')}`); return; }
+      if (decided.rest === 'later') { sessionStorage.setItem(LATER, '1'); toast(t('sync.inbox.toast', { summary: done.join(' · ') })); return; }
       // Was jetzt noch wartet: die zu vorhandenen Touren – auch die, deren Tour eben erst dazukam
       merges = out.inbox.filter((x) => x.kind === 'merge');
     }
     if (merges.length) {
       const decided = await askFiles(merges, {
-        always: true, auto: !force && !done.length, icon: 'merge', later: 'Später', skip: 'Nicht importieren',
-        title: merges.length === 1 ? 'Datei zu einer Tour, die es schon gibt' : `${merges.length} Dateien zu Touren, die es schon gibt`,
-        text: `Im verbundenen Ordner ${merges.length === 1 ? 'liegt eine Datei zu einer Tour' : 'liegen Dateien zu Touren'}, die es in WMap schon gibt.`,
+        always: true, auto: !force && !done.length, icon: 'merge', later: t('common.later'), skip: t('import.ask.skip'),
+        title: t('sync.inbox.merges.title', { n: merges.length }),
+        text: t('sync.inbox.merges.text', { n: merges.length }),
       });
-      if (!decided) { sessionStorage.setItem(LATER, '1'); if (done.length) toast(`Ordner: ${done.join(' · ')}`); return; }
+      if (!decided) { sessionStorage.setItem(LATER, '1'); if (done.length) toast(t('sync.inbox.toast', { summary: done.join(' · ') })); return; }
       const out = await folder.sync({ interactive: true, decide: { merge: decided.rest, merges: byPath(decided.files) } });
       if (out && !out.needsPermission) done.push(syncSummary(out));
     }
-    if (done.length) toast(`Ordner: ${done.join(' · ')}`);
+    if (done.length) toast(t('sync.inbox.toast', { summary: done.join(' · ') }));
     // Zuletzt: doppelte Touren in der App (etwa dieselbe Tour aus zwei Dateien, die eben zusammen kamen)
     await offerDuplicates();
   } catch (err) {
-    toast(err.message || 'Der Abgleich ging nicht');
+    toast(err.message || t('sync.inbox.failed'));
   } finally { asking = false; }
 }
 
@@ -90,18 +91,18 @@ export async function offerOthers(list, force = false) {
     const names = list.map((p) => p.split('/').pop());
     const how = await ask({
       auto: !force, icon: 'folder_delete', className: 'stacked',
-      title: list.length === 1 ? 'Eine andere Datei im Ordner' : `${list.length} andere Dateien im Ordner`,
-      text: `Im verbundenen Ordner ${list.length === 1 ? 'liegt eine Datei, die keine Tour ist' : 'liegen Dateien, die keine Touren sind'}: ${names.slice(0, 4).join(', ')}${names.length > 4 ? ' …' : ''}. WMap hält den Ordner aufgeräumt: Sollen sie nach „Unbekannte Dateien“? Dort löscht WMap sie nach 30 Tagen – das gilt dann auch für alles, was später dazukommt.`,
+      title: t('sync.inbox.others.title', { n: list.length }),
+      text: t('sync.inbox.others.text', { n: list.length, names: `${names.slice(0, 4).join(', ')}${names.length > 4 ? ' …' : ''}` }),
       buttons: [
-        { value: 'move', label: 'Nach „Unbekannte Dateien“', icon: 'drive_file_move', primary: true },
-        { value: 'keep', label: 'Liegen lassen', icon: 'block' },
+        { value: 'move', label: t('sync.inbox.others.move'), icon: 'drive_file_move', primary: true },
+        { value: 'keep', label: t('sync.inbox.others.keep'), icon: 'block' },
       ],
     });
     if (how !== 'move' && how !== 'keep') { sessionStorage.setItem(OTHERS_LATER, '1'); return; }
     const out = await folder.sync({ interactive: true, decide: { others: how } });
-    if (out && !out.needsPermission && how === 'move') toast(`Ordner: ${syncSummary(out)}`);
+    if (out && !out.needsPermission && how === 'move') toast(t('sync.inbox.toast', { summary: syncSummary(out) }));
   } catch (err) {
-    toast(err.message || 'Der Abgleich ging nicht');
+    toast(err.message || t('sync.inbox.failed'));
   } finally { asking = false; }
 }
 

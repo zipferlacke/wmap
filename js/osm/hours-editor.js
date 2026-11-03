@@ -17,8 +17,9 @@
  */
 import { parseWeek, buildHours, formatHours } from '../ui/poi-info.js';
 import { esc } from '../core/geo.js';
+import { t } from '../core/i18n.js';
 
-const DAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+const DAYS = [t('osm.hours.days.mo'), t('osm.hours.days.tu'), t('osm.hours.days.we'), t('osm.hours.days.th'), t('osm.hours.days.fr'), t('osm.hours.days.sa'), t('osm.hours.days.su')];
 const PH = 7;   // Zeile „Feiertage“
 
 const toMin = (v) => { const [h, m] = String(v || '0:0').split(':').map(Number); return h * 60 + m; };
@@ -64,12 +65,12 @@ function write(state) {
 }
 
 function spanHtml(day, [a, b], i) {
-  const name = day === PH ? 'Feiertage' : DAYS[day];
+  const name = day === PH ? t('osm.hours.days.holidays') : DAYS[day];
   return `<span class="oh-span" data-i="${i}">
-      <input type="time" class="oh-a" value="${toTime(a)}" aria-label="${name} ab">
+      <input type="time" class="oh-a" value="${toTime(a)}" aria-label="${t('osm.hours.from', { name })}">
       <i>–</i>
-      <input type="time" class="oh-b" value="${toTime(b % 1440)}" aria-label="${name} bis">
-      <button type="button" class="oh-del" data-oh="del" title="Diese Zeit entfernen" aria-label="Zeit entfernen"><span class="msr">close</span></button>
+      <input type="time" class="oh-b" value="${toTime(b % 1440)}" aria-label="${t('osm.hours.to', { name })}">
+      <button type="button" class="oh-del" data-oh="del" title="${t('osm.hours.remove.title')}" aria-label="${t('osm.hours.remove.label')}"><span class="msr">close</span></button>
     </span>`;
 }
 
@@ -77,13 +78,13 @@ function rowHtml(day, spans, ph) {
   const isPh = day === PH;
   const empty = !spans?.length;
   const none = isPh && ph === null;
-  const state = empty ? (isPh ? (ph === 'off' ? 'geschlossen' : 'wie an anderen Tagen – keine Angabe') : 'geschlossen') : '';
+  const state = empty ? (isPh ? (ph === 'off' ? t('osm.hours.closed') : t('osm.hours.ph_none')) : t('osm.hours.closed')) : '';
   return `<div class="oh-day${empty ? ' closed' : ''}${isPh ? ' oh-ph' : ''}" data-day="${day}">
-      <span class="oh-name">${isPh ? 'Feiertage' : DAYS[day]}
+      <span class="oh-name">${isPh ? t('osm.hours.days.holidays') : DAYS[day]}
         <span class="oh-row-actions">
-          <button type="button" class="oh-add" data-oh="add" title="Zeit hinzufügen"><span class="msr">add</span> ${empty ? 'Zeiten' : 'Zeit'}</button>
-          ${isPh ? '<button type="button" class="oh-add" data-oh="ph-sunday">wie Sonntag</button>' : ''}
-          ${isPh && empty ? `<button type="button" class="oh-add" data-oh="ph-off">${none ? 'geschlossen' : 'keine Angabe'}</button>` : ''}
+          <button type="button" class="oh-add" data-oh="add" title="${t('osm.hours.add.title')}"><span class="msr">add</span> ${empty ? t('osm.hours.add.times') : t('osm.hours.add.time')}</button>
+          ${isPh ? `<button type="button" class="oh-add" data-oh="ph-sunday">${t('osm.hours.like_sunday')}</button>` : ''}
+          ${isPh && empty ? `<button type="button" class="oh-add" data-oh="ph-off">${none ? t('osm.hours.closed') : t('osm.hours.none')}</button>` : ''}
         </span>
       </span>
       <span class="oh-times">
@@ -94,26 +95,24 @@ function rowHtml(day, spans, ph) {
 }
 
 function summary(value, mode) {
-  if (mode === 'gone') return 'dauerhaft geschlossen';
-  if (!value) return 'keine Angabe';
+  if (mode === 'gone') return t('osm.hours.gone_summary');
+  if (!value) return t('osm.hours.none');
   return formatHours(value).replace(/\n/g, ' · ');
 }
 
 function bodyHtml(state, raw) {
   if (state.mode === '24/7') {
-    return `<p class="oh-note"><span class="msr">all_inclusive</span> Rund um die Uhr geöffnet</p>
-      <button type="button" class="link-button" data-oh="week">Doch Zeiten je Tag angeben</button>`;
+    return `<p class="oh-note"><span class="msr">all_inclusive</span> ${t('osm.hours.always.text')}</p>
+      <button type="button" class="link-button" data-oh="week">${t('osm.hours.always.back')}</button>`;
   }
   if (state.mode === 'gone') {
-    return `<p class="oh-note"><span class="msr">block</span> Dauerhaft geschlossen – den Ort gibt es so nicht mehr.
-        Das geht als Hinweis an die Mapper, die ihn dann austragen.</p>
-      <button type="button" class="link-button" data-oh="week">Doch Zeiten angeben</button>`;
+    return `<p class="oh-note"><span class="msr">block</span> ${t('osm.hours.gone.text')}</p>
+      <button type="button" class="link-button" data-oh="week">${t('osm.hours.gone.back')}</button>`;
   }
   if (state.mode === 'raw') {
-    return `<p class="muted">Diese Zeiten sind zu verschachtelt für die Liste (z. B. Monate oder Schulferien) – hier als Text in
-        OSM-Schreibweise.</p>
+    return `<p class="muted">${t('osm.hours.raw.text')}</p>
       <input type="text" class="oh-raw" value="${esc(raw)}" placeholder="Mo-Fr 08:00-18:00; Sa 08:00-13:00" autocomplete="off">
-      <button type="button" class="link-button" data-oh="week">Stattdessen je Tag neu eintragen</button>`;
+      <button type="button" class="link-button" data-oh="week">${t('osm.hours.raw.back')}</button>`;
   }
   return `<div class="oh-week">${state.days.map((d, i) => rowHtml(i, d, null)).join('')}${rowHtml(PH, state.ph === 'off' ? [] : state.ph, state.ph)}</div>`;
 }
@@ -122,15 +121,15 @@ function bodyHtml(state, raw) {
 export function hoursField(value = '', { gone = true } = {}) {
   const state = read(value);
   return `<details class="oh-block" data-gone="${gone ? 1 : 0}">
-      <summary><span class="msr">schedule</span> Öffnungszeiten <small class="oh-summary">${esc(summary(value, state.mode))}</small></summary>
+      <summary><span class="msr">schedule</span> ${t('osm.hours.title')} <small class="oh-summary">${esc(summary(value, state.mode))}</small></summary>
       <input type="hidden" name="opening_hours" value="${esc(value ?? '')}">
       <input type="hidden" name="gone" value="">
       <div class="oh-body">${bodyHtml(state, value)}</div>
       <div class="oh-quick">
-        <button type="button" class="button" data-oh="copy-mo"><span class="msr">content_copy</span> Montag für Di–Fr</button>
-        <button type="button" class="button" data-oh="24/7"><span class="msr">all_inclusive</span> 24/7 geöffnet</button>
-        ${gone ? '<button type="button" class="button" data-oh="gone"><span class="msr">block</span> Dauerhaft geschlossen</button>' : ''}
-        <button type="button" class="link-button" data-oh="raw">Als Text</button>
+        <button type="button" class="button" data-oh="copy-mo"><span class="msr">content_copy</span> ${t('osm.hours.quick.copy')}</button>
+        <button type="button" class="button" data-oh="24/7"><span class="msr">all_inclusive</span> ${t('osm.hours.quick.always')}</button>
+        ${gone ? `<button type="button" class="button" data-oh="gone"><span class="msr">block</span> ${t('osm.hours.quick.gone')}</button>` : ''}
+        <button type="button" class="link-button" data-oh="raw">${t('osm.hours.quick.raw')}</button>
       </div>
     </details>`;
 }

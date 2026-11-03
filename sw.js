@@ -41,11 +41,11 @@
  *   - nach 10 Tagen wird er gelöscht
  *   - reicht der Platz nicht, weicht zuerst die älteste Navigation
  */
-const VERSION = '3.0.1';            // von appdata/version.py – neue Nummer = Update
+const VERSION = '3.1.0';            // von appdata/version.py – neue Nummer = Update
 // Stand der Dateien (Prüfsumme über alles in sw-files.json, von version.py):
 // dieselbe Nummer noch einmal hochgeladen ist trotzdem ein neuer Service Worker
 // mit eigenem Speicher – Alt und Neu mischen sich nie
-const BUILD = '2d0d222171';
+const BUILD = 'aeb75dabf1';
 const APP = `wmap-app-${VERSION}-${BUILD}`;
 const APP_PREFIX = 'wmap-app-';
 const SHARE = 'wmap-share';

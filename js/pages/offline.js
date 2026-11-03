@@ -15,6 +15,7 @@ import { registerOffline } from '../data/offline.js';
 import { areas, newArea, DETAIL, estimate, download, tilesOf } from '../data/offline-areas.js';
 import * as geocode from '../services/geocode.js';
 import { esc } from '../core/geo.js';
+import { locale, t } from '../core/i18n.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -30,9 +31,9 @@ document.activeElement?.blur();
 new Sheet(sheet, { topLimit: () => $('.tour-head').getBoundingClientRect().bottom });
 const ready = new Promise((r) => (map.loaded() ? r() : map.once('load', r)));
 
-const MB = (b) => `${(b / 1048576).toLocaleString('de-DE', { maximumFractionDigits: b >= 1e8 ? 0 : 1 })} MB`;
-const size = (b) => (b >= 1e9 ? `${(b / 1073741824).toLocaleString('de-DE', { maximumFractionDigits: 1 })} GB` : MB(b));
-const DATE = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
+const MB = (b) => t('offline.unit.mb', { v: (b / 1048576).toLocaleString(locale, { maximumFractionDigits: b >= 1e8 ? 0 : 1 }) });
+const size = (b) => (b >= 1e9 ? t('offline.unit.gb', { v: (b / 1073741824).toLocaleString(locale, { maximumFractionDigits: 1 }) }) : MB(b));
+const DATE = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 const COLOR = '#1a73e8';
 const DRAFT = '#e8710a';
 
@@ -85,13 +86,13 @@ const running = new Map();   // id → { ctl, done, total, bytes }
 
 function status(a) {
   const run = running.get(a.id);
-  const what = `${DETAIL[a.detail]?.label.split(' – ')[0] ?? ''}${a.terrain ? ' · mit Gelände' : ''}`;
+  const what = `${DETAIL[a.detail]?.short ?? ''}${a.terrain ? ` · ${t('offline.list.terrain')}` : ''}`;
   if (run) {
     const pct = run.total ? Math.floor((run.done / run.total) * 100) : 0;
-    return `<small>Lädt … ${pct} % · ${size(run.bytes)}</small><progress max="100" value="${pct}"></progress>`;
+    return `<small>${t('offline.list.loading', { pct, size: size(run.bytes) })}</small><progress max="100" value="${pct}"></progress>`;
   }
-  if (a.status === 'ok') return `<small>${size(a.bytes)} · ${a.tiles.toLocaleString('de-DE')} Kacheln · ${what} · Stand ${DATE.format(a.at)}</small>`;
-  return `<small class="area-partial"><span class="msr">error</span> Unvollständig${a.bytes ? ` (${size(a.bytes)})` : ''} – ${what}</small>`;
+  if (a.status === 'ok') return `<small>${t('offline.list.ok', { size: size(a.bytes), tiles: a.tiles.toLocaleString(locale), what, date: DATE.format(a.at) })}</small>`;
+  return `<small class="area-partial"><span class="msr">error</span> ${a.bytes ? t('offline.list.partial_size', { size: size(a.bytes), what }) : t('offline.list.partial', { what })}</small>`;
 }
 
 function paint() {
@@ -102,17 +103,17 @@ function paint() {
     return `<li class="area" data-id="${esc(a.id)}">
       <div class="area-head">
         <span class="msr area-icon">${a.status === 'ok' && !run ? 'offline_pin' : 'downloading'}</span>
-        <button type="button" class="area-name" data-act="fit" title="Hinzoomen"><strong>${esc(a.name)}</strong>${status(a)}</button>
+        <button type="button" class="area-name" data-act="fit" title="${t('offline.list.fit')}"><strong>${esc(a.name)}</strong>${status(a)}</button>
       </div>
       <div class="area-actions">
-        ${run ? '<button type="button" class="link-button" data-act="stop"><span class="msr">stop_circle</span> Anhalten</button>'
-          : `${a.status !== 'ok' ? '<button type="button" class="link-button" data-act="resume"><span class="msr">play_arrow</span> Weiter laden</button>' : ''}
-             <button type="button" class="link-button" data-act="refresh"><span class="msr">refresh</span> Neu laden</button>
-             <button type="button" class="link-button" data-act="rename"><span class="msr">edit</span> Umbenennen</button>
-             <button type="button" class="link-button" data-act="delete"><span class="msr">delete</span> Löschen</button>`}
+        ${run ? `<button type="button" class="link-button" data-act="stop"><span class="msr">stop_circle</span> ${t('offline.list.stop')}</button>`
+          : `${a.status !== 'ok' ? `<button type="button" class="link-button" data-act="resume"><span class="msr">play_arrow</span> ${t('offline.list.resume')}</button>` : ''}
+             <button type="button" class="link-button" data-act="refresh"><span class="msr">refresh</span> ${t('offline.list.refresh')}</button>
+             <button type="button" class="link-button" data-act="rename"><span class="msr">edit</span> ${t('offline.list.rename')}</button>
+             <button type="button" class="link-button" data-act="delete"><span class="msr">delete</span> ${t('common.delete')}</button>`}
       </div>
     </li>`;
-  }).join('') : '<li class="muted area-empty">Noch keine Gebiete. Tippe auf „Neues Gebiet“ und wähle auf der Karte, was offline da sein soll.</li>';
+  }).join('') : `<li class="muted area-empty">${t('offline.list.empty')}</li>`;
   showAreas();
   usage();
 }
@@ -121,8 +122,8 @@ async function usage() {
   const est = await navigator.storage?.estimate?.().catch(() => null);
   const total = areas.bytes();
   $('.area-usage').textContent = [
-    total ? `Gebiete zusammen: ${size(total)}.` : '',
-    est?.quota ? `Frei für WMap: ${size(Math.max(0, est.quota - est.usage))}.` : '',
+    total ? t('offline.usage.total', { size: size(total) }) : '',
+    est?.quota ? t('offline.usage.free', { size: size(Math.max(0, est.quota - est.usage)) }) : '',
   ].filter(Boolean).join(' ');
 }
 
@@ -138,9 +139,9 @@ async function run(a, { fresh = false } = {}) {
       onProgress: (p) => { Object.assign(state, p); paintOne(a.id); },
     });
     running.delete(a.id);
-    if (ctl.signal.aborted) toast(`„${a.name}“ angehalten – später weiter laden`);
-    else if (r.status === 'ok') toast(`„${a.name}“ ist offline da (${size(r.bytes)})`);
-    else toast(`„${a.name}“: ${r.failed.toLocaleString('de-DE')} Kacheln fehlen – „Weiter laden“ versucht es noch einmal`);
+    if (ctl.signal.aborted) toast(t('offline.toast.stopped', { name: a.name }));
+    else if (r.status === 'ok') toast(t('offline.toast.done', { name: a.name, size: size(r.bytes) }));
+    else toast(t('offline.toast.failed', { name: a.name, failed: r.failed.toLocaleString(locale) }));
   } catch (err) {
     running.delete(a.id);
     toast(err.message);
@@ -169,16 +170,16 @@ $('.area-list').addEventListener('click', async (e) => {
   if (act === 'refresh') run(a, { fresh: true });
   if (act === 'rename') {
     const name = await ask({
-      icon: 'edit', title: 'Umbenennen',
+      icon: 'edit', title: t('offline.list.rename'),
       html: `<input type="text" class="area-rename" maxlength="80" value="${esc(a.name)}">`,
-      buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'ok', label: 'Speichern', primary: true }],
+      buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'ok', label: t('common.save'), primary: true }],
       read: (dlg) => dlg.querySelector('.area-rename').value.trim(),
     });
     if (name && name !== 'no') { areas.put({ ...a, name }); paint(); }
   }
   if (act === 'delete') {
-    const v = await ask({ icon: 'delete', title: `„${a.name}“ löschen?`, text: `${a.bytes ? `${size(a.bytes)} werden frei. ` : ''}Ohne Netz ist die Karte dort dann nicht mehr da.`,
-      buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Löschen', primary: true }] });
+    const v = await ask({ icon: 'delete', title: t('offline.delete.title', { name: a.name }), text: `${a.bytes ? `${t('offline.delete.freed', { size: size(a.bytes) })} ` : ''}${t('offline.delete.text')}`,
+      buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'yes', label: t('common.delete'), primary: true }] });
     if (v !== 'yes') return;
     await areas.remove(a.id);
     paint();
@@ -267,7 +268,7 @@ function insertPoint(lngLat) {
 function tools() {
   const del = form.querySelector('[data-act="remove"]');
   del.disabled = !points.length;
-  del.lastChild.textContent = selected >= 0 ? ' Markierten Punkt löschen' : ' Letzten Punkt löschen';
+  del.lastElementChild.textContent = selected >= 0 ? t('offline.new.remove_selected') : t('offline.new.remove_last');
   form.querySelector('[data-act="clear"]').disabled = !points.length;
 }
 
@@ -289,14 +290,14 @@ function draw() {
   const r = ring();
   map.getSource('draft')?.setData(collection(r.length >= 3 ? [polygon(r)] : []));
   if (shape === 'free' && r.length < 3) {
-    $('.area-estimate').innerHTML = '<span class="muted">Mindestens drei Punkte setzen.</span>';
+    $('.area-estimate').innerHTML = `<span class="muted">${t('offline.new.min_points')}</span>`;
   }
 }
 
 function hint() {
   $('.area-hint').textContent = shape === 'rect'
-    ? 'Die Ecken des Rechtecks ziehen, um es anzupassen.'
-    : 'Auf die Karte tippen, um Punkte zu setzen – ein Tipp nahe einer Kante setzt den Punkt dort ein. Punkte lassen sich ziehen; antippen markiert, doppelt tippen löscht.';
+    ? t('offline.new.hint.rect')
+    : t('offline.new.hint.free');
   $('.area-free-tools').hidden = shape !== 'free';
   // Doppelt tippen setzt in der freien Form Punkte, statt zu zoomen
   if (shape === 'free' && !form.hidden) map.doubleClickZoom.disable(); else map.doubleClickZoom.enable();
@@ -347,13 +348,13 @@ function schedule() {
   save.disabled = true;
   if (r.length < 3) { draw(); return; }
   const area = { ring: r, detail: form.detail.value, terrain: form.terrain.checked };
-  const t = tilesOf(area);
-  if (!t) {
-    $('.area-estimate').innerHTML = '<span class="area-too-big"><span class="msr">block</span> Zu groß – kleineres Gebiet oder „Übersicht“ wählen.</span>';
+  const tiles = tilesOf(area);
+  if (!tiles) {
+    $('.area-estimate').innerHTML = `<span class="area-too-big"><span class="msr">block</span> ${t('offline.new.too_big')}</span>`;
     return;
   }
-  const count = t.vector.length + t.terrain.length;
-  $('.area-estimate').innerHTML = `<span class="msr spin">progress_activity</span> ${count.toLocaleString('de-DE')} Kacheln – Größe wird berechnet …`;
+  const count = tiles.vector.length + tiles.terrain.length;
+  $('.area-estimate').innerHTML = `<span class="msr spin">progress_activity</span> ${t('offline.new.calculating', { count: count.toLocaleString(locale) })}`;
   estTimer = setTimeout(async () => {
     estCtl = new AbortController();
     try {
@@ -361,11 +362,11 @@ function schedule() {
       const [est, disk] = await Promise.all([estimate(map, area, { signal: estCtl.signal }), navigator.storage?.estimate?.().catch(() => null)]);
       const free = disk?.quota ? disk.quota - disk.usage : null;
       const tight = free !== null && est.bytes > free;
-      $('.area-estimate').innerHTML = `<strong>ca. ${size(est.bytes)}</strong> · ${est.tiles.toLocaleString('de-DE')} Kacheln
-        ${tight ? `<br><span class="area-too-big"><span class="msr">warning</span> Frei sind nur ${size(free)} – das reicht wohl nicht.</span>` : ''}`;
+      $('.area-estimate').innerHTML = `${t('offline.new.estimate', { size: size(est.bytes), tiles: est.tiles.toLocaleString(locale) })}
+        ${tight ? `<br><span class="area-too-big"><span class="msr">warning</span> ${t('offline.new.tight', { size: size(free) })}</span>` : ''}`;
       save.disabled = false;
     } catch (err) {
-      if (err.name !== 'AbortError') $('.area-estimate').textContent = `Größe nicht abrufbar (${err.message}) – ${count.toLocaleString('de-DE')} Kacheln`;
+      if (err.name !== 'AbortError') $('.area-estimate').textContent = t('offline.new.no_estimate', { error: err.message, count: count.toLocaleString(locale) });
       if (err.name !== 'AbortError') save.disabled = false;
     }
   }, 500);
@@ -383,7 +384,7 @@ function suggestName(r) {
   geocode.reverse([lon, lat], { signal: nameCtl.signal }).then((f) => {
     const p = f?.properties ?? {};
     const place = p.city || p.town || p.village || p.county || p.name;
-    if (place && !named) nameInput.value = `Gebiet um ${place}`;
+    if (place && !named) nameInput.value = t('offline.new.name.around', { place });
   }).catch(() => {});
 }
 
@@ -409,7 +410,7 @@ form.addEventListener('submit', (e) => {
   e.preventDefault();
   const r = ring();
   if (r.length < 3) return;
-  const a = areas.put(newArea({ name: nameInput.value.trim() || 'Gebiet', ring: r, detail: form.detail.value, terrain: form.terrain.checked }));
+  const a = areas.put(newArea({ name: nameInput.value.trim() || t('offline.new.name.default'), ring: r, detail: form.detail.value, terrain: form.terrain.checked }));
   closeNew();
   run(a);
 });

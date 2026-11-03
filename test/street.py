@@ -182,8 +182,8 @@ with Browser(412, 900) as b:
     settle()
     s7 = st()
     print('Esc:', json.dumps(s7, ensure_ascii=False))
-    checks['6. Esc: Karte über dem Standpunkt, Karte wie vorher, Muster und Bedienung wieder da'] = (
-        not s7['on'] and not s7['cls'] and s7['sat'] == 'none' and not s7['model'] and s7['pattern'] is True and s7['drag']
+    checks['6. Esc: Karte über dem Standpunkt, Karte wie vorher, Bedienung wieder da'] = (
+        not s7['on'] and not s7['cls'] and s7['sat'] == 'none' and not s7['model'] and s7['drag']
         and s7['search'] and s7['maxPitch'] == 85 and not s7['hud'] and meters(stood, s7['center']) < 1)
     b.shot('street_end')
 

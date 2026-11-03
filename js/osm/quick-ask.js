@@ -21,6 +21,7 @@
  * Knöpfen; mit Textfeld gar nicht.
  */
 import { esc } from '../core/geo.js';
+import { t } from '../core/i18n.js';
 
 let chain = Promise.resolve();
 /** Beendet die gerade gezeigte Pille */
@@ -39,7 +40,7 @@ function show(opts) {
   return opts.pill ? pill(opts) : card(opts);
 }
 
-function pill({ icon = 'help', title, timeout = 12000, no = 'Nein, nicht fragen' }) {
+function pill({ icon = 'help', title, timeout = 12000, no = t('osm.quick_ask.no') }) {
   return new Promise((resolve) => {
     const el = document.createElement('div');
     el.className = 'quick-ask pill';
@@ -49,7 +50,7 @@ function pill({ icon = 'help', title, timeout = 12000, no = 'Nein, nicht fragen'
       <button type="button" class="qa-no" title="${esc(no)}"><span class="msr">close</span></button>
       <span class="msr qa-icon">${esc(icon)}</span>
       <strong>${esc(title)}</strong>
-      <button type="button" class="qa-yes">Bestätigen</button>
+      <button type="button" class="qa-yes">${t('osm.quick_ask.confirm')}</button>
       <div class="qa-timer"><span style="animation-duration:${timeout}ms"></span></div>`;
     document.body.append(el);
     requestAnimationFrame(() => el.classList.add('show'));
@@ -77,7 +78,7 @@ function card({ icon = 'help', title, sub = '', options = [], input = false, pla
       <div class="qa-head">
         <span class="msr qa-icon">${esc(icon)}</span>
         <div><strong>${esc(title)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</div>
-        <button type="button" class="button qa-close" data-shape="round no-background" title="Schließen"><span class="msr">close</span></button>
+        <button type="button" class="button qa-close" data-shape="round no-background" title="${t('common.close')}"><span class="msr">close</span></button>
       </div>
       ${input ? `<form class="qa-input"><input type="text" placeholder="${esc(placeholder)}" maxlength="300" enterkeyhint="send">
         <button type="submit" class="button primary"><span class="msr">send</span></button></form>` : ''}

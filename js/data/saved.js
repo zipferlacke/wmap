@@ -14,13 +14,14 @@
  * merkt sich eine Liste (`deleted`), damit es nicht wiederkommt.
  */
 import { local } from './store.js';
+import { t } from '../core/i18n-text.js';
 
 const KEY = 'wmap.saved';
 export const PLACE_KINDS = {
-  home: { label: 'Zuhause', icon: 'home' },
-  work: { label: 'Arbeit', icon: 'work' },
-  stop: { label: 'Haltestelle', icon: 'directions_bus' },
-  fav: { label: 'Gemerkt', icon: 'star' },
+  home: { get label() { return t('places.kinds.home'); }, icon: 'home' },
+  work: { get label() { return t('places.kinds.work'); }, icon: 'work' },
+  stop: { get label() { return t('places.kinds.stop'); }, icon: 'directions_bus' },
+  fav: { get label() { return t('places.kinds.fav'); }, icon: 'star' },
 };
 
 const read = () => {

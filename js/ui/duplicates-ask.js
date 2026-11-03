@@ -15,11 +15,12 @@
 import { toast } from './dialogs.js';
 import { askAll, askOne } from './import-ask.js';
 import { findDuplicates, resolveDuplicates } from '../data/duplicates.js';
+import { t } from '../core/i18n.js';
 
 const LATER = 'wmap.duplicates.later';
 // Woher eine Aufzeichnung kommt – „ (Health Connect · Zepp)“, „ (Datei)“, „ (mit WMap aufgezeichnet)“
-const sourceOf = (t) => {
-  const s = t.kind === 'health' ? ['Health Connect', t.source?.app].filter(Boolean).join(' · ') : t.kind === 'gpx' ? 'Datei' : t.kind === 'rec' || t.kind === 'nav' ? 'mit WMap aufgezeichnet' : '';
+const sourceOf = (x) => {
+  const s = x.kind === 'health' ? ['Health Connect', x.source?.app].filter(Boolean).join(' · ') : x.kind === 'gpx' ? t('tracks.duplicates.ask.source_file') : x.kind === 'rec' || x.kind === 'nav' ? t('tracks.duplicates.ask.source_wmap') : '';
   return s ? ` (${s})` : '';
 };
 let asking = false;
@@ -32,9 +33,9 @@ export async function offerDuplicates(force = false) {
   asking = true;
   try {
     const how = await askAll({
-      auto: !force, icon: 'content_copy', later: 'Später',
-      title: d.count === 1 ? 'Eine Tour gibt es doppelt' : `${d.count} Touren gibt es doppelt`,
-      text: 'Dieselbe Tour liegt mehrfach vor – etwa von Uhr und Handy oder aus einer Datei. Beim Zusammenführen bleibt je Tour eine Aufzeichnung.',
+      auto: !force, icon: 'content_copy', later: t('common.later'),
+      title: t('tracks.duplicates.ask.title', { n: d.count }),
+      text: t('tracks.duplicates.ask.text'),
     });
     if (!how) { sessionStorage.setItem(LATER, '1'); return null; }
     const pairs = d.tracks.reduce((n, g) => n + g.length - 1, 0);
@@ -43,9 +44,9 @@ export async function offerDuplicates(force = false) {
       if (rest === 'best') return null;
       if (rest) return rest;
       const r = await askOne(keep, list, {
-        from: `Die Tour „${keep.name ?? 'Tour'}“ gibt es doppelt. Eine Aufzeichnung bleibt – wähle je Zeile, wessen Daten sie behält.`,
-        newName: `die doppelte Aufzeichnung${other.name && other.name !== keep.name ? ` „${other.name}“` : ''}${sourceOf(other)} – sie wird danach gelöscht`,
-        oldName: `die Aufzeichnung, die bleibt${sourceOf(keep)}`, i: i++, n: pairs });
+        from: t('tracks.duplicates.ask.from', { name: keep.name ?? t('tracks.names.tour') }),
+        newName: t('tracks.duplicates.ask.new_name', { name: other.name && other.name !== keep.name ? ` „${other.name}“` : '', source: sourceOf(other) }),
+        oldName: t('tracks.duplicates.ask.old_name', { source: sourceOf(keep) }), i: i++, n: pairs });
       if (r === 'best') { rest = 'best'; return null; }
       if (r === 'later') { rest = 'later'; return 'later'; }
       if (r.same) { rest = r.same; return r.same; }
@@ -53,12 +54,12 @@ export async function offerDuplicates(force = false) {
     });
     if (n === null) { sessionStorage.setItem(LATER, '1'); return null; }
     if (rest === 'later') sessionStorage.setItem(LATER, '1');
-    toast(n ? `${n} ${n === 1 ? 'doppelte Tour' : 'doppelte Touren'} zusammengeführt` : 'Nichts zusammengeführt');
+    toast(n ? t('tracks.duplicates.ask.merged', { n }) : t('tracks.duplicates.ask.nothing'));
     // Listen und Karten neu zeichnen (wie nach einem Abgleich)
     if (n) dispatchEvent(new CustomEvent('wmap:folder', { detail: { duplicates: n } }));
     return n;
   } catch (err) {
-    toast(err.message || 'Das Zusammenführen ging nicht');
+    toast(err.message || t('tracks.duplicates.ask.failed'));
     return null;
   } finally { asking = false; }
 }

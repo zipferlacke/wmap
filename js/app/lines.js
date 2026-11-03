@@ -12,6 +12,7 @@ import { clearReach } from './reach.js';
 import { leaveRouteMode } from './route-plan.js';
 import { transitLine } from './stops.js';
 import { openSheet, remember } from './views.js';
+import { t } from '../core/i18n.js';
 
 let shown = null;                 // { title, where, list, active, line }
 
@@ -21,8 +22,8 @@ function paint() {
   $('.lines-sub', view).textContent = shown.where;
   const box = $('.lines-list', view);
   box.innerHTML = shown.list
-    ? transitHtml(shown.list, { active: shown.active, all: true, title: 'Richtungen' })
-    : '<p class="muted"><span class="msr spin">progress_activity</span> Linie wird gesucht …</p>';
+    ? transitHtml(shown.list, { active: shown.active, all: true, title: t('lines.directions') })
+    : `<p class="muted"><span class="msr spin">progress_activity</span> ${t('lines.searching')}</p>`;
   if (shown.line) box.querySelector(`[data-line="${shown.active}"]`)?.insertAdjacentHTML('afterend', lineStopsHtml(shown.line));
 }
 
@@ -35,7 +36,7 @@ async function showDirection(id, s = shown) {
     paint();
     if (line.bounds) afterLayout(() => fitTo(line.bounds.flat(), 16));
   } catch (err) {
-    if (err.name !== 'AbortError') toast(`Linie gerade nicht abrufbar (${err.message})`);
+    if (err.name !== 'AbortError') toast(t('lines.toast.unavailable', { error: err.message }));
   }
 }
 
@@ -44,7 +45,7 @@ async function showLines(query, center) {
   clearPlace();
   clearCategory();
   clearReach();
-  const s = { title: query.label, where: query.place ? `in ${query.place}` : 'hier in der Gegend', list: null, active: null, line: null };
+  const s = { title: query.label, where: query.place ? t('map.in_place', { place: query.place }) : t('map.around_here'), list: null, active: null, line: null };
   shown = s;
   remember('lines', () => { shown = s; openSheet('lines'); paint(); if (s.active) showDirection(s.active, s); });
   openSheet('lines');
@@ -53,7 +54,7 @@ async function showLines(query, center) {
     let at = center();
     if (query.place) {
       const [f] = await geocode.search(query.place, { center: at, limit: 1 });
-      if (!f) { s.list = []; toast(`„${query.place}“ nicht gefunden`); paint(); return; }
+      if (!f) { s.list = []; toast(t('search.toast.not_found', { text: query.place })); paint(); return; }
       at = f.geometry.coordinates;
     }
     const list = await findLines(query, at);
@@ -61,7 +62,7 @@ async function showLines(query, center) {
     s.list = list;
     paint();
     if (!list.length) {
-      $('[data-view="lines"] .lines-list').innerHTML = `<p class="muted">Keine Linie ${query.ref} ${query.place ? `in ${query.place}` : 'hier in der Gegend'} gefunden</p>`;
+      $('[data-view="lines"] .lines-list').innerHTML = `<p class="muted">${t('lines.none', { ref: query.ref, where: query.place ? t('map.in_place', { place: query.place }) : t('map.around_here') })}</p>`;
       return;
     }
     await showDirection(list[0].id, s);
@@ -69,7 +70,7 @@ async function showLines(query, center) {
     if (err.name === 'AbortError' || shown !== s) return;
     s.list = [];
     paint();
-    $('[data-view="lines"] .lines-list').innerHTML = `<p class="muted">Linien gerade nicht abrufbar (${err.message})</p>`;
+    $('[data-view="lines"] .lines-list').innerHTML = `<p class="muted">${t('lines.unavailable', { error: err.message })}</p>`;
   }
 }
 
@@ -88,8 +89,8 @@ export function lineItem(text, center) {
   const query = parseLineQuery(text);
   if (!query) return null;
   return {
-    icon: 'directions_bus', color: '#e03131', title: query.label, type: 'Linie',
-    subtitle: query.place ? `Linie in ${query.place}` : 'Linie hier in der Gegend',
+    icon: 'directions_bus', color: '#e03131', title: query.label, type: t('lines.item.type'),
+    subtitle: query.place ? t('lines.item.in_place', { place: query.place }) : t('lines.item.around_here'),
     run: () => showLines(query, center),
   };
 }

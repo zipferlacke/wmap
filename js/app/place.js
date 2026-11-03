@@ -27,6 +27,7 @@ import { rememberPlace, togglePlace } from './search.js';
 import { resetStop, showStop, transitLine } from './stops.js';
 import { TRAFFIC_ICON, TRAFFIC_LABEL } from './traffic-along.js';
 import { back, closeAll, openSheet, remember, replaceTop, stack } from './views.js';
+import { t, locale } from '../core/i18n.js';
 
 /* ── Ort ──────────────────────────────────────────────────────────────────── */
 
@@ -35,14 +36,14 @@ import { back, closeAll, openSheet, remember, replaceTop, stack } from './views.
  * Feuerwehr, THW) immer, aufgeklappt dazu UTM, Plus Code und Grad/Minuten/Sekunden. Ein Tipp kopiert. Ob
  * aufgeklappt, merkt sich WMap.
  */
-const MORE_FORMATS = [['UTM', fmtUtm], ['Plus Code', fmtPlus], ['Grad, Minuten, Sekunden', fmtDms]];
+const MORE_FORMATS = [[t('place.coords.formats.utm'), fmtUtm], [t('place.coords.formats.plus'), fmtPlus], [t('place.coords.formats.dms'), fmtDms]];
 const COORDS_OPEN = 'wmap.coordsOpen';
 function paintCoords(box, p) {
   const open = !!local.get(COORDS_OPEN, false);
-  const btn = (text, icon = 'content_copy') => `<button type="button" class="coord" data-copy="${esc(text)}" title="Kopieren"><span class="msr">${icon}</span>${esc(text)}</button>`;
+  const btn = (text, icon = 'content_copy') => `<button type="button" class="coord" data-copy="${esc(text)}" title="${t('place.coords.copy')}"><span class="msr">${icon}</span>${esc(text)}</button>`;
   const mgrs = fmtMgrs(p);
   box.innerHTML = `<div class="coord-main">${btn(fmtLatLon(p), 'my_location')}${mgrs ? btn(mgrs, 'grid_4x4') : ''}
-      <button type="button" class="coord-more" aria-expanded="${open}" title="Weitere Formate"><span class="msr">expand_more</span></button></div>
+      <button type="button" class="coord-more" aria-expanded="${open}" title="${t('place.coords.more')}"><span class="msr">expand_more</span></button></div>
     <dl class="coord-list"${open ? '' : ' hidden'}>${MORE_FORMATS.map(([label, fmt]) => [label, fmt(p)]).filter(([, v]) => v)
       .map(([label, v]) => `<div><dt>${esc(label)}</dt><dd>${btn(v)}</dd></div>`).join('')}</dl>`;
 }
@@ -52,7 +53,7 @@ function paintCoords(box, p) {
     const copy = e.target.closest('[data-copy]');
     if (copy) {
       const text = copy.dataset.copy;
-      navigator.clipboard?.writeText(text).then(() => toast(`Kopiert: ${text}`), () => toast('Kopieren ging nicht'));
+      navigator.clipboard?.writeText(text).then(() => toast(t('place.coords.copied', { text })), () => toast(t('place.coords.copy_failed')));
       return;
     }
     const more = e.target.closest('.coord-more');
@@ -229,33 +230,33 @@ export function paintPlaceActions() {
   const point = f.geometry.coordinates;
   // Freier Punkt: „Punkt auf der Karte“ (als Wegpunkt später nach der Adresse benannt) – ein geteilter Ort oder
   // geo:-Link behält seinen Namen
-  const label = f.properties._point ? (f.properties.name || 'Punkt auf der Karte') : geocode.describe(f).title;
+  const label = f.properties._point ? (f.properties.name || t('map.point_on_map')) : geocode.describe(f).title;
   const wp = { label, point, me: false, ...(isPoi(f) ? { poi: true } : {}) };
   const toRoute = (fn) => () => { if (stack.at(-1)?.view === 'place') back(); fn(); };
   let list;
   if (nav.active) {
-    list = [['add_location_alt', 'Zwischenstopp einlegen', true, () => { nav.addStop(point); closeAll(); }]];
+    list = [['add_location_alt', t('place.actions.add_stop'), true, () => { nav.addStop(point); closeAll(); }]];
   } else if (state.mode === 'route') {
     list = [
-      ['location_on', 'Als Ziel', true, toRoute(() => setWaypoint(state.waypoints.length - 1, wp))],
-      current() && ['add_location_alt', 'Zwischenziel', false, toRoute(() => addVia(point, label))],
-      ['trip_origin', 'Als Start', false, toRoute(() => setWaypoint(0, wp))],
+      ['location_on', t('place.actions.as_destination'), true, toRoute(() => setWaypoint(state.waypoints.length - 1, wp))],
+      current() && ['add_location_alt', t('route.form.add_via'), false, toRoute(() => addVia(point, label))],
+      ['trip_origin', t('place.actions.as_start'), false, toRoute(() => setWaypoint(0, wp))],
     ];
   } else {
     list = [
       // Route, Teilen, Erreichbar, Merken, Bearbeiten – „Als Start“ gibt es in der Routenplanung
-      ['directions', 'Route', true, () => enterRoute({ to: wp })],
+      ['directions', t('place.actions.route'), true, () => enterRoute({ to: wp })],
       // Mit Android Auto verbunden: der Ort geht ans Auto – dort Route, Parkplatz davor und „Los“
-      carLink.connected && ['directions_car', 'Ans Auto', false, () => sendToCar({ type: 'place', point, label, poi: !!wp.poi }, toast)],
-      ['share', 'Teilen', false, () => share({ title: label, text: label, url: () => placeUrl(point, label), geo: { point, name: label } }, toast)],
-      ['radar', 'Erreichbar', false, () => openReach({ origin: point, label })],
-      ['streetview', 'Umsehen', false, () => { closeAll(); dispatchEvent(new CustomEvent('wmap:street', { detail: point })); }],
-      [places.find(point) ? 'bookmark_added' : 'bookmark_add', places.find(point) ? 'Gemerkt' : 'Merken', false,
+      carLink.connected && ['directions_car', t('place.actions.to_car'), false, () => sendToCar({ type: 'place', point, label, poi: !!wp.poi }, toast)],
+      ['share', t('place.actions.share'), false, () => share({ title: label, text: label, url: () => placeUrl(point, label), geo: { point, name: label } }, toast)],
+      ['radar', t('reach.title'), false, () => openReach({ origin: point, label })],
+      ['streetview', t('place.actions.look_around'), false, () => { closeAll(); dispatchEvent(new CustomEvent('wmap:street', { detail: point })); }],
+      [places.find(point) ? 'bookmark_added' : 'bookmark_add', places.find(point) ? t('place.actions.saved') : t('place.actions.save'), false,
         () => togglePlace(f, point, label, f.properties._point ? '' : geocode.describe(f).subtitle)],
       // OpenStreetMap: Ort aus OSM bearbeiten, am freien Punkt einen neuen eintragen
       f.properties._point
-        ? ['add_business', 'Hier eintragen', false, () => addPlace(point, { address: f.properties._address ?? {}, toast })]
-        : f.properties.osm_type && f.properties.osm_id && ['edit_location_alt', 'Bearbeiten', false, () => editCurrentPlace()],
+        ? ['add_business', t('place.actions.add_here'), false, () => addPlace(point, { address: f.properties._address ?? {}, toast })]
+        : f.properties.osm_type && f.properties.osm_id && ['edit_location_alt', t('place.actions.edit'), false, () => editCurrentPlace()],
     ];
   }
   const box = $('[data-view="place"] .actions');
@@ -271,10 +272,10 @@ export function paintPlaceActions() {
 
 /** Langes Drücken / Rechtsklick (oder Koordinate in der Suche): der Punkt als Ort, Adresse per Rückwärtssuche. */
 export function showPoint(point, { fly = false, name = '', zoom = null } = {}) {
-  const f = { type: 'Feature', geometry: { type: 'Point', coordinates: point }, properties: { name: name || 'Punkt auf der Karte', _point: true } };
+  const f = { type: 'Feature', geometry: { type: 'Point', coordinates: point }, properties: { name: name || t('map.point_on_map'), _point: true } };
   showPlace(f, { over: overContext(), fly: fly && !zoom });
   if (fly && zoom) map.flyTo({ center: point, zoom, padding: viewPadding(), duration: 1200 });
-  $('[data-view="place"] .place-sub').textContent = 'Adresse wird gesucht …';
+  $('[data-view="place"] .place-sub').textContent = t('place.address_searching');
   showLayerInfo(point, $('[data-view="place"] .place-layers'));
   const sub = (text) => { if (state.place === f) $('[data-view="place"] .place-sub').textContent = text; };
   geocode.reverse(point).then((r) => {
@@ -283,7 +284,7 @@ export function showPoint(point, { fly = false, name = '', zoom = null } = {}) {
     // Adresse als Vorschlag, falls hier ein Ort eingetragen wird
     f.properties._address = r.properties;
     const d = geocode.describe(r);
-    sub(`bei ${[d.title, d.subtitle].filter(Boolean).join(', ')}`);
+    sub(t('map.near_place', { place: [d.title, d.subtitle].filter(Boolean).join(', ') }));
   }).catch(() => sub(''));
 }
 
@@ -296,20 +297,20 @@ async function enrich(tags, point, box, signal) {
     if (signal.aborted || (!m.image && !m.extract)) return;
     box.insertAdjacentHTML('afterbegin', `
       ${m.image ? `<img class="place-img" src="${esc(m.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}
-      ${m.extract ? `<p class="place-extract">${esc(m.extract)}${m.link ? ` <a href="${esc(m.link)}" target="_blank" rel="noopener">Wikipedia</a>` : ''}</p>` : ''}`);
+      ${m.extract ? `<p class="place-extract">${esc(m.extract)}${m.link ? ` <a href="${esc(m.link)}" target="_blank" rel="noopener">${t('place.wikipedia')}</a>` : ''}</p>` : ''}`);
     // Kaputte Bildlinks still entfernen
     box.querySelector('.place-img')?.addEventListener('error', (e) => e.target.remove());
   })];
   if (categoryFor(tags)?.id === 'fuel' && fuelKey()) {
     jobs.push(fuelPrices(point, { signal }).then((pr) => {
       if (signal.aborted || !pr) return;
-      const eur = (v) => (typeof v === 'number' && v > 0 ? `${v.toFixed(3).replace('.', ',').replace(/(\d)$/, '<sup>$1</sup>')} €` : '–');
+      const eur = (v) => (typeof v === 'number' && v > 0 ? `${v.toLocaleString(locale, { minimumFractionDigits: 3, maximumFractionDigits: 3 }).replace(/(\d)$/, '<sup>$1</sup>')} ${t('place.fuel.euro')}` : '–');
       box.insertAdjacentHTML('beforeend', `
         <div class="fuel-prices${pr.open ? '' : ' closed'}">
-          <div><small>Super E5</small><strong>${eur(pr.e5)}</strong></div>
-          <div><small>Super E10</small><strong>${eur(pr.e10)}</strong></div>
-          <div><small>Diesel</small><strong>${eur(pr.diesel)}</strong></div>
-          <p>${pr.open ? 'Preise live' : 'Gerade geschlossen'} · Quelle: MTS-K über Tankerkönig</p>
+          <div><small>${t('place.fuel.e5')}</small><strong>${eur(pr.e5)}</strong></div>
+          <div><small>${t('place.fuel.e10')}</small><strong>${eur(pr.e10)}</strong></div>
+          <div><small>${t('place.fuel.diesel')}</small><strong>${eur(pr.diesel)}</strong></div>
+          <p>${pr.open ? t('place.fuel.live') : t('place.fuel.closed')} · ${t('place.fuel.source')}</p>
         </div>`);
     }).catch(() => {}));
   }
@@ -348,27 +349,27 @@ export function featureFromPoint(p) {
 $('.nearby').addEventListener('click', (e) => {
   const cat = byId(e.target.closest('[data-cat]')?.dataset.cat);
   if (!cat || !state.place) return;
-  const d = state.place.properties._point ? { title: 'diesem Punkt' } : geocode.describe(state.place);
-  runCategory(cat, null, { bounds: bboxAround(state.place.geometry.coordinates, 1500), label: `bei ${d.title}`, fit: true });
+  const d = state.place.properties._point ? { title: t('place.nearby.this_point') } : geocode.describe(state.place);
+  runCategory(cat, null, { bounds: bboxAround(state.place.geometry.coordinates, 1500), label: t('map.near_place', { place: d.title }), fit: true });
 });
 
 
 /** Meldung der Autobahn GmbH im Sheet: Art, Abschnitt, Beschreibung. */
-export function showTrafficItem(t) {
+export function showTrafficItem(item) {
   overState ??= { hl: lastHl };
-  const [icon, color] = TRAFFIC_ICON[t.kind];
+  const [icon, color] = TRAFFIC_ICON[item.kind];
   const view = $('[data-view="place"]');
   state.place = null;
-  const entry = () => showTrafficItem(t);
+  const entry = () => showTrafficItem(item);
   if (stack.at(-1)?.view === 'place') replaceTop('place', entry); else remember('place', entry);
-  $('.place-title', view).innerHTML = `<span class="msr" style="color:${color}">${icon}</span> ${esc(TRAFFIC_LABEL[t.kind])}${t.blocked ? ' · Vollsperrung' : ''}`;
-  $('.place-sub', view).textContent = `${t.road} ${t.title}`.trim();
+  $('.place-title', view).innerHTML = `<span class="msr" style="color:${color}">${icon}</span> ${esc(TRAFFIC_LABEL[item.kind])}${item.blocked ? ` · ${t('traffic.blocked')}` : ''}`;
+  $('.place-sub', view).textContent = `${item.road} ${item.title}`.trim();
   $('.actions', view).replaceChildren();
   $('.place-media', view).replaceChildren();
   $('.nearby-wrap', view).hidden = true;
-  $('.place-facts', view).innerHTML = `<p class="traffic-text">${t.lines.slice(0, 14).map(esc).join('<br>')}</p>
-    <small class="muted">Quelle: Autobahn GmbH des Bundes</small>`;
+  $('.place-facts', view).innerHTML = `<p class="traffic-text">${item.lines.slice(0, 14).map(esc).join('<br>')}</p>
+    <small class="muted">${t('traffic.source')}</small>`;
   openSheet('place');
   placeMarker?.remove();
-  placeMarker = new maplibregl.Marker({ element: markerEl('place', icon), anchor: 'bottom' }).setLngLat(t.point).addTo(map);
+  placeMarker = new maplibregl.Marker({ element: markerEl('place', icon), anchor: 'bottom' }).setLngLat(item.point).addTo(map);
 }

@@ -9,8 +9,9 @@ import { contribute } from '../data/trace.js';
 import { hoursTable, parseWeek, buildHours, formatHours, DAYS_DE } from '../ui/poi-info.js';
 import { showHighlight } from '../map/map.js';
 import { esc } from '../core/geo.js';
+import { locale, t } from '../core/i18n.js';
 
-const MODE = { foot: 'zu Fuß', bike: 'mit dem Rad', car: 'mit dem Auto' };
+const MODE = { foot: t('osm.survey.ui.mode.foot'), bike: t('osm.survey.ui.mode.bike'), car: t('osm.survey.ui.mode.car') };
 const toTime = (m) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const toMin = (v) => { const [h, m] = v.split(':').map(Number); return h * 60 + m; };
 
@@ -52,21 +53,18 @@ export class SurveyView {
   render() {
     const list = questions.list();
     const $ = (s) => this.#root.querySelector(s);
-    $('.survey-sub').textContent = !contribute.get() ? 'Ausgeschaltet'
-      : (list.length ? `${list.length} ${list.length === 1 ? 'Frage' : 'Fragen'} zu Orten, an denen du warst`
-        : this.#busy ? '' : 'Keine offenen Fragen') + (this.#busy ? `${list.length ? ' · ' : ''}suche weitere …` : '');
+    $('.survey-sub').textContent = !contribute.get() ? t('osm.survey.ui.off')
+      : (list.length ? t('osm.survey.ui.count', { n: list.length })
+        : this.#busy ? '' : t('osm.survey.ui.none')) + (this.#busy ? `${list.length ? ' · ' : ''}${t('osm.survey.ui.searching')}` : '');
     this.#renderAccount();
     const ul = $('.survey-list');
     if (!contribute.get()) {
-      ul.innerHTML = `<li class="survey-empty"><p>Mitmachen ist ausgeschaltet. In den Einstellungen lässt es sich
-        einschalten – dann merkt sich WMap deinen Weg auf diesem Gerät und fragt danach kurz nach.</p></li>`;
+      ul.innerHTML = `<li class="survey-empty"><p>${t('osm.survey.ui.disabled')}</p></li>`;
     } else if (!list.length && this.#busy) {
-      ul.innerHTML = '<li class="survey-empty"><p><span class="msr spin">progress_activity</span> Schaue, wo du warst …</p></li>';
+      ul.innerHTML = `<li class="survey-empty"><p><span class="msr spin">progress_activity</span> ${t('osm.survey.ui.looking')}</p></li>`;
     } else if (!list.length) {
-      ul.innerHTML = `<li class="survey-empty"><p>Nach der nächsten Fahrt oder dem nächsten Spaziergang mit
-        WMap gibt es hier kurze Fragen – z. B. ob ein Parkplatz etwas kostet oder die Bäckerei noch die
-        gleichen Öffnungszeiten hat. Deine Antworten verbessern OpenStreetMap.</p>
-        <button type="button" class="button" data-act="scan"><span class="msr">refresh</span> Jetzt nachsehen</button></li>`;
+      ul.innerHTML = `<li class="survey-empty"><p>${t('osm.survey.ui.empty')}</p>
+        <button type="button" class="button" data-act="scan"><span class="msr">refresh</span> ${t('osm.survey.ui.scan')}</button></li>`;
     } else {
       ul.innerHTML = list.map((q) => this.#card(q)).join('');
     }
@@ -82,14 +80,14 @@ export class SurveyView {
   #renderAccount() {
     const el = this.#root.querySelector('.survey-account');
     const waiting = queue.size();
-    const dev = account.server() === 'dev' ? ' <span class="chip small">Testserver</span>' : '';
+    const dev = account.server() === 'dev' ? ` <span class="chip small">${t('osm.survey.ui.account.test_server')}</span>` : '';
     let html;
     if (account.loggedIn()) {
-      html = `<p><span class="msr">account_circle</span> Angemeldet als <strong>${esc(account.user()?.name ?? '?')}</strong>${dev}</p>`
-        + (waiting ? `<button type="button" class="button" data-act="upload"><span class="msr">cloud_upload</span> ${waiting} hochladen</button>` : '');
+      html = `<p><span class="msr">account_circle</span> ${t('osm.survey.ui.account.signed_in', { name: esc(account.user()?.name ?? '?') })}${dev}</p>`
+        + (waiting ? `<button type="button" class="button" data-act="upload"><span class="msr">cloud_upload</span> ${t('osm.survey.ui.account.upload', { n: waiting })}</button>` : '');
     } else if (waiting) {
-      html = `<p>${waiting} ${waiting === 1 ? 'Antwort wartet' : 'Antworten warten'} aufs Hochladen.${dev}</p>
-        <button type="button" class="button primary" data-act="login"><span class="msr">login</span> Bei OpenStreetMap anmelden</button>`;
+      html = `<p>${t('osm.survey.ui.account.waiting', { n: waiting })}${dev}</p>
+        <button type="button" class="button primary" data-act="login"><span class="msr">login</span> ${t('osm.survey.ui.account.login')}</button>`;
     } else {
       html = '';
     }
@@ -100,21 +98,21 @@ export class SurveyView {
 
   #card(q) {
     const def = QUESTS[q.quest];
-    const when = q.at ? new Date(q.at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) : '';
+    const when = q.at ? new Date(q.at).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) : '';
     const sub = [when, MODE[q.mode]].filter(Boolean).join(' · ');
     let body = '';
     if (def.kind === 'hours' && this.#editing !== q.key) {
       body = `<div class="quest-hours">${hoursTable(q.tags.opening_hours) ?? ''}</div>
         <div class="quest-options">
-          <button type="button" class="button primary" data-answer="yes"><span class="msr">check</span> Stimmt noch</button>
-          <button type="button" class="button" data-act="edit"><span class="msr">edit_calendar</span> Andere Zeiten</button>
-          <button type="button" class="button" data-answer="gone"><span class="msr">block</span> Gibt es nicht mehr</button>
+          <button type="button" class="button primary" data-answer="yes"><span class="msr">check</span> ${t('osm.survey.ui.hours.still')}</button>
+          <button type="button" class="button" data-act="edit"><span class="msr">edit_calendar</span> ${t('osm.survey.ui.hours.other')}</button>
+          <button type="button" class="button" data-answer="gone"><span class="msr">block</span> ${t('osm.survey.ui.hours.gone')}</button>
         </div>`;
     } else if (def.kind === 'hours' || def.kind === 'hours-new') {
       // Erst die schnellen Antworten, dann die Woche zum Ausfüllen
       body = `<div class="quest-options quest-quick">
-          <button type="button" class="button" data-answer="24/7"><span class="msr">all_inclusive</span> Rund um die Uhr</button>
-          <button type="button" class="button" data-answer="gone"><span class="msr">block</span> Gibt es nicht mehr</button>
+          <button type="button" class="button" data-answer="24/7"><span class="msr">all_inclusive</span> ${t('osm.survey.ui.hours.always')}</button>
+          <button type="button" class="button" data-answer="gone"><span class="msr">block</span> ${t('osm.survey.ui.hours.gone')}</button>
         </div>
         ${this.#editor(q)}`;
     } else {
@@ -127,13 +125,13 @@ export class SurveyView {
         <span class="msr quest-icon">${esc(def.icon)}</span>
         <div><strong>${esc(def.title(q))}</strong><small>${esc(q.quest.startsWith('road') || q.quest === 'way_lit' ? sub : [q.name, sub].filter(Boolean).join(' · '))}</small></div>
         <span class="quest-tools">
-          <button type="button" class="button" data-shape="round no-background" data-act="show" title="Auf der Karte zeigen"><span class="msr">location_on</span></button>
-          <button type="button" class="button" data-shape="round no-background" data-act="never" title="Frage löschen"><span class="msr">close</span></button>
+          <button type="button" class="button" data-shape="round no-background" data-act="show" title="${t('osm.survey.ui.card.show')}"><span class="msr">location_on</span></button>
+          <button type="button" class="button" data-shape="round no-background" data-act="never" title="${t('osm.survey.ui.card.delete')}"><span class="msr">close</span></button>
         </span>
       </div>
       ${body}
       <div class="quest-foot">
-        <button type="button" class="link-button" data-act="later">Weiß nicht / später</button>
+        <button type="button" class="link-button" data-act="later">${t('osm.survey.ui.card.later')}</button>
       </div>
     </li>`;
   }
@@ -150,24 +148,24 @@ export class SurveyView {
       const [a, b] = spans[0] ?? [480, 1080];
       const [c, e] = spans[1] ?? [840, 1080];
       return `<div class="he-day${spans.length ? '' : ' closed'}${spans.length > 1 ? ' split' : ''}" data-day="${i}">
-        <label class="he-chip" title="Geöffnet?"><input type="checkbox" class="he-open" ${spans.length ? 'checked' : ''}><span>${d}</span></label>
-        <span class="he-closed">geschlossen</span>
+        <label class="he-chip" title="${t('osm.survey.ui.editor.open')}"><input type="checkbox" class="he-open" ${spans.length ? 'checked' : ''}><span>${d}</span></label>
+        <span class="he-closed">${t('osm.survey.ui.editor.closed')}</span>
         <span class="he-times">
-          <span class="he-span"><input type="time" class="he-a" value="${toTime(a)}" aria-label="${d} ab"><i>–</i><input type="time" class="he-b" value="${toTime(b)}" aria-label="${d} bis"></span>
-          <span class="he-span he-second"><input type="time" class="he-c" value="${toTime(c)}" aria-label="${d} nach der Pause ab"><i>–</i><input type="time" class="he-e" value="${toTime(e)}" aria-label="${d} bis"></span>
-          <label class="he-pause" title="Mittagspause"><input type="checkbox" class="he-split" ${spans.length > 1 ? 'checked' : ''}><span class="msr">coffee</span><span class="he-pause-label">Pause</span></label>
+          <span class="he-span"><input type="time" class="he-a" value="${toTime(a)}" aria-label="${t('osm.survey.ui.editor.from', { d })}"><i>–</i><input type="time" class="he-b" value="${toTime(b)}" aria-label="${t('osm.survey.ui.editor.to', { d })}"></span>
+          <span class="he-span he-second"><input type="time" class="he-c" value="${toTime(c)}" aria-label="${t('osm.survey.ui.editor.after_break', { d })}"><i>–</i><input type="time" class="he-e" value="${toTime(e)}" aria-label="${t('osm.survey.ui.editor.to', { d })}"></span>
+          <label class="he-pause" title="${t('osm.survey.ui.editor.lunch')}"><input type="checkbox" class="he-split" ${spans.length > 1 ? 'checked' : ''}><span class="msr">coffee</span><span class="he-pause-label">${t('osm.survey.ui.editor.pause')}</span></label>
         </span>
       </div>`;
     }).join('');
     const back = this.#editing === q.key && QUESTS[q.quest].kind === 'hours'
-      ? '<button type="button" class="button" data-act="unedit">Zurück</button>' : '';
+      ? `<button type="button" class="button" data-act="unedit">${t('osm.survey.ui.editor.back')}</button>` : '';
     return `<div class="hours-editor">
       <div class="he-week">${rows}</div>
-      <button type="button" class="link-button he-copy" data-act="copy-mo"><span class="msr">content_copy</span> Montag für Di–Fr übernehmen</button>
+      <button type="button" class="link-button he-copy" data-act="copy-mo"><span class="msr">content_copy</span> ${t('osm.survey.ui.editor.copy')}</button>
       <p class="he-preview"></p>
       <div class="quest-options">
         ${back}
-        <button type="button" class="button primary" data-act="save-hours"><span class="msr">check</span> Speichern</button>
+        <button type="button" class="button primary" data-act="save-hours"><span class="msr">check</span> ${t('common.save')}</button>
       </div>
     </div>`;
   }
@@ -192,7 +190,7 @@ export class SurveyView {
     const text = buildHours(this.#readEditor(ed), q?.tags.opening_hours ?? '');
     // Lesbar statt OSM-Schreibweise („Di 14:00–18:00“ statt „Tu 14:00-18:00“)
     ed.querySelector('.he-preview').innerHTML = text
-      ? `<span class="msr">visibility</span> ${esc(formatHours(text)).replace(/\n/g, ' · ')}` : 'An keinem Tag geöffnet?';
+      ? `<span class="msr">visibility</span> ${esc(formatHours(text)).replace(/\n/g, ' · ')}` : t('osm.survey.ui.editor.no_day');
   }
 
   async #click(e) {
@@ -228,7 +226,7 @@ export class SurveyView {
     } else if (act === 'save-hours') {
       const ed = card.querySelector('.hours-editor');
       const hours = buildHours(this.#readEditor(ed), q.tags.opening_hours ?? '');
-      if (!hours) { this.#toast('Bitte mindestens einen Tag mit Zeiten angeben'); return; }
+      if (!hours) { this.#toast(t('osm.survey.ui.editor.need_day')); return; }
       this.#done(q, { hours });
     } else if (act === 'later') {
       skip(q);
@@ -248,8 +246,8 @@ export class SurveyView {
     this.#editing = null;
     const noOsm = (q.quest === 'detour' && value === 'choice') || (q.quest === 'missing_way' && value === 'none');
     if (!noOsm) {
-      this.#toast(account.loggedIn() ? 'Danke! Wird hochgeladen …'
-        : anonNotes.get() ? 'Danke! Geht als Hinweis an OpenStreetMap' : 'Danke! Gespeichert – hochladen nach der Anmeldung');
+      this.#toast(account.loggedIn() ? t('osm.survey.ui.toast.uploading')
+        : anonNotes.get() ? t('osm.survey.ui.toast.as_note') : t('osm.survey.ui.toast.saved'));
     }
     this.render();
     this.sync();
@@ -258,7 +256,7 @@ export class SurveyView {
   async #login() {
     try {
       const user = await login();
-      this.#toast(`Angemeldet als ${user.name}`);
+      this.#toast(t('osm.login.signed_in', { name: user.name }));
       this.render();
       this.sync({ loud: true });
     } catch (err) { this.#toast(err.message); }
@@ -284,8 +282,8 @@ export class SurveyView {
         cur.edits = cur.edits.filter((e) => !q.edits.includes(e) && !q.edits.some((x) => x.at === e.at && x.osm.id === e.osm.id));
         queue.set(cur);
         countOsm('frage', 'karte', res.applied.length);
-        if (res.changeset) parts.push(`<a href="${changesetUrl(res.changeset)}" target="_blank" rel="noopener">${res.applied.length} ${res.applied.length === 1 ? 'Änderung' : 'Änderungen'}</a>`);
-        if (res.conflicts.length) parts.push(`${res.conflicts.length} übersprungen (dort hat sich inzwischen etwas geändert)`);
+        if (res.changeset) parts.push(`<a href="${changesetUrl(res.changeset)}" target="_blank" rel="noopener">${t('osm.survey.ui.result.changes', { n: res.applied.length })}</a>`);
+        if (res.conflicts.length) parts.push(t('osm.survey.ui.result.skipped', { n: res.conflicts.length }));
       }
       // Anonym werden Änderungen zu Hinweisen für Mapper
       const notes = [...q.notes, ...(anon ? editsAsNotes(q.edits) : remarkNotes(q.edits))];
@@ -301,11 +299,11 @@ export class SurveyView {
         const cur = queue.get();
         cur.notes = cur.notes.filter((x) => x.text !== n.text);
         queue.set(cur);
-        parts.push('1 Hinweis');
+        parts.push(t('osm.survey.ui.result.one_note'));
       }
       if (parts.length) {
-        this.#lastResult = `Gesendet: ${parts.join(', ')}. Danke!`;
-        this.#toast(anon ? 'Als Hinweis an OpenStreetMap gesendet – danke!' : 'Bei OpenStreetMap hochgeladen – danke!');
+        this.#lastResult = t('osm.survey.ui.result.sent', { parts: parts.join(', ') });
+        this.#toast(anon ? t('osm.survey.ui.toast.note_sent') : t('osm.survey.ui.toast.uploaded'));
       }
     } catch (err) {
       if (loud || this.#root.offsetParent) this.#toast(err.message);

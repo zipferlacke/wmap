@@ -33,13 +33,14 @@ import * as geocode from '../services/geocode.js';
 import { distance, nearestOnLine, pointAt, simplifyTo, bbox, cumulative, fmtDistance, fmtDuration, esc } from '../core/geo.js';
 import { setupStages } from '../ui/tour-stages.js';
 import { tourLine, originalRoute, searchTours } from '../services/known-tours.js';
+import { locale, t } from '../core/i18n.js';
 import '../data/folder.js';   // gespeicherte Touren landen auch im verbundenen Ordner
 
 const $ = (s, root = document) => root.querySelector(s);
 
 const debounce = (fn, ms) => {
-  let t;
-  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+  let tk;
+  return (...a) => { clearTimeout(tk); tk = setTimeout(() => fn(...a), ms); };
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -57,7 +58,7 @@ let readOnly = false;
 // Gemeinsam planen: gerade über den Link geöffnet (data/short-link.js) – gibt es die Tour hier schon, die nehmen
 let collabOpen = null;
 try { collabOpen = JSON.parse(sessionStorage.getItem(COLLAB_OPEN) ?? 'null'); sessionStorage.removeItem(COLLAB_OPEN); } catch { /* ohne */ }
-const known = collabOpen && tours.all().find((t) => t.collab?.id === collabOpen.id);
+const known = collabOpen && tours.all().find((tk) => tk.collab?.id === collabOpen.id);
 let joining = null;   // Link mit einer eigenen Tour verbunden: { code, rev, editor } – unten zusammengeführt
 if (known) {
   tour = known;
@@ -65,24 +66,24 @@ if (known) {
   history.replaceState(null, '', `./tour.html?id=${encodeURIComponent(known.id)}`);
 } else if (collabOpen && shareCode) {
   try {
-    const t = await decodeShare(shareCode);
+    const tk = await decodeShare(shareCode);
     const collab = { id: collabOpen.id, key: collabOpen.key, token: collabOpen.token, rev: collabOpen.rev, by: collabOpen.editor ?? null, expires: collabOpen.expires ?? null };
-    const into = await joinWhere(t, collabOpen.editor);
+    const into = await joinWhere(tk, collabOpen.editor);
     if (into) {
       tour = { ...into, collab };
       joining = { code: collabOpen.code, rev: collabOpen.rev, editor: collabOpen.editor };
       history.replaceState(null, '', `./tour.html?id=${encodeURIComponent(into.id)}`);
-    } else tour = { ...t, id: null, collab };
-  } catch { toast('Der Link ist unvollständig oder beschädigt'); }
+    } else tour = { ...tk, id: null, collab };
+  } catch { toast(t('tour.toast.bad_link')); }
 } else if (shareCode) {
   try {
     tour = { ...(await decodeShare(shareCode)), id: null };
     // Nur eine Vorlage (aus Entdecken): gleich selbst planen
     readOnly = !(tour.backgrounds?.length && !tour.points.length);
-  } catch { toast('Der Link ist unvollständig oder beschädigt'); }
+  } catch { toast(t('tour.toast.bad_link')); }
 } else if (idParam) {
   tour = tours.get(idParam);
-  if (!tour) toast('Tour nicht gefunden – hier geht es mit einer neuen los');
+  if (!tour) toast(t('tour.toast.not_found'));
 }
 if (typeof shortError === 'string') toast(shortError);
 tour ??= { id: null, name: '', description: '', profile: local.get('wmap.tourProfile', 'hike'), points: [] };
@@ -114,9 +115,9 @@ let fitTimer = null;
 const nameField = $('#tour-name');
 const saveButton = $('#save');
 const panel = sidePanel($('#sheet-src'), {
-  id: 'sheet', label: 'Tour planen', className: 'tour-panel', key: 'wmap.tourPanel',
-  barLeft: { icon: '<span class="msr">arrow_back</span>', title: 'Zu meinen Touren', onClick: () => { location.href = './wege.html?tab=geplant'; } },
-  barRight: { icon: '<span class="msr">close</span>', title: 'Schließen – zur Karte', onClick: () => { location.href = './index.html'; } },
+  id: 'sheet', label: t('tour.panel.label'), className: 'tour-panel', key: 'wmap.tourPanel',
+  barLeft: { icon: '<span class="msr">arrow_back</span>', title: t('tour.panel.back'), onClick: () => { location.href = './wege.html?tab=geplant'; } },
+  barRight: { icon: '<span class="msr">close</span>', title: t('tour.panel.close'), onClick: () => { location.href = './index.html'; } },
   onChange: () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitRoute, 280); },
 });
 const sheet = panel.dialog;
@@ -150,12 +151,12 @@ nameInput.readOnly = descInput.readOnly = readOnly;
 // Geteilte Tour: noch nicht bei mir – Speichern mit Ausrufezeichen, Erklärung im Tooltip
 if (readOnly) {
   $('#save').classList.add('unsaved');
-  $('#save').title = 'In meine Touren übernehmen – diese Tour ist noch nicht gespeichert';
+  $('#save').title = t('tour.save_state.shared');
   $('#save').setAttribute('aria-label', $('#save').title);
 }
 
 function paintTitle() {
-  document.title = `${tour.name || 'Neue Tour'} – WMap`;
+  document.title = t('tour.window_title', { name: tour.name || t('tour.new_name') });
 }
 paintTitle();
 
@@ -206,7 +207,7 @@ function change(fn) {
   if (undoStack.length > 50) undoStack.shift();
   fn();
   // Wer Punkte ändert, plant selbst – der feste Verlauf wird neu gerechnet
-  if (tour.fixed) { tour.fixed = false; toast('Eigene Änderung – die Strecke wird jetzt neu berechnet'); }
+  if (tour.fixed) { tour.fixed = false; toast(t('tour.toast.own_change')); }
   recompute();
 }
 
@@ -256,7 +257,7 @@ function renderMarkers() {
   $('#undo').disabled = !undoStack.length;
   const hint = $('.tour-hint');
   hint.hidden = readOnly || n >= 2;
-  hint.textContent = n === 0 ? 'Tippe in die Karte, um den Start zu setzen' : 'Und jetzt das nächste Ziel antippen';
+  hint.textContent = n === 0 ? t('tour.hint.start') : t('tour.hint.next');
 }
 
 /** Rundweg: Start und Ziel liegen aufeinander */
@@ -289,15 +290,15 @@ function pointPopup(i) {
   const at = document.createElement('button');
   at.type = 'button';
   at.className = 'popup-coords';
-  at.title = 'Kopieren';
+  at.title = t('tour.point.copy');
   at.innerHTML = `<span class="msr">content_copy</span> ${esc(where)}`;
-  at.addEventListener('click', () => navigator.clipboard?.writeText(where).then(() => toast(`Kopiert: ${where}`), () => {}));
+  at.addEventListener('click', () => navigator.clipboard?.writeText(where).then(() => toast(t('tour.point.copied', { where })), () => {}));
   el.append(at);
-  const entries = [['delete', 'Punkt entfernen', () => change(() => tour.points.splice(i, 1))]];
-  if (i === 0 && n > 1 && !round) entries.push(['sports_score', 'Auch als Ziel – Rundweg', () => change(() => tour.points.push(tour.points[0].slice()))]);
-  if (i > 0 && !(round && i === n - 1)) entries.push(['trip_origin', round ? 'Hier starten und enden' : 'Zum Start machen', () => change(() => makeStart(i))]);
+  const entries = [['delete', t('tour.point.remove'), () => change(() => tour.points.splice(i, 1))]];
+  if (i === 0 && n > 1 && !round) entries.push(['sports_score', t('tour.point.also_dest'), () => change(() => tour.points.push(tour.points[0].slice()))]);
+  if (i > 0 && !(round && i === n - 1)) entries.push(['trip_origin', round ? t('tour.point.start_end') : t('tour.point.make_start'), () => change(() => makeStart(i))]);
   if (i < n - 1 && !round) {
-    entries.push(['sports_score', 'Zum Ziel machen', () => change(() => { const [p] = tour.points.splice(i, 1); tour.points.push(p); })]);
+    entries.push(['sports_score', t('tour.point.make_dest'), () => change(() => { const [p] = tour.points.splice(i, 1); tour.points.push(p); })]);
   }
   for (const [icon, text, fn] of entries) {
     const b = document.createElement('button');
@@ -351,7 +352,7 @@ const runSearch = debounce(async () => {
       const d = geocode.describe(f);
       return `<li><button type="button" class="button" data-i="${i}"><span class="msr">location_on</span>
         <span><strong>${esc(d.title)}</strong>${d.subtitle ? `<small>${esc(d.subtitle)}</small>` : ''}</span></button></li>`;
-    }).join('') || '<li class="muted">Nichts gefunden</li>';
+    }).join('') || `<li class="muted">${t('tour.search.none')}</li>`;
     results.hidden = false;
     results._found = hits;
   } catch { /* abgebrochen */ }
@@ -394,13 +395,13 @@ function showFound(p, title) {
   const box = document.createElement('div');
   box.className = 'popup context';
   const n = tour.points.length;
-  const entries = n === 0 ? [['trip_origin', 'Als Start setzen', () => tour.points.push(p)]] : [
-    ['add_location_alt', 'Als nächsten Punkt anhängen', () => tour.points.push(p)],
-    ...(n >= 2 && bestSlot(p) < n ? [['alt_route', 'Einfügen, wo es passt', () => tour.points.splice(bestSlot(p), 0, p)]] : []),
-    ['trip_origin', 'Als Start setzen', () => tour.points.unshift(p)],
+  const entries = n === 0 ? [['trip_origin', t('tour.found.start'), () => tour.points.push(p)]] : [
+    ['add_location_alt', t('tour.found.append'), () => tour.points.push(p)],
+    ...(n >= 2 && bestSlot(p) < n ? [['alt_route', t('tour.found.insert'), () => tour.points.splice(bestSlot(p), 0, p)]] : []),
+    ['trip_origin', t('tour.found.start'), () => tour.points.unshift(p)],
   ];
   box.innerHTML = `<strong class="popup-title">${esc(title)}</strong>`;
-  for (const [icon, text, fn] of [...entries, ['close', 'Verwerfen', null]]) {
+  for (const [icon, text, fn] of [...entries, ['close', t('tour.found.discard'), null]]) {
     const b = document.createElement('button');
     b.type = 'button';
     b.innerHTML = `<span class="msr">${icon}</span> ${esc(text)}`;
@@ -408,7 +409,7 @@ function showFound(p, title) {
       clearFound();
       if (!fn) return;
       change(fn);
-      toast(`„${title}“ in die Tour übernommen`);
+      toast(t('tour.found.added', { title }));
     });
     box.append(b);
   }
@@ -462,9 +463,9 @@ async function loadBackground(def, { fit = false } = {}) {
   paintBackgrounds();
   try {
     if (def.type === 'tour') {
-      const t = tours.get(def.id);
-      if (!t?.shape) throw new Error('Diese Tour gibt es nicht mehr');
-      g.sections = [coordsOf(t.shape)];
+      const tk = tours.get(def.id);
+      if (!tk?.shape) throw new Error(t('tour.bg.gone'));
+      g.sections = [coordsOf(tk.shape)];
     } else {
       g.sections = (await tourLine(def.id, { kind: def.kind })).sections;
     }
@@ -517,23 +518,23 @@ function paintBackgrounds() {
   const empty = !tour.points.length;
   const rows = bgs.map((g, i) => `
     <li><i style="background:${g.color}"></i>
-      <span><strong>${esc(g.def.name || (g.def.type === 'tour' ? 'Eigene Tour' : 'Bekannter Weg'))}</strong>
-        <small>${g.error ? esc(g.error) : g.loading ? 'Wird geladen …' : g.def.type === 'tour' ? 'eigene Tour'
-          : `aus OpenStreetMap${g.sections.length > 1 ? ` · ${g.sections.length} Stücke${g.track ? '' : ', Verlauf wird verbunden …'}` : ''}`}</small></span>
-      ${tour.fixed || g.loading || g.error ? '' : `<button type="button" class="button${empty ? ' primary' : ''}" data-bg="take" data-i="${i}" title="Ganzen Verlauf übernehmen"><span class="msr">done_all</span> So übernehmen</button>`}
-      <button type="button" class="button" data-shape="round no-background" data-bg="remove" data-i="${i}" title="Aus dem Hintergrund nehmen"><span class="msr">close</span></button>
+      <span><strong>${esc(g.def.name || (g.def.type === 'tour' ? t('tour.bg.own_tour') : t('tour.bg.known_way')))}</strong>
+        <small>${g.error ? esc(g.error) : g.loading ? t('tour.bg.loading') : g.def.type === 'tour' ? t('tour.bg.own_tour_small')
+          : `${t('tour.bg.from_osm')}${g.sections.length > 1 ? `${t('tour.bg.pieces', { n: g.sections.length })}${g.track ? '' : t('tour.bg.joining')}` : ''}`}</small></span>
+      ${tour.fixed || g.loading || g.error ? '' : `<button type="button" class="button${empty ? ' primary' : ''}" data-bg="take" data-i="${i}" title="${t('tour.bg.take.title')}"><span class="msr">done_all</span> ${t('tour.bg.take.button')}</button>`}
+      <button type="button" class="button" data-shape="round no-background" data-bg="remove" data-i="${i}" title="${t('tour.bg.remove')}"><span class="msr">close</span></button>
     </li>`).join('');
   box.innerHTML = `
-    <span class="section-title">Hintergrund</span>
-    ${bgs.length && empty ? '<p class="muted">Setze deine Punkte selbst – auf dem Hintergrund folgt die Strecke genau dem Weg, daneben wird geroutet. Oder übernimm den ganzen Verlauf.</p>' : ''}
+    <span class="section-title">${t('tour.bg.title')}</span>
+    ${bgs.length && empty ? `<p class="muted">${t('tour.bg.hint')}</p>` : ''}
     ${bgs.length ? `<ul class="bg-list">${rows}</ul>` : ''}
     <div class="tour-tools">
-      <button type="button" class="button" data-bg="add" aria-expanded="${adding}"><span class="msr">add</span> Weg oder Tour dazulegen</button>
-      ${bgs.length ? `<button type="button" class="button" data-bg="toggle"><span class="msr">${bgOn ? 'visibility_off' : 'visibility'}</span> ${bgOn ? 'Ausblenden' : 'Einblenden'}</button>` : ''}
-      ${bgs.length && !empty ? '<button type="button" class="button" data-bg="fresh"><span class="msr">edit_road</span> Neu planen</button>' : ''}
+      <button type="button" class="button" data-bg="add" aria-expanded="${adding}"><span class="msr">add</span> ${t('tour.bg.add')}</button>
+      ${bgs.length ? `<button type="button" class="button" data-bg="toggle"><span class="msr">${bgOn ? 'visibility_off' : 'visibility'}</span> ${bgOn ? t('tour.bg.hide') : t('tour.bg.show')}</button>` : ''}
+      ${bgs.length && !empty ? `<button type="button" class="button" data-bg="fresh"><span class="msr">edit_road</span> ${t('tour.bg.fresh')}</button>` : ''}
     </div>
     ${adding ? `<form class="tour-search bg-search" autocomplete="off"><span class="msr">search</span>
-      <input type="search" placeholder="Bekannter Weg oder eigene Tour …" aria-label="Weg oder Tour suchen"></form>
+      <input type="search" placeholder="${t('tour.bg.search.placeholder')}" aria-label="${t('tour.bg.search.label')}"></form>
       <ul class="tour-search-results bg-results"></ul>` : ''}`;
   if (adding) box.querySelector('.bg-search input').focus();
 }
@@ -553,10 +554,10 @@ function passes(line, cum, p) {
     const a = line[i], b = line[i + 1];
     const ax = (a[0] - p[0]) * kx, ay = (a[1] - p[1]) * ky, dx = (b[0] - a[0]) * kx, dy = (b[1] - a[1]) * ky;
     const l2 = dx * dx + dy * dy;
-    const t = l2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
-    const d = Math.hypot(ax + dx * t, ay + dy * t);
+    const tk = l2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+    const d = Math.hypot(ax + dx * tk, ay + dy * tk);
     if (d > ON_TEMPLATE) continue;
-    const along = cum[i] + (cum[i + 1] - cum[i]) * t;
+    const along = cum[i] + (cum[i + 1] - cum[i]) * tk;
     if (i === last + 1 && out.length) { if (d < out.at(-1).offset) out[out.length - 1] = { along, offset: d }; }
     else out.push({ along, offset: d });
     last = i;
@@ -632,7 +633,7 @@ async function templatePart(a, b) {
 async function takeBackground(g, button) {
   if (readOnly) adopt();
   button.disabled = true;
-  button.innerHTML = '<span class="msr spin">progress_activity</span> Wird übernommen …';
+  button.innerHTML = `<span class="msr spin">progress_activity</span> ${t('tour.bg.take.busy')}`;
   try {
     const line = g.track ?? (g.def.type === 'way' ? (await originalRoute(g.def.id, g.def.kind)).line : g.sections[0]);
     const prev = tour.points.map((p) => p.slice());
@@ -644,7 +645,7 @@ async function takeBackground(g, button) {
     tour.stages = [];
     if (!tour.name) { tour.name = g.def.name; nameInput.value = tour.name; paintTitle(); }
     await recompute({ fit: true });
-  } catch (err) { toast(`Ließ sich nicht übernehmen (${err.message})`); }
+  } catch (err) { toast(t('tour.bg.take.failed', { error: err.message })); }
   paintBackgrounds();
 }
 
@@ -676,7 +677,7 @@ $('.tour-original').addEventListener('click', async (e) => {
     change(() => { tour.points = []; });
     bgOn = true;
     drawBackgrounds();
-    toast('Setze deine Punkte – der Hintergrund bleibt');
+    toast(t('tour.bg.fresh_toast'));
   }
   paintBackgrounds();
 });
@@ -696,11 +697,11 @@ const bgSearch = debounce(async (q) => {
   const list = $('.tour-original .bg-results');
   if (!list) return;
   const low = q.toLowerCase();
-  const mine = tours.all().filter((t) => t.id !== tour.id && t.shape && t.name?.toLowerCase().includes(low)).slice(0, 5)
-    .map((t) => ({ def: { type: 'tour', id: t.id, name: t.name }, icon: 'bookmark', sub: `Eigene Tour${t.stats?.length ? ` · ${fmtDistance(t.stats.length)}` : ''}` }));
+  const mine = tours.all().filter((tk) => tk.id !== tour.id && tk.shape && tk.name?.toLowerCase().includes(low)).slice(0, 5)
+    .map((tk) => ({ def: { type: 'tour', id: tk.id, name: tk.name }, icon: 'bookmark', sub: tk.stats?.length ? t('tour.bg.own_tour_length', { length: fmtDistance(tk.stats.length) }) : t('tour.bg.own_tour') }));
   const row = (x) => `<li><button type="button" class="button" data-add='${esc(JSON.stringify(x.def))}'><span class="msr">${x.icon}</span>
     <span>${esc(x.def.name)}<small>${esc(x.sub)}</small></span></button></li>`;
-  list.innerHTML = mine.map(row).join('') + (q.length >= 3 ? '<li class="muted">Bekannte Wege werden gesucht …</li>' : '');
+  list.innerHTML = mine.map(row).join('') + (q.length >= 3 ? `<li class="muted">${t('tour.bg.search.busy')}</li>` : '');
   if (q.length < 3) return;
   bgCtl?.abort();
   bgCtl = new AbortController();
@@ -708,9 +709,9 @@ const bgSearch = debounce(async (q) => {
   try {
     const ways = (await searchTours(q, kind, { signal: bgCtl.signal })).slice(0, 8)
       .map((w) => ({ def: { type: 'way', id: w.id, kind, name: w.name }, icon: 'route', sub: [w.network, w.ref].filter(Boolean).join(' · ') }));
-    list.innerHTML = [...mine, ...ways].map(row).join('') || '<li class="muted">Nichts gefunden</li>';
+    list.innerHTML = [...mine, ...ways].map(row).join('') || `<li class="muted">${t('tour.search.none')}</li>`;
   } catch (err) {
-    if (err.name !== 'AbortError') list.innerHTML = mine.map(row).join('') + `<li class="muted">Wege gerade nicht abrufbar (${esc(err.message)})</li>`;
+    if (err.name !== 'AbortError') list.innerHTML = mine.map(row).join('') + `<li class="muted">${t('tour.bg.search.failed', { error: esc(err.message) })}</li>`;
   }
 }, 300);
 $('.tour-original').addEventListener('input', (e) => { if (e.target.closest('.bg-search')) bgSearch(e.target.value.trim()); });
@@ -761,7 +762,7 @@ async function recompute({ fit = false } = {}) {
     return;
   }
   if (tour.fixed && tour.shape) { await fixedRoute(my); return; }
-  status('Route wird berechnet …');
+  status(t('tour.status.computing'));
   try {
     const pairs = tour.points.slice(1).map((b, i) => [tour.points[i], b]);
     // Auf der Vorlage genau ihr folgen, sonst routen
@@ -800,7 +801,7 @@ async function fixedRoute(my) {
   showRoutes(map, [route], 0);
   paintStats();
   routeChanged();
-  status('Originalverlauf – ändern, indem du Punkte verschiebst oder hinzufügst', false);
+  status(t('tour.status.original'), false);
   scheduleSave();
   try {
     const h = await heightsAlong(coords);
@@ -817,8 +818,8 @@ async function fixedRoute(my) {
 function paintStats() {
   $('.st-length').textContent = route ? fmtDistance(route.length) : '–';
   $('.st-time').textContent = route ? fmtDuration(route.time) : '–';
-  $('.st-up').textContent = route ? `${route.ascent} m` : '–';
-  $('.st-down').textContent = route ? `${route.descent} m` : '–';
+  $('.st-up').textContent = route ? t('tour.unit.m', { v: route.ascent }) : '–';
+  $('.st-down').textContent = route ? t('tour.unit.m', { v: route.descent }) : '–';
 }
 
 /* Wegtypen und Beläge als Balken – wie viel Asphalt, Schotter, Pfad … */
@@ -831,7 +832,7 @@ const WAY_COLORS = {
 
 async function loadWays(my) {
   const box = $('.tour-ways');
-  box.innerHTML = '<p class="muted">Wegtypen werden ermittelt …</p>';
+  box.innerHTML = `<p class="muted">${t('tour.ways.loading')}</p>`;
   try {
     const info = await wayInfo(route.coords, tour.profile);
     if (my !== seq) return;
@@ -845,7 +846,7 @@ async function loadWays(my) {
           <li><i style="background:${WAY_COLORS[n] ?? '#adb5bd'}"></i>${esc(n)} <b>${fmtDistance(m)}</b></li>`).join('')}</ul>
       </div>`;
     };
-    box.innerHTML = block('Wegtypen', info.ways) + block('Beläge', info.surfaces);
+    box.innerHTML = block(t('tour.ways.types'), info.ways) + block(t('tour.ways.surfaces'), info.surfaces);
   } catch {
     box.innerHTML = '';
   }
@@ -856,20 +857,20 @@ async function loadWays(my) {
    ══════════════════════════════════════════════════════════════════════════ */
 
 async function defaultName() {
-  if (!tour.points.length) return `Tour vom ${new Date().toLocaleDateString('de-DE')}`;
+  if (!tour.points.length) return t('tour.default_name.date', { date: new Date().toLocaleDateString(locale) });
   try {
     const f = await geocode.reverse(tour.points[0]);
     const d = f && geocode.describe(f);
     const place = f?.properties.city ?? f?.properties.town ?? f?.properties.village ?? d?.title;
-    if (place) return `${PROFILES[tour.profile].label} ab ${place}`;
+    if (place) return t('tour.default_name.place', { profile: PROFILES[tour.profile].label, place });
   } catch { /* dann eben mit Datum */ }
-  return `Tour vom ${new Date().toLocaleDateString('de-DE')}`;
+  return t('tour.default_name.date', { date: new Date().toLocaleDateString(locale) });
 }
 
 function snapshotTour(preview) {
   return {
     ...tour,
-    name: tour.name || 'Neue Tour',
+    name: tour.name || t('tour.new_name'),
     shape: route ? shapeOf(simplifyTo(route.coords, 1500)) : null,
     stats: route ? { length: route.length, time: route.time, ascent: route.ascent, descent: route.descent } : null,
     preview: preview === undefined ? tour.preview ?? null : preview,
@@ -888,7 +889,7 @@ function saveState(state) {
   b.dataset.state = state;
   // Nur das Symbol: grüner Haken = gesichert, dreht = speichert, Diskette = noch nicht
   b.querySelector('.msr').textContent = state === 'saved' ? 'check_circle' : state === 'dirty' ? 'sync' : 'save';
-  b.title = state === 'saved' ? 'Gespeichert – findest du unter „Meine Touren“' : state === 'dirty' ? 'Speichert …' : 'Tour speichern';
+  b.title = state === 'saved' ? t('tour.save_state.saved') : state === 'dirty' ? t('tour.save_state.dirty') : t('tour.save');
   b.setAttribute('aria-label', b.title);
 }
 saveState(tour.id ? 'saved' : 'new');
@@ -949,7 +950,7 @@ function adopt() {
   document.body.classList.remove('readonly');
   nameInput.readOnly = descInput.readOnly = false;
   $('#save').classList.remove('unsaved');
-  $('#save').title = 'Tour speichern';
+  $('#save').title = t('tour.save');
   $('#save').removeAttribute('aria-label');
   tour.id = null;
   saveState('new');
@@ -959,9 +960,9 @@ function adopt() {
 
 $('#save').addEventListener('click', async () => {
   if (readOnly) adopt();
-  if (tour.points.length < 2) { toast('Setze mindestens zwei Punkte'); return; }
+  if (tour.points.length < 2) { toast(t('tour.toast.min_points')); return; }
   await save(await capturePreview());
-  toast('Tour gespeichert');
+  toast(t('tour.toast.saved'));
 });
 
 nameInput.addEventListener('input', () => {
@@ -976,18 +977,18 @@ descInput.addEventListener('input', () => {
 
 /* Teilen: Link trägt die Tour selbst – oder gemeinsam planen (Link zum Mitplanen) */
 async function shareTour() {
-  if (tour.points.length < 2) { toast('Erst eine Strecke planen'); return; }
-  const name = tour.name || nameInput.value || 'Tour';
+  if (tour.points.length < 2) { toast(t('tour.toast.need_route')); return; }
+  const name = tour.name || nameInput.value || t('tour.default_tour');
   const live = !collabOff(tour.collab);
   const how = readOnly ? 'view' : await ask({
-    icon: 'share', title: 'Tour teilen',
-    text: live ? 'Diese Tour plant ihr schon gemeinsam – der Link bleibt derselbe.' : 'Nur zeigen – oder gemeinsam planen: Wer den Link hat, ändert mit, jede Änderung sehen alle.',
-    buttons: [{ value: 'view', label: 'Link zum Ansehen', icon: 'visibility' }, { value: 'collab', label: live ? 'Link zum Mitplanen' : 'Gemeinsam planen', icon: 'group', primary: true }],
+    icon: 'share', title: t('tour.share.title'),
+    text: live ? t('tour.share.live') : t('tour.share.text'),
+    buttons: [{ value: 'view', label: t('tour.share.view'), icon: 'visibility' }, { value: 'collab', label: live ? t('tour.share.collab_link') : t('tour.collab.title'), icon: 'group', primary: true }],
   });
   if (!how) return;
   const code = await encodeShare({ ...tour, name });
   if (how === 'view') {
-    share({ title: 'Tour teilen', text: `Tour: ${name}`, url: `${pageUrl('tour.html')}#t=${code}`, short: () => shortLink('tour', code) }, toast);
+    share({ title: t('tour.share.title'), text: t('tour.share.message', { name }), url: `${pageUrl('tour.html')}#t=${code}`, short: () => shortLink('tour', code) }, toast);
     return;
   }
   // Abgelaufen: ein neuer Link
@@ -998,10 +999,10 @@ async function shareTour() {
       tour.collab = collab;
       lastCollabCode = await normCode(code);
       await save();
-    } catch (err) { toast(err.message || 'Der Link zum Mitplanen ließ sich nicht anlegen'); return; }
+    } catch (err) { toast(err.message || t('tour.collab.link_failed')); return; }
   }
-  share({ title: 'Gemeinsam planen', text: `Plan mit: ${name}`, url: collabUrl(tour.collab),
-    note: 'Wer den Link hat, kann die Tour ändern. Sie liegt verschlüsselt 30 Tage auf dem WMap-Server.' }, toast);
+  share({ title: t('tour.collab.title'), text: t('tour.collab.message', { name }), url: collabUrl(tour.collab),
+    note: t('tour.collab.note') }, toast);
   paintCollab();
 }
 
@@ -1011,8 +1012,8 @@ async function shareTour() {
 // älter als der Link: dann unbekannt, pullCollab holt den neuesten Stand
 // Immer in der Form, in der diese App selbst packt (normCode): Vom Server kommt dieselbe Tour womöglich anders gepackt
 // (Name leer, Reihenfolge …) – ohne das schickte schon das Öffnen „eine Änderung“, und die anderen sahen „… hat geändert“
-const mineCode = () => encodeShare({ ...tour, name: tour.name || 'Tour' });
-const normCode = async (code) => { const t = await decodeShare(code); return encodeShare({ ...t, name: t.name || 'Tour' }); };
+const mineCode = () => encodeShare({ ...tour, name: tour.name || t('tour.default_tour') });
+const normCode = async (code) => { const tk = await decodeShare(code); return encodeShare({ ...tk, name: tk.name || t('tour.default_tour') }); };
 let lastCollabCode = !known && !joining && collabOpen?.code ? await normCode(collabOpen.code).catch(() => null) : null;
 let collabBusy = false;
 let collabAgain = false;   // während des Schickens wieder geändert: danach gleich noch einmal
@@ -1024,36 +1025,36 @@ function paintCollab() {
   if (!tour.collab) return;
   const st = collabState(tour.collab);
   box.querySelector('.msr').textContent = st.icon;
-  box.querySelector('span:last-child').innerHTML = `<b>Gemeinsame Tour</b> <span class="collab-chip${st.gone ? ' gone' : ''}">${esc(st.text)}</span>${
-    tour.collab.editor ? `<small>zuletzt geändert von ${esc(tour.collab.editor)}</small>` : ''}`;
+  box.querySelector('span:last-child').innerHTML = `<b>${t('tour.collab.chip')}</b> <span class="collab-chip${st.gone ? ' gone' : ''}">${esc(st.text)}</span>${
+    tour.collab.editor ? `<small>${t('tour.collab.last_editor', { name: esc(tour.collab.editor) })}</small>` : ''}`;
 }
 
 /**
  * Link zum Mitplanen, die Tour gibt es hier noch nicht: als neue Tour – oder mit einer eigenen verbinden (z. B. dieselbe
  * Runde schon selbst geplant) → die eigene Tour | null (neue)
  */
-async function joinWhere(t, by) {
+async function joinWhere(tk, by) {
   const mine = tours.all().filter((x) => !x.collab);
   if (!mine.length) return null;
   // Gleicher Name zuerst, sonst die zuletzt geänderte
-  mine.sort((a, b) => (b.name === t.name) - (a.name === t.name) || (b.updated ?? 0) - (a.updated ?? 0));
+  mine.sort((a, b) => (b.name === tk.name) - (a.name === tk.name) || (b.updated ?? 0) - (a.updated ?? 0));
   const v = await ask({
-    icon: 'group_add', title: 'Gemeinsam planen', className: 'stacked',
-    text: `${by ? `${by} lädt dich ein` : 'Du bist eingeladen'}, „${t.name}“ mitzuplanen.`,
-    html: `<label class="collab-into"><span>Oder mit einer deiner Touren verbinden – beide werden zusammengeführt:</span>
-      <select>${mine.map((x) => `<option value="${esc(x.id)}">${esc(x.name || 'Tour')}</option>`).join('')}</select></label>`,
+    icon: 'group_add', title: t('tour.collab.title'), className: 'stacked',
+    text: by ? t('tour.collab.join.invited_by', { by, name: tk.name }) : t('tour.collab.join.invited', { name: tk.name }),
+    html: `<label class="collab-into"><span>${t('tour.collab.join.into')}</span>
+      <select>${mine.map((x) => `<option value="${esc(x.id)}">${esc(x.name || t('tour.default_tour'))}</option>`).join('')}</select></label>`,
     buttons: [
-      { value: 'new', label: 'Als neue Tour', icon: 'add_road', primary: true },
-      { value: 'join', label: 'Mit der gewählten verbinden', icon: 'merge', run: (dlg, done) => done(`join:${dlg.querySelector('.collab-into select').value}`) },
+      { value: 'new', label: t('tour.collab.join.new'), icon: 'add_road', primary: true },
+      { value: 'join', label: t('tour.collab.join.merge'), icon: 'merge', run: (dlg, done) => done(`join:${dlg.querySelector('.collab-into select').value}`) },
     ],
   });
   return v?.startsWith('join:') ? tours.get(v.slice(5)) : null;
 }
 
 /** Eine Fassung übernehmen (vom Server oder zusammengeführt) und neu zeichnen */
-async function applyTour(t) {
-  Object.assign(tour, { name: t.name, description: t.description, profile: TOUR_PROFILES.includes(t.profile) ? t.profile : tour.profile,
-    points: t.points, backgrounds: t.backgrounds ?? [], fixed: !!t.fixed, shape: t.shape });
+async function applyTour(tk) {
+  Object.assign(tour, { name: tk.name, description: tk.description, profile: TOUR_PROFILES.includes(tk.profile) ? tk.profile : tour.profile,
+    points: tk.points, backgrounds: tk.backgrounds ?? [], fixed: !!tk.fixed, shape: tk.shape });
   nameInput.value = tour.name;
   descInput.value = tour.description;
   paintTitle();
@@ -1067,7 +1068,7 @@ async function applyRemote(code, rev, editor) {
   lastCollabCode = await normCode(code);
   await applyTour(await decodeShare(code));
   paintCollab();
-  toast(`${editor || 'Jemand'} hat die Tour geändert`);
+  toast(t('tour.collab.changed', { name: editor || t('tour.collab.someone') }));
 }
 
 /* Beide haben dieselbe Stelle geändert: beide Fassungen auf der Karte, gepunktet – die eigene blau, die der anderen
@@ -1120,14 +1121,13 @@ function pickOnMap(cf, who, step) {
     const bar = document.createElement('div');
     bar.className = 'collab-pickbar';
     bar.setAttribute('role', 'dialog');
-    bar.innerHTML = `<p><b>Zusammenführen${esc(step)}</b> Du und ${esc(who)} habt dieselben Punkte geändert. Tippe auf der
-        Karte die Fassung an, die bleiben soll.</p>
+    bar.innerHTML = `<p><b>${t('tour.merge.title', { step: esc(step) })}</b> ${t('tour.merge.points', { who: esc(who) })}</p>
       <div class="pick-sides">
-        <button type="button" class="pick-side" data-side="mine"><i style="background:${MINE}"></i>Deine (blau)</button>
-        <button type="button" class="pick-side" data-side="theirs"><i style="background:${THEIRS}"></i>Von ${esc(who)} (orange)</button>
+        <button type="button" class="pick-side" data-side="mine"><i style="background:${MINE}"></i>${t('tour.merge.mine')}</button>
+        <button type="button" class="pick-side" data-side="theirs"><i style="background:${THEIRS}"></i>${t('tour.merge.theirs', { who: esc(who) })}</button>
       </div>
-      <div class="pick-go"><button type="button" class="button" data-pick="later">Später</button>
-        <button type="button" class="button primary" data-pick="go" disabled><span class="msr">check</span> So übernehmen</button></div>`;
+      <div class="pick-go"><button type="button" class="button" data-pick="later">${t('tour.merge.later')}</button>
+        <button type="button" class="button primary" data-pick="go" disabled><span class="msr">check</span> ${t('tour.bg.take.button')}</button></div>`;
     document.body.append(bar);
     const choose = (side) => {
       sel = side;
@@ -1157,17 +1157,17 @@ function pickOnMap(cf, who, step) {
 
 /** Eine Frage beim Zusammenführen → 'mine' | 'theirs' | null (abgebrochen) */
 function askConflict(cf, who, n, total) {
-  const step = total > 1 ? ` (${n} von ${total})` : '';
+  const step = total > 1 ? t('tour.merge.step', { n, total }) : '';
   if (cf.key === 'points') return pickOnMap(cf, who, step);
   showConflict(null);
-  const val = (v) => (cf.key === 'profile' ? PROFILES[v]?.label ?? v : cf.key === 'fixed' ? (v.fixed ? 'fest gezeichnet' : 'frei geplant') : v || '(leer)');
-  const what = { name: 'den Namen', description: 'die Beschreibung', profile: 'die Art', fixed: 'die Strecke' }[cf.key];
+  const val = (v) => (cf.key === 'profile' ? PROFILES[v]?.label ?? v : cf.key === 'fixed' ? (v.fixed ? t('tour.merge.fixed') : t('tour.merge.free')) : v || t('tour.merge.empty'));
+  const what = { name: t('tour.merge.what.name'), description: t('tour.merge.what.description'), profile: t('tour.merge.what.profile'), fixed: t('tour.merge.what.fixed') }[cf.key];
   return ask({
-    icon: 'merge', title: `Zusammenführen${step}`, className: 'collab-pick stacked',
-    text: `Du und ${who} habt ${what} geändert. Welche Fassung soll bleiben?`,
+    icon: 'merge', title: t('tour.merge.title', { step }), className: 'collab-pick stacked',
+    text: t('tour.merge.other', { who, what }),
     buttons: [
-      { value: 'mine', icon: 'person', label: `Deine: ${val(cf.mine)}`, primary: true },
-      { value: 'theirs', icon: 'group', label: `Von ${who}: ${val(cf.theirs)}` },
+      { value: 'mine', icon: 'person', label: t('tour.merge.mine_value', { v: val(cf.mine) }), primary: true },
+      { value: 'theirs', icon: 'group', label: t('tour.merge.theirs_value', { who, v: val(cf.theirs) }) },
     ],
   });
 }
@@ -1178,9 +1178,9 @@ function askConflict(cf, who, n, total) {
  * → true: zusammengeführt (danach geht der eigene Teil zum Server) | false: abgebrochen
  */
 async function mergeRemote(r) {
-  const who = r.editor || 'den anderen';
+  const who = r.editor || t('tour.merge.others');
   const base = lastCollabCode ? await decodeShare(lastCollabCode).catch(() => null) : null;
-  const merged = mergeTours(base, { ...tour, name: tour.name || 'Tour' }, await decodeShare(r.code));
+  const merged = mergeTours(base, { ...tour, name: tour.name || t('tour.default_tour') }, await decodeShare(r.code));
   const picks = [];
   try {
     for (const [i, cf] of merged.conflicts.entries()) {
@@ -1195,7 +1195,7 @@ async function mergeRemote(r) {
   await applyTour(resolveMerge(merged, picks));
   tours.save(snapshotTour());
   paintCollab();
-  toast(merged.conflicts.length ? `Mit den Änderungen von ${who} zusammengeführt` : `${r.editor || 'Jemand'} hat auch geändert – beides ist jetzt drin`);
+  toast(merged.conflicts.length ? t('tour.merge.done', { who }) : t('tour.merge.both', { name: r.editor || t('tour.collab.someone') }));
   return true;
 }
 
@@ -1203,11 +1203,11 @@ async function mergeRemote(r) {
    nur gemeinsam geht es nicht mehr: einmal Bescheid sagen, dann nichts mehr schicken oder holen */
 const collabOff = (c) => !c || c.gone || collabState(c).gone;
 function collabGone(err) {
-  if (!/nicht mehr/.test(err?.message ?? '')) return false;
+  if (!['server.share.collab_gone', 'server.share.link_gone'].includes(err?.key)) return false;
   tour.collab = { ...tour.collab, gone: true };
   tours.save(snapshotTour());
   paintCollab();
-  toast('Gemeinsam planen ist abgelaufen – die Tour bleibt bei dir');
+  toast(t('tour.collab.expired'));
   return true;
 }
 
@@ -1229,7 +1229,7 @@ async function pushCollab() {
     // Abgebrochen: bleibt hier, wie es ist – beim nächsten Speichern kommt die Frage wieder
     collabAgain = await mergeRemote(r);
   } catch (err) {
-    if (!collabGone(err)) toast(err.message || 'Die Änderung kam nicht beim Server an – sie geht beim nächsten Speichern mit');
+    if (!collabGone(err)) toast(err.message || t('tour.collab.push_failed'));
   } finally {
     collabBusy = false;
     if (collabAgain) { collabAgain = false; pushCollab(); }
@@ -1259,7 +1259,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 
 /* GPX mit Höhen */
 function exportGpx() {
-  if (!route) { toast('Erst eine Strecke planen'); return; }
+  if (!route) { toast(t('tour.toast.need_route')); return; }
   const total = route.cum[route.cum.length - 1] || 1;
   const ele = route.elevation;
   const eleAt = (i) => {
@@ -1270,22 +1270,22 @@ function exportGpx() {
     const [k0, h0] = ele[lo], [k1, h1] = ele[hi];
     return k1 === k0 ? h0 : h0 + ((h1 - h0) * (km - k0)) / (k1 - k0);
   };
-  const name = tour.name || 'tour';
-  const file = `${name.toLowerCase().replace(/[^a-z0-9äöüß]+/gi, '-').replace(/^-|-$/g, '') || 'tour'}.gpx`;
+  const name = tour.name || t('tour.file_default');
+  const file = `${name.toLowerCase().replace(/[^a-z0-9äöüß]+/gi, '-').replace(/^-|-$/g, '') || t('tour.file_default')}.gpx`;
   download(file, toGpx({ ...tour, name }, route.coords, eleAt));
 }
 
 /** Tour für alle auf WMap teilen (Entdecken → Von anderen) – sofort sichtbar */
 async function publishTour() {
-  if (!route) { toast('Erst eine Strecke planen'); return; }
+  if (!route) { toast(t('tour.toast.need_route')); return; }
   const { ensureLogin } = await import('../services/konto.js');
   const { api } = await import('../services/api.js');
   const v = await ask({
-    icon: 'public', title: 'Tour veröffentlichen',
-    text: 'Andere sehen sie sofort unter „Entdecken → Von anderen“ und können sie bewerten. Dein Name steht dabei.',
-    buttons: [{ value: 'no', label: 'Abbrechen' }, { value: 'yes', label: 'Veröffentlichen', primary: true }],
+    icon: 'public', title: t('tour.publish.title'),
+    text: t('tour.publish.text'),
+    buttons: [{ value: 'no', label: t('common.cancel') }, { value: 'yes', label: t('tour.more.publish'), primary: true }],
   });
-  if (v !== 'yes' || !await ensureLogin('Zum Veröffentlichen')) return;
+  if (v !== 'yes' || !await ensureLogin(t('tour.publish.login_reason'))) return;
   if (!tour.name) { tour.name = await defaultName(); nameInput.value = tour.name; }
   try {
     const r = await api(['tours', 'save'], {
@@ -1294,13 +1294,13 @@ async function publishTour() {
     });
     tour.serverId = r.id;
     scheduleSave();
-    toast('Veröffentlicht – unter „Entdecken“ zu sehen');
+    toast(t('tour.publish.done'));
   } catch (err) { toast(err.message); }
 }
 
 function deleteTour() {
   if (!tour.id) { location.href = './wege.html?tab=geplant'; return; }
-  if (!confirm(`„${tour.name}“ wirklich löschen?`)) return;
+  if (!confirm(t('tour.delete_confirm', { name: tour.name }))) return;
   tours.remove(tour.id);
   location.href = './wege.html?tab=geplant';
 }
@@ -1322,9 +1322,9 @@ if (tour.collab) {
     // Mit der eigenen Tour verbunden: beide Fassungen zusammenführen (ohne gemeinsamen Stand – gefragt wird, wo sie sich
     // unterscheiden), dann geht das Ergebnis an alle. Abgebrochen: die eigene Tour bleibt, wie sie war, ohne Link
     if (!map.loaded()) await new Promise((ok) => map.once('load', ok));
-    if (await mergeRemote(joining)) { pushCollab(); toast('Verbunden – deine Änderungen sehen alle mit dem Link'); }
+    if (await mergeRemote(joining)) { pushCollab(); toast(t('tour.collab.joined')); }
     else { delete tour.collab; tours.save(snapshotTour()); }
-  } else if (!tour.id) { await save(); toast('Gemeinsame Tour – deine Änderungen sehen alle mit dem Link'); }
+  } else if (!tour.id) { await save(); toast(t('tour.collab.opened')); }
   paintCollab();
   if (tour.collab) pullCollab();
 }
