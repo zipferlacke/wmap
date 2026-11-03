@@ -223,6 +223,10 @@
       "history": {
         "title": "Jede Navigation merken",
         "hint": "Auch normale Navigationen landen unter Aufgezeichnete Touren. Geplante Touren, die du startest, und „Aufzeichnen“ werden immer gespeichert."
+      },
+      "stats": {
+        "title": "Anonyme Nutzungsstatistik",
+        "hint": "Einmal am Tag: dass WMap heute offen war und wie oft welcher Dienst gefragt wurde (z. B. Suche 12×). Ohne Kennung, ohne Ort, ohne Suchbegriffe."
       }
     },
     "map": {
@@ -3429,13 +3433,13 @@
       "turn_on": "Standort einschalten",
       "allow": "Standort erlauben",
       "title": "Standort",
-      "text": "Für deinen Punkt auf der Karte, Routen ab „Mein Standort“, die Navigation und das Aufzeichnen von Wegen. WMap speichert ihn nur auf deinem Gerät."
+      "text": "Für deine Position auf der Karte, Routen ab „Mein Standort“, die Navigation und das Aufzeichnen von Wegen. Die aufgezeichneten Standortdaten bleiben auf deinem Gerät und werden weder ausgewertet noch weitergegeben."
     },
     "notice": {
-      "title": "Hinweis: Aufzeichnen bei ausgeschaltetem Bildschirm",
-      "p1": "Deine Aufzeichnung läuft weiter, auch wenn der Bildschirm aus ist oder du eine andere App benutzt.",
-      "p2": "Solange sie läuft, zeigt WMap die Benachrichtigung <strong>„WMap zeichnet auf“</strong> – so siehst du jederzeit,\n        dass dein Standort gerade aufgezeichnet wird. Dafür fragt Android gleich, ob WMap Benachrichtigungen senden darf.",
-      "p3": "WMap schickt sonst keine Benachrichtigungen. Die Aufzeichnung läuft auch ohne – du siehst dann nur\n        nicht, dass sie läuft.",
+      "title": "Benachrichtigungen",
+      "p1": "Damit WMap eine gestartete Aufzeichnung weiterführen kann, auch wenn der Bildschirm aus ist oder du eine andere App benutzt, muss WMap eine Benachrichtigung anzeigen.",
+      "p2": "Solange die Aufzeichnung läuft, steht <strong>„WMap zeichnet auf“</strong> in der Leiste – so siehst du jederzeit, dass dein Weg aufgezeichnet wird. Dafür fragt Android gleich, ob WMap Benachrichtigungen senden darf.",
+      "p3": "WMap schickt sonst keine Benachrichtigungen.",
       "allow": "Erlauben"
     },
     "status": {
@@ -3449,7 +3453,7 @@
     },
     "notification": {
       "title": "Benachrichtigung",
-      "text": "Nur beim Aufzeichnen: „WMap zeichnet auf“ steht in der Leiste, solange dein Weg mitläuft – auch bei ausgeschaltetem Bildschirm. Die Aufzeichnung läuft auch ohne.",
+      "text": "Nur während einer Aufzeichnung: Dann steht „WMap zeichnet auf“ in der Leiste. Diese Benachrichtigung braucht WMap, damit die Aufzeichnung weiterläuft, wenn der Bildschirm aus ist oder du eine andere App benutzt. Sonst schickt WMap keine Benachrichtigungen.",
       "allow": "Benachrichtigung erlauben"
     },
     "health": {
@@ -4603,6 +4607,11 @@
       "to_site": "Zur Download-Seite",
       "required_title": "WMap-App aktualisieren",
       "required_text": "Diese Version braucht eine neuere WMap-App (mindestens {min}). Sichere vorher deine Daten, dann aktualisiere {where}."
+    },
+    "stats": {
+      "text": "Damit sichtbar wird, wie viele WMap nutzen und welche Dienste wie oft gebraucht werden, schickt WMap einmal am Tag eine anonyme Meldung an den WMap-Server: dass die App heute offen war und wie oft sie welchen Dienst gefragt hat. Ohne Kennung, ohne Ort, ohne Suchbegriffe. Du kannst das jederzeit unter <strong>Einstellungen → Daten</strong> ändern.",
+      "allow": "Erlauben",
+      "deny": "Nicht senden"
     }
   },
   "record": {

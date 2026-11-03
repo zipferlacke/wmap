@@ -1,0 +1,5091 @@
+{
+  "_meta": {
+    "name": "Français",
+    "locale": "fr-FR"
+  },
+  "common": {
+    "language": {
+      "offer_title": "{name} est disponible",
+      "offer_text": "WMap existe aussi en {name}. Veux-tu changer ? Tu pourras le modifier plus tard dans les réglages.",
+      "switch": "Changer",
+      "stay": "Pas maintenant"
+    },
+    "delete": "Supprimer",
+    "cancel": "Annuler",
+    "ok": "OK",
+    "sheet": {
+      "grip": "Changer la hauteur : faire glisser, toucher deux fois pour ouvrir ou fermer complètement"
+    },
+    "close": "Fermer",
+    "save": "Enregistrer",
+    "back": "Retour",
+    "view": "Voir",
+    "not_now": "Pas maintenant",
+    "units": {
+      "m": "m",
+      "km": "km",
+      "h": "h",
+      "min": "min",
+      "s": "s",
+      "kmh": "km/h"
+    },
+    "speech": {
+      "kilometers": "{x} kilomètres",
+      "meters": "{x} mètres",
+      "kilometers_plain": "{x} kilomètres",
+      "meters_plain": "{x} mètres"
+    },
+    "profiles": {
+      "foot": "À pied",
+      "bike": "Vélo",
+      "car": "Voiture",
+      "transit": "Bus et train",
+      "hike": "Randonnée",
+      "walk": "Promenade",
+      "road": "Vélo de route",
+      "tour": "Vélo de randonnée",
+      "gravel": "Gravel",
+      "mtb": "VTT",
+      "drive": "Voiture"
+    },
+    "osm_test_server": "Serveur de test OSM",
+    "later": "Plus tard",
+    "next": "Suivant",
+    "done": "Terminé",
+    "nav": {
+      "map": "Carte",
+      "dashboard": "Aperçu",
+      "tours": "Parcours",
+      "discover": "Découvrir",
+      "plugins": "Plugins",
+      "main": "Navigation principale",
+      "my_tours": "Mes parcours",
+      "plan_tour": "Planifier un parcours",
+      "fly": "Survoler",
+      "menu": "Menu"
+    },
+    "weekdays": {
+      "short": {
+        "mo": "Lun",
+        "tu": "Mar",
+        "we": "Mer",
+        "th": "Jeu",
+        "fr": "Ven",
+        "sa": "Sam",
+        "su": "Dim"
+      }
+    },
+    "months": {
+      "short": {
+        "jan": "janv.",
+        "feb": "févr.",
+        "mar": "mars",
+        "apr": "avr.",
+        "may": "mai",
+        "jun": "juin",
+        "jul": "juil.",
+        "aug": "août",
+        "sep": "sept.",
+        "oct": "oct.",
+        "nov": "nov.",
+        "dec": "déc."
+      },
+      "long": {
+        "jan": "janvier",
+        "feb": "février",
+        "mar": "mars",
+        "apr": "avril",
+        "may": "mai",
+        "jun": "juin",
+        "jul": "juillet",
+        "aug": "août",
+        "sep": "septembre",
+        "oct": "octobre",
+        "nov": "novembre",
+        "dec": "décembre"
+      }
+    }
+  },
+  "settings": {
+    "look": {
+      "title": "Apparence",
+      "theme": {
+        "title": "Clair ou sombre",
+        "hint": "Pour la carte et l'application. « Comme le système » suit le mode de ton appareil, même s'il change le soir.",
+        "options": {
+          "system": "Comme le système",
+          "light": "Clair",
+          "dark": "Sombre"
+        }
+      },
+      "language": {
+        "title": "Langue"
+      },
+      "geo": "Ouvrir les liens de carte (geo:) avec WMap",
+      "permissions": "Autorisations – position, Health Connect"
+    },
+    "way": {
+      "title": "En route",
+      "zoom": {
+        "title": "Zoom pendant la navigation",
+        "hint": "Automatique : près en ville, plus loin sur l'autoroute, plus près avant de tourner.",
+        "options": {
+          "auto": "Automatique",
+          "near": "Plus près",
+          "far": "Plus de vue d'ensemble"
+        }
+      },
+      "along": {
+        "title": "Petites questions en route",
+        "hint": "« Nouveau chemin ? », « Fermé ? », « Existe-t-il encore … ? », « Toujours des bouchons ? » dans une petite bulle qui disparaît toute seule – pendant la navigation et avec le point de position sur la carte, sans réponse ensuite sous Contribuer. Uniquement avec Contribuer.",
+        "options": {
+          "foot": "À pied",
+          "bike": "Vélo",
+          "car": "Voiture"
+        }
+      },
+      "voice": "Voix des annonces",
+      "fuel": {
+        "title": "Configurer les prix des carburants",
+        "prompt": "Clé API Tankerkönig (gratuite sur creativecommons.tankerkoenig.de).\nElle reste enregistrée uniquement dans ce navigateur. Laisse vide pour la supprimer."
+      },
+      "offline_maps": "Cartes hors ligne : télécharger des zones sur l'appareil",
+      "offline": {
+        "title": "Enregistrer la carte pour la navigation hors ligne",
+        "hint": "Au démarrage de la navigation, la carte est chargée le long du trajet – les zones sans réseau passent alors inaperçues."
+      },
+      "nav3d": {
+        "title": "Vue 3D pendant la navigation",
+        "hint": "Inclinée, du point de vue du conducteur ; désactivée : à plat, vue du dessus."
+      },
+      "saver": {
+        "title": "Mode économie de données",
+        "hint": "Pas de données d'altitude 3D ni de cartes hors ligne."
+      },
+      "carlog": {
+        "title": "Android Auto : enregistrer le trajet",
+        "hint": "Pour chercher les erreurs quand la carte se fige dans la voiture : écrit un fichier par trajet dans Téléchargements/WMap. Valable dès le prochain démarrage de WMap dans la voiture."
+      }
+    },
+    "account": {
+      "title": "Compte",
+      "intro": "WMap utilise ton compte OpenStreetMap – pour ajouter et améliorer des lieux, partager et noter des parcours et pour tes propres plugins. WMap n'a pas de mot de passe à lui ; tout le reste fonctionne sans compte.",
+      "delete": "Supprimer le compte – avec parcours, plugins et notes",
+      "none": "Pas encore de compte ? Tu le crées lors de la connexion sur openstreetmap.org.",
+      "login_missing": "La connexion à OpenStreetMap manque",
+      "signed_in": "Connecté en tant que {name}",
+      "logout": "Se déconnecter",
+      "not_set_up": "La connexion n'est pas encore configurée ici : WMap a besoin d'un identifiant client OAuth de {web} (voir « Pour les développeurs »). D'ici là, tu peux envoyer tes réponses anonymement comme signalement.",
+      "wmap_missing": "Connecté à OpenStreetMap en tant que {name}, le compte WMap manque encore",
+      "login_again": "reconnecte-toi une fois.",
+      "relogin": "Se reconnecter",
+      "queue": "{n} réponses attendent d'être envoyées.",
+      "login": "Se connecter avec OpenStreetMap",
+      "wmap_failed": "Connecté à OpenStreetMap, mais le compte WMap n'a pas fonctionné : {error}",
+      "developer": {
+        "title": "Pour les développeurs",
+        "hint": "Le compte WMap ne fonctionne qu'avec openstreetmap.org et l'identifiant client de WMap ; sur le serveur de test, tu peux seulement essayer la modification de la carte.",
+        "server": "Serveur",
+        "client": {
+          "title": "Identifiant client OAuth",
+          "hint": "à enregistrer sur {web}"
+        },
+        "redirect": "URL de redirection"
+      }
+    },
+    "contribute": {
+      "title": "Contribuer à OpenStreetMap",
+      "clear": "Effacer l'enregistrement",
+      "trace": {
+        "title": "Enregistrer le trajet et poser des questions ensuite",
+        "hint": "WMap retient sur cet appareil où tu es passé (14 jours) et pose ensuite une brève question – par ex. si un parking est payant. Rien ne quitte l'appareil avant que tu répondes et envoies."
+      },
+      "anon": {
+        "title": "Envoyer comme signalement sans compte",
+        "hint": "Sans compte, tes réponses partent anonymement comme signalement à OpenStreetMap – des contributeurs les saisissent ensuite. Avec un compte, directement dans la carte."
+      },
+      "stats": {
+        "none": "Pas encore de contributions depuis cet appareil.",
+        "mine": "Tu as {stats} via WMap.",
+        "all": "Tous ensemble : {stats}.",
+        "anon_count": "Le décompte est anonyme, seulement le nombre – sans compte, appareil ni lieu."
+      }
+    },
+    "data": {
+      "title": "Données",
+      "trackshow": {
+        "title": "Parcours enregistrés sur la carte",
+        "hint": "Lesquels de « Mes parcours » s'affichent d'eux-mêmes sur la carte. Les plus anciens restent dans la liste ; là, chaque année et chaque parcours peut être affiché ou masqué séparément. Plus un parcours est ancien, plus son tracé est pâle."
+      },
+      "sync": "Sauvegarde &amp; synchronisation – dossier, Health Connect, ZIP",
+      "tracks": "Voir les trajets enregistrés",
+      "clear_history": "Effacer l'historique de recherche",
+      "history": {
+        "title": "Mémoriser chaque navigation",
+        "hint": "Les navigations normales aussi arrivent dans Parcours enregistrés. Les parcours planifiés que tu démarres et « Enregistrer » sont toujours conservés."
+      },
+      "stats": {
+        "title": "Statistiques d’utilisation anonymes",
+        "hint": "Une fois par jour : que WMap a été ouverte aujourd’hui et combien de fois chaque service a été sollicité (p. ex. recherche 12×). Sans identifiant, sans position, sans termes de recherche."
+      }
+    },
+    "map": {
+      "title": "Apparence de la carte",
+      "sharpness": {
+        "title": "Netteté de la carte",
+        "hint": "Finesse du dessin de la carte (densité de pixels). Plus élevé : texte, lignes et bâtiments plus nets – mais il faut plus de mémoire et de batterie, et la carte est moins fluide. Plus bas : plus économe et plus fluide, mais un peu flou. Cet écran a {dpr}. Valable à la prochaine ouverture de la carte."
+      }
+    },
+    "toast": {
+      "saver_off": "Mode économie de données désactivé",
+      "saver_on": "Mode économie de données activé – pas de données d'altitude 3D",
+      "next_open": "Valable à la prochaine ouverture de la carte",
+      "geo": "Le navigateur va maintenant demander si WMap peut ouvrir les liens de carte",
+      "history_cleared": "Historique de recherche effacé",
+      "trace_cleared": "Enregistrement effacé",
+      "fuel_on": "Prix des carburants configurés",
+      "fuel_off": "Prix des carburants désactivés",
+      "geo_failed": "Impossible dans ce navigateur ({error})",
+      "signed_in": "Connecté en tant que {name}"
+    },
+    "page_title": "Réglages – WMap",
+    "title": "Réglages"
+  },
+  "dashboard": {
+    "page_title": "Aperçu – WMap",
+    "title": "Aperçu",
+    "tiles": {
+      "label": "Vues",
+      "sync": {
+        "state": {
+          "busy": "Synchronisation …",
+          "error": "Erreur de synchronisation",
+          "folder_at": "Dossier {name} · {date}",
+          "folder": "Dossier {name}",
+          "health_error": "Erreur Health Connect",
+          "health_at": "Health Connect · {date}"
+        },
+        "title": "Sauvegarde et synchronisation",
+        "text": "Dossier (Nextcloud, Drive …), Health Connect, sauvegarde"
+      },
+      "map": {
+        "title": "Carte",
+        "text": "Chercher, planifier un itinéraire, naviguer, enregistrer"
+      },
+      "planned": {
+        "title": "Parcours planifiés",
+        "text": "Pour partir en voiture, à vélo ou à pied",
+        "none": "aucun pour l'instant",
+        "count": {
+          "one": "{count} parcours",
+          "other": "{count} parcours"
+        }
+      },
+      "recorded": {
+        "title": "Parcours enregistrés",
+        "text": "Ce que tu as parcouru à vélo ou à pied",
+        "none": "aucun pour l'instant",
+        "this_year": " · {year} : {km}",
+        "count": {
+          "one": "{count} trajet",
+          "other": "{count} trajets"
+        }
+      },
+      "discover": {
+        "title": "Découvrir",
+        "text": "Sentiers de randonnée et pistes cyclables, parcours d'autres personnes"
+      },
+      "plugins": {
+        "title": "Plugins",
+        "text": "Photos aériennes, géologie, données perso, extensions",
+        "active": "{n} actif(s)"
+      },
+      "offline": {
+        "title": "Hors ligne",
+        "text": "Zones de carte, parcours et cartes de navigation sur l'appareil – pour partir sans réseau",
+        "count": {
+          "one": "{count} zone · {size}",
+          "other": "{count} zones · {size}"
+        }
+      },
+      "survey": {
+        "title": "Contribuer",
+        "text": "Petites questions qui améliorent OpenStreetMap",
+        "count": {
+          "one": "{count} nouvelle question",
+          "other": "{count} nouvelles questions"
+        }
+      },
+      "settings": {
+        "title": "Réglages",
+        "text": "Clair/sombre, navigation, hors ligne, compte"
+      }
+    },
+    "store": {
+      "title": "Enregistré sur cet appareil",
+      "nav": {
+        "title": "Cartes pour la navigation",
+        "none": "Aucune navigation préchargée",
+        "loaded": {
+          "one": "{count} navigation préchargée – pour que les zones sans réseau passent inaperçues. Chacune est conservée {days} jours ; si la place manque, la plus ancienne disparaît.",
+          "other": "{count} navigations préchargées – pour que les zones sans réseau passent inaperçues. Chacune est conservée {days} jours ; si la place manque, la plus ancienne disparaît."
+        },
+        "item": "{date} · {tiles} · encore {days}",
+        "tiles": {
+          "one": "{count} tuile",
+          "other": "{count} tuiles"
+        },
+        "days": {
+          "one": "{count} jour",
+          "other": "{count} jours"
+        },
+        "viewed": "Plus {tiles} de zones consultées.",
+        "areas": "Les zones que tu as téléchargées toi-même sont conservées – elles figurent avec tout ce qui est disponible sans réseau sous <a href=\"./offline-daten.html\">Hors ligne</a>.",
+        "delete": {
+          "title": "Supprimer les cartes des navigations ?",
+          "text": "À la prochaine navigation, les cartes le long de l'itinéraire seront rechargées. Tes zones hors ligne sont conservées.",
+          "done": "Cartes des navigations supprimées"
+        }
+      },
+      "routes": {
+        "title": "Derniers itinéraires",
+        "unnamed": "Itinéraire",
+        "forget": "Oublier cet itinéraire",
+        "none": "Aucun",
+        "delete_all": "Tous",
+        "deleted": "Derniers itinéraires supprimés"
+      },
+      "history": {
+        "title": "Historique de recherche",
+        "empty": "Vide",
+        "count": {
+          "one": "{count} entrée",
+          "other": "{count} entrées"
+        },
+        "deleted": "Historique de recherche effacé"
+      },
+      "usage_quota": "Au total, WMap occupe {used} sur cet appareil (autorisé : {quota}).",
+      "usage": "Au total, WMap occupe {used} sur cet appareil."
+    },
+    "thanks": {
+      "title": "Merci !",
+      "text": "WMap n'existe que parce que beaucoup de gens partagent ouvertement leurs données et leurs services :",
+      "support": "WMap est gratuit, sans publicité et sans pistage. Si elle t'aide :",
+      "support_link": "Soutenir le développement"
+    },
+    "about": {
+      "changelog": "Nouveautés",
+      "text": "– carte et navigation basées sur des données ouvertes",
+      "imprint": "Mentions légales",
+      "privacy": "Confidentialité",
+      "version_app": "{version} · App {app}"
+    },
+    "unit": {
+      "km": "{v} km",
+      "mb": "{v} Mo"
+    }
+  },
+  "delete_konto": {
+    "page_title": "Supprimer le compte – WMap",
+    "title": "Supprimer le compte",
+    "what": {
+      "title": "Qu'est-ce qu'un compte WMap ?",
+      "text": "WMap fonctionne sans compte. Tu n'as besoin d'un compte que pour partager des parcours ou des plugins et pour noter des parcours. La connexion se fait avec ton compte OpenStreetMap ; WMap n'en conserve que ton nom OSM et ton numéro d'utilisateur OSM – ni mot de passe ni adresse e-mail."
+    },
+    "deleted": {
+      "title": "Ce qui est supprimé",
+      "name": "ton nom et ton numéro d'utilisateur OSM sur le serveur WMap",
+      "tours": "tous les parcours que tu as enregistrés – privés et publiés – avec les notes des autres à leur sujet",
+      "plugins": "tous les plugins que tu as créés – privés et publiés, avec les données envoyées",
+      "ratings": "tes notes et commentaires sur les parcours des autres",
+      "logins": "toutes les connexions sur tous les appareils",
+      "final": "La suppression est immédiate et définitive ; il ne reste rien sur le serveur.",
+      "not_server": "Ne sont pas sur le serveur : trajets enregistrés, lieux mémorisés, cartes hors ligne et réglages. Ils restent sur ton appareil jusqu'à ce que tu supprimes l'application ou les données du site dans le navigateur. Ton compte OpenStreetMap et tout ce que tu y as saisi restent – tu les gères sur openstreetmap.org."
+    },
+    "now": {
+      "title": "Supprimer maintenant",
+      "wait": "Un instant …",
+      "button": "Supprimer définitivement le compte",
+      "hint": "Le compte WMap supprimé est celui qui correspond au compte OpenStreetMap avec lequel tu es connecté.",
+      "login": "Se connecter avec OpenStreetMap"
+    },
+    "no_login": {
+      "title": "Impossible de te connecter ?",
+      "text": "Si tu ne peux plus te connecter, écris à <a href=\"mailto:contact@wuefl.de?subject=WMap-Konto%20l%C3%B6schen\">contact@wuefl.de</a> avec ton nom OpenStreetMap et – si possible – le nom d'un de tes parcours ou plugins. Nous supprimerons alors le compte à la main, au plus tard sous 30 jours, et te le confirmerons."
+    },
+    "summary": {
+      "published": " ({n} publié(s))",
+      "tours": {
+        "one": "{n} parcours",
+        "other": "{n} parcours"
+      },
+      "plugins": {
+        "one": "{n} plugin",
+        "other": "{n} plugins"
+      },
+      "ratings": {
+        "one": "{n} note",
+        "other": "{n} notes"
+      }
+    },
+    "status": {
+      "logged_out": "Tu n'es pas connecté ici. Connecte-toi avec le compte OpenStreetMap auquel ton compte WMap correspond – ensuite tu pourras le supprimer.",
+      "signed_in": "Connecté en tant que <strong>{name}</strong>.",
+      "contains": "Il comprend {list}.",
+      "empty": "Ce compte ne comprend ni parcours, ni plugins, ni notes.",
+      "expired": "{error} – reconnecte-toi.",
+      "deleted_with": "Le compte <strong>{name}</strong> est supprimé – avec {list}.",
+      "deleted": "Le compte <strong>{name}</strong> est supprimé.",
+      "revoke": "Tu peux révoquer l'autorisation donnée à WMap sur openstreetmap.org sous Paramètres → Applications OAuth 2 → Applications autorisées."
+    },
+    "login_reason": "Pour supprimer",
+    "confirm": {
+      "title": "Vraiment supprimer le compte ?",
+      "text": "Ton compte WMap, tous tes parcours, plugins et notes seront supprimés immédiatement et définitivement. C'est irréversible. Ton compte OpenStreetMap reste tel quel.",
+      "button": "Supprimer définitivement"
+    },
+    "error": {
+      "title": "La suppression a échoué"
+    }
+  },
+  "ebenen": {
+    "page_title": "Calques perso – WMap",
+    "title": "Calques perso",
+    "back": "Vers la carte",
+    "panel_label": "Calques",
+    "add": {
+      "file": "Charger du GeoJSON",
+      "url": "Charger depuis un lien",
+      "loaded": "« {name} » chargé – {count} objets",
+      "link": {
+        "title": "GeoJSON depuis un lien",
+        "text": "Le serveur doit autoriser l'accès depuis le navigateur (CORS). Les données sont chargées une fois puis enregistrées.",
+        "load": "Charger",
+        "status": "Le serveur répond avec {status}",
+        "cors": "Inaccessible – le serveur n'autorise peut-être pas l'accès depuis le navigateur (CORS)"
+      },
+      "default_name": "Calque"
+    },
+    "intro": "Tes propres données comme calque – par ex. des points de mesure géologiques ou des valeurs mesurées en GeoJSON. Elles restent privées sur cet appareil. Les valeurs numériques peuvent s'afficher en dégradé de couleurs.",
+    "list": {
+      "empty": "Pas encore de calques. Charge un fichier GeoJSON – par ex. exporté depuis QGIS.",
+      "source": {
+        "url": "depuis {host}",
+        "plugin": "Plugin de {operator}",
+        "file": "depuis un fichier"
+      },
+      "color": "Couleur",
+      "tiles": "Tuiles de carte",
+      "objects": "{count} objets",
+      "hide": "Masquer",
+      "show": "Afficher",
+      "fit": "Zoomer dessus",
+      "opacity": "Opacité",
+      "color_by": {
+        "title": "Couleur selon",
+        "single": "– une couleur –"
+      },
+      "on_main": "Aussi sur la carte principale",
+      "as_plugin": "En plugin"
+    },
+    "delete": {
+      "title": "Supprimer « {name} » ?",
+      "text": "Le calque disparaît de cet appareil."
+    },
+    "plugin": {
+      "too_big": "Trop gros pour un plugin (max. 2 Mo) – propose-le plutôt sous forme de lien",
+      "login_reason": "Pour l'envoyer en plugin",
+      "title": "Enregistrer comme plugin",
+      "name": "Nom",
+      "description": {
+        "title": "Description",
+        "placeholder": "Que montre le calque ? Comment a-t-il été mesuré ?"
+      },
+      "operator": "Fournisseur",
+      "data_date": "Date des données",
+      "publish": "Proposer publiquement – sinon seulement pour toi",
+      "upload": "Envoyer",
+      "published": "Publié comme plugin",
+      "private": "Envoyé – seulement pour toi (aussi sur d'autres appareils)"
+    },
+    "info": {
+      "object": "Objet"
+    }
+  },
+  "oauth": {
+    "page_title": "WMap – Connexion",
+    "text": "Connexion à OpenStreetMap …"
+  },
+  "import": {
+    "page_title": "Ouvrir un GPX – WMap",
+    "title": "Ouvrir un GPX",
+    "unit": {
+      "km": "{v} km"
+    },
+    "values": {
+      "hr": "Pouls",
+      "pow": "Puissance"
+    },
+    "card": {
+      "error": "Impossible à ouvrir : {error}",
+      "no_times": "sans horaires",
+      "saved": "Enregistré – voir",
+      "merged": "Complété – voir",
+      "merge": "Fusionner avec le parcours existant …",
+      "exists": "Existe déjà – voir",
+      "save_track": "Enregistrer comme parcours enregistré",
+      "plan_only": "Sans horaires dans le fichier, il ne peut être ouvert que comme parcours planifié.",
+      "dup": {
+        "known": "Tu as déjà ce trajet : « {name} ».",
+        "kept": "Rien n'a été repris – les valeurs existantes restent.",
+        "nothing": "Le fichier n'a rien qui manque ici."
+      },
+      "view": "Voir",
+      "open_plan": "Ouvrir comme parcours planifié"
+    },
+    "more": {
+      "missing": "{values} (manque ici)",
+      "marks": "Tours de la montre (manquent ici)",
+      "points": "tracé plus précis ({file} points au lieu de {here})",
+      "differ": "{values} diffère",
+      "has": "Le fichier en contient plus : {list}.",
+      "differs": "Le fichier diffère."
+    },
+    "summary": {
+      "fresh": "{n} nouveau(x)",
+      "plus": "{n} pour un parcours qui existe déjà",
+      "same": "{n} existe(nt) déjà",
+      "done": "{n} repris",
+      "plain": "{n} sans horaires (seulement comme parcours planifié)",
+      "bad": "{n} illisible(s)",
+      "title": "{n} fichiers",
+      "taking": "Reprise de {i} sur {n} …",
+      "waiting": "J'attends ta réponse …",
+      "take": {
+        "one": "Reprendre un fichier …",
+        "other": "Reprendre les {n} …"
+      },
+      "saved": {
+        "one": "{n} parcours repris",
+        "other": "{n} parcours repris"
+      },
+      "merged": "{n} fusionné(s)",
+      "later": {
+        "one": "{n} reste pour plus tard",
+        "other": "{n} restent pour plus tard"
+      },
+      "nothing": "Rien de nouveau – ces parcours existent déjà"
+    },
+    "empty": {
+      "title": "Ouvrir un fichier GPX ou FIT",
+      "text": "Choisis un fichier GPX ou FIT – par ex. de Garmin, Zepp, Komoot ou d'une autre application. Avec des horaires, tu peux l'enregistrer comme parcours enregistré, sinon l'ouvrir comme parcours planifié."
+    },
+    "pick": {
+      "more": "Choisir un autre fichier",
+      "first": "Choisir un fichier"
+    },
+    "toast": {
+      "kept": "Rien n'a été repris – les valeurs existantes restent",
+      "exists": "Ce trajet existe déjà",
+      "nothing": "Rien à reprendre",
+      "saved": "« {name} » enregistré",
+      "merged": "« {name} » complété"
+    },
+    "default_file": "Fichier.gpx",
+    "error": {
+      "no_fit": "Pas un fichier FIT",
+      "fit_damaged": "Fichier FIT endommagé",
+      "no_gpx": "Pas un fichier GPX valide",
+      "no_route": "Aucun tracé dans le fichier"
+    },
+    "default_file_name": "Fichier.gpx",
+    "note": {
+      "in_folder": "Le parcours existant se trouve dans le dossier – {reason}"
+    },
+    "ask": {
+      "skip": "Ne pas importer",
+      "all": {
+        "text": "{text} Reprendre partout les données les plus précises ?",
+        "best": "Oui, partout les données les plus précises",
+        "each": "Régler moi-même"
+      },
+      "new": {
+        "text": "{text} Reprendre ?",
+        "take": "Tout reprendre",
+        "each": "Choisir"
+      },
+      "file": {
+        "title_n": "Nouveau fichier ({i} sur {n})",
+        "title": "Nouveau fichier",
+        "take": "Reprendre",
+        "from": "« {file} »{what}. Que veux-tu reprendre ?",
+        "planned": "Un parcours planifié – sans horaires.",
+        "always": "Le tracé, la durée et les kilomètres sont toujours repris.",
+        "only_route": "Seulement le tracé – aucune valeur mesurée dans le fichier."
+      },
+      "same": "Reprendre ainsi pour tous les fichiers",
+      "continue_later": "Continuer plus tard",
+      "all_best": "Les données les plus précises pour tous",
+      "files_title": "{n} fichiers",
+      "new_tours": {
+        "one": "{n} nouveau parcours",
+        "other": "{n} nouveaux parcours"
+      },
+      "to_existing": "{n} pour un parcours qui existe déjà"
+    },
+    "merge": {
+      "title_n": "Fusionner ({i} sur {n})",
+      "title": "Fusionner",
+      "label": {
+        "shape": "Tracé · durée · kilomètres",
+        "hr": "Pouls",
+        "pow": "Puissance",
+        "marks": "Tours de la montre"
+      },
+      "shape_hint": "vont ensemble – ils viennent des mêmes points",
+      "file_named": "le fichier « {name} »",
+      "file": "le fichier",
+      "old_name": "le parcours « {name} » tel qu'il est dans WMap",
+      "new": "Nouveau",
+      "old": "Actuel",
+      "exists": "Le parcours « {name} » existe déjà.",
+      "note_both": "Par ligne : « Nouveau » remplace l'existant, « Actuel » le laisse tel quel. Le nom, le type et la couleur restent toujours ceux d'avant.",
+      "note_single": "Sans coche, la valeur mesurée n'est pas reprise."
+    }
+  },
+  "offline_data": {
+    "page_title": "Hors ligne – WMap",
+    "title": "Hors ligne",
+    "back": "Vers l'aperçu",
+    "tracks": {
+      "keep": {
+        "days30": "des 30 derniers jours",
+        "days90": "des 90 derniers jours",
+        "year": "de la dernière année",
+        "all": "tous",
+        "span": "ceux {span}",
+        "recent": "de la période récente"
+      },
+      "empty": "Pas encore de parcours enregistrés.",
+      "all_here": {
+        "one": "Le parcours est entièrement sur cet appareil. Sans dossier relié, rien n'est déplacé et rien n'est supprimé selon la durée.",
+        "other": "Les {count} parcours sont entièrement sur cet appareil. Sans dossier relié, rien n'est déplacé et rien n'est supprimé selon la durée."
+      },
+      "pinned": " et {count} marqués « disponible hors ligne »",
+      "split": {
+        "one": "{n} sur {tours} est entièrement dans l'application : {which}{pinned}.",
+        "other": "{n} sur {tours} sont entièrement dans l'application : {which}{pinned}."
+      },
+      "count": {
+        "one": "{count} parcours",
+        "other": "{count} parcours"
+      },
+      "rest": {
+        "one": "Le reste est dans le dossier – l'application ne garde que la fiche (nom, distance, durée, tracé approximatif).",
+        "other": "Les {n} autres sont dans le dossier – l'application ne garde que la fiche (nom, distance, durée, tracé approximatif)."
+      },
+      "title": "Parcours enregistrés",
+      "pin_hint": "Rendre disponible hors ligne : ouvre le parcours et touche « Disponible hors ligne ». La durée pendant laquelle les parcours restent entièrement dans l'application se règle sous <a href=\"./sync.html\">Sauvegarde &amp; synchronisation</a> (« Garder dans l'application »).",
+      "view": "Voir les parcours enregistrés",
+      "unpinned": "« {name} » ne sera plus que dans le dossier après la prochaine synchronisation"
+    },
+    "unit": {
+      "gb": "{v} Go",
+      "mb": "{v} Mo"
+    },
+    "not_offline": "Plus hors ligne",
+    "tiles": {
+      "one": "{count} tuile",
+      "other": "{count} tuiles"
+    },
+    "areas": {
+      "terrain": "avec relief",
+      "date": "État du {date}",
+      "partial": "Incomplet",
+      "resume": "dans l'éditeur « Continuer le chargement »",
+      "title": "Zones de carte",
+      "state_size": {
+        "one": "{count} zone est entièrement sur l'appareil – {size} au total. Elle reste jusqu'à ce que tu la retires.",
+        "other": "{count} zones sont entièrement sur l'appareil – {size} au total. Elles restent jusqu'à ce que tu les retires."
+      },
+      "state": {
+        "one": "{count} zone est entièrement sur l'appareil. Elle reste jusqu'à ce que tu la retires.",
+        "other": "{count} zones sont entièrement sur l'appareil. Elles restent jusqu'à ce que tu les retires."
+      },
+      "empty": "Aucune zone chargée pour l'instant. Une zone est un morceau de carte entièrement sur l'appareil – pour partir sans réseau.",
+      "new": "Nouvelle zone",
+      "edit": "Modifier les zones",
+      "hint": "La carte d'une zone reste dans l'état du téléchargement. Pour la mettre à jour : touche la zone puis « Recharger ».",
+      "remove": {
+        "title": "« {name} » n'est plus hors ligne ?",
+        "freed": "{size} seront libérés.",
+        "text": "La zone est supprimée de l'appareil – sans réseau, la carte n'y sera alors plus disponible.",
+        "button": "Retirer",
+        "done": "« {name} » retiré"
+      }
+    },
+    "default_tour": "Parcours",
+    "planned": {
+      "title": "Parcours planifiés",
+      "state": {
+        "one": "{count} parcours planifié est entièrement dans l'application – pour partir même sans réseau. Pour la carte en route, télécharge une zone ; pendant la navigation, WMap précharge la carte le long de l'itinéraire tout seul.",
+        "other": "{count} parcours planifiés sont entièrement dans l'application – pour partir même sans réseau. Pour la carte en route, télécharge une zone ; pendant la navigation, WMap précharge la carte le long de l'itinéraire tout seul."
+      },
+      "empty": "Pas encore de parcours planifiés.",
+      "view_all": "Voir les {n}"
+    },
+    "nav": {
+      "title": "Cartes de navigation",
+      "state": {
+        "one": "{count} navigation préchargée – pour que les zones sans réseau passent inaperçues en route. Chacune est conservée {days} jours ; si la place manque, la plus ancienne disparaît.",
+        "other": "{count} navigations préchargées – pour que les zones sans réseau passent inaperçues en route. Chacune est conservée {days} jours ; si la place manque, la plus ancienne disparaît."
+      },
+      "empty": "Aucune navigation préchargée. Au démarrage d'une navigation, WMap charge la carte le long de l'itinéraire tout seul.",
+      "item": "Navigation du {date}",
+      "item_sub": "{tiles} · encore {days}",
+      "days": {
+        "one": "{count} jour",
+        "other": "{count} jours"
+      },
+      "viewed": "Plus {tiles} de zones consultées – elles restent tant qu'il y a de la place.",
+      "delete_all": "Tout supprimer",
+      "deleted_one": "Carte de la navigation supprimée",
+      "delete": {
+        "title": "Supprimer les cartes des navigations ?",
+        "text": "À la prochaine navigation, les cartes le long de l'itinéraire seront rechargées. Tes zones sont conservées.",
+        "done": "Cartes des navigations supprimées"
+      }
+    },
+    "usage_quota": "Au total, WMap occupe {used} sur cet appareil (autorisé : {quota}).",
+    "usage": "Au total, WMap occupe {used} sur cet appareil.",
+    "app_offline": "L'application elle-même fonctionne aussi sans réseau ; la recherche et le calcul d'itinéraires en ont besoin."
+  },
+  "offline": {
+    "page_title": "Cartes hors ligne – WMap",
+    "title": "Cartes hors ligne",
+    "back": "Vers « Hors ligne »",
+    "panel_label": "Cartes hors ligne",
+    "new": {
+      "button": "Nouvelle zone",
+      "title": "Nouvelle zone",
+      "shape": {
+        "label": "Forme",
+        "rect": "Rectangle",
+        "free": "Forme libre"
+      },
+      "remove_last": "Supprimer le dernier point",
+      "restart": "Recommencer",
+      "name": {
+        "title": "Nom",
+        "placeholder": "p. ex. Vosges",
+        "around": "Zone autour de {place}",
+        "default": "Zone"
+      },
+      "detail": "Détail",
+      "terrain": "Inclure le relief – ombrage et 3D",
+      "download": "Télécharger",
+      "remove_selected": "Supprimer le point sélectionné",
+      "min_points": "Place au moins trois points.",
+      "hint": {
+        "rect": "Fais glisser les coins du rectangle pour l'ajuster.",
+        "free": "Touche la carte pour placer des points – un toucher près d'un bord y insère le point. Les points se déplacent en les faisant glisser ; un toucher les sélectionne, un double toucher les supprime."
+      },
+      "too_big": "Trop grande – choisis une zone plus petite ou « Aperçu ».",
+      "calculating": "{count} tuiles – calcul de la taille …",
+      "estimate": "<strong>env. {size}</strong> · {tiles} tuiles",
+      "tight": "Il ne reste que {size} de libre – ça ne suffira sans doute pas.",
+      "no_estimate": "Taille indisponible ({error}) – {count} tuiles"
+    },
+    "intro": "Des zones entièrement sur l'appareil – pour partir sans réseau. Elles restent jusqu'à ce que tu les supprimes et peuvent être rechargées à tout moment.",
+    "unit": {
+      "mb": "{v} Mo",
+      "gb": "{v} Go"
+    },
+    "list": {
+      "terrain": "avec relief",
+      "loading": "Chargement … {pct} % · {size}",
+      "ok": "{size} · {tiles} tuiles · {what} · état du {date}",
+      "partial_size": "Incomplet ({size}) – {what}",
+      "partial": "Incomplet – {what}",
+      "fit": "Zoomer dessus",
+      "stop": "Arrêter",
+      "resume": "Continuer le chargement",
+      "refresh": "Recharger",
+      "rename": "Renommer",
+      "empty": "Pas encore de zones. Touche « Nouvelle zone » et choisis sur la carte ce qui doit être disponible hors ligne."
+    },
+    "usage": {
+      "total": "Zones au total : {size}.",
+      "free": "Libre pour WMap : {size}."
+    },
+    "toast": {
+      "stopped": "« {name} » arrêté – à continuer plus tard",
+      "done": "« {name} » est disponible hors ligne ({size})",
+      "failed": "« {name} » : {failed} tuiles manquent – « Continuer le chargement » réessaie"
+    },
+    "delete": {
+      "title": "Supprimer « {name} » ?",
+      "freed": "{size} seront libérés.",
+      "text": "Sans réseau, la carte n'y sera alors plus disponible."
+    },
+    "areas": {
+      "detail": {
+        "full": "Tout – routes, chemins, bâtiments",
+        "overview": "Aperçu – lieux et grandes routes",
+        "full_short": "Tout",
+        "overview_short": "Aperçu"
+      },
+      "error": {
+        "browser": "Les cartes hors ligne ne fonctionnent pas dans ce navigateur",
+        "too_big": "La zone est trop grande",
+        "map_not_loaded": "La carte n'est pas encore chargée",
+        "storage_full": "Le stockage est plein – choisis une zone plus petite ou seulement l'aperçu"
+      }
+    },
+    "error": {
+      "source_not_loaded": "La source de carte n'est pas encore chargée"
+    }
+  },
+  "plugins": {
+    "page_title": "Plugins – WMap",
+    "title": "Plugins",
+    "search": "Rechercher des plugins",
+    "add": {
+      "title": "Ajouter",
+      "file": "Fichier GeoJSON",
+      "folder": "Ajouter un dossier de plugins",
+      "folder_once": "Lire un dossier",
+      "source": "Adresse (aussi avec mot de passe)",
+      "script": "Extension par adresse",
+      "offer": "Proposer un plugin",
+      "howto": "Comment construire un plugin – structure d'un dossier de plugins",
+      "hint": "Tes propres calques restent uniquement sur cet appareil. « Proposer un plugin » place un calque ou une extension dans le catalogue – en privé (seulement pour toi, sur tous tes appareils) ou en public ; cela demande un compte WMap."
+    },
+    "filter": {
+      "all": "Tous",
+      "layer": "Calques de carte",
+      "extension": "Extensions",
+      "own": "Perso",
+      "active": "Actifs"
+    },
+    "kind": {
+      "layer": "Calque de carte",
+      "extension": "Extension",
+      "own": "Calque perso"
+    },
+    "type": {
+      "geojson": "Données (GeoJSON)",
+      "raster": "Tuiles de carte",
+      "stored": "Données mesurées, enregistrées ici",
+      "script": "JavaScript",
+      "raster_private": "Tuiles de carte, privées",
+      "objects": "{count} objets"
+    },
+    "builtin": {
+      "hiking": {
+        "name": "Sentiers de randonnée",
+        "text": "Tous les sentiers de randonnée balisés – de la boucle locale au sentier de grande randonnée européen, avec leurs balises."
+      },
+      "cycling": {
+        "name": "Pistes cyclables",
+        "text": "Itinéraires cyclables balisés : grands itinéraires, routes régionales et locales."
+      },
+      "mtb": {
+        "name": "VTT",
+        "text": "Parcours de VTT balisés."
+      },
+      "description": "{text} Données d'OpenStreetMap, dessinées par waymarkedtrails.org (CC BY-SA)."
+    },
+    "source": {
+      "self": "toi-même",
+      "ext_folder": "Depuis ton dossier de plugins : {path}",
+      "ext_url": "Ajouté par toi par adresse.",
+      "plugin_folder": "depuis un dossier de plugins",
+      "folder": "depuis un dossier",
+      "file": "depuis un fichier",
+      "file_path": "Fichier : {path}"
+    },
+    "list": {
+      "empty_own": "Pas encore de calques perso – ajoute plus bas un fichier GeoJSON, un dossier ou une adresse.",
+      "empty_active": "Rien d'actif pour l'instant.",
+      "empty": "Rien trouvé.",
+      "server_error": "Catalogue injoignable pour le moment : {error}"
+    },
+    "detail": {
+      "page_title": "{name} – Plugins – WMap",
+      "operator": "Fournisseur : {operator}",
+      "data_date": "Date des données : {date}",
+      "contact": "Contact : {contact}",
+      "private": "Privé – seulement pour toi",
+      "local": "Seulement sur cet appareil",
+      "back": "Tous les plugins",
+      "deactivate": "Désactiver",
+      "activate": "Activer",
+      "on_map": "Voir sur la carte",
+      "warning": "Une extension est du code de programme. Une fois active, elle peut tout ce que WMap peut – y compris voir ta position. N'active que ce que tu connais et dont tu fais confiance au fournisseur.",
+      "source": "Source : {url}",
+      "opacity": {
+        "title": "Opacité",
+        "label": "Opacité en pourcentage",
+        "value": "{v} %"
+      }
+    },
+    "activate": {
+      "title": "Activer « {name} » ?",
+      "text_url": "L'extension charge du code de programme depuis {host} et peut tout faire dans WMap – y compris voir ta position. N'active que si tu fais confiance au fournisseur.",
+      "text_folder": "L'extension de ton dossier de plugins ({path}) peut tout faire dans WMap – y compris voir ta position. N'active que si tu fais confiance au fournisseur."
+    },
+    "toast": {
+      "active": "« {name} » est actif – sur la carte dans le menu des calques",
+      "off": "« {name} » est désactivé"
+    },
+    "error": {
+      "status": "Le fournisseur répond avec {status}",
+      "unreachable": "Fournisseur injoignable (ou n'autorise pas l'accès depuis le navigateur)"
+    },
+    "delete": {
+      "title": "Supprimer « {name} » ?",
+      "server": "Le plugin disparaît du catalogue – pour tout le monde.",
+      "local": "Il disparaît de cet appareil.",
+      "done": "Supprimé"
+    },
+    "script": {
+      "hint": "Un module JavaScript (https, .js/.mjs) avec <code>export function activate(wmap)</code>. Il ne s'exécute que lorsque tu l'actives.",
+      "name": "Nom",
+      "url": {
+        "title": "Adresse",
+        "placeholder": "https://…/extension.js"
+      },
+      "add": "Ajouter",
+      "bad_url": "Indique une adresse https vers un fichier .js"
+    },
+    "offer": {
+      "login_reason": "Pour proposer un plugin",
+      "hint": "Un calque de carte ou une extension qui se trouve chez toi ou chez un fournisseur. Tes propres données mesurées, tu les envoies comme plugin sous « Calques perso ».",
+      "name": "Nom",
+      "description": "Description",
+      "operator": "Fournisseur",
+      "contact": "Contact (site web ou e-mail)",
+      "kind": {
+        "title": "Type",
+        "geojson": "Lien GeoJSON",
+        "raster": "Tuiles de carte ou WMS",
+        "script": "Extension (JavaScript)"
+      },
+      "link": "Lien (https)",
+      "attribution": "Mention de la source",
+      "data_date": "Date des données",
+      "publish": "Proposer publiquement – sinon seulement pour toi",
+      "published": "Publié – pour tous dans le catalogue",
+      "private": "Enregistré – seulement pour toi"
+    },
+    "folders": {
+      "add_failed": "Le dossier n'a pas fonctionné : {error}",
+      "remove": {
+        "title": "Retirer « {name} » ?",
+        "text": "WMap oublie le dossier et retire les calques et extensions qui en viennent. Les fichiers du dossier restent.",
+        "button": "Retirer",
+        "label": "Retirer le dossier"
+      },
+      "and": " et ",
+      "loaded": "{what} depuis « {name} »",
+      "nothing": "Rien trouvé dans « {name} »",
+      "unreadable": " – illisible : {files}",
+      "layers": {
+        "one": "{n} calque",
+        "other": "{n} calques"
+      },
+      "extensions": {
+        "one": "{n} extension",
+        "other": "{n} extensions"
+      },
+      "once_hint": "Ce navigateur ne peut lire un dossier qu'une seule fois, sans le mémoriser – l'application, Chrome et Edge le peuvent. Pour relire : choisis simplement à nouveau le même dossier.",
+      "title": "Dossier de plugins",
+      "reload": "Relire"
+    },
+    "files": {
+      "some_failed": " – {n} n'ont pas pu être lus",
+      "invalid": "Pas un fichier GeoJSON valide ({files})",
+      "none": "Aucun fichier GeoJSON trouvé",
+      "loaded": {
+        "one": "{n} calque chargé",
+        "other": "{n} calques chargés"
+      }
+    },
+    "folder": {
+      "fallback_name": "Dossier",
+      "operator": "depuis ton dossier",
+      "default_name": "Plugin",
+      "error": {
+        "no_script": "script manquant",
+        "no_data": "pas de données",
+        "once": "Ce navigateur ne peut lire les dossiers qu'une seule fois",
+        "unknown": "Dossier inconnu désormais",
+        "no_access": "Pas d'accès au dossier – merci de l'autoriser"
+      }
+    }
+  },
+  "plugin_howto": {
+    "page_title": "Construire des plugins – WMap",
+    "title": "Construire des plugins",
+    "intro": {
+      "title": "De quoi s'agit-il",
+      "text": "Un dossier de plugins est un dossier tout à fait normal sur ton appareil – ou dans Nextcloud, Drive, Syncthing … WMap y lit des <strong>calques de carte</strong> et des <strong>extensions</strong>. Tu peux ajouter plusieurs dossiers ; WMap les retient, et « Relire » récupère les fichiers modifiés.",
+      "layer": "<strong>Un simple calque :</strong> dépose un fichier GeoJSON dans le dossier – c'est tout.",
+      "named": "<strong>Calque avec nom, description, couleur :</strong> un sous-dossier avec un fichier <code>wmap-plugin.json</code>.",
+      "tiles": "<strong>Tuiles de carte</strong> (p. ex. une carte géologique, WMS) : aussi via <code>wmap-plugin.json</code>.",
+      "extension": "<strong>Vrai plugin avec du code</strong> (extension) : un fichier JavaScript qui fait quelque chose sur la carte."
+    },
+    "where": {
+      "title": "Où ça marche",
+      "app": "<strong>Application WMap</strong> (Android, Windows, macOS, Linux) : choisis un dossier, WMap le retient.",
+      "chrome": "<strong>Chrome et Edge</strong> (aussi comme application web installée) : pareil – après un redémarrage, le navigateur demande une fois si WMap peut relire.",
+      "firefox": "<strong>Firefox et Safari :</strong> seulement <em>lecture unique</em>. Ces navigateurs n'offrent pas l'interface d'accès durable aux dossiers (File System Access) – Mozilla la juge trop risquée, car un site web pourrait ainsi écrire dans de vrais dossiers. Pour mettre à jour, choisis simplement à nouveau le même dossier.",
+      "add": "Ajouter : <a href=\"./plugins.html\">Plugins</a> → Ajouter → « Ajouter un dossier de plugins »."
+    },
+    "layout": {
+      "title": "Structure d'un dossier",
+      "code": "Mes plugins/\n├── Miradors.geojson              → calque « Miradors »\n├── Reseau-de-mesure/\n│   ├── wmap-plugin.json          → calque avec nom, description, couleur\n│   └── points-de-mesure.geojson\n├── Geologie/\n│   └── wmap-plugin.json          → tuiles de carte (tiles)\n└── Alerte-meteo/\n    ├── wmap-plugin.json          → extension (script)\n    └── main.js",
+      "loose_data": "Les fichiers <code>.geojson</code>/<code>.json</code> isolés deviennent chacun un calque, nommé d'après le fichier.",
+      "loose_js": "Les fichiers <code>.js</code> isolés deviennent des extensions (voir plus bas).",
+      "subfolder": "Tout ce qui est dans un sous-dossier avec <code>wmap-plugin.json</code> appartient à ce plugin.",
+      "depth": "Sous-dossiers jusqu'à 5 niveaux de profondeur ; les fichiers et dossiers commençant par un point sont ignorés."
+    },
+    "geojson": {
+      "title": "wmap-plugin.json – calque depuis un GeoJSON",
+      "code": "{\n  \"name\": \"Réseau de mesure Vosges\",\n  \"description\": \"Points de mesure des eaux souterraines, mis à jour chaque mois.\",\n  \"operator\": \"Syndicat des eaux des Vosges\",\n  \"attribution\": \"© Syndicat des eaux des Vosges, CC BY 4.0\",\n  \"data\": \"points-de-mesure.geojson\",\n  \"color\": \"#1a73e8\",\n  \"colorBy\": \"niveau\"\n}",
+      "fields": {
+        "name": "Nom dans WMap (sinon le nom du dossier)",
+        "description": "Description sur la page du plugin",
+        "operator": "Fournisseur et mention de la source",
+        "color": "Couleur des points, lignes et surfaces",
+        "color_by": "Propriété numérique – colorée du bleu (bas) au rouge (haut)",
+        "data": "un fichier ou une liste (<code>[\"a.geojson\", \"b.geojson\"]</code>) ; s'il manque, WMap prend tous les fichiers GeoJSON du dossier"
+      },
+      "hint": "GeoJSON en WGS84 (longitude et latitude), tel que l'écrivent QGIS, geojson.io &amp; Co. WMap affiche les propriétés des objets quand on les touche."
+    },
+    "tiles": {
+      "title": "wmap-plugin.json – tuiles de carte",
+      "code": "{\n  \"name\": \"Carte géologique\",\n  \"tiles\": \"https://example.org/tiles/{z}/{x}/{y}.png\",\n  \"attribution\": \"© Service géologique …\",\n  \"minzoom\": 6,\n  \"maxzoom\": 16,\n  \"opacity\": 0.7\n}",
+      "wms": "Pour un service WMS, un modèle de tuile avec <code>BBOX={bbox-epsg-3857}</code>, <code>CRS=EPSG:3857</code>, <code>WIDTH=512&amp;HEIGHT=512</code>."
+    },
+    "extension": {
+      "title": "Extension – un vrai plugin",
+      "json": {
+        "code": "{\n  \"name\": \"Alerte météo\",\n  \"description\": \"Affiche les alertes météo sous forme de surface.\",\n  \"type\": \"extension\",\n  \"script\": \"main.js\"\n}"
+      },
+      "script": {
+        "code": "// main.js – un module ES dans un seul fichier\nexport function activate(wmap) {\n  wmap.onMapReady((map) => {\n    map.addSource('warnung', { type: 'geojson', data: 'https://example.org/warnungen.geojson' });\n    map.addLayer({ id: 'warnung', type: 'fill', source: 'warnung',\n      paint: { 'fill-color': '#e03131', 'fill-opacity': 0.3 } });\n  });\n  wmap.addMenuItem('warning', 'Alertes', () => wmap.toast('Alertes activées'));\n}"
+      },
+      "api": {
+        "map": "la carte (MapLibre)",
+        "maplibregl": "MapLibre lui-même (marqueurs, popups …)",
+        "on_map_ready": "fn(map), dès que la carte est chargée",
+        "add_menu_item": "Entrée dans le menu de la carte (icônes : Material Symbols)",
+        "toast": "court message en bas",
+        "storage": "petit stockage réservé à cette extension",
+        "version": "version de WMap"
+      },
+      "one_file": "Un seul fichier, sans <code>import</code> d'autres fichiers à toi (les bibliothèques par adresse <code>https://</code> fonctionnent).",
+      "activate": "Les extensions ne s'exécutent que lorsque tu les <strong>actives</strong> sur la page des plugins – elles peuvent tout faire dans WMap, y compris voir ta position.",
+      "reload": "Après une modification : « Relire », puis rouvre la carte."
+    },
+    "share": {
+      "title": "Partager",
+      "text": "Les dossiers de plugins restent sur ton appareil. Tu donnes un plugin à d'autres en partageant le dossier – ou en le plaçant dans le catalogue via « Proposer un plugin » sur la page des plugins (privé ou public, avec un compte WMap)."
+    }
+  },
+  "sync": {
+    "page_title": "Sauvegarde et synchronisation – WMap",
+    "title": "Sauvegarde et synchronisation",
+    "never": "jamais",
+    "auto": {
+      "options": {
+        "off": "Désactivée – seulement à la main",
+        "start": "À l'ouverture de WMap",
+        "every30": "À l'ouverture et toutes les 30 minutes"
+      },
+      "title": "Automatique"
+    },
+    "folder": {
+      "keep": {
+        "options": {
+          "days30": "30 derniers jours",
+          "days90": "90 derniers jours",
+          "year": "Dernière année",
+          "all": "Tout"
+        },
+        "title": "Garder dans l'application",
+        "shelf": " Actuellement : {cards} sur {total} seulement dans le dossier.",
+        "hint": "Les parcours enregistrés de cette période sont entièrement dans l'application, les plus anciens seulement dans le dossier – l'application garde une fiche (nom, distance, durée, tracé approximatif), le reste vient du dossier à l'ouverture. Ce que tu marques « disponible hors ligne » dans « Mes parcours » reste toujours entièrement dans l'application. Les parcours planifiés le restent de toute façon.",
+        "toast_all": "Tous les parcours restent entièrement dans l'application",
+        "toast": "Dans l'application : {span} – les plus anciens sont dans le dossier"
+      },
+      "tree": {
+        "title": "Structure du dossier expliquée",
+        "code": "Ton dossier/\n├─ settings.json            réglages\n├─ Geplante Touren/         un fichier GPX par parcours planifié\n├─ Aufgezeichnete Touren/\n│  └─ 2026/09 September/    un fichier GPX par trajet (avec pouls &amp; Co.) ou le fichier FIT de la montre\n├─ Bus &amp; Bahn/              un fichier JSON par liaison mémorisée\n├─ Lesezeichen.json         domicile, travail, favoris et listes\n├─ Unbekannte Dateien/      ce qui n'a pas pu être lu – supprimé après 30 jours\n└─ Inhalt.json              index pour la synchronisation rapide",
+        "hint": "Chaque WMap qui relie le même dossier le lit et se synchronise avec lui. Prends un dossier réservé à WMap. Les fichiers GPX et FIT venus d'ailleurs (montre, Garmin, Komoot …) tu les déposes simplement dedans, peu importe où : WMap demande ce qu'il doit en faire et les range à leur place – même depuis tes propres sous-dossiers. Un fichier FIT reste tel que la montre l'a écrit. WMap ne touche pas aux autres fichiers (photos, documents). Si tu supprimes un fichier de parcours, l'entrée disparaît aussi dans WMap."
+      },
+      "import": "Importer depuis le dossier",
+      "export": "Exporter (ZIP)",
+      "restore": {
+        "text": "Réimporter un export ZIP :",
+        "pick": "Choisir un ZIP"
+      },
+      "broken": {
+        "reveal": "Ouvrir dans le gestionnaire de fichiers",
+        "state": {
+          "one": "Un fichier n'est pas un parcours ou n'a pas pu être lu et se trouve dans le dossier « Unbekannte Dateien » : {files}{more}. Vérifie toi-même s'il y a quelque chose d'important – WMap le supprime 30 jours après sa découverte (le premier le {until}).",
+          "other": "{n} fichiers ne sont pas des parcours ou n'ont pas pu être lus et se trouvent dans le dossier « Unbekannte Dateien » : {files}{more}. Vérifie toi-même s'il y a quelque chose d'important – WMap les supprime 30 jours après leur découverte (le premier le {until})."
+        }
+      },
+      "others": {
+        "state": {
+          "one": "Un fichier du dossier n'est pas un parcours et reste en place : {files}{more}.",
+          "other": "{n} fichiers du dossier ne sont pas des parcours et restent en place : {files}{more}."
+        },
+        "tidy": "Ranger …"
+      },
+      "title": "Dossier",
+      "unsupported": "La synchronisation permanente fonctionne dans l'<strong>application WMap</strong> (Android, Linux, macOS, Windows) et dans Chrome ou Edge. Ici, tu peux importer une fois ou tout exporter en ZIP.",
+      "connecting": "Connexion au dossier …",
+      "importing": "Importation …",
+      "none": "Aucun dossier synchronisé. Prends un dossier que ton programme de synchronisation gère (Nextcloud, Proton Drive, Google Drive, Syncthing …) – ainsi tous tes appareils ont les mêmes parcours, trajets, liaisons, favoris et réglages.",
+      "connect": "Synchroniser un dossier",
+      "connected": "Synchronisé avec <strong>{name}</strong>",
+      "permission": "Le navigateur a de nouveau besoin de ton autorisation pour le dossier.",
+      "pending": "La dernière synchronisation a été interrompue – elle reprend à la prochaine ouverture d'une page.",
+      "busy_hint": "Tu peux continuer à utiliser WMap. Si tu changes de page, la suivante reprend là où cette synchronisation s'est arrêtée.",
+      "error_at": "Erreur le {when} : {error}",
+      "inbox": {
+        "state": {
+          "one": "Un nouveau fichier est dans le dossier et attend ta décision : {files}{more}",
+          "other": "{n} nouveaux fichiers sont dans le dossier et attendent ta décision : {files}{more}"
+        },
+        "view": "Voir les nouveaux fichiers"
+      },
+      "allow_sync": "Autoriser et synchroniser",
+      "sync_now": "Synchroniser maintenant",
+      "change": "Changer de dossier",
+      "disconnect": {
+        "button": "Déconnecter",
+        "title": "Déconnecter le dossier ?",
+        "text": "WMap ne se synchronisera alors plus. Les fichiers du dossier restent tels quels ; les parcours qui n'étaient que dans le dossier, WMap les récupère d'abord dans l'application.",
+        "done": "Dossier déconnecté – les fichiers restent où ils sont"
+      },
+      "auto_hint": "À l'ouverture, WMap se synchronise, puis peu après chaque modification ; en option aussi toutes les 30 minutes tant que WMap est ouvert.",
+      "change_ask": {
+        "title": "Prendre un autre dossier ?",
+        "text": "WMap se synchronisera ensuite avec le nouveau dossier et y écrira tout. L'ancien dossier reste tel quel.",
+        "button": "Choisir un dossier"
+      },
+      "fallback_name": "Dossier",
+      "error": {
+        "app_only": "Fonctionne seulement dans l'application",
+        "not_connected": "Le dossier n'est pas connecté",
+        "unreachable": "Le dossier est injoignable pour le moment",
+        "file_missing": "Le fichier de ce trajet manque dans le dossier",
+        "file_unreadable": "Le fichier du dossier n'a pas pu être lu",
+        "move_needs_app": "Le déplacement nécessite la nouvelle application"
+      },
+      "step": {
+        "load_setting": "Charger le réglage",
+        "check_folder": "Vérifier le dossier",
+        "read_file": "Lire le fichier",
+        "evaluate": "analyser"
+      }
+    },
+    "progress": {
+      "lift": "Passage au sous-dossier « WMap »",
+      "sync": "Synchronisation",
+      "list": "Lecture du dossier …",
+      "what": "{what} …",
+      "rest": {
+        "soon": " · presque fini",
+        "seconds": " · encore environ {n} s",
+        "minutes": " · encore environ {n} min"
+      },
+      "state": "{what} … {i} sur {n} ({pct} %){rest}"
+    },
+    "error": {
+      "no_page": "Aucune page de WMap ouverte",
+      "command": "La commande a échoué",
+      "message": "Erreur : {error}"
+    },
+    "last_with": "Dernière synchronisation : {when} – {result}",
+    "last": "Dernière synchronisation : {when}",
+    "health": {
+      "not_granted": "Pas encore autorisé – WMap ne peut pas encore lire Health Connect.",
+      "granted": {
+        "title": "Autorisé",
+        "routes_always": ", itinéraires toujours",
+        "routes_ask": ", itinéraires sur demande",
+        "values": ", avec pouls &amp; Co."
+      },
+      "taking": "Reprise de {i} sur {n} entraînements …",
+      "reading": "Lecture de Health Connect …",
+      "imported": "{n} importé(s)",
+      "nothing_new": "rien de nouveau",
+      "denied": ", {n} itinéraires non autorisés",
+      "fetching": "Récupération des entraînements …",
+      "fetch": "Récupérer les entraînements",
+      "permissions": "Autorisations",
+      "denied_hint": "Pour les itinéraires sur demande : dans Health Connect, touche WMap et règle les itinéraires d'entraînement sur « Toujours autoriser ».",
+      "auto_hint": "Les nouveaux entraînements avec itinéraire s'ajoutent tout seuls comme trajets – sans demande.",
+      "toast_nothing": "Rien de nouveau dans Health Connect",
+      "toast_added": {
+        "one": "{n} entraînement importé",
+        "other": "{n} entraînements importés"
+      }
+    },
+    "dups": {
+      "values": {
+        "hr": "Pouls",
+        "cad": "Cadence",
+        "pow": "Puissance",
+        "hr_avg": "Pouls (moy. {avg})"
+      },
+      "origin": {
+        "health_app": "Health Connect · {app}",
+        "health": "Health Connect",
+        "gpx": "Fichier GPX",
+        "nav": "Enregistré pendant la navigation",
+        "wmap": "Enregistré avec WMap"
+      },
+      "points": "{count} points",
+      "recorded": "{n} enregistré(s)",
+      "planned": "{n} planifié(s)",
+      "and": " et ",
+      "no_name": "Sans nom",
+      "route_from": "Tracé (GPS) de",
+      "values_from": "Données de santé de",
+      "values_one": "Données de santé : {origin} – {values}",
+      "title": "Parcours en double",
+      "state": {
+        "one": "{what} parcours existe en double – par ex. enregistré avec la montre et le téléphone, ou venu de Health Connect et du dossier.",
+        "other": "{what} parcours existent en double – par ex. enregistrés avec la montre et le téléphone, ou venus de Health Connect et du dossier."
+      },
+      "hint": "Ces parcours existent depuis plusieurs sources. Choisis pour chacun quel tracé reste – sa durée et ses kilomètres comptent. Les données de santé (pouls, cadence, puissance) s'y ajoutent ; si plusieurs enregistrements en ont, tu choisis aussi de quel enregistrement.",
+      "merge": {
+        "button": "Fusionner",
+        "title": {
+          "one": "Fusionner {n} parcours en double ?",
+          "other": "Fusionner {n} parcours en double ?"
+        },
+        "text": "De chaque parcours en double, le tracé choisi reste avec les données de santé choisies. Sur les autres appareils, les doublons disparaissent aussi à la prochaine synchronisation.",
+        "done": {
+          "one": "{n} parcours en double fusionné",
+          "other": "{n} parcours en double fusionnés"
+        }
+      }
+    },
+    "note": "Tout reste sur tes appareils – WMap n'a pas de serveur pour cela. Ce qui se trouve dans le dossier n'est synchronisé que par ton propre programme de synchronisation.",
+    "import": {
+      "taken": "{n} repris",
+      "skipped": ", {n} existaient déjà",
+      "all_there": "Tout est déjà là",
+      "none": "Aucun fichier GPX dans le dossier"
+    },
+    "toast": {
+      "no_permission": "Sans autorisation, pas de synchronisation",
+      "connected": "Dossier connecté – {result}",
+      "connect_failed": "La connexion a échoué : {error}",
+      "reveal_failed": "Impossible d'ouvrir le gestionnaire de fichiers – le dossier s'appelle « Unbekannte Dateien »",
+      "synced": "Synchronisé – {result}",
+      "sync_failed": "La synchronisation a échoué : {error}",
+      "import_failed": "L'importation a échoué : {error}",
+      "backup_failed": "La sauvegarde a échoué : {error}",
+      "auto_folder": "Dossier : {label}",
+      "auto_health": "Health Connect : {label}",
+      "folder_empty": "Il n'y a aucun fichier dans ce dossier",
+      "no_file": "Aucun fichier choisi",
+      "restored": "{n} entrées reprises de la sauvegarde",
+      "no_folder": "Aucun dossier choisi",
+      "failed": "La synchronisation a échoué"
+    },
+    "export": {
+      "title": "Exporter en",
+      "text": "Tous les parcours dans un fichier ZIP. Parcours enregistrés en GPX (contient tout ce que WMap sait) ou en FIT (format des montres de sport : points, pouls, cadence, puissance, tours, sport). Les parcours planifiés sont toujours en GPX.",
+      "gpx": "Enregistrements en GPX",
+      "fit": "Enregistrements en FIT"
+    },
+    "summary": {
+      "imported": "{n} repris",
+      "written": "{n} enregistré(s)",
+      "removed": "{n} supprimé(s)",
+      "moved": "{n} déplacé(s)",
+      "merged": "{n} doublon(s) fusionné(s)",
+      "skipped": "{n} non importé(s)",
+      "settings": "Réglages repris",
+      "nothing": "tout est à jour"
+    },
+    "times": {
+      "list": "liste {time}",
+      "read": "{n} lu(s) {time}",
+      "write": "{n} écrit(s) {time}",
+      "remove": "{n} supprimé(s) {time}"
+    },
+    "inbox": {
+      "fresh": {
+        "title": {
+          "one": "Nouveau fichier dans le dossier",
+          "other": "{n} nouveaux fichiers dans le dossier"
+        },
+        "also": {
+          "one": " – plus un pour un parcours qui existe déjà (ensuite)",
+          "other": " – plus {n} pour un parcours qui existe déjà (ensuite)"
+        },
+        "text": {
+          "one": "Le dossier connecté contient un fichier que WMap ne connaît pas encore{also}.",
+          "other": "Le dossier connecté contient des fichiers que WMap ne connaît pas encore{also}."
+        }
+      },
+      "toast": "Dossier : {summary}",
+      "merges": {
+        "title": {
+          "one": "Fichier pour un parcours qui existe déjà",
+          "other": "{n} fichiers pour des parcours qui existent déjà"
+        },
+        "text": {
+          "one": "Le dossier connecté contient un fichier pour un parcours qui existe déjà dans WMap.",
+          "other": "Le dossier connecté contient des fichiers pour des parcours qui existent déjà dans WMap."
+        }
+      },
+      "failed": "La synchronisation a échoué",
+      "others": {
+        "title": {
+          "one": "Un autre fichier dans le dossier",
+          "other": "{n} autres fichiers dans le dossier"
+        },
+        "text": {
+          "one": "Le dossier connecté contient un fichier qui n'est pas un parcours : {names}. WMap garde le dossier rangé : faut-il le déplacer dans « Unbekannte Dateien » ? WMap l'y supprime après 30 jours – cela vaut ensuite aussi pour tout ce qui s'ajoutera plus tard.",
+          "other": "Le dossier connecté contient des fichiers qui ne sont pas des parcours : {names}. WMap garde le dossier rangé : faut-il les déplacer dans « Unbekannte Dateien » ? WMap les y supprime après 30 jours – cela vaut ensuite aussi pour tout ce qui s'ajoutera plus tard."
+        },
+        "move": "Vers « Unbekannte Dateien »",
+        "keep": "Les laisser"
+      }
+    }
+  },
+  "wege": {
+    "page_title": "Mes parcours – WMap",
+    "compare": {
+      "option": "{date} · {name} · {length}",
+      "default_name": "Trajet",
+      "unit": {
+        "kmh": "{v} km/h",
+        "zero_m": "±0 m",
+        "watt": "{v} W",
+        "pct": "{v} %"
+      },
+      "rows": {
+        "time": "Temps en mouvement",
+        "dist": "Distance",
+        "pace": "Allure moy.",
+        "speed": "Vitesse moy.",
+        "top": "Vitesse max.",
+        "hr": "Pouls moy.",
+        "hr_max": "Pouls max.",
+        "beats": "Battements par km",
+        "cad": "{name} moy.",
+        "pow": "Puissance moy."
+      },
+      "refs": {
+        "prev": "La fois précédente",
+        "last5": "5 derniers",
+        "avg": "Moyenne",
+        "best": "Meilleur",
+        "worst": "Pire",
+        "avg_of": "Moy. de {n}",
+        "label": "Comparer avec"
+      },
+      "kinds": {
+        "speed": "Allure",
+        "hr": "Pouls",
+        "cad": "Cadence",
+        "pow": "Puissance"
+      },
+      "table": {
+        "to_prev": "par rapport à la fois précédente",
+        "to_next": "par rapport à la fois suivante",
+        "title": "Tout en tableau"
+      },
+      "pick": {
+        "set": "Dans la comparaison",
+        "set_title": "Parcours dans la comparaison",
+        "set_summary": "{n} parcours",
+        "focus": "Actuel",
+        "focus_title": "Lequel est l'actuel ?"
+      },
+      "intro": {
+        "same": "Même tracé, {n} fois",
+        "count": "{n} entraînements",
+        "legend": "– l'actuel en gras, comparé aux autres : <span class=\"cmp-good\">vert</span> mieux, <span class=\"cmp-bad\">rouge</span> moins bien."
+      },
+      "along": {
+        "title": "Évolution le long du tracé",
+        "label": "Grandeurs dans le diagramme",
+        "none": "Sans horaires, il n'y a pas d'évolutions à comparer."
+      },
+      "trend": {
+        "title": "Évolution",
+        "label": "Grandeur de l'évolution",
+        "hint": "Par entraînement, le plus ancien à gauche – le gros point est l'actuel.",
+        "time": "Temps total"
+      },
+      "tile": {
+        "none": "pas d'indication"
+      },
+      "same_route": "Même tracé",
+      "title": "Comparaison",
+      "need_two": "Pour comparer, il faut au moins deux trajets",
+      "loading": "Chargement des trajets …",
+      "folder_away": "« {name} » est dans le dossier – celui-ci est injoignable pour le moment"
+    },
+    "groups": {
+      "foot": "À pied",
+      "bike": "Vélo",
+      "car": "Voiture"
+    },
+    "origin": {
+      "nav": "Navigation"
+    },
+    "unit": {
+      "km": "{v} km",
+      "kmh": "{v} km/h",
+      "m": "{v} m"
+    },
+    "title": "Mes parcours",
+    "view": {
+      "sort": {
+        "date": "Date",
+        "length": "Longueur",
+        "time": "Durée",
+        "speed": "Allure",
+        "name": "Nom",
+        "label": "Trier par"
+      },
+      "since": {
+        "any": "Toute période",
+        "days30": "30 derniers jours",
+        "days90": "90 derniers jours",
+        "year": "Dernière année",
+        "this_year": "Cette année",
+        "label": "Période"
+      },
+      "toolbar": "Trier et filtrer",
+      "dir": {
+        "down": "Décroissant – toucher pour croissant",
+        "up": "Croissant – toucher pour décroissant"
+      },
+      "sport": {
+        "label": "Type",
+        "all": "Tous les types"
+      },
+      "tag": {
+        "label": "Étiquette",
+        "all": "Toutes les étiquettes"
+      },
+      "reset": "Tous"
+    },
+    "pick": {
+      "all": "Tout sélectionner",
+      "label": "Sélectionnés",
+      "tag": "Étiquette",
+      "compare": "Comparer",
+      "count": "{n} choisi(s)",
+      "none": "Coche des trajets",
+      "had_tag": "Tous avaient déjà « {tag} »",
+      "tagged": {
+        "one": "Étiquette « {tag} » sur {n} trajet",
+        "other": "Étiquette « {tag} » sur {n} trajets"
+      },
+      "more": "Coche d'autres trajets à comparer"
+    },
+    "conn": {
+      "name": "{from} → {to}",
+      "start": "Départ",
+      "dest": "Arrivée",
+      "next": "À venir",
+      "past": "Passées",
+      "count": {
+        "one": "{n} liaison",
+        "other": "{n} liaisons"
+      },
+      "deleted": "Liaison supprimée",
+      "in_past": "Cette liaison est dans le passé.",
+      "again": "Chercher à nouveau",
+      "ticket": "Billet auprès de la compagnie"
+    },
+    "empty": {
+      "places": {
+        "title": "Aucun lieu mémorisé pour l'instant.",
+        "text": "Touche un lieu sur la carte, puis « Mémoriser » – dans « Général » ou dans une liste à toi comme « Vacances à Lyon ».",
+        "button": "Vers la carte"
+      },
+      "transit": {
+        "title": "Aucune liaison mémorisée pour l'instant.",
+        "text": "Planifie sur la carte un itinéraire en bus &amp; train et touche « Mémoriser » sur la liaison qui convient.",
+        "button": "Planifier un itinéraire"
+      },
+      "planned": {
+        "title": "Aucun parcours planifié pour l'instant.",
+        "text": "Planifie un parcours point par point, reprends un sentier de randonnée connu sous « Découvrir » – ou enregistre un itinéraire comme parcours."
+      },
+      "recorded": {
+        "title": "Aucun trajet enregistré pour l'instant.",
+        "text": "Quand tu navigues, WMap retient le tracé – ou lance toi-même un enregistrement."
+      }
+    },
+    "tools": {
+      "plan": "Planifier un parcours",
+      "record": "Enregistrer",
+      "import": "Importer GPX/FIT"
+    },
+    "tabs": {
+      "planned": "Planifiés",
+      "recorded": "Enregistrés",
+      "transit": "Bus &amp; train",
+      "places": "Lieux"
+    },
+    "hint": {
+      "places": "Lieux : tes favoris en listes – chaque liste est partageable, tout sur la carte.",
+      "transit": "Bus & train : liaisons mémorisées – les prochaines en haut, les passées repliées en dessous.",
+      "planned": "Planifiés : parcours que tu veux encore faire à vélo ou à pied – venus du planificateur, repris ou importés.",
+      "recorded": "Enregistrés : trajets que tu as vraiment faits à vélo ou à pied.",
+      "on_map": "Sur la carte : <strong>{label}</strong> – l'œil à côté de l'année affiche et masque. <a href=\"./settings.html\">Modifier</a>"
+    },
+    "search": {
+      "places": "Chercher – nom, liste, lieu …",
+      "transit": "Chercher – lieu, ligne, date …",
+      "planned": "Chercher – nom, description, lien …",
+      "recorded": "Chercher – nom, lieu, étiquette, lien …",
+      "label": "Chercher",
+      "open_link": "Ouvrir le lien"
+    },
+    "sync_hint": "Tout reste sur cet appareil. Vers d'autres appareils via un dossier (Nextcloud, Drive …), Health Connect ou une sauvegarde : <strong>Sauvegarde &amp; synchronisation</strong>",
+    "dup_hint": {
+      "one": "<strong>{n} parcours existe en double</strong> – fusionne et choisis quel tracé et quelles données de santé restent",
+      "other": "<strong>{n} parcours existent en double</strong> – fusionne et choisis quel tracé et quelles données de santé restent"
+    },
+    "places": {
+      "route": "Itinéraire jusque-là",
+      "shared": {
+        "text": "Liste partagée <strong>« {name} »</strong> – {n} lieux (en rouge sur la carte)",
+        "take": "Reprendre comme liste",
+        "drop": "Rejeter",
+        "default_name": "Liste partagée",
+        "default_place": "Lieu",
+        "bad": "La liste partagée n'a pas pu être lue"
+      },
+      "fixed": "Domicile &amp; travail",
+      "count": {
+        "one": "{n} lieu",
+        "other": "{n} lieux"
+      },
+      "share": "Partager la liste",
+      "on_map": "Sur la carte",
+      "share_title": "Liste « {name} »",
+      "share_text": "{name} – {n} lieux dans WMap",
+      "name_shared": "{name} (partagée)",
+      "taken": {
+        "one": "{n} lieu repris dans « {name} »",
+        "other": "{n} lieux repris dans « {name} »"
+      }
+    },
+    "none_for": "Rien trouvé pour « {q} ».",
+    "planned": {
+      "sum": {
+        "one": "{n} parcours · {km}",
+        "other": "{n} parcours · {km}"
+      },
+      "fixed": "tracé fixe",
+      "ascent": "↗ {v} m",
+      "updated": "Dernière modification le {date}",
+      "start": "Démarrer le parcours",
+      "car_title": "Envoyer à WMap dans Android Auto – avec l'aperçu et « Go »",
+      "car": "Vers la voiture",
+      "open": "Ouvrir dans le planificateur",
+      "gpx": "GPX"
+    },
+    "default_tour": "Parcours",
+    "default_way": "Trajet",
+    "row": {
+      "health": "Avec données de santé (pouls, cadence, puissance)",
+      "pinned": "Disponible hors ligne",
+      "stub": "Est dans le dossier – récupéré à l'ouverture",
+      "compare": "Pour comparer",
+      "hide": "Masquer sur la carte",
+      "show": "Afficher sur la carte"
+    },
+    "recorded": {
+      "sum": {
+        "one": "{n} trajet · {km} · {time}",
+        "other": "{n} trajets · {km} · {time}"
+      },
+      "none": "Rien trouvé – modifie le filtre ou la recherche.",
+      "year_hide": "Masquer {y} sur la carte",
+      "year_show": "Afficher {y} sur la carte",
+      "shown": " · {n} sur la carte"
+    },
+    "window_title": "{name} – WMap",
+    "import": {
+      "description": "Importé depuis {name}",
+      "no_times": " (sans horaires)",
+      "original": " – avec le tracé d'origine",
+      "planned": {
+        "one": "{n} parcours importé comme parcours planifié",
+        "other": "{n} parcours importés comme parcours planifiés"
+      },
+      "failed": "{n} illisible(s)",
+      "nothing": "Rien n'a été repris",
+      "no_tour": "Aucun parcours dans le fichier"
+    },
+    "drop": {
+      "title": "Dépose un GPX ou FIT ici",
+      "planned": "sera repris comme parcours planifié",
+      "recorded": "sera repris comme parcours enregistré",
+      "bad": "Ce ne sont pas des fichiers GPX ou FIT"
+    },
+    "charts": {
+      "ele": "Altitude",
+      "speed": "Allure",
+      "hr": "Pouls",
+      "cad": "Cadence",
+      "pow": "Puissance",
+      "label": "Diagramme",
+      "mean": "Moyenne",
+      "max": "Maximum"
+    },
+    "track": {
+      "fetching": "Récupération du parcours depuis le dossier …",
+      "missing": "Les points et valeurs mesurées sont dans le dossier – {error}.",
+      "time": "de {from} à {to}",
+      "from_health": " · depuis Health Connect",
+      "opened": "Fichier ouvert – pas encore enregistré.",
+      "shared": "Enregistrement partagé – pas encore enregistré.",
+      "name_saved": "Nom enregistré",
+      "need_folder": "Il faut pour cela le parcours du dossier – celui-ci est injoignable pour le moment"
+    },
+    "same": {
+      "go": {
+        "one": "Comparer avec {n} parcours",
+        "other": "Comparer avec {n} parcours"
+      },
+      "label": "Degré de similarité",
+      "title": "{n} autre(s) – au plus {near} m d'écart, longueur ±{len} %"
+    },
+    "tags": {
+      "label": "Étiquettes",
+      "remove": "Retirer l'étiquette",
+      "add": "Étiquette",
+      "ask": {
+        "title": "Ajouter une étiquette",
+        "label": "Étiquette",
+        "placeholder": "p. ex. course",
+        "add": "Ajouter"
+      }
+    },
+    "stats": {
+      "moving": "en mouvement",
+      "length": "Distance",
+      "avg": "{name} moy.",
+      "avg_kmh": "km/h moy.",
+      "max_kmh": "km/h max.",
+      "up": "Montée",
+      "avg_hr": "Pouls moy.",
+      "max_hr": "Pouls max.",
+      "watt": "{v} W",
+      "avg_pow": "Puissance moy.",
+      "time": "Durée",
+      "down": "Descente"
+    },
+    "legend": {
+      "slow": "lent",
+      "fast": "rapide"
+    },
+    "look": {
+      "title": "Type, couleur et affichage",
+      "hidden": "masqué",
+      "pinned": "disponible hors ligne",
+      "sport": {
+        "title": "Type",
+        "label": "Type de parcours",
+        "standard": "{name} (par défaut)",
+        "none": "Aucun – seulement GPX"
+      },
+      "color": {
+        "label": "Couleur sur la carte",
+        "title": "Couleur",
+        "auto": "Couleur du type ({name})",
+        "own": "Couleur perso"
+      },
+      "on_map": "Sur la carte",
+      "pin_title": "Reste entièrement dans l'application – même sans le dossier",
+      "pin_on": "Reste entièrement dans l'application",
+      "pin_off": "Ne sera plus que dans le dossier après la prochaine synchronisation"
+    },
+    "actions": {
+      "save_track": "Enregistrer comme parcours enregistré",
+      "plan_title": "Ouvrir dans le planificateur comme nouveau parcours – l'enregistrement ne se fait que là",
+      "open_plan": "Ouvrir comme parcours planifié",
+      "keep": "Garder chez moi",
+      "download_title": "Comme fichier GPX ou FIT",
+      "download": "Télécharger",
+      "navigate": "Naviguer",
+      "as_plan": "Ouvrir comme plan",
+      "share_title": "Partager l'enregistrement par lien – avec horaires, allure et, si tu veux, pouls &amp; Co.",
+      "share": "Partager",
+      "compare_title": "Comparer avec d'autres enregistrements – à cocher dans la liste"
+    },
+    "laps": {
+      "fastest": "la plus rapide",
+      "slowest": "la plus lente",
+      "title": "Tours",
+      "size": "Longueur d'un tour",
+      "watch": "Montre",
+      "head": {
+        "lap": "Tour",
+        "time": "Temps",
+        "pace": "Allure"
+      }
+    },
+    "file_default": "trajet",
+    "delete": {
+      "title": "Supprimer « {name} » ?",
+      "track": "Le trajet disparaît de cet appareil.",
+      "tour": "Le parcours disparaît de cet appareil."
+    },
+    "share": {
+      "title": "Partager l'enregistrement",
+      "text": "Le parcours est partagé tel que tu l'as enregistré : tracé, horaires et allure.",
+      "choose": " Choisis ce qui doit venir en plus :",
+      "link": "Partager par lien",
+      "short": "En ligne 30 jours (lien court)",
+      "send": "Envoyer le fichier …",
+      "file": "Télécharger …",
+      "message": "{title} – {facts}",
+      "short_failed": "Le lien court n'a pas pu être créé",
+      "short_note": "Lien court : le parcours reste pour cela 30 jours sur le serveur WMap – ensuite le lien ne fonctionne plus."
+    },
+    "download": {
+      "send_title": "Envoyer le fichier en",
+      "title": "Télécharger en",
+      "text": "Le GPX contient tout ce que WMap sait du parcours – y compris le type, la couleur et les tours de la montre. Le FIT est le format des montres de sport : points, pouls, cadence, puissance, tours et sport.",
+      "gpx": "Fichier GPX",
+      "fit": "Fichier FIT",
+      "no_send": "L'envoi n'est pas possible ici – le fichier est téléchargé"
+    },
+    "shared": {
+      "file_gone": "Le fichier n'est plus là – ouvre-le à nouveau",
+      "bad_link": "Le lien n'a pas pu être lu",
+      "twin_folder": "Le parcours existant est dans le dossier – {error}",
+      "new_name": "l'enregistrement partagé depuis le lien",
+      "merged": "« {name} » complété",
+      "same": "Tu as déjà ce parcours – le fichier n'a rien de différent",
+      "saved": "Enregistré sous Parcours enregistrés"
+    },
+    "auto_names": {
+      "one": "{n} parcours a reçu un nom d'après le type, la région et le moment de la journée",
+      "other": "{n} parcours ont reçu un nom d'après le type, la région et le moment de la journée"
+    }
+  },
+  "entdecken": {
+    "page_title": "Découvrir – WMap",
+    "tabs": {
+      "ways": "Sentiers",
+      "others": "D'autres personnes"
+    },
+    "title": "Découvrir",
+    "account": {
+      "signed_in": "Connecté en tant que <strong>{name}</strong>",
+      "need": "Pour noter, publier et proposer, il te faut un compte – ton compte OpenStreetMap.",
+      "logout": {
+        "button": "Se déconnecter",
+        "title": "Se déconnecter, {name} ?",
+        "text": "Tes parcours et tes notes sont conservés. Tu seras alors aussi déconnecté pour la modification de la carte."
+      },
+      "login": "Se connecter",
+      "login_reason": "Pour noter et publier"
+    },
+    "ways": {
+      "attribution": "Sentiers : <a href=\"https://waymarkedtrails.org\" target=\"_blank\" rel=\"noopener\">Waymarked Trails</a> (CC BY-SA)",
+      "search": {
+        "placeholder": "Filtrer – ou Entrée : chercher partout",
+        "label": "Filtrer ou chercher des sentiers",
+        "min": "Pour la recherche, saisis au moins trois lettres",
+        "here_more": "{n} dans la zone – je cherche plus loin …",
+        "here": "{n} dans la zone · ",
+        "everywhere": "Recherche de « {q} » partout …",
+        "found": "{n} sentiers pour « {q} »",
+        "none": "Aucun sentier de type {kind} « {q} » trouvé"
+      },
+      "tip": "Astuce : touche une ligne balisée sur la carte – les sentiers de cet endroit précis apparaissent alors.",
+      "zoom_in": "Zoome plus près, et tous les sentiers de la zone affichée apparaîtront ici – ou cherche un nom en haut.",
+      "searching": "Recherche de sentiers dans la zone affichée …",
+      "found": {
+        "clipped": "{n} sentiers autour du centre de la carte",
+        "box": "{n} sentiers dans la zone affichée"
+      },
+      "error_retry": "Injoignable pour le moment – réessaie dans un instant ({error})",
+      "round": "Boucle",
+      "more": "Autres sentiers",
+      "stages_here": {
+        "one": "{n} étape ici",
+        "other": "{n} étapes ici"
+      },
+      "whole": "Voir tout le sentier",
+      "filtered": "{i} sur {n} – filtré par « {filter} »",
+      "back_to_box": "retour à la zone",
+      "here": {
+        "loading": "Quels sentiers passent ici …",
+        "found": "{n} sentiers à cet endroit – lequel ?",
+        "none": "Aucun sentier balisé ne passe ici – zoome plus près et touche exactement la ligne"
+      },
+      "error": "Injoignable pour le moment ({error})"
+    },
+    "known": {
+      "loading": "Chargement du tracé …",
+      "mark": "<strong>Balisage :</strong> {mark}",
+      "osm": "Sur OpenStreetMap",
+      "stages": "Étapes dans la zone affichée",
+      "planner_hint": "Dans le planificateur, tu vois le profil d'altitude et les types de chemin, et tu peux enregistrer, modifier ou partager le parcours.",
+      "opening": "Ouverture …",
+      "open_failed": "Impossible à ouvrir : {error}",
+      "load_failed": "Le tracé n'a pas pu être chargé : {error}"
+    },
+    "open_planner": "Ouvrir dans le planificateur",
+    "others": {
+      "intro": "Parcours partagés par des utilisateurs de WMap – dans la zone affichée. Pour partager les tiens, utilise dans le planificateur le menu → « Publier ».",
+      "loading": "Chargement …",
+      "count": "{n} parcours ici",
+      "none": "Personne n'a encore partagé de parcours ici – dézoomer davantage ?",
+      "stars": "{stars} sur 5 ({votes})",
+      "not_rated": "pas encore noté",
+      "by": "par {author}",
+      "only_you": "seulement pour toi"
+    },
+    "tour": {
+      "title": "Parcours",
+      "rating": "{stars} ({votes})",
+      "ascent": "{m} m",
+      "rate": {
+        "title": "Ta note",
+        "stars": "Étoiles",
+        "star_n": "{n} étoiles",
+        "placeholder": "C'était comment ? (facultatif)",
+        "button": "Noter",
+        "need_stars": "Touche les étoiles",
+        "login_reason": "Pour noter",
+        "thanks": "Merci pour ta note !"
+      },
+      "private": "Visible seulement par toi.",
+      "shared_by": "Partagé par {author} sur WMap",
+      "delete": {
+        "title": "Supprimer « {name} » ?",
+        "text": "Le parcours disparaît pour tout le monde.",
+        "done": "Supprimé"
+      }
+    }
+  },
+  "tour": {
+    "page_title": "Planifier un parcours – WMap",
+    "name": "Nom du parcours",
+    "save": "Enregistrer le parcours",
+    "search": {
+      "placeholder": "Chercher un lieu – puis le reprendre sur la carte",
+      "label": "Chercher un lieu",
+      "none": "Rien trouvé"
+    },
+    "help": {
+      "button": "Mode d'emploi : comment planifier un parcours",
+      "title": "Comment planifier un parcours",
+      "start": "<strong>Placer le départ :</strong> touche la carte – ou cherche un lieu en haut.",
+      "points": "<strong>Autres points :</strong> touche-les. Le tracé suit des chemins adaptés au type choisi (randonnée par les sentiers, vélo de route par l'asphalte …).",
+      "change": "<strong>Modifier :</strong> déplace des points en les faisant glisser. Touche un point – le supprimer ou démarrer là. Touche la ligne – y insérer un point.",
+      "template": "<strong>Modèle</strong> (sentiers de Découvrir) : les points s'accrochent au chemin violet, entre eux le tracé suit exactement le chemin.",
+      "save": "<strong>L'enregistrement</strong> se fait automatiquement dès qu'il y a un tracé. Tu retrouves ensuite le parcours sous « Mes parcours ».",
+      "ok": "Compris"
+    },
+    "tools": {
+      "undo": "Annuler",
+      "reverse": "Inverser",
+      "roundtrip": "Retour au départ",
+      "clear": "Supprimer tous les points",
+      "discover": "Découvrir des parcours"
+    },
+    "stats": {
+      "length": "Distance",
+      "time": "Durée env.",
+      "up": "Montée",
+      "down": "Descente"
+    },
+    "profile": {
+      "title": "En déplacement",
+      "label": "Type de parcours"
+    },
+    "stages": {
+      "button": "Étapes – diviser en parcours journaliers"
+    },
+    "description": {
+      "title": "Description",
+      "placeholder": "De quoi parle ce parcours ? Pause repas, stationnement, conseils …"
+    },
+    "more": {
+      "share": "Partager",
+      "gpx": "GPX",
+      "publish": "Publier"
+    },
+    "toast": {
+      "bad_link": "Le lien est incomplet ou endommagé",
+      "not_found": "Parcours introuvable – ici, on repart avec un nouveau",
+      "own_change": "Modification de ta part – le tracé est recalculé",
+      "min_points": "Place au moins deux points",
+      "saved": "Parcours enregistré",
+      "need_route": "Planifie d'abord un tracé"
+    },
+    "panel": {
+      "label": "Planifier un parcours",
+      "back": "Vers mes parcours",
+      "close": "Fermer – vers la carte"
+    },
+    "save_state": {
+      "shared": "Reprendre dans mes parcours – ce parcours n'est pas encore enregistré",
+      "saved": "Enregistré – tu le trouves sous « Mes parcours »",
+      "dirty": "Enregistrement …"
+    },
+    "window_title": "{name} – WMap",
+    "new_name": "Nouveau parcours",
+    "hint": {
+      "start": "Touche la carte pour placer le départ",
+      "next": "Et maintenant touche la prochaine étape"
+    },
+    "point": {
+      "copy": "Copier",
+      "copied": "Copié : {where}",
+      "remove": "Supprimer le point",
+      "also_dest": "Aussi comme arrivée – boucle",
+      "start_end": "Partir et finir ici",
+      "make_start": "En faire le départ",
+      "make_dest": "En faire l'arrivée"
+    },
+    "found": {
+      "start": "Placer comme départ",
+      "append": "Ajouter comme point suivant",
+      "insert": "Insérer là où ça convient",
+      "discard": "Rejeter",
+      "added": "« {title} » repris dans le parcours"
+    },
+    "bg": {
+      "gone": "Ce parcours n'existe plus",
+      "own_tour": "Parcours perso",
+      "known_way": "Sentier connu",
+      "loading": "Chargement …",
+      "own_tour_small": "parcours perso",
+      "from_osm": "depuis OpenStreetMap",
+      "pieces": " · {n} tronçons",
+      "joining": ", assemblage du tracé …",
+      "take": {
+        "title": "Reprendre tout le tracé",
+        "button": "Reprendre ainsi",
+        "busy": "Reprise en cours …",
+        "failed": "Impossible à reprendre ({error})"
+      },
+      "remove": "Retirer de l'arrière-plan",
+      "title": "Arrière-plan",
+      "hint": "Place toi-même tes points – sur l'arrière-plan, le tracé suit exactement le chemin, à côté il est calculé. Ou reprends tout le tracé.",
+      "add": "Ajouter un sentier ou un parcours",
+      "hide": "Masquer",
+      "show": "Afficher",
+      "fresh": "Replanifier",
+      "search": {
+        "placeholder": "Sentier connu ou parcours perso …",
+        "label": "Chercher un sentier ou un parcours",
+        "busy": "Recherche de sentiers connus …",
+        "failed": "Sentiers injoignables pour le moment ({error})"
+      },
+      "fresh_toast": "Place tes points – l'arrière-plan reste",
+      "own_tour_length": "Parcours perso · {length}"
+    },
+    "status": {
+      "computing": "Calcul de l'itinéraire …",
+      "original": "Tracé d'origine – modifie-le en déplaçant ou en ajoutant des points"
+    },
+    "unit": {
+      "m": "{v} m"
+    },
+    "ways": {
+      "loading": "Détermination des types de chemin …",
+      "types": "Types de chemin",
+      "surfaces": "Revêtements"
+    },
+    "default_name": {
+      "date": "Parcours du {date}",
+      "place": "{profile} depuis {place}"
+    },
+    "default_tour": "Parcours",
+    "share": {
+      "title": "Partager le parcours",
+      "live": "Vous planifiez déjà ce parcours ensemble – le lien reste le même.",
+      "text": "Seulement montrer – ou planifier ensemble : celui qui a le lien modifie aussi, tout le monde voit chaque modification.",
+      "view": "Lien pour consulter",
+      "collab_link": "Lien pour planifier ensemble",
+      "message": "Parcours : {name}"
+    },
+    "collab": {
+      "title": "Planifier ensemble",
+      "link_failed": "Le lien pour planifier ensemble n'a pas pu être créé",
+      "message": "Planifie avec moi : {name}",
+      "note": "Celui qui a le lien peut modifier le parcours. Il reste chiffré 30 jours sur le serveur WMap.",
+      "chip": "Parcours partagé",
+      "last_editor": "dernière modification par {name}",
+      "join": {
+        "invited_by": "{by} t'invite à planifier « {name} » ensemble.",
+        "invited": "Tu es invité à planifier « {name} ».",
+        "into": "Ou relie-le à l'un de tes parcours – les deux seront fusionnés :",
+        "new": "Comme nouveau parcours",
+        "merge": "Relier à celui choisi"
+      },
+      "changed": "{name} a modifié le parcours",
+      "someone": "Quelqu'un",
+      "expired": "La planification commune a expiré – le parcours reste chez toi",
+      "push_failed": "La modification n'est pas arrivée au serveur – elle partira au prochain enregistrement",
+      "joined": "Connecté – tes modifications sont visibles par tous ceux qui ont le lien",
+      "opened": "Parcours partagé – tes modifications sont visibles par tous ceux qui ont le lien"
+    },
+    "merge": {
+      "title": "Fusionner{step}",
+      "points": "Toi et {who} avez modifié les mêmes points. Touche sur la carte la version à garder.",
+      "mine": "La tienne (bleu)",
+      "theirs": "De {who} (orange)",
+      "later": "Plus tard",
+      "step": " ({n} sur {total})",
+      "fixed": "tracé fixe",
+      "free": "planifié librement",
+      "empty": "(vide)",
+      "what": {
+        "name": "le nom",
+        "description": "la description",
+        "profile": "le type",
+        "fixed": "le tracé"
+      },
+      "other": "Toi et {who} avez modifié {what}. Quelle version doit rester ?",
+      "mine_value": "La tienne : {v}",
+      "theirs_value": "De {who} : {v}",
+      "others": "l'autre personne",
+      "done": "Fusionné avec les modifications de {who}",
+      "both": "{name} a aussi modifié – les deux sont maintenant pris en compte"
+    },
+    "file_default": "parcours",
+    "publish": {
+      "title": "Publier le parcours",
+      "text": "Les autres le voient aussitôt sous « Découvrir → D'autres personnes » et peuvent le noter. Ton nom y figure.",
+      "login_reason": "Pour publier",
+      "done": "Publié – visible sous « Découvrir »"
+    },
+    "delete_confirm": "Vraiment supprimer « {name} » ?"
+  },
+  "osm": {
+    "login": {
+      "no_client": "Aucun identifiant client OSM n'est encore renseigné pour cette application (Réglages)",
+      "cancelled": "Connexion annulée",
+      "failed_with": "Échec de la connexion : {error}",
+      "invalid": "Connexion invalide – réessaie",
+      "failed": "Échec de la connexion",
+      "no_id_token": "OpenStreetMap n'a pas envoyé de connexion pour le compte WMap",
+      "expired": "Connexion OSM expirée – reconnecte-toi",
+      "return_wmap_error": "Connecté à OpenStreetMap en tant que {name} – compte WMap : {error}",
+      "signed_in": "Connecté en tant que {name}"
+    },
+    "error": {
+      "status": "OSM : {status} {text}",
+      "not_logged_in": "Pas connecté à OSM",
+      "no_answer": "OSM ne répond pas ({status})"
+    },
+    "stats": {
+      "added": "{n} nouveau(x) saisi(s)",
+      "answered": {
+        "one": "{n} question répondue",
+        "other": "{n} questions répondues"
+      },
+      "edited": {
+        "one": "{n} lieu modifié",
+        "other": "{n} lieux modifiés"
+      },
+      "notes": " (dont {n} comme signalement)"
+    },
+    "quick_ask": {
+      "no": "Non, ne pas demander",
+      "confirm": "Confirmer"
+    },
+    "hours": {
+      "days": {
+        "mo": "lundi",
+        "tu": "mardi",
+        "we": "mercredi",
+        "th": "jeudi",
+        "fr": "vendredi",
+        "sa": "samedi",
+        "su": "dimanche",
+        "holidays": "jours fériés"
+      },
+      "from": "{name} de",
+      "to": "{name} jusqu'à",
+      "remove": {
+        "title": "Supprimer cet horaire",
+        "label": "Supprimer l'horaire"
+      },
+      "closed": "fermé",
+      "ph_none": "comme les autres jours – pas d'indication",
+      "add": {
+        "title": "Ajouter un horaire",
+        "times": "Horaires",
+        "time": "Horaire"
+      },
+      "like_sunday": "comme le dimanche",
+      "none": "pas d'indication",
+      "gone_summary": "fermé définitivement",
+      "always": {
+        "text": "Ouvert 24 h/24",
+        "back": "Indiquer quand même des horaires par jour"
+      },
+      "gone": {
+        "text": "Fermé définitivement – le lieu n'existe plus. Cela part comme signalement aux contributeurs, qui le retireront.",
+        "back": "Indiquer quand même des horaires"
+      },
+      "raw": {
+        "text": "Ces horaires sont trop imbriqués pour la liste (par ex. mois ou vacances scolaires) – ici sous forme de texte en notation OSM.",
+        "back": "Les saisir plutôt jour par jour"
+      },
+      "title": "Horaires d'ouverture",
+      "quick": {
+        "copy": "Lundi pour mar.–ven.",
+        "always": "Ouvert 24 h/24, 7 j/7",
+        "gone": "Fermé définitivement",
+        "raw": "Comme texte"
+      }
+    },
+    "edit": {
+      "types": {
+        "groups": {
+          "shopping": "Achats",
+          "food": "Restauration",
+          "services": "Services",
+          "culture": "Culture et loisirs"
+        },
+        "items": {
+          "shop": "Magasin (autre)",
+          "supermarket": "Supermarché",
+          "bakery": "Boulangerie",
+          "butcher": "Boucherie",
+          "beverages": "Magasin de boissons",
+          "kiosk": "Kiosque",
+          "chemist": "Droguerie",
+          "pharmacy": "Pharmacie",
+          "farm": "Vente à la ferme",
+          "florist": "Fleuriste",
+          "books": "Librairie",
+          "clothes": "Vêtements",
+          "shoes": "Chaussures",
+          "electronics": "Électronique",
+          "doityourself": "Magasin de bricolage",
+          "bicycle": "Magasin de vélos",
+          "optician": "Opticien",
+          "hairdresser": "Coiffeur",
+          "fuel": "Station-service",
+          "cafe": "Café",
+          "restaurant": "Restaurant",
+          "fast_food": "Restauration rapide",
+          "ice_cream": "Glacier",
+          "bar": "Bar / Pub",
+          "biergarten": "Biergarten",
+          "office": "Entreprise / Bureau",
+          "craft": "Artisan",
+          "car_repair": "Garage automobile",
+          "doctors": "Cabinet médical",
+          "dentist": "Dentiste",
+          "bank": "Banque",
+          "post_office": "Poste",
+          "hotel": "Hôtel / Pension",
+          "apartment": "Location de vacances",
+          "events_venue": "Lieu d'événements",
+          "community_centre": "Centre communal / Salle",
+          "theatre": "Théâtre",
+          "cinema": "Cinéma",
+          "nightclub": "Club / Discothèque",
+          "museum": "Musée",
+          "sports_centre": "Salle / Équipement sportif"
+        }
+      },
+      "fields": {
+        "name": {
+          "title": "Nom",
+          "placeholder": "p. ex. Boulangerie Martin"
+        },
+        "phone": {
+          "title": "Téléphone",
+          "placeholder": "+33 …"
+        },
+        "website": {
+          "title": "Site web",
+          "placeholder": "https://…"
+        },
+        "events": {
+          "title": "Événements – page avec les dates",
+          "placeholder": "https://…/programme"
+        },
+        "image": {
+          "title": "Image – lien vers une photo libre",
+          "placeholder": "p. ex. commons.wikimedia.org/wiki/File:…"
+        },
+        "address": {
+          "street": "Rue",
+          "housenumber": "N°",
+          "postcode": "Code postal",
+          "city": "Ville"
+        },
+        "description": {
+          "title": "Description – courte et factuelle, pas de publicité",
+          "placeholder": "p. ex. Boulangerie bio avec café, pain au levain maison"
+        }
+      },
+      "traits": {
+        "toilets": "Toilettes pour tous",
+        "wheelchair": "Accessible en fauteuil roulant",
+        "values": {
+          "yes": "Oui",
+          "only": "Seulement",
+          "limited": "En partie",
+          "wlan": "Oui",
+          "no": "Non",
+          "customers": "Clients seulement"
+        },
+        "title": "Caractéristiques"
+      },
+      "sockets": {
+        "count": "Nombre",
+        "power": "Puissance",
+        "power_placeholder": "p. ex. 22 kW"
+      },
+      "facts": {
+        "title": "Informations",
+        "hint": "comme dans la fiche du lieu"
+      },
+      "more": {
+        "title": "Autres",
+        "address": "Adresse",
+        "events": "Programme",
+        "image": "Image",
+        "traits": "Caractéristiques",
+        "all_tags": "tous les tags",
+        "more_tags": "autres tags"
+      },
+      "raw": {
+        "all": "Tous les tags",
+        "more": "Autres tags",
+        "hint": "pour les connaisseurs – clé=valeur, une ligne par tag",
+        "placeholder": "p. ex. payment:cash=yes",
+        "edit_hint": "Ce que tu modifies dans les champs ci-dessus prime sur ce qui est écrit ici. Supprimer une ligne = retirer le tag.",
+        "add_hint": "S'ajoute aux informations ci-dessus."
+      },
+      "no_account": {
+        "title": "Connecter un compte OpenStreetMap",
+        "text": "{what} arrive directement dans OpenStreetMap – la carte ouverte que WMap utilise. Il te faut pour cela un compte OSM gratuit ; une fois connecté dans les réglages, tout entre dans la carte sous ton nom.",
+        "anon": "Sans compte, tu peux aussi l'envoyer comme signalement anonyme – des contributeurs de la région le saisiront.",
+        "note": "Envoyer comme signalement",
+        "connect": "Connecter un compte"
+      },
+      "toast": {
+        "conflict": "Quelqu'un d'autre a modifié cela entre-temps – recharge",
+        "note_sent": "Signalement envoyé – merci !",
+        "saved": "Saisi dans OpenStreetMap – merci !",
+        "view": "Voir",
+        "failed": "Échec : {error}",
+        "unchanged": "Rien n'a changé",
+        "need_name": "Indique un nom"
+      },
+      "what_change": "Ta modification",
+      "edit": {
+        "title": "Modifier {name}",
+        "hint": "Ne saisis que ce que tu sais toi-même – par ex. d'après le panneau sur place."
+      },
+      "place": "Lieu",
+      "send_note": "Envoyer le signalement",
+      "what_new": "Le nouveau lieu",
+      "add": {
+        "title": "Saisir un lieu",
+        "what": "Qu'y a-t-il ici ?",
+        "brand": {
+          "title": "Marque / Enseigne",
+          "placeholder": "p. ex. Carrefour – laisse vide si ce n'est pas une enseigne"
+        },
+        "hint": "Le point se place là où tu as fait un appui long. Uniquement ce qui existe vraiment – vu sur place.",
+        "button": "Saisir"
+      }
+    },
+    "survey": {
+      "mode": {
+        "foot": "à pied",
+        "bike": "à vélo",
+        "car": "en voiture"
+      },
+      "surface": {
+        "asphalt": "Asphalte",
+        "paving_stones": "Pavés",
+        "sett": "Pavés bruts",
+        "concrete": "Béton",
+        "compacted": "Stabilisé",
+        "gravel": "Gravier",
+        "ground": "Terre",
+        "grass": "Herbe",
+        "grass_paver": "Dalles gazon"
+      },
+      "way": {
+        "residential": "rue résidentielle",
+        "road": "route",
+        "service": "voie d'accès",
+        "track": "chemin de terre",
+        "living_street": "zone de rencontre",
+        "pedestrian": "zone piétonne",
+        "footway": "chemin piéton",
+        "cycleway": "piste cyclable",
+        "path": "sentier",
+        "bridleway": "chemin équestre",
+        "fallback": "chemin",
+        "here": "{way} ici"
+      },
+      "quests": {
+        "parking_fee": {
+          "summary": "Tarif de stationnement",
+          "title": "Le stationnement ici est-il payant ?",
+          "free": "Gratuit",
+          "paid": "Payant"
+        },
+        "surface_summary": "Revêtement",
+        "parking_surface": {
+          "title": "Quel est le revêtement du parking ?"
+        },
+        "hours_summary": "Horaires d'ouverture",
+        "hours_check": {
+          "title": "{name} a-t-il toujours ces horaires d'ouverture ?"
+        },
+        "hours_missing": {
+          "title": "Quand {name} est-il ouvert ?"
+        },
+        "road_surface": {
+          "title": "Quel est le revêtement de {name} ?"
+        },
+        "way_lit": {
+          "summary": "Éclairage",
+          "title": "{name} est-il éclairé ?",
+          "yes": "Oui, des lampadaires",
+          "no": "Non"
+        },
+        "missing_way": {
+          "summary": "chemin manquant",
+          "title": "Tu étais ici hors de tout chemin de la carte – y a-t-il un chemin à cet endroit ?",
+          "none": "Non, GPS imprécis"
+        },
+        "exists": {
+          "summary": "Confirmé",
+          "title": "{name} existe-t-il encore ?",
+          "yes": "Oui, il existe encore",
+          "gone": "N'existe plus"
+        },
+        "detour": {
+          "summary": "Fermeture",
+          "title": "Tu t'es écarté de l'itinéraire ici – pourquoi ?",
+          "choice": "Simplement choisi un autre chemin",
+          "temporary": "Fermé temporairement",
+          "gone": "Le chemin n'existe pas / fermé définitivement"
+        }
+      },
+      "parking": "Parking",
+      "say": {
+        "fee": {
+          "no": "gratuit",
+          "yes": "payant"
+        },
+        "access": {
+          "yes": "ouvert à tous",
+          "customers": "clients seulement",
+          "private": "privé"
+        },
+        "lit": {
+          "yes": "éclairé",
+          "no": "non éclairé"
+        },
+        "per_hour": " € par heure",
+        "per_day": " € par jour",
+        "charge": "Prix {v}",
+        "hours": "Horaires d'ouverture : {v}",
+        "surface": "Revêtement : {v}"
+      },
+      "comment": "{parts} complété(s) ou confirmé(s) – relevé sur place avec WMap",
+      "this_place": "ce lieu",
+      "name": {
+        "detour": "Écart par rapport à l'itinéraire",
+        "missing_way": "Chemin hors de la carte"
+      },
+      "overpass_failed": "Les magasins et parkings n'ont pas pu être vérifiés pour le moment (Overpass surchargé)",
+      "ui": {
+        "mode": {
+          "foot": "à pied",
+          "bike": "à vélo",
+          "car": "en voiture"
+        },
+        "off": "Désactivé",
+        "none": "Aucune question ouverte",
+        "searching": "recherche d'autres …",
+        "count": {
+          "one": "{n} question sur des lieux où tu es passé",
+          "other": "{n} questions sur des lieux où tu es passé"
+        },
+        "disabled": "Contribuer est désactivé. Tu peux l'activer dans les réglages – WMap retiendra alors ton trajet sur cet appareil et te posera ensuite de brèves questions.",
+        "looking": "Je regarde où tu es passé …",
+        "empty": "Après ton prochain trajet ou ta prochaine promenade avec WMap, tu trouveras ici de brèves questions – par ex. si un parking est payant ou si la boulangerie a toujours les mêmes horaires. Tes réponses améliorent OpenStreetMap.",
+        "scan": "Vérifier maintenant",
+        "account": {
+          "test_server": "Serveur de test",
+          "signed_in": "Connecté en tant que <strong>{name}</strong>",
+          "upload": "Envoyer {n}",
+          "waiting": {
+            "one": "{n} réponse attend d'être envoyée.",
+            "other": "{n} réponses attendent d'être envoyées."
+          },
+          "login": "Se connecter à OpenStreetMap"
+        },
+        "hours": {
+          "still": "C'est toujours exact",
+          "other": "Autres horaires",
+          "gone": "N'existe plus",
+          "always": "24 h/24"
+        },
+        "card": {
+          "show": "Afficher sur la carte",
+          "delete": "Supprimer la question",
+          "later": "Je ne sais pas / plus tard"
+        },
+        "editor": {
+          "open": "Ouvert ?",
+          "closed": "fermé",
+          "from": "{d} de",
+          "to": "{d} jusqu'à",
+          "after_break": "{d} après la pause à partir de",
+          "lunch": "Pause déjeuner",
+          "pause": "Pause",
+          "back": "Retour",
+          "copy": "Reprendre lundi pour mar.–ven.",
+          "no_day": "Ouvert aucun jour ?",
+          "need_day": "Indique au moins un jour avec des horaires"
+        },
+        "toast": {
+          "uploading": "Merci ! Envoi en cours …",
+          "as_note": "Merci ! Part comme signalement à OpenStreetMap",
+          "saved": "Merci ! Enregistré – envoi après la connexion",
+          "note_sent": "Envoyé comme signalement à OpenStreetMap – merci !",
+          "uploaded": "Envoyé à OpenStreetMap – merci !"
+        },
+        "result": {
+          "changes": {
+            "one": "{n} modification",
+            "other": "{n} modifications"
+          },
+          "skipped": "{n} ignoré(s) (quelque chose y a changé entre-temps)",
+          "one_note": "1 signalement",
+          "sent": "Envoyé : {parts}. Merci !"
+        }
+      }
+    }
+  },
+  "map": {
+    "my_location": "Ma position",
+    "point_on_map": "Point sur la carte",
+    "in_place": "à {place}",
+    "near_place": "près de {place}",
+    "around_here": "dans les environs",
+    "sheet": {
+      "grip": "Changer la hauteur : faire glisser, appuyer deux fois pour tout ouvrir ou fermer"
+    },
+    "menu": {
+      "record": "Enregistrer",
+      "street_view": "Street View",
+      "share_location": "Partager ma position",
+      "request_location": "Demander la position",
+      "settings": "Réglages"
+    },
+    "keys": {
+      "title": "Clavier",
+      "ok": "Compris",
+      "rows": {
+        "move": "avancer / reculer",
+        "side": "à gauche / à droite",
+        "turn": "tourner",
+        "look": "regarder vers le haut / le bas",
+        "space": "Barre d’espace",
+        "up": "plus haut",
+        "down": "plus bas",
+        "esc": "vue normale – en navigation : retour à ta position",
+        "fly_key": "Voler",
+        "fly": "Menu → Voler : la souris oriente le regard, W vole vers le centre de l’image, Échap termine"
+      }
+    },
+    "share_location": {
+      "text": "Voici où je suis en ce moment ({time}) :",
+      "of_person": "Position de {name}",
+      "plain": "Position"
+    },
+    "request": {
+      "title": "Où es-tu ?",
+      "text": "{name} voudrait savoir où tu es en ce moment. Touche le lien pour envoyer ta position :",
+      "answer": {
+        "title": "{name} demande où tu es",
+        "text": "Ta position est partagée une seule fois sous forme de lien – tu choisis à qui l’envoyer. Rien n’est enregistré.",
+        "send": "Envoyer la position"
+      }
+    },
+    "link": {
+      "tour_missing": "Cette sortie n’existe pas sur cet appareil",
+      "tour_no_route": "Impossible de calculer un itinéraire pour cette sortie",
+      "geo_unreadable": "WMap ne peut pas lire ce lien de carte",
+      "nothing_found": "Aucun résultat pour « {query} »",
+      "shared": {
+        "place": "Lieu partagé",
+        "now": "Partagé à l’instant",
+        "minutes": "Partagé il y a {n} min",
+        "date": "Partagé le {date}"
+      }
+    },
+    "locate": {
+      "waiting": "Pas encore de position – WMap continue de chercher (pas de signal GPS ?)",
+      "switched_off": "La localisation est désactivée sur le téléphone",
+      "not_found": "Aucune position trouvée – WMap continue de chercher",
+      "unsupported": "La localisation n’est pas prise en charge",
+      "denied": "Accès à la position refusé",
+      "unavailable": "Position indisponible"
+    },
+    "area": {
+      "radius": "dans un rayon de 5 km",
+      "view": "dans la zone affichée"
+    },
+    "attribution": {
+      "search": "Recherche :",
+      "routing": "Itinéraires :",
+      "heights": "Altitudes :",
+      "imprint": "Mentions légales"
+    },
+    "sharpness": {
+      "auto": "Automatique (2 au maximum)",
+      "low": "Économe (1)",
+      "medium": "Moyenne (1,5)",
+      "high": "Nette (2)",
+      "max": "Pleine résolution de l’écran"
+    },
+    "cellular": {
+      "title": "Réseau mobile détecté",
+      "text": "La vue 3D télécharge des données de relief et d’altitude. Sur le réseau mobile, cela peut consommer beaucoup de données. L’activer maintenant ?",
+      "no": "Rester en 2D",
+      "yes": "Activer la 3D"
+    },
+    "fly": {
+      "locked": "<b>Souris</b> regarder autour · <b>W/S</b> avancer/reculer · <b>A/D</b> sur le côté · <b>Espace/Maj</b> monter/descendre · <b>Échap</b> terminer",
+      "free": "Le pointeur près du bord oriente le regard · <b>Clic</b> dans la carte : la souris regarde librement · <b>W/S/A/D</b> voler · <b>Échap</b> terminer"
+    }
+  },
+  "street": {
+    "stop": "Arrêt {name}",
+    "off_road": "Hors des routes",
+    "share": "Partager cette vue",
+    "share_text": "Regarde, c'est ici :",
+    "close": "Carte",
+    "hint": {
+      "touch": "<b>Un doigt</b> pour tourner · <b>pincer</b> pour avancer/reculer · <b>2× toucher</b> pour s'y rendre",
+      "locked": "<b>Souris</b> pour regarder · <b>W/A/S/D</b> pour marcher · <b>Maj</b> pour courir · <b>Échap</b> pour libérer la souris",
+      "free": "<b>Clic dans l'image</b> : la souris regarde · <b>W/A/S/D</b> pour marcher · <b>Double-clic</b> pour s'y rendre"
+    }
+  },
+  "layers": {
+    "object": {
+      "default_name": "Objet",
+      "layer": "Couche « {name} »",
+      "no_properties": "Aucune propriété"
+    },
+    "geojson": {
+      "invalid": "Ce n'est pas un GeoJSON valide (erreur JSON)",
+      "not_geojson": "Ce n'est pas un GeoJSON : une FeatureCollection est attendue",
+      "empty": "Le fichier ne contient aucun objet avec des coordonnées",
+      "not_degrees": "Les coordonnées ne sont pas en degrés (WGS84) : convertis-les d'abord, par exemple avec QGIS"
+    },
+    "extensions": {
+      "failed": "L'extension « {name} » n'a pas pu démarrer : {error}"
+    },
+    "info": {
+      "loading": "Ce que les couches savent ici …",
+      "all_unavailable": "Couches momentanément indisponibles ({error})",
+      "unavailable": "Momentanément indisponible ({error})",
+      "answer": "{source} répond avec {status}",
+      "unit": "Unité géologique",
+      "rows": {
+        "age": "Âge",
+        "age_range": "{from} à {to}",
+        "million_years": "Millions d'années",
+        "rock": "Roche",
+        "description": "Description"
+      },
+      "legend": {
+        "summary": "Légende : {title}",
+        "alt": "Légende {title}"
+      }
+    },
+    "presets": {
+      "attribution": "Géologie :",
+      "bgr_operator": "BGR – Institut fédéral allemand des géosciences et des ressources naturelles",
+      "geo_de": {
+        "name": "Géologie de l'Allemagne",
+        "text": "Carte géologique générale au 1:250 000 (GÜK250) : quelles roches affleurent en surface, en couleur selon l'ère géologique, avec les failles et les accidents tectoniques. Visible à partir du zoom 9, de l'échelle d'un arrondissement à celle d'une commune. Un appui long sur la carte indique l'ère géologique à cet endroit.",
+        "legend": "Ères géologiques"
+      },
+      "geo_rock": {
+        "name": "Types de roches en Allemagne",
+        "text": "La même carte générale (GÜK250), colorée selon le type de roche plutôt que l'âge : sable, argile, calcaire, granite, schiste … Idéale pour la randonnée et l'étude des sols. Visible à partir du zoom 9. Un appui long sur la carte indique la roche à cet endroit.",
+        "legend": "Types de roches"
+      },
+      "geo_world": {
+        "name": "Géologie mondiale",
+        "operator": "Macrostrat (University of Wisconsin–Madison)",
+        "text": "Cartes géologiques du monde entier, assemblées à partir de nombreuses sources : approximatives pour des pays entiers, plus précises là où de bonnes cartes existent. En couleur selon l'ère géologique. Un appui long sur la carte indique la roche et son âge à cet endroit.",
+        "legend_text": "Les couleurs suivent l'échelle internationale des temps géologiques : violet pour le Trias, bleu pour le Jurassique, vert pour le Crétacé, jaune/orange pour le Tertiaire et le Quaternaire, brun/gris pour le Paléozoïque. Un appui long indique l'unité et son âge."
+      }
+    }
+  },
+  "search": {
+    "here": "Rechercher dans cette zone",
+    "input": {
+      "title": "Recherche",
+      "placeholder": "Lieu, adresse, coordonnées, lien …",
+      "clear": "Effacer",
+      "plan_route": "Planifier un itinéraire",
+      "categories": "Aussi des catégories : {list} …"
+    },
+    "sections": {
+      "recent": "Récents",
+      "saved": "Favoris",
+      "results": "Résultats de recherche",
+      "discover": "Découvrir"
+    },
+    "discover": {
+      "reach": {
+        "title": "Qu'est-ce qui est accessible d'ici ?",
+        "subtitle": "en minutes ou en kilomètres depuis ta position"
+      }
+    },
+    "types": {
+      "category": "Catégorie",
+      "search": "Recherche",
+      "route": "Itinéraire"
+    },
+    "by_name": {
+      "title": "« {query} » à proximité",
+      "subtitle": "tous ceux qui portent ce nom dans les environs"
+    },
+    "local": {
+      "subtitle": "depuis la carte",
+      "type": "Carte",
+      "unreachable": "Recherche momentanément inaccessible",
+      "only_names": "Uniquement les noms de la portion de carte chargée"
+    },
+    "direct": {
+      "kinds": {
+        "latlon": "Coordonnées",
+        "mgrs": "MGRS",
+        "utm": "UTM",
+        "plus": "Plus Code",
+        "link": "Lien"
+      },
+      "pages": {
+        "tour": "Sortie",
+        "tracks": "Enregistrement ou liste",
+        "map": "Lieu ou itinéraire",
+        "discover": "Découvrir"
+      },
+      "plus_place_missing": "« {text} » introuvable – près du centre de la carte",
+      "wmap_link": "Ouvrir le lien WMap",
+      "short_link": {
+        "title": "Lien court – seul Google peut le résoudre",
+        "subtitle": "Ouvre le lien dans le navigateur et colle l'adresse complète",
+        "toast": "Seul Google peut résoudre les liens courts (maps.app.goo.gl) : ouvre-les dans le navigateur, puis copie l'adresse complète"
+      },
+      "osm": {
+        "missing": "Cet objet OSM n'existe pas (ou plus)",
+        "object": "Objet OSM {id}"
+      }
+    },
+    "bookmark": {
+      "title": "Favori",
+      "name": {
+        "title": "Nom",
+        "placeholder": "p. ex. Mamie, club, boulangerie préférée"
+      },
+      "list": {
+        "title": "Liste",
+        "new_option": "Nouvelle liste …",
+        "new": {
+          "title": "Nouvelle liste",
+          "placeholder": "p. ex. Vacances à Hanovre"
+        }
+      },
+      "as_home": "Définir comme domicile",
+      "as_work": "Définir comme travail",
+      "remove": "Supprimer",
+      "toast": {
+        "saved_in": "Enregistré dans « {list} »",
+        "change": "Modifier",
+        "removed": "Favori supprimé",
+        "saved_as": "Enregistré sous « {name} »",
+        "saved_name": "Enregistré sous « {name} »"
+      }
+    },
+    "toast": {
+      "not_found": "« {text} » introuvable",
+      "nothing_found": "Aucun résultat"
+    },
+    "geocode": {
+      "types": {
+        "city": "Ville",
+        "town": "Ville",
+        "village": "Village",
+        "hamlet": "Hameau",
+        "suburb": "Quartier",
+        "river": "Rivière",
+        "stream": "Ruisseau",
+        "canal": "Canal",
+        "lake": "Lac",
+        "water": "Plan d'eau",
+        "peak": "Sommet",
+        "station": "Gare",
+        "halt": "Halte",
+        "bus_stop": "Arrêt",
+        "parking": "Parking",
+        "fuel": "Station-service",
+        "restaurant": "Restaurant",
+        "cafe": "Café",
+        "bakery": "Boulangerie",
+        "supermarket": "Supermarché",
+        "pitch": "Terrain de sport",
+        "park": "Parc",
+        "forest": "Forêt",
+        "wood": "Bois",
+        "castle": "Château",
+        "museum": "Musée",
+        "hotel": "Hôtel",
+        "school": "École",
+        "hospital": "Hôpital",
+        "pharmacy": "Pharmacie",
+        "charging_station": "Borne de recharge",
+        "place_of_worship": "Église",
+        "viewpoint": "Point de vue",
+        "playground": "Aire de jeux",
+        "residential": "Rue",
+        "primary": "Route",
+        "secondary": "Route",
+        "tertiary": "Route",
+        "unclassified": "Route",
+        "living_street": "Rue",
+        "service": "Voie de desserte",
+        "footway": "Chemin piéton",
+        "path": "Sentier",
+        "track": "Chemin de terre",
+        "cycleway": "Piste cyclable",
+        "motorway": "Autoroute",
+        "administrative": "Zone administrative",
+        "state": "Land",
+        "country": "Pays",
+        "county": "Arrondissement",
+        "house": "Adresse"
+      },
+      "offline": "Pas de connexion au réseau – la recherche a besoin d'internet",
+      "unreachable": "La recherche est momentanément inaccessible – touche un point sur la carte ou réessaie dans un instant",
+      "failed": "Échec de la recherche ({status})",
+      "place": "Lieu",
+      "station_words": [
+        "gare",
+        "gare sncf",
+        "gare centrale",
+        "gare routière",
+        "station",
+        "sncf",
+        "gares"
+      ]
+    },
+    "words": {
+      "filler": [
+        "à",
+        "a",
+        "au",
+        "aux",
+        "dans",
+        "en",
+        "sur",
+        "près",
+        "pres",
+        "proche",
+        "autour",
+        "de",
+        "du",
+        "des",
+        "d",
+        "la",
+        "le",
+        "les",
+        "l",
+        "un",
+        "une",
+        "ici",
+        "montre",
+        "montrer",
+        "affiche",
+        "afficher",
+        "cherche",
+        "chercher",
+        "recherche",
+        "moi",
+        "me",
+        "tous",
+        "toutes",
+        "tout",
+        "avec",
+        "et",
+        "pour",
+        "environs",
+        "alentours",
+        "alentour",
+        "voisinage",
+        "plus proche",
+        "prochain",
+        "prochaine"
+      ]
+    }
+  },
+  "category": {
+    "recent_nearby": "à proximité",
+    "searching": "Recherche {area} …",
+    "found_so_far": "{n} trouvé(s) {area} …",
+    "found": "{n} trouvé(s) {area}",
+    "hidden": "{n} masqué(s)",
+    "none": "Aucun résultat pour {category} {area}",
+    "failed": "{error} – réessaie dans un instant",
+    "no_shapes": "Contours indisponibles pour le moment",
+    "distance": "à {distance}",
+    "filter": {
+      "title": "Filtre",
+      "only_open": "Ouverts uniquement",
+      "closed": "{n} fermé(s)",
+      "also_private": "Privés inclus"
+    }
+  },
+  "lines": {
+    "directions": "Directions",
+    "searching": "Recherche de la ligne …",
+    "none": "Aucune ligne {ref} trouvée {where}",
+    "unavailable": "Lignes indisponibles pour le moment ({error})",
+    "item": {
+      "type": "Ligne",
+      "in_place": "Ligne à {place}",
+      "around_here": "Ligne dans le coin"
+    },
+    "toast": {
+      "unavailable": "Ligne indisponible pour le moment ({error})"
+    },
+    "words": {
+      "line": [
+        "ligne",
+        "lignes",
+        "line"
+      ],
+      "bus": [
+        "bus",
+        "ligne de bus",
+        "autobus"
+      ],
+      "tram": [
+        "tram",
+        "tramway",
+        "trams",
+        "tramways"
+      ],
+      "light_rail": [
+        "train léger",
+        "métro léger",
+        "tram-train"
+      ],
+      "subway": [
+        "métro",
+        "metro",
+        "métros"
+      ],
+      "suburban": [
+        "rer",
+        "train de banlieue",
+        "transilien"
+      ]
+    },
+    "labels": {
+      "line": "Ligne",
+      "bus": "Bus",
+      "tram": "Tram",
+      "light_rail": "Train léger",
+      "subway": "Métro",
+      "suburban": "S-Bahn",
+      "train": "Train"
+    },
+    "place_words": [
+      "à",
+      "a",
+      "dans",
+      "en"
+    ]
+  },
+  "stops": {
+    "departures": {
+      "title": "Départs",
+      "unavailable": "Horaires indisponibles pour le moment ({error})",
+      "loading": "Chargement des horaires …",
+      "none": "Aucun départ prochainement à ce quai",
+      "cancelled": "supprimé",
+      "in_minutes": "dans {n} min",
+      "platform": "Quai {platform}",
+      "more": "Autres départs",
+      "trip_unavailable": "Parcours de {line} indisponible pour le moment",
+      "filter": {
+        "here": "Ici",
+        "here_platform": "Ici · Quai {platform}",
+        "all": "Tous les quais"
+      },
+      "earlier": {
+        "title": "Départs précédents",
+        "none": "Aucun départ précédent trouvé",
+        "failed": "Départs précédents indisponibles pour le moment – réessaie dans un instant"
+      },
+      "source": {
+        "title": "Horaires : NVBW EFA-BW",
+        "realtime": "en temps réel",
+        "platform_only": "ce quai uniquement"
+      }
+    },
+    "lines": {
+      "title": "Lignes ici",
+      "unavailable": "Indisponible pour le moment ({error})",
+      "loading": "Quelles lignes s'arrêtent ici …",
+      "at_platform": "Lignes à ce quai",
+      "at_platform_side": "Lignes à ce quai ({side})",
+      "all": "Toutes les lignes de l'arrêt",
+      "all_count": "Les {n} lignes de l'arrêt",
+      "only_platform": "Ce quai uniquement"
+    }
+  },
+  "place": {
+    "address_searching": "Recherche de l’adresse …",
+    "wikipedia": "Wikipédia",
+    "nearby": {
+      "title": "À proximité",
+      "this_point": "ce point"
+    },
+    "coords": {
+      "copy": "Copier",
+      "more": "Autres formats",
+      "copied": "Copié : {text}",
+      "copy_failed": "La copie a échoué",
+      "formats": {
+        "utm": "UTM",
+        "plus": "Plus Code",
+        "dms": "Degrés, minutes, secondes"
+      }
+    },
+    "actions": {
+      "add_stop": "Ajouter une étape",
+      "as_destination": "Comme arrivée",
+      "as_start": "Comme départ",
+      "route": "Itinéraire",
+      "to_car": "Vers la voiture",
+      "share": "Partager",
+      "look_around": "Explorer",
+      "save": "Enregistrer",
+      "saved": "Enregistré",
+      "add_here": "Ajouter ici",
+      "edit": "Modifier"
+    },
+    "fuel": {
+      "euro": "€",
+      "e5": "Super E5",
+      "e10": "Super E10",
+      "diesel": "Diesel",
+      "live": "Prix en direct",
+      "closed": "Fermé actuellement",
+      "source": "Source : MTS-K via Tankerkönig"
+    }
+  },
+  "reach": {
+    "title": "Zone accessible",
+    "search_in": "Chercher dans cette zone",
+    "metric": {
+      "title": "Mesure",
+      "time": "Durée",
+      "distance": "Distance"
+    },
+    "unit": {
+      "min": "min",
+      "km": "km"
+    },
+    "computing": "Depuis {from} · {profile} · calcul en cours …",
+    "result": "Depuis {from} · {profile} · jusqu’à {value} {unit}",
+    "up_to": "jusqu’à {value} {unit}",
+    "searching": "Recherche de {category} dans la zone accessible …",
+    "none": "Aucun résultat pour {category} dans la zone accessible"
+  },
+  "contribute": {
+    "title": "Contribuer",
+    "offer": {
+      "one": "{n} petite question sur ton trajet",
+      "other": "{n} petites questions sur ton trajet"
+    },
+    "first": {
+      "title": "Contribuer à OpenStreetMap",
+      "text": "WMap garde en mémoire ton trajet sur cet appareil, puis te pose de petites questions – par exemple si le parking est payant ou si la boulangerie a toujours les mêmes horaires. Tes réponses améliorent la carte pour tout le monde. L’enregistrement ne quitte pas l’appareil et peut être désactivé dans les réglages.",
+      "no": "Ne pas enregistrer",
+      "yes": "D’accord"
+    }
+  },
+  "ask_along": {
+    "missing_way": {
+      "name": "Chemin hors carte",
+      "road": "Nouvelle route ?",
+      "way": "Nouveau chemin ?"
+    },
+    "detour": {
+      "name": "Écart par rapport à l’itinéraire",
+      "title": "Fermé ?"
+    },
+    "exists": {
+      "title": "{name} existe-t-il encore ?"
+    }
+  },
+  "report": {
+    "thanks": "Merci !",
+    "goes": {
+      "account": "Part directement dans la carte avec ton compte OSM.",
+      "anonymous": "Part sans compte comme signalement à OpenStreetMap.",
+      "later": "Conservé jusqu’à ce que tu te connectes à OSM."
+    },
+    "still": {
+      "roadworks": "Les travaux sont toujours là ?",
+      "closure": "Toujours fermé ?",
+      "jam": "Toujours des bouchons ?",
+      "accident": "L’accident est toujours là ?",
+      "other": "Toujours une gêne ?",
+      "gone": "Non, plus rien"
+    },
+    "here": {
+      "title": "Que souhaites-tu signaler ?",
+      "shared": "Les autres voient ton signalement pendant quelques heures.",
+      "local": "Pas encore de serveur de signalements – le signalement reste pour l’instant sur cet appareil.",
+      "toast_shared": "{kind} signalé – merci !",
+      "toast_local": "{kind} noté"
+    },
+    "parking": {
+      "name": "Parking",
+      "named": "« {name} »",
+      "this_one": "ce parking",
+      "thanks": "Merci ! Ça aide tous ceux qui veulent se garer ici.",
+      "fee": {
+        "title": "{what} est-il gratuit ?",
+        "sub": "Tu viens d’arriver",
+        "free": "Gratuit",
+        "paid": "Payant",
+        "unknown": "Je ne sais pas"
+      },
+      "price": {
+        "title": "Environ combien ?",
+        "per_hour": "{price} €/h",
+        "other": "Autre …",
+        "ask": "Quel est le tarif ?",
+        "placeholder": "p. ex. 1,50 € l’heure ou 6 € la journée"
+      },
+      "access": {
+        "title": "Tout le monde peut-il s’y garer ?",
+        "all": "Oui, tout le monde",
+        "customers": "Clients uniquement",
+        "private": "Privé"
+      },
+      "remark": {
+        "title": "Autre chose à signaler aux autres ?",
+        "sub": "p. ex. barrière, hauteur limitée, jusqu’à 20 h seulement",
+        "placeholder": "Remarque (facultatif)",
+        "no": "Non, merci"
+      }
+    }
+  },
+  "traffic": {
+    "title": "Trafic sur l'autoroute",
+    "blocked": "Fermeture complète",
+    "source": "Source : Autobahn GmbH des Bundes",
+    "closures": {
+      "one": "Une fermeture complète sur l'itinéraire",
+      "other": "{n} fermetures complètes sur l'itinéraire"
+    },
+    "avoid": "Contourner",
+    "at": "à {distance}",
+    "kinds": {
+      "closure": "Fermeture",
+      "roadworks": "Travaux",
+      "warning": "Alerte",
+      "jam": "Bouchon",
+      "accident": "Accident",
+      "hazard": "Danger"
+    },
+    "reported": {
+      "title": "Signalé {n}×",
+      "by": {
+        "one": "Signalé par {n} personne, dernière fois {time}",
+        "other": "Signalé par {n} personnes, dernière fois {time}"
+      }
+    }
+  },
+  "route": {
+    "line": {
+      "change": "Modifier l'itinéraire",
+      "prefs": "Réglages : autoroute, ferries, moyens de transport …"
+    },
+    "form": {
+      "swap": "Inverser départ et arrivée",
+      "add_via": "Étape",
+      "profiles": {
+        "title": "Mode de déplacement",
+        "foot": "À pied",
+        "bike": "Vélo",
+        "car": "Voiture",
+        "transit": "Bus & train"
+      }
+    },
+    "when": {
+      "mode": {
+        "title": "Départ ou arrivée",
+        "departure": "Départ à partir de",
+        "arrival": "Arrivée avant"
+      },
+      "time": "Heure",
+      "now": "Maintenant"
+    },
+    "waypoint": {
+      "start": "Choisir le départ",
+      "destination": "Choisir l'arrivée",
+      "via": "Choisir une étape",
+      "my_location_hint": "position GPS actuelle",
+      "point": "Point",
+      "tour_start": "Départ : {name}"
+    },
+    "status": {
+      "computing": "Calcul de l'itinéraire …",
+      "failed": "L'itinéraire n'a pas pu être chargé pour le moment – réessaie dans un instant",
+      "retry": "Réessayer"
+    },
+    "park": "Le trajet s'arrête au parking juste avant – {distance} jusqu'à {place}",
+    "ascent": "↗ {m} m",
+    "ticket": "Billet auprès de la compagnie ferroviaire",
+    "connection_saved": "Trajet enregistré – dans Mes tours → Trajets",
+    "new_tour": "Nouveau tour",
+    "tags": {
+      "highway": "Autoroute",
+      "no_highway": "sans autoroute",
+      "toll": "Péage",
+      "ferry": "Ferry",
+      "fastest": "Le plus rapide",
+      "latest": "Départ le plus tardif",
+      "alternative": "Alternative",
+      "change": "≥ {min} min de correspondance",
+      "tight": "juste : {min} min de correspondance"
+    },
+    "alternative": {
+      "same": "±0 min"
+    },
+    "earlier": {
+      "title": "Trajets plus tôt",
+      "none": "Aucun trajet plus tôt trouvé",
+      "failed": "Impossible d'afficher les trajets plus tôt pour le moment – réessaie dans un instant"
+    },
+    "share": {
+      "title": "Itinéraire",
+      "text": "Itinéraire de {from} à {to} ({profile}, {time}, {distance})",
+      "my_location": "ma position",
+      "start": "Départ"
+    },
+    "along": {
+      "title": "Le long de l'itinéraire",
+      "searching": "Recherche de {category} le long de l'itinéraire …",
+      "none": "Aucun résultat pour {category} le long de l'itinéraire",
+      "none_visible": "Aucun résultat pour {category} le long de l'itinéraire – seulement des masqués",
+      "distance": "à {along} · à {offset} de l'itinéraire"
+    },
+    "sheet": {
+      "end": "Terminer la planification",
+      "options": "Itinéraires",
+      "steps": "Instructions",
+      "share": "Partager l'itinéraire",
+      "save": "Enregistrer comme tour",
+      "send_car": "Envoyer à la voiture",
+      "start": "Démarrer"
+    }
+  },
+  "nav": {
+    "kmh": "km/h",
+    "pip_failed": "Impossible d’activer l’image dans l’image : {error}",
+    "buttons": {
+      "record": "Enregistrer",
+      "north_up": "Nord en haut",
+      "heading_up": "Orienter selon la direction",
+      "report": "Signaler : bouchon, accident, travaux …",
+      "pip": "Image dans l’image – instructions au-dessus d’autres applis",
+      "overview": "Afficher tout l’itinéraire",
+      "mute": "Couper les annonces vocales",
+      "unmute": "Activer les annonces vocales",
+      "follow_flat": "Te suit – toucher : vue à plat",
+      "follow_tilted": "Te suit – toucher : vue inclinée",
+      "back_to_me": "Retour à ma position",
+      "stop": "Arrêter la navigation",
+      "share": "Partager l’arrivée",
+      "search": "Chercher le long de l’itinéraire"
+    },
+    "banner": {
+      "exit": "Sortie {n}",
+      "toward": "Direction {places}",
+      "lane_left": "Voie de gauche",
+      "lane_right": "Voie de droite",
+      "then": "Puis",
+      "arrived": "Destination atteinte",
+      "arrived_remaining": "0 min · 0 m"
+    },
+    "gps": {
+      "unsupported": "La localisation n’est pas prise en charge par cet appareil",
+      "weak": "Signal GPS faible – recherche de la position …",
+      "coarse": "Seule la position approximative est autorisée. Autorise la « position précise » pour le navigateur dans les réglages du téléphone.",
+      "denied": "Position non autorisée – autorise-la dans les réglages du navigateur."
+    },
+    "offline": {
+      "loading": "Enregistrement de la carte du trajet",
+      "ok": "La carte du trajet est enregistrée hors ligne",
+      "off": "Hors ligne – le recalcul ne sera possible qu’avec une connexion",
+      "back_to_route": "Hors ligne – retourne sur l’itinéraire, le recalcul ne sera possible qu’avec une connexion"
+    },
+    "share": {
+      "title": "Je suis en route",
+      "text": "Je suis en route vers {where} – arrivée vers {time}. Voici où je suis en ce moment :",
+      "my_destination": "ma destination",
+      "place": "En route"
+    },
+    "search_along": {
+      "title": "Le long de l’itinéraire",
+      "subtitle": "Ce qui se trouve devant toi sur le trajet",
+      "searching": "Recherche : {category} devant toi …",
+      "none": "Aucun résultat pour {category} devant toi sur le trajet",
+      "distance": "dans {along} · à {offset} de l’itinéraire"
+    },
+    "resume": {
+      "title": "Reprendre la navigation ?",
+      "to": "Continuer vers {place}.",
+      "unfinished": "Le dernier trajet n’a pas été terminé.",
+      "stop": "Terminer",
+      "go": "Reprendre"
+    },
+    "record": {
+      "running": "Enregistrement en cours",
+      "paused": "Enregistrement en pause",
+      "continues": "L’enregistrement continue",
+      "already": "Un enregistrement est déjà en cours",
+      "simulation": "Pas d’enregistrement en simulation",
+      "saved": "Enregistrement sauvegardé ({distance})",
+      "drive_saved": "Trajet sauvegardé ({distance})",
+      "too_short": "Trop court pour être sauvegardé",
+      "discarded": "Enregistrement supprimé",
+      "track_name": "Vers {place}",
+      "dialog": {
+        "text": "La navigation continue pendant ce temps.",
+        "resume": "Reprendre l’enregistrement",
+        "pause": "Pause",
+        "stop": "Terminer et sauvegarder",
+        "discard": "Supprimer"
+      },
+      "ask": {
+        "title": "Enregistrer la sortie ?",
+        "text": "Le tracé est ajouté avec l’heure et la vitesse dans « Sorties enregistrées ». En route, tu peux mettre en pause, terminer ou démarrer plus tard avec le bouton d’enregistrement à droite.",
+        "no": "Sans enregistrement"
+      }
+    },
+    "voice_dialog": {
+      "title": "Voix des annonces",
+      "select": "Voix",
+      "online": "en ligne",
+      "android": "L’appli utilise la synthèse vocale d’Android – tu règles la voix et la vitesse dans les réglages d’Android sous « Synthèse vocale ».",
+      "none": "Ce navigateur ne propose pas de voix française.",
+      "hint": "Si la voix sonne métallique ou déformée, c’est souvent une voix système basique (eSpeak) qui est choisie.\n       « Google français » dans Chrome ou les voix d’Android, de Windows et de macOS sonnent nettement mieux.",
+      "test": "Essai",
+      "sample": "Dans 300 mètres, tourner à droite, puis serrer à gauche.",
+      "done": "Terminé"
+    },
+    "voice": {
+      "route_ready": "L’itinéraire est calculé.",
+      "new_route": "Nouvel itinéraire calculé.",
+      "recalculating": "Recalcul de l’itinéraire.",
+      "stop_added": "Ajout de l’étape à l’itinéraire.",
+      "no_connection": "Pas de connexion. Retourner sur l’itinéraire.",
+      "follow": "Suivre l’itinéraire sur {distance}.",
+      "soon": "Dans {distance}, {what}.",
+      "lane_left": "Se placer sur la voie de gauche.",
+      "lane_right": "Se placer sur la voie de droite.",
+      "then": ", puis {action}",
+      "onto": "{action} sur {ref}",
+      "toward": "{what} en direction de {places}",
+      "and": "et",
+      "at_signal": "au feu, {what}",
+      "arrive": {
+        "now": "Vous êtes arrivé à destination.",
+        "on_right": "Elle se trouve à droite.",
+        "on_left": "Elle se trouve à gauche.",
+        "soon": "Dans {distance}, vous arrivez à destination.",
+        "then": "puis vous arrivez à destination"
+      },
+      "ordinal": {
+        "first": "première",
+        "second": "deuxième",
+        "third": "troisième",
+        "fourth": "quatrième",
+        "fifth": "cinquième",
+        "sixth": "sixième",
+        "seventh": "septième",
+        "eighth": "huitième"
+      },
+      "action": {
+        "depart": "démarrer",
+        "continue": "continuer tout droit",
+        "keep_straight": "rester tout droit",
+        "slight_right": "tourner légèrement à droite",
+        "right": "tourner à droite",
+        "sharp_right": "tourner franchement à droite",
+        "slight_left": "tourner légèrement à gauche",
+        "left": "tourner à gauche",
+        "sharp_left": "tourner franchement à gauche",
+        "u_turn": "faire demi-tour",
+        "keep_right": "serrer à droite",
+        "keep_left": "serrer à gauche",
+        "merge": "s’insérer",
+        "merge_right": "s’insérer à droite",
+        "merge_left": "s’insérer à gauche",
+        "ferry_on": "embarquer sur le ferry",
+        "ferry_off": "quitter le ferry",
+        "roundabout": "au rond-point, prendre la {nth} sortie",
+        "ramp": {
+          "straight": "prendre la bretelle d’accès tout droit",
+          "right": "prendre la bretelle d’accès à droite",
+          "left": "prendre la bretelle d’accès à gauche"
+        },
+        "ramp_ref": {
+          "straight": "s’engager sur la {ref}",
+          "right": "s’engager à droite sur la {ref}",
+          "left": "s’engager à gauche sur la {ref}"
+        },
+        "exit": {
+          "right": "prendre la sortie à droite",
+          "right_number": "prendre la sortie {nr} à droite",
+          "left": "prendre la sortie à gauche",
+          "left_number": "prendre la sortie {nr} à gauche"
+        }
+      }
+    }
+  },
+  "car": {
+    "nearby": "À proximité",
+    "destination": "Destination",
+    "tour": "Parcours",
+    "allow_location": "Autoriser la localisation du téléphone dans WMap",
+    "ask": {
+      "confirm": "Confirmer"
+    },
+    "errors": {
+      "unknown_category": "Catégorie inconnue",
+      "no_route_computed": "Impossible de calculer l'itinéraire",
+      "place_unknown": "Lieu introuvable",
+      "sent_unreadable": "Impossible de lire ce qui a été envoyé",
+      "tour_missing": "Le parcours n'est pas encore arrivé dans la voiture – ouvre WMap une fois sur le téléphone",
+      "tour_not_car": "Ce parcours n'est pas prévu pour la voiture",
+      "unknown_setting": "Réglage inconnu",
+      "no_route": "Aucun itinéraire choisi"
+    }
+  },
+  "permissions": {
+    "location": {
+      "denied": "Accès à la position refusé",
+      "coarse": "Position approximative seulement – pour la navigation et l'enregistrement, active « Position précise »",
+      "off": "La localisation est désactivée sur l'appareil",
+      "turn_on": "Activer la localisation",
+      "allow": "Autoriser la localisation",
+      "title": "Localisation",
+      "text": "Pour ta position sur la carte, les itinéraires depuis « Ma position », la navigation et l’enregistrement de tes parcours. Les données de position enregistrées restent sur ton appareil et ne sont ni analysées ni transmises."
+    },
+    "notice": {
+      "title": "Notifications",
+      "p1": "Pour que WMap puisse poursuivre un enregistrement lancé, même écran éteint ou quand tu utilises une autre app, WMap doit afficher une notification.",
+      "p2": "Tant que l’enregistrement tourne, <strong>« WMap enregistre »</strong> s’affiche dans la barre d’état – tu vois ainsi à tout moment que ton parcours est enregistré. Android va donc te demander si WMap peut envoyer des notifications.",
+      "p3": "WMap n’envoie aucune autre notification.",
+      "allow": "Autoriser"
+    },
+    "status": {
+      "blocked": "Non autorisé – Android ne demande plus, autorise-le dans les réglages",
+      "granted": "Autorisé",
+      "not_yet": "Pas encore autorisé"
+    },
+    "button": {
+      "change": "Modifier dans les réglages",
+      "allow_settings": "Autoriser dans les réglages"
+    },
+    "notification": {
+      "title": "Notification",
+      "text": "Seulement pendant un enregistrement : « WMap enregistre » s’affiche alors dans la barre d’état. WMap a besoin de cette notification pour que l’enregistrement continue écran éteint ou quand tu utilises une autre app. WMap n’envoie aucune autre notification.",
+      "allow": "Autoriser la notification"
+    },
+    "health": {
+      "text": "Lit les entraînements d'autres applis – Fitbit, Strava, Zepp, Samsung Health … – avec le tracé et les mesures (fréquence cardiaque, cadence de pas et de pédalage, puissance), pour que tu les voies dans Mes parcours sous forme de trajets avec graphiques et tours. WMap lit seulement et n'écrit rien en retour.",
+      "title": "Health Connect",
+      "not_granted": "Pas encore autorisé",
+      "grant": "Autoriser Health Connect",
+      "hint_change": "Pour modifier ou retirer l'accès, Health Connect s'ouvre – appuie sur WMap (sinon sous « Autres applis de santé »).",
+      "hint_routes": "Tracés : Health Connect demande encore pour chaque entraînement.\n      Dans Health Connect, règle <strong>WMap → Tracés d'entraînement</strong> sur « Toujours autoriser » (WMap se trouve sinon sous « Autres applis de santé ») – ils arriveront alors tous sans question.",
+      "hint_values": "La fréquence cardiaque & Co. ne sont pas encore autorisées –\n      sans elles, tu n'as que la vitesse et l'altitude pour les trajets.",
+      "all": "Entraînements, tracés et mesures autorisés",
+      "routes_yes": "Entraînements et tracés autorisés",
+      "routes_ask": "Entraînements autorisés, tracés avec confirmation",
+      "values_yes": "Mesures autorisées",
+      "values_no": "Mesures non autorisées",
+      "grant_values": "Autoriser fréquence cardiaque & Co.",
+      "change": "Modifier dans Health Connect",
+      "open": "Ouvrir Health Connect"
+    },
+    "intro": {
+      "location": "WMap a besoin de ta position pour cela.",
+      "health": "WMap a besoin d'accéder à Health Connect pour cela.",
+      "default": "WMap ne demande que ce dont une fonction a vraiment besoin.",
+      "change_later": "Tu peux tout modifier plus tard sous <strong>Réglages → Autorisations</strong>."
+    },
+    "title": "Autorisations"
+  },
+  "tracks": {
+    "error": {
+      "save_aborted": "Enregistrement annulé",
+      "storage_full": "Stockage plein – impossible d'enregistrer le parcours",
+      "only_in_folder": "Le trajet se trouve uniquement dans le dossier"
+    },
+    "names": {
+      "imported": "Trajet importé",
+      "tour": "Parcours",
+      "words": {
+        "car": "Trajet en voiture",
+        "drive": "Balade en voiture",
+        "ride": "Sortie à vélo",
+        "walk": "Promenade",
+        "hike": "Randonnée",
+        "run": "Course à pied",
+        "other": "En déplacement",
+        "rowing": "Aviron",
+        "paddling": "Pagaie",
+        "sailing": "Voile",
+        "swimming": "Natation",
+        "skiing": "Ski",
+        "snowboarding": "Snowboard",
+        "snowshoeing": "Raquettes",
+        "skating": "Roller",
+        "ice_skating": "Patinage",
+        "surfing": "Surf",
+        "paragliding": "Parapente",
+        "climbing": "Escalade",
+        "golf": "Golf"
+      },
+      "when": {
+        "night": "{what} de nuit, le {day}",
+        "morning": "{what} du {day} matin",
+        "noon": "{what} du {day} midi",
+        "afternoon": "{what} du {day} après-midi",
+        "evening": "{what} du {day} soir"
+      },
+      "with_place": "{what} à {place}",
+      "filler": [
+        "trajet",
+        "trajets",
+        "parcours",
+        "du",
+        "de",
+        "le",
+        "la",
+        "à",
+        "et",
+        "heure",
+        "heures",
+        "h",
+        "importé",
+        "importée",
+        "activité",
+        "course",
+        "courir",
+        "footing",
+        "jogging",
+        "sortie",
+        "vélo",
+        "à vélo",
+        "cyclisme",
+        "promenade",
+        "balade",
+        "marche",
+        "marcher",
+        "randonnée",
+        "randonner",
+        "rando",
+        "aviron",
+        "ramer",
+        "natation",
+        "nager",
+        "sans nom",
+        "sans titre",
+        "nouveau",
+        "nouvelle"
+      ]
+    },
+    "gpx": {
+      "start": "Départ",
+      "goal": "Arrivée",
+      "point": "Point {i}"
+    },
+    "toast": {
+      "oldest_removed": {
+        "one": "Stockage plein – le plus ancien parcours a été supprimé",
+        "other": "Stockage plein – les {n} plus anciens parcours ont été supprimés"
+      },
+      "shelved": "Stockage plein – {n} parcours plus anciens sont maintenant uniquement dans le dossier"
+    },
+    "step": {
+      "load_part": "Charger la partie du dossier"
+    },
+    "duplicates": {
+      "where": {
+        "file": "dans le fichier",
+        "double": "dans le doublon"
+      },
+      "points": "{n} points",
+      "points_more": "{n} points de plus {where} ({there} au lieu de {here})",
+      "points_fewer": "{n} points de moins {where} ({there} au lieu de {here})",
+      "value_missing": "absent ici – {where} moy. {avg}",
+      "none": "aucun",
+      "value_differs": "moy. {there} {where}, moy. {here} ici",
+      "laps_new": "{n} tours {where}, aucun ici",
+      "laps": {
+        "one": "{n} tour",
+        "other": "{n} tours"
+      },
+      "laps_differ": "{there} tours {where}, {here} ici",
+      "laps_in_file": "{n} tours {where}",
+      "ask": {
+        "source_file": "Fichier",
+        "source_wmap": "enregistré avec WMap",
+        "title": {
+          "one": "Un parcours existe en double",
+          "other": "{n} parcours existent en double"
+        },
+        "text": "Le même parcours existe plusieurs fois – par exemple depuis une montre et un téléphone, ou depuis un fichier. En fusionnant, un seul enregistrement est conservé par parcours.",
+        "from": "Le parcours « {name} » existe en double. Un enregistrement est conservé – choisis pour chaque ligne les données à garder.",
+        "new_name": "l'enregistrement en double{name}{source} – il sera supprimé ensuite",
+        "old_name": "l'enregistrement conservé{source}",
+        "merged": {
+          "one": "{n} parcours en double fusionné",
+          "other": "{n} parcours en double fusionnés"
+        },
+        "nothing": "Rien n'a été fusionné",
+        "failed": "La fusion a échoué"
+      }
+    },
+    "recorded_on": "Enregistré le {date}",
+    "same_route": {
+      "exact": "Exact",
+      "close": "Proche",
+      "rough": "Approximatif"
+    },
+    "sports": {
+      "driving": "Voiture",
+      "gpx": "GPX"
+    },
+    "show": {
+      "all": "Tous",
+      "year": "Cette année",
+      "days_365": "365 derniers jours",
+      "days_30": "30 derniers jours"
+    },
+    "cadence": {
+      "stroke": "Cadence de coups",
+      "swim": "Cadence de nage",
+      "pedal": "Cadence de pédalage",
+      "step": "Cadence de pas",
+      "other": "Cadence"
+    }
+  },
+  "backup": {
+    "error": {
+      "not_zip": "Ce n’est pas un fichier ZIP",
+      "zip_method": "{path} : la méthode de compression {method} n’est pas prise en charge",
+      "not_backup": "Ce n’est pas une sauvegarde WMap"
+    },
+    "to_folder": "Sauvegarder dans « {name} »",
+    "to_zip": "Sauvegarder en ZIP",
+    "done": "Sauvegarde terminée – {summary}",
+    "creating": "Création de la sauvegarde…",
+    "saved_as": "Enregistrée sous « {name} »",
+    "failed": "La sauvegarde a échoué : {reason}"
+  },
+  "share": {
+    "tour": {
+      "default_name": "Parcours partagé",
+      "error": {
+        "no_tour": "Le lien ne contient aucun parcours"
+      }
+    },
+    "link": {
+      "error": {
+        "key": "Le lien est incomplet – la clé ne correspond pas",
+        "open": "Impossible d’ouvrir le lien"
+      }
+    },
+    "collab": {
+      "error": {
+        "https": "La planification à plusieurs ne fonctionne qu’en https"
+      },
+      "days_left": {
+        "one": "encore {n} jour",
+        "other": "encore {n} jours"
+      },
+      "expired": "Partage expiré",
+      "shared": "Partagé",
+      "invited_by": "Invité par {by}",
+      "invited": "Invité"
+    },
+    "open_link": {
+      "title": "Ouvrir un lien",
+      "text": "Colle ici un lien WMap partagé – parcours, planification à plusieurs ou enregistrement.",
+      "input": "Lien",
+      "open": "Ouvrir",
+      "invalid": "Ce n’est pas un lien WMap partagé"
+    },
+    "error": {
+      "desktop": "Dans l’application de bureau, le partage nécessite PUBLIC_URL dans core/config.js"
+    },
+    "wmap_link": "WMap : {url}",
+    "menu": {
+      "share": "Partager…",
+      "copy_text": "Copier le texte avec le lien",
+      "copy_link": "Copier uniquement le lien",
+      "short": "Créer un lien court"
+    },
+    "short": {
+      "failed": "Impossible de créer le lien court",
+      "note": "Lien court : le parcours reste 30 jours sur le serveur WMap – ensuite, le lien ne fonctionne plus."
+    },
+    "copied": {
+      "text": "Texte avec lien copié",
+      "link": "Lien copié",
+      "then": "{done} – colle-le maintenant et envoie-le",
+      "failed": "Impossible de copier – sélectionne et copie toi-même :"
+    },
+    "my_name": {
+      "title": "Comment t’appelles-tu ?",
+      "text": "Ton nom figure dans la demande pour que l’on sache qui la fait. Il reste sur cet appareil.",
+      "placeholder": "Prénom"
+    },
+    "route": {
+      "shared_point": "Point partagé"
+    }
+  },
+  "places": {
+    "kinds": {
+      "home": "Domicile",
+      "work": "Travail",
+      "stop": "Arrêt",
+      "fav": "Favori"
+    },
+    "default_list": "Général"
+  },
+  "services": {
+    "health": {
+      "types": {
+        "walking": "Marche",
+        "hiking": "Randonnée",
+        "snowshoeing": "Raquettes",
+        "running": "Course à pied",
+        "running_treadmill": "Tapis de course",
+        "biking": "Vélo",
+        "biking_stationary": "Vélo d’appartement",
+        "wheelchair": "Fauteuil roulant",
+        "skating": "Patin à roulettes",
+        "ice_skating": "Patinage sur glace",
+        "skiing": "Ski",
+        "snowboarding": "Snowboard",
+        "rowing": "Aviron",
+        "rowing_machine": "Rameur",
+        "paddling": "Pagaie",
+        "sailing": "Voile",
+        "surfing": "Surf",
+        "scuba_diving": "Plongée",
+        "swimming_open_water": "Natation",
+        "swimming_pool": "Piscine",
+        "water_polo": "Water-polo",
+        "paragliding": "Parapente",
+        "rock_climbing": "Escalade",
+        "golf": "Golf",
+        "frisbee_disc": "Frisbee",
+        "soccer": "Football",
+        "football_american": "Football américain",
+        "football_australian": "Football australien",
+        "rugby": "Rugby",
+        "basketball": "Basket-ball",
+        "volleyball": "Volley-ball",
+        "handball": "Handball",
+        "baseball": "Baseball",
+        "softball": "Softball",
+        "cricket": "Cricket",
+        "tennis": "Tennis",
+        "table_tennis": "Tennis de table",
+        "badminton": "Badminton",
+        "squash": "Squash",
+        "racquetball": "Racquetball",
+        "ice_hockey": "Hockey sur glace",
+        "roller_hockey": "Roller-hockey",
+        "martial_arts": "Arts martiaux",
+        "boxing": "Boxe",
+        "fencing": "Escrime",
+        "dancing": "Danse",
+        "gymnastics": "Gymnastique",
+        "yoga": "Yoga",
+        "pilates": "Pilates",
+        "stretching": "Étirements",
+        "meditation": "Méditation",
+        "guided_breathing": "Respiration guidée",
+        "elliptical": "Vélo elliptique",
+        "stair_climbing": "Montée d’escaliers",
+        "stair_climbing_machine": "Stepper",
+        "weightlifting": "Haltérophilie",
+        "strength_training": "Musculation",
+        "calisthenics": "Callisthénie",
+        "high_intensity_interval_training": "HIIT",
+        "boot_camp": "Bootcamp",
+        "exercise_class": "Cours collectif",
+        "workout": "Séance",
+        "other_workout": "Entraînement"
+      },
+      "error": {
+        "android_only": "Uniquement dans l’application Android",
+        "update_needed": "Health Connect doit d’abord être mis à jour",
+        "not_on_device": "Health Connect n’est pas disponible sur cet appareil",
+        "no_access": "Sans autorisation pour les entraînements, WMap ne peut rien lire",
+        "not_granted": "Health Connect n’est pas encore autorisé"
+      }
+    },
+    "api": {
+      "error": {
+        "unreachable": "Le serveur WMap est actuellement inaccessible",
+        "bad_answer": "Le serveur WMap ne répond pas correctement",
+        "server": "Erreur du serveur"
+      }
+    },
+    "departures": {
+      "error": {
+        "status": "L’horaire répond avec le code {status}",
+        "no_course": "Aucun tracé connu",
+        "no_connection": "Aucune correspondance en bus ou en train trouvée"
+      },
+      "walk": {
+        "left": {
+          "into": "À gauche dans {name}",
+          "turn": "Tourner à gauche"
+        },
+        "right": {
+          "into": "À droite dans {name}",
+          "turn": "Tourner à droite"
+        },
+        "slight_left": {
+          "into": "Légèrement à gauche dans {name}",
+          "turn": "Tourner légèrement à gauche"
+        },
+        "slight_right": {
+          "into": "Légèrement à droite dans {name}",
+          "turn": "Tourner légèrement à droite"
+        },
+        "sharp_left": {
+          "into": "Franchement à gauche dans {name}",
+          "turn": "Tourner franchement à gauche"
+        },
+        "sharp_right": {
+          "into": "Franchement à droite dans {name}",
+          "turn": "Tourner franchement à droite"
+        },
+        "straight": {
+          "into": "Tout droit dans {name}",
+          "turn": "Continuer tout droit"
+        },
+        "uturn": {
+          "into": "Faire demi-tour dans {name}",
+          "turn": "Faire demi-tour"
+        },
+        "straight_on": "Tout droit",
+        "title": "À pied"
+      }
+    },
+    "konto": {
+      "login": {
+        "why_default": "Pour cela",
+        "title": "Se connecter avec OpenStreetMap",
+        "text": "<p>{why}, tu as besoin d’un compte. WMap utilise ton compte OpenStreetMap – WMap n’a pas de mot de passe à lui.</p>",
+        "hint": "Tu n’en as pas encore ? Tu peux le créer sur openstreetmap.org lors de la connexion. Il te permet aussi d’ajouter et d’améliorer des lieux sur la carte.",
+        "button": "Se connecter",
+        "rejected": "Le serveur WMap a refusé la connexion",
+        "failed": "La connexion a échoué"
+      },
+      "no_client": {
+        "title": "Connexion non configurée",
+        "text": "L’identifiant client OpenStreetMap manque encore pour cette WMap (Réglages → Compte → Pour les développeurs)."
+      }
+    },
+    "known_tours": {
+      "kinds": {
+        "hike": "Randonnée",
+        "bike": "Vélo",
+        "mtb": "VTT"
+      },
+      "networks": {
+        "hike_europe": "Sentier de grande randonnée européen",
+        "hike_national": "Sentier de grande randonnée",
+        "hike_regional": "Sentier de randonnée régional",
+        "hike_local": "Sentier de randonnée local",
+        "bike_europe": "Itinéraire cyclable européen",
+        "bike_national": "Itinéraire cyclable national",
+        "bike_regional": "Itinéraire cyclable régional",
+        "bike_local": "Itinéraire cyclable local",
+        "mtb_international": "Parcours VTT international",
+        "mtb_national": "Parcours VTT national",
+        "mtb_regional": "Parcours VTT régional",
+        "mtb_local": "Parcours VTT local"
+      },
+      "error": {
+        "not_found": "Itinéraire introuvable",
+        "status": "Waymarked Trails répond avec le code {status}",
+        "no_course": "Cet itinéraire n’a pas de tracé",
+        "too_long": "Ce chemin est trop long pour être chargé d’un coup – choisis une étape"
+      },
+      "unnamed": "Chemin sans nom",
+      "way": "Chemin",
+      "marking": "Balisage {ref}",
+      "source": "Source : OpenStreetMap, itinéraire {id}"
+    },
+    "media": {
+      "fuel_no_answer": "Tankerkönig ne répond pas"
+    },
+    "overpass": {
+      "error": {
+        "busy": "Overpass est actuellement surchargé",
+        "unreachable": "Overpass est inaccessible",
+        "status": "Overpass ne répond pas ({status})",
+        "no_answer": "Overpass ne répond pas pour le moment"
+      }
+    },
+    "routing": {
+      "error": {
+        "offline": "Pas de connexion au réseau – WMap a besoin d’Internet pour l’itinéraire",
+        "busy": "Le serveur d’itinéraires est surchargé – réessaie dans un instant",
+        "unreachable": "Le serveur d’itinéraires est inaccessible – réessaie dans un instant",
+        "no_route": "Aucun itinéraire trouvé entre ces points",
+        "not_near_way": "Le point n’est pas à proximité d’un chemin",
+        "too_long": "Le trajet est trop long pour ce profil",
+        "failed": "Échec du calcul d’itinéraire ({status})"
+      },
+      "surface": {
+        "paved_smooth": "Asphalte",
+        "paved": "Revêtu",
+        "paved_rough": "Pavés",
+        "compacted": "Compacté",
+        "dirt": "Chemin de terre",
+        "gravel": "Gravier",
+        "path": "Sentier naturel",
+        "impassable": "Impraticable",
+        "unknown": "Inconnu"
+      },
+      "way": {
+        "cycleway": "Piste cyclable",
+        "footway": "Chemin piéton",
+        "mountain_path": "Sentier de montagne",
+        "path": "Sentier",
+        "track": "Chemin agricole",
+        "steps": "Escalier",
+        "ferry": "Bac",
+        "motorway": "Voie rapide",
+        "primary": "Route principale",
+        "residential": "Rue résidentielle",
+        "minor": "Route secondaire"
+      }
+    },
+    "traffic": {
+      "error": {
+        "status": "API des autoroutes : {status}"
+      }
+    },
+    "transit": {
+      "kinds": {
+        "bus": "Bus",
+        "trolleybus": "Trolleybus",
+        "share_taxi": "Bus à la demande",
+        "tram": "Tram",
+        "light_rail": "Métro léger",
+        "subway": "Métro",
+        "train": "Train",
+        "monorail": "Monorail",
+        "ferry": "Ferry"
+      },
+      "lines_here": "Lignes ici",
+      "line": "Ligne",
+      "show_course": "Afficher le tracé",
+      "all_lines": "Les {n} lignes",
+      "not_found": "Ligne introuvable",
+      "stops": "{n} arrêts",
+      "arrival": " (arrivée {time})",
+      "stops_left": {
+        "one": "Encore {n} arrêt jusqu’à {to}{arrival}",
+        "other": "Encore {n} arrêts jusqu’à {to}{arrival}"
+      },
+      "ends_here": "Terminus ici – {n} arrêts jusqu’ici"
+    },
+    "car": {
+      "sent": "Envoyé à la voiture",
+      "waiting": "Envoyé – ouvre WMap dans la voiture",
+      "none": "Aucune voiture connectée"
+    }
+  },
+  "categories": {
+    "parking": {
+      "label": "Parkings",
+      "one": "Parking",
+      "terms": [
+        "parking",
+        "parkings",
+        "stationnement",
+        "se garer",
+        "garer",
+        "parc de stationnement",
+        "parking souterrain",
+        "place de parking"
+      ]
+    },
+    "fuel": {
+      "label": "Stations-service",
+      "one": "Station-service",
+      "terms": [
+        "station-service",
+        "station service",
+        "stations-service",
+        "essence",
+        "diesel",
+        "carburant",
+        "faire le plein",
+        "gazole"
+      ]
+    },
+    "charging": {
+      "label": "Bornes de recharge",
+      "one": "Borne de recharge",
+      "terms": [
+        "borne de recharge",
+        "bornes de recharge",
+        "borne électrique",
+        "recharge",
+        "station de recharge",
+        "point de charge",
+        "wallbox",
+        "recharger voiture électrique",
+        "recharge électrique"
+      ]
+    },
+    "bakery": {
+      "label": "Boulangeries",
+      "one": "Boulangerie",
+      "terms": [
+        "boulangerie",
+        "boulangeries",
+        "boulanger",
+        "pain",
+        "baguette",
+        "viennoiserie",
+        "viennoiseries"
+      ]
+    },
+    "supermarket": {
+      "label": "Supermarchés",
+      "one": "Supermarché",
+      "terms": [
+        "supermarché",
+        "supermarchés",
+        "supermarche",
+        "courses",
+        "faire les courses",
+        "alimentation",
+        "épicerie",
+        "discount"
+      ]
+    },
+    "restaurant": {
+      "label": "Restaurants",
+      "one": "Restaurant",
+      "terms": [
+        "restaurant",
+        "restaurants",
+        "manger",
+        "brasserie",
+        "auberge",
+        "bistrot",
+        "resto"
+      ]
+    },
+    "fastfood": {
+      "label": "Restauration rapide",
+      "one": "Restauration rapide",
+      "terms": [
+        "restauration rapide",
+        "fast-food",
+        "fast food",
+        "fastfood",
+        "kebab",
+        "frites",
+        "pizza",
+        "burger",
+        "snack"
+      ]
+    },
+    "cafe": {
+      "label": "Cafés",
+      "one": "Café",
+      "terms": [
+        "café",
+        "cafés",
+        "cafe",
+        "salon de thé",
+        "gâteau",
+        "pâtisserie",
+        "patisserie"
+      ]
+    },
+    "icecream": {
+      "label": "Glaciers",
+      "one": "Glacier",
+      "terms": [
+        "glacier",
+        "glaciers",
+        "glace",
+        "glaces",
+        "salon de glaces"
+      ]
+    },
+    "pub": {
+      "label": "Bars & brasseries",
+      "one": "Bar",
+      "terms": [
+        "bar",
+        "bars",
+        "pub",
+        "pubs",
+        "bière",
+        "biere",
+        "café-bar",
+        "terrasse"
+      ]
+    },
+    "toilets": {
+      "label": "Toilettes",
+      "one": "Toilettes",
+      "terms": [
+        "toilettes",
+        "toilette",
+        "wc",
+        "sanitaires",
+        "w-c"
+      ]
+    },
+    "water": {
+      "label": "Eau potable",
+      "one": "Eau potable",
+      "terms": [
+        "eau potable",
+        "point d'eau",
+        "fontaine",
+        "fontaine à eau",
+        "remplir gourde",
+        "eau"
+      ]
+    },
+    "rest": {
+      "label": "Aires de repos",
+      "one": "Aire de repos",
+      "terms": [
+        "aire de repos",
+        "aires de repos",
+        "aire d'autoroute",
+        "aire de service",
+        "halte",
+        "pause"
+      ]
+    },
+    "shelter": {
+      "label": "Refuges & abris",
+      "one": "Refuge",
+      "terms": [
+        "refuge",
+        "refuges",
+        "abri",
+        "abris",
+        "cabane",
+        "chalet",
+        "gîte d'étape"
+      ]
+    },
+    "bench": {
+      "label": "Bancs",
+      "one": "Banc",
+      "terms": [
+        "banc",
+        "bancs",
+        "s'asseoir",
+        "banc public",
+        "pique-nique",
+        "pique nique"
+      ]
+    },
+    "viewpoint": {
+      "label": "Points de vue",
+      "one": "Point de vue",
+      "terms": [
+        "point de vue",
+        "points de vue",
+        "belvédère",
+        "belvedere",
+        "panorama",
+        "vue",
+        "tour d'observation"
+      ]
+    },
+    "peak": {
+      "label": "Sommets",
+      "one": "Sommet",
+      "terms": [
+        "sommet",
+        "sommets",
+        "montagne",
+        "montagnes",
+        "mont",
+        "pic",
+        "colline"
+      ]
+    },
+    "hotel": {
+      "label": "Hébergements",
+      "one": "Hébergement",
+      "terms": [
+        "hôtel",
+        "hotel",
+        "hôtels",
+        "hébergement",
+        "hébergements",
+        "pension",
+        "auberge de jeunesse",
+        "hostel",
+        "nuitée",
+        "motel",
+        "gîte",
+        "location de vacances",
+        "chambre d'hôtes"
+      ]
+    },
+    "camping": {
+      "label": "Campings",
+      "one": "Camping",
+      "terms": [
+        "camping",
+        "campings",
+        "terrain de camping",
+        "emplacement de tente",
+        "camping-car",
+        "aire de camping-car"
+      ]
+    },
+    "pharmacy": {
+      "label": "Pharmacies",
+      "one": "Pharmacie",
+      "terms": [
+        "pharmacie",
+        "pharmacies",
+        "médicaments",
+        "medicaments"
+      ]
+    },
+    "hospital": {
+      "label": "Hôpitaux",
+      "one": "Hôpital",
+      "terms": [
+        "hôpital",
+        "hopital",
+        "hôpitaux",
+        "clinique",
+        "urgences",
+        "centre hospitalier"
+      ]
+    },
+    "doctor": {
+      "label": "Médecins",
+      "one": "Médecin",
+      "terms": [
+        "médecin",
+        "medecin",
+        "médecins",
+        "docteur",
+        "cabinet médical",
+        "généraliste"
+      ]
+    },
+    "atm": {
+      "label": "Distributeurs de billets",
+      "one": "Distributeur de billets",
+      "terms": [
+        "distributeur",
+        "distributeur de billets",
+        "distributeurs",
+        "dab",
+        "retirer de l'argent",
+        "atm",
+        "banque",
+        "retrait d'espèces"
+      ]
+    },
+    "bus": {
+      "label": "Arrêts de bus",
+      "one": "Arrêt de bus",
+      "terms": [
+        "arrêt de bus",
+        "arrêts de bus",
+        "arret de bus",
+        "arrêt",
+        "bus",
+        "station de bus"
+      ]
+    },
+    "train": {
+      "label": "Gares",
+      "one": "Gare",
+      "terms": [
+        "gare",
+        "gares",
+        "train",
+        "gare sncf",
+        "halte ferroviaire",
+        "rer",
+        "métro",
+        "tram"
+      ]
+    },
+    "bikeshop": {
+      "label": "Magasins de vélos",
+      "one": "Magasin de vélos",
+      "terms": [
+        "magasin de vélos",
+        "magasin de velos",
+        "vélociste",
+        "velociste",
+        "réparateur de vélos",
+        "atelier vélo",
+        "réparation vélo"
+      ]
+    },
+    "bikeparking": {
+      "label": "Stationnements vélos",
+      "one": "Stationnement vélos",
+      "terms": [
+        "stationnement vélo",
+        "parking vélo",
+        "arceau",
+        "arceaux",
+        "garer son vélo",
+        "abri vélo",
+        "range-vélo"
+      ]
+    },
+    "carrepair": {
+      "label": "Garages",
+      "one": "Garage",
+      "terms": [
+        "garage",
+        "garages",
+        "garage auto",
+        "mécanicien",
+        "réparation auto",
+        "pneus",
+        "pneu"
+      ]
+    },
+    "playground": {
+      "label": "Aires de jeux",
+      "one": "Aire de jeux",
+      "terms": [
+        "aire de jeux",
+        "aires de jeux",
+        "jeux pour enfants",
+        "square",
+        "enfants",
+        "parc de jeux"
+      ]
+    },
+    "soccer": {
+      "label": "Terrains de football",
+      "one": "Terrain de football",
+      "terms": [
+        "terrain de football",
+        "terrain de foot",
+        "football",
+        "foot",
+        "stade de foot",
+        "terrain de sport"
+      ]
+    },
+    "sports": {
+      "label": "Équipements sportifs",
+      "one": "Équipement sportif",
+      "terms": [
+        "équipement sportif",
+        "équipements sportifs",
+        "gymnase",
+        "salle de sport",
+        "stade",
+        "complexe sportif",
+        "fitness",
+        "salle de fitness"
+      ]
+    },
+    "pool": {
+      "label": "Piscines",
+      "one": "Piscine",
+      "terms": [
+        "piscine",
+        "piscines",
+        "baignade",
+        "se baigner",
+        "thermes",
+        "centre aquatique"
+      ]
+    },
+    "river": {
+      "label": "Rivières & fleuves",
+      "one": "Rivière",
+      "terms": [
+        "rivière",
+        "riviere",
+        "rivières",
+        "fleuve",
+        "fleuves",
+        "cours d'eau"
+      ]
+    },
+    "stream": {
+      "label": "Ruisseaux & canaux",
+      "one": "Ruisseau",
+      "terms": [
+        "ruisseau",
+        "ruisseaux",
+        "canal",
+        "canaux",
+        "fossé",
+        "torrent"
+      ]
+    },
+    "lake": {
+      "label": "Lacs & étangs",
+      "one": "Lac",
+      "terms": [
+        "lac",
+        "lacs",
+        "étang",
+        "etang",
+        "étangs",
+        "plan d'eau",
+        "réservoir",
+        "barrage"
+      ]
+    },
+    "park": {
+      "label": "Parcs",
+      "one": "Parc",
+      "terms": [
+        "parc",
+        "parcs",
+        "espace vert",
+        "espaces verts",
+        "jardin",
+        "jardins",
+        "jardin public"
+      ]
+    },
+    "forest": {
+      "label": "Forêts",
+      "one": "Forêt",
+      "terms": [
+        "forêt",
+        "foret",
+        "forêts",
+        "bois",
+        "sous-bois"
+      ]
+    },
+    "church": {
+      "label": "Églises",
+      "one": "Église",
+      "terms": [
+        "église",
+        "eglise",
+        "églises",
+        "chapelle",
+        "cathédrale",
+        "mosquée",
+        "synagogue",
+        "temple"
+      ]
+    },
+    "castle": {
+      "label": "Châteaux",
+      "one": "Château",
+      "terms": [
+        "château",
+        "chateau",
+        "châteaux",
+        "chateaux",
+        "forteresse",
+        "ruine",
+        "ruines",
+        "citadelle"
+      ]
+    },
+    "museum": {
+      "label": "Musées",
+      "one": "Musée",
+      "terms": [
+        "musée",
+        "musee",
+        "musées",
+        "exposition",
+        "galerie",
+        "galerie d'art"
+      ]
+    },
+    "cinema": {
+      "label": "Cinémas",
+      "one": "Cinéma",
+      "terms": [
+        "cinéma",
+        "cinema",
+        "cinémas",
+        "film",
+        "salle de cinéma"
+      ]
+    },
+    "school": {
+      "label": "Écoles",
+      "one": "École",
+      "terms": [
+        "école",
+        "ecole",
+        "écoles",
+        "collège",
+        "lycée",
+        "école primaire"
+      ]
+    },
+    "police": {
+      "label": "Police",
+      "one": "Police",
+      "terms": [
+        "police",
+        "commissariat",
+        "gendarmerie",
+        "poste de police"
+      ]
+    }
+  },
+  "credits": {
+    "map_data": {
+      "what": "Données cartographiques",
+      "name": "Contributeurs d’OpenStreetMap"
+    },
+    "tiles": {
+      "what": "Tuiles de carte"
+    },
+    "schema": {
+      "what": "Schéma de la carte"
+    },
+    "heights": {
+      "what": "Altitudes"
+    },
+    "search": {
+      "what": "Recherche"
+    },
+    "routing": {
+      "what": "Calcul d’itinéraire",
+      "name": "Valhalla sur les serveurs de FOSSGIS"
+    },
+    "places": {
+      "what": "Lieux et chemins"
+    },
+    "trails": {
+      "what": "Sentiers de randonnée et pistes cyclables",
+      "note": "CC BY-SA"
+    },
+    "satellite": {
+      "what": "Image satellite",
+      "name": "Sentinel-2 cloudless d’EOX",
+      "note": "Données Copernicus"
+    },
+    "geology_de": {
+      "what": "Géologie de l’Allemagne",
+      "name": "BGR, GÜK250",
+      "note": "Plugin"
+    },
+    "geology_world": {
+      "what": "Géologie mondiale",
+      "note": "CC BY 4.0, plugin"
+    },
+    "images": {
+      "what": "Images et textes"
+    },
+    "transit": {
+      "what": "Bus et trains, départs",
+      "name": "Information horaires (EFA) de la NVBW",
+      "note": "Données horaires DELFI"
+    },
+    "aerial": {
+      "what": "Photos aériennes",
+      "name": "Administrations cartographiques des Länder",
+      "note": "entre autres CC BY 4.0, dl-de"
+    },
+    "traffic": {
+      "what": "État du trafic",
+      "name": "Die Autobahn GmbH des Bundes"
+    },
+    "fuel": {
+      "what": "Prix des carburants",
+      "note": "CC BY 4.0"
+    },
+    "rendering": {
+      "what": "Rendu de la carte"
+    }
+  },
+  "map_page": {
+    "back_dashboard": "Retour à l’aperçu",
+    "close_to_map": "Fermer – vers la carte",
+    "name": "Nom",
+    "back_list": "Retour à la liste"
+  },
+  "elevation": {
+    "chips": {
+      "ascent": "Montée",
+      "descent": "Descente",
+      "highest": "Point le plus haut",
+      "lowest": "Point le plus bas"
+    },
+    "height": "Altitude",
+    "title": "Dénivelé"
+  },
+  "layers_menu": {
+    "own_source": {
+      "title": "Source personnelle",
+      "hint": "Tuiles de carte, service WMS ou GeoJSON – même privé, avec identifiant et mot de passe. Tout reste uniquement sur cet appareil.",
+      "name": "Nom",
+      "name_example": "p. ex. Réseau de mesure du Harz",
+      "kind": "Type",
+      "kinds": {
+        "tiles": "Tuiles de carte ({z}/{x}/{y})",
+        "wms": "Service WMS",
+        "geojson": "Fichier GeoJSON"
+      },
+      "url": "Adresse (https)",
+      "layer": "Couche WMS (uniquement pour WMS)",
+      "layer_example": "p. ex. ni_dop20",
+      "user": "Identifiant (facultatif)",
+      "password": "Mot de passe (facultatif)",
+      "add": "Ajouter",
+      "error": {
+        "https": "L’adresse doit commencer par https://",
+        "denied": "Accès refusé – vérifie l’identifiant ou le mot de passe",
+        "status": "Le serveur répond avec {status}",
+        "no_layer": "Indique la couche WMS, s’il te plaît",
+        "no_zxy": "Les adresses de tuiles ont besoin de {z}, {x} et {y}",
+        "cors": "Inaccessible – le serveur n’autorise peut-être pas les requêtes depuis le navigateur (CORS)"
+      },
+      "added": "« {name} » est maintenant sur la carte"
+    },
+    "attribution": {
+      "satellite": "Satellite : <a href=\"https://s2maps.eu\" target=\"_blank\" rel=\"noopener\">Sentinel-2 cloudless d’EOX</a> (données Copernicus 2020)",
+      "trails": "Sentiers : <a href=\"https://waymarkedtrails.org\" target=\"_blank\" rel=\"noopener\">Waymarked Trails</a> (CC BY-SA)",
+      "sat_ni": "Photo aérienne Basse-Saxe : © LGLN (CC BY 4.0)",
+      "sat_nw": "Photo aérienne Rhénanie-du-Nord-Westphalie : © Geobasis NRW (dl-de/zero-2-0)",
+      "sat_by": "Photo aérienne Bavière : © Bayerische Vermessungsverwaltung (CC BY 4.0)",
+      "sat_he": "Photo aérienne Hesse : © HVBG",
+      "sat_th": "Photo aérienne Thuringe : © GDI-Th (CC BY 4.0)",
+      "sat_sn": "Photo aérienne Saxe : © GeoSN (dl-de/by-2-0)",
+      "sat_bb": "Photo aérienne Brandebourg : © GeoBasis-DE/LGB (dl-de/by-2-0)",
+      "sat_be": "Photo aérienne Berlin : © Geoportal Berlin (dl-de/zero-2-0)",
+      "sat_mv": "Photo aérienne Mecklembourg-Poméranie-Occidentale : © GeoBasis-DE/M-V",
+      "sat_rp": "Photo aérienne Rhénanie-Palatinat : © GeoBasis-DE/LVermGeoRP (dl-de/by-2-0)",
+      "sat_sl": "Photo aérienne Sarre : © LVGL",
+      "sat_bw": "Photo aérienne Bade-Wurtemberg : © LGL-BW (dl-de/by-2-0)"
+    },
+    "trails": {
+      "hiking": "Sentiers de randonnée",
+      "cycling": "Pistes cyclables",
+      "mtb": "VTT",
+      "hint": "itinéraires balisés, Waymarked Trails"
+    },
+    "title": "Couches",
+    "base": {
+      "map": "Carte",
+      "sat": "Satellite"
+    },
+    "focus": {
+      "title": "Rando et vélo",
+      "hint": "Les grandes routes passent au second plan, les sentiers et le relief ressortent"
+    },
+    "relief": {
+      "title": "Relief",
+      "hint": "Ombres sur les pentes – même vu à plat du dessus"
+    },
+    "own": {
+      "title": "Couches personnelles et plugins",
+      "plugin_by": "Plugin de {operator}",
+      "private": "source privée",
+      "tiles": "Tuiles de carte",
+      "objects": "{count} objets",
+      "none": "Aucune pour l’instant – sous « Gérer », il y a la géologie, les photos aériennes et plus encore."
+    },
+    "manage": "Gérer",
+    "button": "Couches : satellite, sentiers, plugins"
+  },
+  "news": {
+    "message_title": "Nouveauté",
+    "welcome": {
+      "title": "Bienvenue dans WMap",
+      "go": "C’est parti"
+    },
+    "version": "Version {version}",
+    "changelog": {
+      "all": "Ce que propose WMap",
+      "one": "Nouveautés de WMap {version}",
+      "since": "Nouveautés depuis la version {version}"
+    },
+    "update": {
+      "button": "Mettre à jour",
+      "forced_title": "Mise à jour nécessaire",
+      "title": "Nouvelle version disponible",
+      "forced_text": "Cette version de WMap ({version}) ne fonctionne plus ainsi – mets-la à jour, ça ne prend qu’un instant.",
+      "text": "WMap {version} est disponible. Mettre à jour maintenant ? Tu verras ensuite les nouveautés.",
+      "loading": "Chargement de WMap {version}. Tu verras ensuite les nouveautés.",
+      "moment": "Un instant …",
+      "percent": "{pct} %",
+      "failed": "Le chargement a échoué. Ta version reste telle quelle."
+    },
+    "app": {
+      "title": "Nouvelle version de l’appli WMap",
+      "via_store": "sur le Play Store",
+      "via_site": "via wuefl.de",
+      "text": "L’appli WMap {want} est disponible – tu as la {app}. Mets-la à jour {where}. La nouvelle interface suivra ensuite d’elle-même.",
+      "to_store": "Vers le Play Store",
+      "to_site": "Vers la page de téléchargement",
+      "required_title": "Mettre à jour l’appli WMap",
+      "required_text": "Cette version nécessite une appli WMap plus récente (au moins {min}). Sauvegarde d’abord tes données, puis mets-la à jour {where}."
+    },
+    "stats": {
+      "text": "Pour savoir combien de personnes utilisent WMap et quels services sont sollicités, WMap envoie une fois par jour un message anonyme au serveur WMap : que l’app a été ouverte aujourd’hui et combien de fois elle a interrogé chaque service. Sans identifiant, sans position, sans termes de recherche. Tu peux changer cela à tout moment dans <strong>Réglages → Données</strong>.",
+      "allow": "Autoriser",
+      "deny": "Ne pas envoyer"
+    },
+    "changes": {
+      "3.1.0": [
+        "WMap est désormais disponible en allemand, anglais, français, polonais, suédois, norvégien et danois – dès le départ dans la langue de ton appareil. Langue et thème de couleurs se choisissent directement dans l’accueil",
+        "Meilleure recherche : si le service de recherche ne répond pas, WMap continue via d’autres serveurs. Itinéraires et horaires changent aussi d’eux-mêmes quand un serveur tombe en panne",
+        "Statistiques d’utilisation anonymes : une fois par jour, sans identifiant, position ni termes de recherche – désactivables dans Réglages → Données",
+        "WMap est prête pour d’autres langues : les textes sont désormais dans un fichier de langue à part, d’autres langues suivront",
+        "La recherche, les itinéraires et les horaires peuvent désormais passer d’eux-mêmes d’un serveur à l’autre quand l’un tombe en panne"
+      ]
+    }
+  },
+  "record": {
+    "title": "Enregistrer",
+    "choose_hint": "Comment te déplaces-tu ? L’enregistrement reste sur cet appareil.",
+    "stats": {
+      "distance": "Distance",
+      "time": "Durée"
+    },
+    "pause": "Pause",
+    "stop": "Terminer",
+    "follow": {
+      "title": "Recentrer la carte sur ta position",
+      "label": "Suivre"
+    },
+    "home": {
+      "title": "Itinéraire de retour vers le départ de l’enregistrement",
+      "label": "Vers le départ",
+      "target": "Départ de l’enregistrement"
+    },
+    "toast": {
+      "running": "Enregistrement en cours",
+      "no_point": "Aucun point enregistré pour l’instant",
+      "discarded": "Enregistrement supprimé",
+      "too_short": "Trop court pour être enregistré",
+      "saved": "« {name} » enregistré",
+      "view": "Voir",
+      "save_failed": "Échec de l’enregistrement : {reason}",
+      "location_blocked": "La position est bloquée – pas d’enregistrement sans elle"
+    },
+    "finish": {
+      "title": "Terminer l’enregistrement",
+      "name": "Nom",
+      "discard": "Supprimer",
+      "confirm_discard": "Supprimer vraiment l’enregistrement ?",
+      "save": "Enregistrer"
+    }
+  },
+  "route_prefs": {
+    "modes": {
+      "long": "Trains grandes lignes (ICE, IC)",
+      "regional": "Train régional, S-Bahn",
+      "urban": "Métro, tramway",
+      "bus": "Bus"
+    },
+    "transit": {
+      "title": "Correspondances",
+      "modes": "Moyens de transport",
+      "change": "Temps de correspondance minimum",
+      "fastest": "Afficher aussi le trajet le plus rapide",
+      "fastest_hint": "même si la correspondance est juste"
+    },
+    "avoid": {
+      "ferries": "Éviter les ferries",
+      "highways": "Éviter les autoroutes",
+      "tolls": "Éviter les routes à péage",
+      "unpaved": "Éviter les chemins non revêtus"
+    },
+    "title": "Itinéraire"
+  },
+  "tour_stages": {
+    "toast": {
+      "start": "Touche la ligne là où une journée doit se terminer – ou laisse le découpage se faire automatiquement",
+      "on_line": "Pour une fin de journée, touche exactement la ligne",
+      "saved": "{n} sorties à la journée enregistrées – dans « Mes parcours »"
+    },
+    "marker": "Fin du jour {n} – touche pour supprimer",
+    "title": "Étapes",
+    "hint": {
+      "active": "Touche la ligne là où une journée doit se terminer ; touche un petit drapeau pour le supprimer.",
+      "idle": "Avec « Étapes » en haut, tu peux modifier la fin des journées."
+    },
+    "auto": {
+      "every": "Tous les",
+      "split": "Découper automatiquement"
+    },
+    "clear": "Tout supprimer",
+    "day": "Jour {n}",
+    "goal": "Arrivée",
+    "until_unknown": "jusqu’à …",
+    "save": "Enregistrer en {n} sorties à la journée",
+    "saved": {
+      "name": "{base} – Jour {n}",
+      "until": " (jusqu’à {end})",
+      "description": "Étape {i} sur {n}{end} · tirée de « {base} »"
+    }
+  },
+  "transit_legs": {
+    "walk": "À pied",
+    "changes": "{n} × correspondance",
+    "no_change": "sans correspondance",
+    "vehicle": {
+      "bus": "Bus",
+      "express_bus": "Bus express",
+      "tram": "Tram",
+      "light_rail": "Tramway régional",
+      "subway": "Métro",
+      "suburban": "S-Bahn",
+      "ferry": "Ferry",
+      "community_bus": "Bus citoyen",
+      "on_call_bus": "Bus à la demande",
+      "replacement": "Service de remplacement"
+    },
+    "walk_to": "À pied jusqu’à {to}",
+    "platform": "Quai {n}",
+    "take": "Prendre : {vehicle}{to}",
+    "ride": "{from}{platform} → {to}{platform_to}, arrivée à {time}",
+    "stops": {
+      "one": "{n} arrêt",
+      "other": "{n} arrêts"
+    },
+    "gap": "{n} min pour la correspondance{at}"
+  },
+  "poi": {
+    "values": {
+      "yes_no": {
+        "yes": "oui",
+        "no": "non",
+        "limited": "limité",
+        "designated": "oui",
+        "only": "exclusivement"
+      },
+      "surface": {
+        "asphalt": "Asphalte",
+        "paved": "revêtu",
+        "concrete": "Béton",
+        "concrete_plates": "Dalles de béton",
+        "paving_stones": "Pavés",
+        "sett": "Pavés",
+        "cobblestone": "Pavés",
+        "unhewn_cobblestone": "Pavés bruts",
+        "compacted": "compacté",
+        "fine_gravel": "Gravillons fins",
+        "gravel": "Gravier",
+        "pebblestone": "Galets",
+        "unpaved": "non revêtu",
+        "dirt": "Terre",
+        "earth": "Terre",
+        "ground": "Sol naturel",
+        "grass": "Herbe",
+        "grass_paver": "Dalles gazon",
+        "sand": "Sable",
+        "wood": "Bois",
+        "metal": "Métal",
+        "mud": "Boue",
+        "rock": "Roche",
+        "artificial_turf": "Gazon synthétique",
+        "tartan": "Tartan"
+      },
+      "parking": {
+        "surface": "Parking",
+        "multi_storey": "Parking à étages",
+        "underground": "Parking souterrain",
+        "street_side": "Bord de rue",
+        "lane": "Bande de stationnement",
+        "rooftop": "Parking sur le toit",
+        "carports": "Abris voiture",
+        "garage_boxes": "Garages"
+      },
+      "access": {
+        "yes": "public",
+        "public": "public",
+        "customers": "clients uniquement",
+        "private": "privé",
+        "permissive": "toléré",
+        "permit": "sur autorisation",
+        "destination": "riverains uniquement",
+        "residents": "résidents uniquement",
+        "no": "accès interdit"
+      },
+      "sockets": {
+        "type2": "Type 2",
+        "type2_combo": "CCS",
+        "chademo": "CHAdeMO",
+        "schuko": "Schuko",
+        "tesla_supercharger": "Tesla",
+        "type2_cable": "Type 2 (câble)",
+        "cee_blue": "CEE bleue"
+      },
+      "fuels": {
+        "diesel": "Diesel",
+        "octane_95": "SP95",
+        "e10": "E10",
+        "octane_98": "SP98",
+        "lpg": "GPL",
+        "cng": "GNV",
+        "adblue": "AdBlue",
+        "hydrogen": "Hydrogène",
+        "HGV_diesel": "Diesel poids lourds"
+      },
+      "payment": {
+        "cash": "espèces",
+        "debit_cards": "carte bancaire",
+        "credit_cards": "carte de crédit",
+        "contactless": "sans contact",
+        "app": "appli"
+      },
+      "fee": {
+        "no": "gratuit",
+        "yes": "payant"
+      }
+    },
+    "hours": {
+      "until": "jusqu’à",
+      "status": {
+        "always": "Ouvert 24 h/24",
+        "open": "Ouvert maintenant · jusqu’à {until}",
+        "off_season": "Fermé · ouvert {when}",
+        "next": "Fermé · ouvre à {next}",
+        "today_closed": "Fermé aujourd’hui"
+      },
+      "closed": "fermé",
+      "all_day": "toute la journée",
+      "open_months": "Ouvert {months}",
+      "holiday": "Jour férié",
+      "holidays": "Jours fériés : {hours}",
+      "always": "24 h/24",
+      "school_holidays": "Vacances scolaires"
+    },
+    "links": {
+      "website": "Site web",
+      "menu": "Carte",
+      "events": "Programme",
+      "instagram": "Instagram",
+      "facebook": "Facebook"
+    },
+    "facts": {
+      "hours": "Horaires d’ouverture",
+      "fee": "Tarif",
+      "surface": "Revêtement",
+      "access": "Accès",
+      "operator": "Exploitant",
+      "phone": "Téléphone",
+      "cuisine": "Cuisine",
+      "payment": "Paiement",
+      "ele": "Altitude",
+      "capacity": "Places (total)",
+      "kind": "Type",
+      "maxstay": "Durée max. de stationnement",
+      "disabled": "Places PMR",
+      "charging": "Places de recharge",
+      "fuels": "Carburants",
+      "shop": "Boutique",
+      "charge_points": "Points de recharge",
+      "sockets": "Prises",
+      "water": "Eau potable",
+      "seasonal": "Saisonnier",
+      "covered": "Couvert",
+      "min_age": "Âge minimum"
+    },
+    "edit_hint": {
+      "operator": "p. ex. Régie municipale de Göttingen",
+      "cuisine": "p. ex. italian;pizza",
+      "ele": "Mètres au-dessus du niveau de la mer",
+      "capacity": "toutes, pas seulement les libres",
+      "maxstay": "p. ex. 2 hours",
+      "charge_points": "Véhicules pouvant se recharger en même temps",
+      "min_age": "Années"
+    },
+    "traits": {
+      "delivery": {
+        "name": "Livraison",
+        "only": "Livraison uniquement"
+      },
+      "takeaway": {
+        "name": "À emporter",
+        "only": "À emporter uniquement"
+      },
+      "organic": {
+        "name": "Bio",
+        "only": "Bio uniquement"
+      },
+      "vegan": {
+        "name": "Végane",
+        "yes": "Choix végane"
+      },
+      "vegetarian": {
+        "name": "Végétarien",
+        "yes": "Choix végétarien"
+      },
+      "drive_through": {
+        "name": "Drive"
+      }
+    },
+    "equipment": {
+      "wheelchair": {
+        "yes": "Accessible en fauteuil roulant",
+        "limited": "Partiellement accessible en fauteuil roulant",
+        "no": "Non accessible en fauteuil roulant"
+      },
+      "outdoor": "Places en extérieur",
+      "toilets": {
+        "name": "Toilettes",
+        "guests": "Toilettes pour les clients",
+        "public": "Toilettes publiques"
+      },
+      "changing": "Table à langer",
+      "wlan": "Wi-Fi",
+      "air": "Climatisation",
+      "dog": "Chiens acceptés"
+    },
+    "access_note": {
+      "customers": "Réservé aux clients",
+      "destination": "Réservé aux riverains",
+      "delivery": "Livraisons uniquement",
+      "private": "Privé – non public",
+      "no": "Accès interdit",
+      "residents": "Réservé aux résidents",
+      "permit": "Sur autorisation uniquement"
+    },
+    "card": {
+      "unknown": "inconnu",
+      "place": "Lieu",
+      "still_unknown": "Encore inconnu :",
+      "equipment": "Équipements"
+    }
+  },
+  "server": {
+    "tours": {
+      "not_found": "Tour introuvable",
+      "needs_name": "La tour a besoin d'un nom",
+      "no_geometry": "Le tracé est absent ou trop long",
+      "no_position": "L'emplacement de la tour est manquant",
+      "not_yours": "Ce n'est pas ta tour",
+      "no_rating": "Cette tour ne peut pas être notée"
+    },
+    "login": {
+      "invalid": "Connexion invalide – réessaie, s'il te plaît",
+      "method": "Connexion invalide (méthode)",
+      "osm_down": "OpenStreetMap n'est pas joignable pour le moment – réessaie plus tard",
+      "signature": "Connexion invalide (signature)",
+      "osm_only": "Le compte WMap fonctionne uniquement avec un compte sur openstreetmap.org",
+      "foreign_app": "Connexion via une application tierce – connecte-toi dans WMap",
+      "expired": "Connexion expirée – réessaie, s'il te plaît",
+      "user": "Connexion invalide (utilisateur)",
+      "required": "Connecte-toi d'abord, s'il te plaît"
+    },
+    "plugins": {
+      "needs_name": "Le plugin a besoin d'un nom",
+      "data_size": "Les données sont absentes ou dépassent 2 Mo",
+      "geojson": "Une FeatureCollection GeoJSON est attendue",
+      "https": "La source doit être un lien https",
+      "tile_link": "Les liens de tuiles nécessitent {z}/{x}/{y} – les liens WMS {bbox-epsg-3857}",
+      "script": "Une extension est un fichier JavaScript (.js ou .mjs)",
+      "not_yours": "Ce n'est pas ton plugin",
+      "not_found": "Plugin introuvable ou privé"
+    },
+    "share": {
+      "unknown_kind": "Type inconnu",
+      "bad_content": "Le contenu ne convient pas",
+      "short_too_big": "La tour est trop volumineuse pour un lien court",
+      "too_many": "Énormément de liens courts ont déjà été créés aujourd'hui – utilise le lien long",
+      "short_failed": "Le lien court n'a pas pu être créé",
+      "incomplete": "Le lien est incomplet",
+      "link_gone": "Ce lien n'existe plus – le serveur supprime les tours partagées après {days} jours",
+      "too_big": "La tour est trop volumineuse",
+      "collab_gone": "Cette tour commune n'existe plus – elle est restée {days} jours sur le serveur",
+      "view_only": "Tu peux seulement consulter cette tour",
+      "save_failed": "La modification n'a pas pu être enregistrée"
+    },
+    "account": {
+      "delete_failed": "La suppression a échoué – rien n'a été supprimé. Réessaie plus tard."
+    },
+    "bad_request": "Rien trouvé... requête incorrecte"
+  }
+}

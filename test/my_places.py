@@ -43,7 +43,7 @@ VIEW = "map.jumpTo({ center: [9.937, 51.5323], zoom: 16.5 });"
 
 with Browser(1200, 850) as b:
     b.open('index.html', 2)
-    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] })); localStorage.removeItem('wmap.saved')")
+    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] })); localStorage.setItem('wmap.stats.asked', '1'); localStorage.removeItem('wmap.saved')")
     b.open('index.html', 3)
     check('1. Ebene da', page(b, VIEW + READY, 60))
     check('1. ohne Lesezeichen nichts gezeichnet', page(b, DRAWN) == [])

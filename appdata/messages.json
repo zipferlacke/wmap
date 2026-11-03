@@ -10,9 +10,12 @@
     "changelog": [
         {
             "version": "3.1.0",
-            "date": "2026-11-02",
+            "date": "2026-11-03",
             "appVersion": "2.3.1",
             "changes": [
+                "WMap gibt es jetzt auf Deutsch, Englisch, Französisch, Polnisch, Schwedisch, Norwegisch und Dänisch – von Anfang an in der Sprache deines Geräts. Sprache und Farbschema lassen sich gleich in der Begrüßung wählen",
+                "Bessere Suche: Antwortet der Suchdienst nicht, sucht WMap über weitere Server weiter. Auch Routen und Fahrplan wechseln selbst, wenn ein Server ausfällt",
+                "Anonyme Nutzungsstatistik: einmal am Tag, ohne Kennung, Ort oder Suchbegriffe – abschaltbar unter Einstellungen → Daten",
                 "WMap ist für weitere Sprachen vorbereitet: Die Texte liegen jetzt in einer eigenen Sprachdatei, weitere Sprachen folgen",
                 "Suche, Routen und Fahrplan können künftig selbst zwischen mehreren Servern wechseln, wenn einer ausfällt"
             ]

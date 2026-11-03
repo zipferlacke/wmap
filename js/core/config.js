@@ -12,11 +12,13 @@ export const TERRAIN_TILES = 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp';
 
 /*
  * Bei Listen wechselt services/servers.js selbst zwischen den Servern: weiteren Server einfach dazuschreiben (dieselbe
- * Schnittstelle, Abruf aus dem Browser erlaubt).
+ * Schnittstelle, Abruf aus dem Browser erlaubt). „wmap:<dienst>“ geht über den WMap-Server (bEnd/proxy.php, dort stehen
+ * dessen Server und ggf. der Schlüssel).
  */
 export const API = {
-  // Photon (komoot): tippfehlertolerante Suche über OSM-Daten
-  photon: ['https://photon.komoot.io'],
+  // Photon (komoot): tippfehlertolerante Suche über OSM-Daten; fällt komoot aus, über den WMap-Server zu weiteren
+  // Photon-Servern (bEnd/proxy.php – die erlauben den Abruf aus dem Browser nicht)
+  photon: ['https://photon.komoot.io', 'wmap:photon'],
   // Valhalla (FOSSGIS): nur für die Entwicklung gedacht
   valhalla: ['https://valhalla1.openstreetmap.de'],
   // EFA (NVBW): Abfahrten und Verbindungen

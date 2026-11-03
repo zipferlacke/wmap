@@ -29,6 +29,7 @@ print('Schlüssel benutzt:', len(used), '· fehlen:', missing)
 extra = LANG / 'en_GB.json'
 listing = LANG / 'languages.json'
 before = listing.read_text(encoding='utf-8')
+kept = extra.read_text(encoding='utf-8') if extra.exists() else None   # echte Übersetzung nicht verlieren
 try:
     extra.write_text(json.dumps({'_meta': {'name': 'English', 'locale': 'en-GB'},
         'settings': {'title': 'Settings', 'look': {'title': 'Appearance'}},
@@ -42,17 +43,21 @@ try:
         time.sleep(2)
         english = b.js("return [document.querySelector('h1').textContent, document.querySelector('.settings h3').textContent, document.documentElement.lang, [...document.querySelectorAll('.settings h3')][1].textContent]")
         print('Englisch, Rest Deutsch:', english)
-        # Angebot: Gerät auf Englisch, nichts gewählt
-        b.js("localStorage.removeItem('wmap.lang'); localStorage.removeItem('wmap.lang.asked');")
+        # Angebot: kennt WMap schon (Begrüßung gesehen), Gerät auf Englisch, nichts gewählt
+        b.js("localStorage.removeItem('wmap.lang'); localStorage.removeItem('wmap.lang.asked'); localStorage.setItem('wmap.seen', JSON.stringify({ version: '3.1.0', messages: [] })); localStorage.setItem('wmap.stats.asked', '1');")
         b.open('settings.html', wait=2)
-        b.js("const s = document.createElement('script'); s.type = 'module'; s.textContent = \"Object.defineProperty(navigator, 'languages', { value: ['en-US'] }); const i = await import('./js/core/i18n.js'); window.__offer = await i.languageOffer(); window.__match = [i.matchLanguage(['de_DE', 'en_GB'], ['fr-FR', 'en-US']), i.matchLanguage(['de_DE'], ['fr-FR'])];\"; document.head.append(s);")
+        b.js("const s = document.createElement('script'); s.type = 'module'; s.textContent = \"Object.defineProperty(navigator, 'languages', { value: ['en-US'] }); const i = await import('./js/core/i18n.js'); window.__offer = await i.languageOffer(); window.__match = [i.matchLanguage(['de_DE', 'en_GB'], ['fr-FR', 'en-US']), i.matchLanguage(['de_DE'], ['fr-FR'])]; window.__first = [i.firstLanguage(['de_DE', 'en_GB'], ['fr-FR']), i.firstLanguage(['de_DE', 'en_GB'], ['de-AT', 'en'])];\"; document.head.append(s);")
         time.sleep(1)
         offer = b.js("return [window.__offer?.code, window.__offer?.name, window.__match]")
         print('Angebot:', offer)
+        # Erster Start: Sprache des Geräts, gibt es sie nicht, Englisch
+        first = b.js("return window.__first")
+        print('Erster Start:', first)
     ok = not missing and german == ['Einstellungen', 'Darstellung', 'de', True] \
-        and english == ['Settings', 'Appearance', 'en', 'Unterwegs'] and offer == ['en_GB', 'English', ['en_GB', None]]
+        and english == ['Settings', 'Appearance', 'en', 'Unterwegs'] and offer == ['en_GB', 'English', ['en_GB', None]] and first == ['en_GB', 'de_DE']
 finally:
-    extra.unlink(missing_ok=True)
+    if kept is None: extra.unlink(missing_ok=True)
+    else: extra.write_text(kept, encoding='utf-8')
     listing.write_text(before, encoding='utf-8')
 print('stimmt:', ok)
 sys.exit(0 if ok else 1)

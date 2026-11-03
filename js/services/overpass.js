@@ -6,6 +6,7 @@
 import { API } from '../core/config.js';
 import { searchFilters } from '../core/categories.js';
 import { t } from '../core/i18n.js';
+import { used } from './usage.js';
 
 // Abfragen dürfen serverseitig 25 s laufen, dazu kommt die Warteschlange
 const SERVER_TIMEOUT_MS = 45000;
@@ -89,6 +90,7 @@ function serverOrder(background) {
 }
 
 function hedged(query, signal, background) {
+  used('overpass');
   return new Promise((resolve, reject) => {
     const servers = serverOrder(background);
     const ctrls = [];

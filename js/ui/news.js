@@ -55,7 +55,9 @@ import { appVersion } from '../core/native.js';
 import { local } from '../data/store.js';
 import { ask, whenFree } from './dialogs.js';
 import { esc } from '../core/geo.js';
-import { languageAsked, languageOffer, locale, setLanguage, t, textOf, ownValue } from '../core/i18n.js';
+import { theme } from '../core/theme.js';
+import { statsSetting } from '../services/usage.js';
+import { lang, languageAsked, languageOffer, languages, locale, setLanguage, t, textOf, ownValue } from '../core/i18n.js';
 
 const SEEN = 'wmap.seen';
 const DATE = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -113,6 +115,8 @@ export async function appNews({ dialogs = false } = {}) {
   }
 
   await offerLanguage();
+  await askStats();
+  import('../services/ping.js').then(({ ping }) => ping()).catch(() => {});
 
   const today = new Date().toISOString().slice(0, 10);
   const shown = new Set(local.get(SEEN)?.messages ?? []);
@@ -144,13 +148,50 @@ async function offerLanguage() {
   if (pick === 'switch') { setLanguage(offer.code); location.reload(); }
 }
 
+/** Wer WMap schon vor der Nutzungsstatistik kannte: einmal fragen (Vorgabe: erlauben) */
+async function askStats() {
+  if (statsSetting.asked()) return;
+  statsSetting.markAsked();
+  const pick = await ask({
+    auto: true, icon: 'bar_chart', title: t('settings.data.stats.title'), className: 'news',
+    html: `<p>${t('news.stats.text')}</p>`,
+    buttons: [{ value: 'no', label: t('news.stats.deny') }, { value: 'yes', label: t('news.stats.allow'), primary: true }],
+  });
+  statsSetting.set(pick !== 'no');
+}
+
 const paragraphs = (text) => [].concat(text ?? []).map((p) => `<p>${p}</p>`).join('');
 
-function welcome(m) {
+async function welcome(m) {
+  // Sprache und Farbschema gleich hier einstellen (wie in den Einstellungen). Neue Sprache: neu laden, dann begrüßt
+  // WMap noch einmal in ihr
+  const langs = await languages();
+  const select = (name, title, options, value) => `<label class="news-choice">
+      <span>${title}</span>
+      <select name="${name}">${options.map(([v, l]) => `<option value="${esc(v)}" ${v === value ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>
+    </label>`;
+  const choices = `<div class="news-choices">
+      ${langs.length > 1 ? select('language', t('settings.look.language.title'), langs.map((l) => [l.code, l.name]), lang) : ''}
+      ${select('theme', t('settings.look.theme.title'), ['system', 'light', 'dark'].map((v) => [v, t(`settings.look.theme.options.${v}`)]), theme.get())}
+      <label class="news-stats">
+        <input type="checkbox" name="stats" ${statsSetting.get() ? 'checked' : ''}>
+        <span><strong>${t('settings.data.stats.title')}</strong><small>${t('settings.data.stats.hint')}</small></span>
+      </label>
+    </div>`;
+  // Gefragt ist mit der Begrüßung – vorher zählt und schickt WMap nichts (services/usage.js)
+  statsSetting.markAsked();
   return ask({
     auto: true, icon: 'waving_hand', title: t('news.welcome.title'), className: 'news',
-    html: `${paragraphs(ownValue('news.welcome') ?? m.welcome)}<p class="news-version">${t('news.version', { version: esc(APP_VERSION) })}</p>`,
+    html: `${choices}${paragraphs(ownValue('news.welcome') ?? m.welcome)}<p class="news-version">${t('news.version', { version: esc(APP_VERSION) })}</p>`,
     buttons: [{ value: 'ok', label: t('news.welcome.go'), icon: 'map', primary: true }],
+    setup: (dlg) => dlg.querySelector('.news-choices').addEventListener('change', (e) => {
+      if (e.target.name === 'theme') theme.set(e.target.value);
+      if (e.target.name === 'stats') statsSetting.set(e.target.checked);
+      if (e.target.name !== 'language') return;
+      setLanguage(e.target.value);
+      local.set(SEEN, null);
+      location.reload();
+    }),
   });
 }
 

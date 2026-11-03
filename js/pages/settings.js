@@ -25,6 +25,7 @@ import { myOsmStats, allOsmStats, statsText } from '../osm/stats.js';
 import { toast } from '../ui/dialogs.js';
 import { permissionsHere, showPermissions } from '../ui/permissions.js';
 import { lang, languages, locale, setLanguage, t } from '../core/i18n.js';
+import { statsSetting } from '../services/usage.js';
 
 const root = document.querySelector('.settings');
 // Browser am Rechner (Firefox, Chrome, Edge): WMap für „geo:“-Links anmelden.
@@ -128,6 +129,7 @@ const render = () => {
       ${toggle('history', t('settings.data.history.title'),
         t('settings.data.history.hint'),
         historySetting.get())}
+      ${toggle('stats', t('settings.data.stats.title'), t('settings.data.stats.hint'), statsSetting.get())}
       <label class="settings-select">
         <span><strong>${t('settings.data.trackshow.title')}</strong><small>${t('settings.data.trackshow.hint')}</small></span>
         <select name="trackshow">
@@ -179,6 +181,7 @@ root.addEventListener('change', (e) => {
   if (el.name === 'contribute') contribute.set(el.checked);
   if (el.name === 'anon') anonNotes.set(el.checked);
   if (el.name === 'history') historySetting.set(el.checked);
+  if (el.name === 'stats') { statsSetting.markAsked(); statsSetting.set(el.checked); }
   // Neuer Zeitraum: von Hand ein- und ausgeblendete Jahre gelten nicht weiter
   if (el.name === 'sharpness') { sharpness.set(el.value); toast(t('settings.toast.next_open')); }
   if (el.name === 'trackshow') { trackShow.set(el.value); local.set('wmap.tracks.years', {}); }

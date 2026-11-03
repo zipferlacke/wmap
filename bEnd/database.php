@@ -137,6 +137,56 @@ class DB_Helper{
                 who                 TEXT
             )",
             "CREATE INDEX IF NOT EXISTS SharesCreated ON Shares (created)",
+
+            // ===================================
+            // Counts – Zähler je Tag (UTC), anonym (api_stats.php count_up()):
+            //   api:<teil>.<anfrage>   Aufrufe von api.php, z. B. api:tours.list
+            //   proxy:<dienst>         Anfragen über proxy.php (Erfolg und Fehler stehen in ProxyCalls)
+            //   client:<dienst>        Anfragen, die die App selbst stellt (Photon, Valhalla …) – kommt mit dem Ping
+            //   ping:active|new|week|month   Geräte: heute aktiv, neu, erstmals diese Woche / diesen Monat
+            // day - name - n
+            // ===================================
+            "CREATE TABLE IF NOT EXISTS Counts (
+                day                 TEXT        NOT NULL,
+                name                TEXT        NOT NULL,
+                n                   INTEGER     NOT NULL DEFAULT 0,
+                PRIMARY KEY (day, name)
+            )",
+
+            // ===================================
+            // ProxyCalls – Weiterleitung (proxy.php) je Stunde und Server: wie erreichbar, wie schnell
+            // hour (UTC, „2026-11-03 14“) - service - server - ok - fail - ms (Summe der Antwortzeiten der ok)
+            // ===================================
+            "CREATE TABLE IF NOT EXISTS ProxyCalls (
+                hour                TEXT        NOT NULL,
+                service             TEXT        NOT NULL,
+                server              TEXT        NOT NULL,
+                ok                  INTEGER     NOT NULL DEFAULT 0,
+                fail                INTEGER     NOT NULL DEFAULT 0,
+                ms                  INTEGER     NOT NULL DEFAULT 0,
+                PRIMARY KEY (hour, service, server)
+            )",
+
+            // ===================================
+            // ProxyState – je Server: Pause nach Ausfall, zuletzt erreicht / ausgefallen (Sekunden), letzter Fehler
+            // ===================================
+            "CREATE TABLE IF NOT EXISTS ProxyState (
+                server              TEXT        PRIMARY KEY,
+                until               INTEGER     DEFAULT 0,
+                last_ok             INTEGER,
+                last_fail           INTEGER,
+                error               TEXT
+            )",
+
+            // ===================================
+            // RateLimit – Anfragen je Minute und Absender (Hash aus Adresse und Tag, keine IP) – wird laufend geleert
+            // ===================================
+            "CREATE TABLE IF NOT EXISTS RateLimit (
+                minute              INTEGER     NOT NULL,
+                who                 TEXT        NOT NULL,
+                n                   INTEGER     NOT NULL DEFAULT 0,
+                PRIMARY KEY (minute, who)
+            )",
         ];
         foreach ($tables as $sql) {
             $result = $this->execSql($sql, [], "openDatabase");
@@ -153,6 +203,11 @@ class DB_Helper{
         $cols = array_column($this->execSql("PRAGMA table_info(Users)", [], "openDatabase")[1], "name");
         if (!in_array("osm_id", $cols, true)) {
             $result = $this->execSql("ALTER TABLE Users ADD COLUMN osm_id INTEGER", [], "openDatabase");
+            if($result[0] == 1)                     {return($result);}
+        }
+        // Aktive Konten (stats.php): Tag der letzten Anfrage mit Anmeldung
+        if (!in_array("last_seen", $cols, true)) {
+            $result = $this->execSql("ALTER TABLE Users ADD COLUMN last_seen TEXT", [], "openDatabase");
             if($result[0] == 1)                     {return($result);}
         }
         return $this->execSql("CREATE UNIQUE INDEX IF NOT EXISTS UsersOsm ON Users (osm_id)", [], "openDatabase");

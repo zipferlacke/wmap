@@ -45,7 +45,7 @@ const VERSION = '3.1.0';            // von appdata/version.py – neue Nummer = 
 // Stand der Dateien (Prüfsumme über alles in sw-files.json, von version.py):
 // dieselbe Nummer noch einmal hochgeladen ist trotzdem ein neuer Service Worker
 // mit eigenem Speicher – Alt und Neu mischen sich nie
-const BUILD = 'aeb75dabf1';
+const BUILD = '840129bb6f';
 const APP = `wmap-app-${VERSION}-${BUILD}`;
 const APP_PREFIX = 'wmap-app-';
 const SHARE = 'wmap-share';
@@ -104,6 +104,12 @@ async function precache() {
   const cache = await caches.open(APP);
   let files = [];
   try { files = await (await fetch('appdata/sw-files.json', { cache: 'no-store' })).json(); } catch { /* dann nach und nach */ }
+  // Sprachen: Deutsch (Rückfall) und die Liste immer, sonst nur, was hier schon geladen wurde – im Speicher der
+  // alten Fassung oder im Browser-Cache (erster Besuch) –, nicht alle für jeden
+  const kept = await Promise.all(files.map(async (f) => !/^appdata\/lang\/(?!de_DE\.|languages\.)/.test(f)
+    || !!(await caches.match(f, { ignoreVary: true }))
+    || (await fetch(f, { cache: 'only-if-cached', mode: 'same-origin' }).then((r) => r.ok, () => false))));
+  files = files.filter((f, i) => kept[i]);
   const queue = files.slice();
   let done = 0;
   const report = async () => {

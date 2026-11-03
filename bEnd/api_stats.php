@@ -6,6 +6,7 @@
  *                         kind frage (Ja/Nein-Frage unterwegs) · bearbeitet · neu
  *                         via  karte (direkt in OSM) · hinweis (OSM-Hinweis)
  *   summary {}            → { osm: {kind: {via: n}}, events: {event: n}, months: [{month, event, frage, n}] }
+ *   ping {new, week, month, services: {dienst: n}}   einmal am Tag je Gerät → Tabelle Counts (ping:*, client:*)
  * Konten, Touren, Plugins und Bewertungen trägt der Server selbst ein (log_event()).
  */
 
@@ -16,6 +17,13 @@ const STAT_VIA = ['karte', 'hinweis'];
 function log_event($event, $frage = null, $detail = null){
     global $db_helper;
     $db_helper->execSql("INSERT INTO Statistics (event, frage, detail) VALUES (?, ?, ?)", [$event, $frage, $detail], "stat");
+}
+
+/** Zähler des Tages (Tabelle Counts) hochzählen – Fehler sind egal */
+function count_up($name, $n = 1){
+    global $db_helper;
+    $db_helper->execSql("INSERT INTO Counts (day, name, n) VALUES (?, ?, ?) ON CONFLICT(day, name) DO UPDATE SET n = n + excluded.n",
+        [gmdate("Y-m-d"), $name, $n], "count");
 }
 
 function stats($requestArray, $data){
@@ -29,6 +37,18 @@ function stats($requestArray, $data){
             if (!in_array($kind, STAT_KINDS, true) || !in_array($via, STAT_VIA, true)) return [1, "Unbekannte Art"];
             $n = max(1, min(50, (int)($data["n"] ?? 1)));   // ein Upload hat selten mehr
             for ($i = 0; $i < $n; $i++) log_event("osm", $kind === "frage" ? 1 : 0, "$kind $via");
+            return [0, true];
+
+        case 'ping':
+            // Einmal am Tag je Gerät (services/ping.js) – ohne Kennung: nur Ja/Nein und was die App angefragt hat
+            count_up("ping:active");
+            foreach (["new", "week", "month"] as $k) if (!empty($data[$k])) count_up("ping:$k");
+            $services = is_array($data["services"] ?? null) ? array_slice($data["services"], 0, 30, true) : [];
+            foreach ($services as $name => $n) {
+                if (!preg_match('/^[a-z][a-z0-9_]{0,19}$/', (string)$name)) continue;
+                $n = (int)$n;
+                if ($n > 0) count_up("client:$name", min($n, 100000));
+            }
             return [0, true];
 
         case 'summary':

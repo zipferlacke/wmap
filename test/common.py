@@ -20,6 +20,8 @@ class Browser:
     def __init__(self, width=1300, height=900):
         o = webdriver.FirefoxOptions()
         o.add_argument('-headless')
+        # Gerätesprache Deutsch: Firefox meldet sonst Englisch, und WMap startet beim ersten Mal in der Sprache des Geräts
+        o.set_preference('intl.accept_languages', 'de-DE, de')
         o.enable_bidi = True
         self.d = webdriver.Firefox(options=o)
         self.errors = []

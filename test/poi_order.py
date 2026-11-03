@@ -57,7 +57,7 @@ with Browser(1200, 850) as b:
     b.d.script.add_preload_script(PRELOAD)
     b.d.set_script_timeout(60)
     b.open('index.html', 2)
-    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] }))")
+    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] })); localStorage.setItem('wmap.stats.asked', '1')")
     b.open('index.html', 4)
     b.wait("return window.__wmap?.map?.getLayer('poi_early') && window.__wmap.map.loaded()", 60)
 
