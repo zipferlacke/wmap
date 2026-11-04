@@ -139,6 +139,8 @@ const render = () => {
       <a class="button settings-row" href="./sync.html"><span class="msr">sync</span> ${t('settings.data.sync')}</a>
       <a class="button settings-row" href="./wege.html"><span class="msr">timeline</span> ${t('settings.data.tracks')}</a>
       <button type="button" class="button settings-row" data-act="history"><span class="msr">history</span> ${t('settings.data.clear_history')}</button>
+      <button type="button" class="button settings-row" data-act="repair"><span class="msr">build</span> ${t('settings.data.repair.title')}</button>
+      <p class="settings-hint">${t('settings.data.repair.hint')}</p>
     </section>
 
     <section>
@@ -202,6 +204,15 @@ root.addEventListener('click', async (e) => {
     } catch (err) { toast(t('settings.toast.geo_failed', { error: err.message })); }
   }
   if (act === 'history') { recent.clear(); toast(t('settings.toast.history_cleared')); }
+  // Gekapselt (core/updater.js): geht auch, wenn ein Update etwas kaputt gemacht hat
+  if (act === 'repair') {
+    if (!window.wmapUpdater) { location.reload(); return; }
+    const label = b.innerHTML;
+    b.disabled = true;
+    b.innerHTML = `<span class="msr">hourglass_top</span> ${t('settings.data.repair.running')}`;
+    const r = await window.wmapUpdater.check().catch(() => null);
+    if (r) { toast(r.text); b.disabled = false; b.innerHTML = label; }
+  }
   if (act === 'clear-trace') { trace.clear(); toast(t('settings.toast.trace_cleared')); }
   if (act === 'logout') { await konto.logout(); render(); }
   if (act === 'login') {
@@ -247,3 +258,5 @@ function toggle(name, label, hint, on) {
 
 mountAppBar();
 render();
+// Ergebnis von „App prüfen und neu laden“ (core/updater.js) – die Seite hat danach neu geladen
+{ const note = window.wmapUpdater?.note(); if (note) toast(note.text); }

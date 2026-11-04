@@ -115,6 +115,7 @@ with Browser(width=420, height=900) as b:
         return [app, keys.length, keys.filter((p) => p.includes('/appdata/lang/')).map((p) => p.split('/').pop()).sort()]; })""", 90)
     # Sprachen: nur Deutsch und die Liste – andere erst, wenn man sie wählt
     names = json.load(open('../appdata/sw-files.json'))
+    names = list(names['files']) if isinstance(names, dict) else names
     files = len([f for f in names if not f.startswith('appdata/lang/') or f.endswith(('de_DE.json', 'languages.json'))])
     version = json.load(open('../appdata/messages.json'))['changelog'][0]['version']
     print('Service Worker:', sw, 'von', files)

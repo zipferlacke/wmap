@@ -227,6 +227,11 @@
       "stats": {
         "title": "Anonym användningsstatistik",
         "hint": "En gång om dagen: att WMap var öppen i dag och hur ofta varje tjänst användes (t.ex. sökning 12×). Utan ID, utan plats, utan sökord."
+      },
+      "repair": {
+        "title": "Kontrollera och ladda om appen",
+        "hint": "Kontrollerar varje sparad fil i appen, hämtar skadade filer och eventuell nyare version från servern och laddar om – om något saknas efter en uppdatering.",
+        "running": "Kontrollerar …"
       }
     },
     "map": {
@@ -4598,7 +4603,8 @@
       "loading": "WMap {version} laddas. Sedan ser du vad som är nytt.",
       "moment": "Ett ögonblick …",
       "percent": "{pct} %",
-      "failed": "Det gick inte att ladda. Din version förblir som den är."
+      "failed": "Det gick inte att ladda. Din version förblir som den är.",
+      "unavailable": "Uppdateringen är inte tillgänglig än: den är inte komplett på servern. Din version förblir som den är – försök igen senare."
     },
     "app": {
       "title": "Ny version av WMap-appen",
@@ -4616,11 +4622,13 @@
       "deny": "Skicka inte"
     },
     "changes": {
+      "3.1.1": [
+        "Fix: efter en uppdatering saknades ibland texter (t.ex. i inställningarna) eller så förblev kartan tom. En uppdatering används nu först när alla filer har laddats helt och stämmer"
+      ],
       "3.1.0": [
         "WMap finns nu på tyska, engelska, franska, polska, svenska, norska och danska – från början på din enhets språk. Språk och färgschema väljer du direkt i välkomstrutan",
         "Bättre sökning: om söktjänsten inte svarar söker WMap vidare via andra servrar. Även rutter och tidtabeller byter själva när en server går ner",
         "Anonym användningsstatistik: en gång om dagen, utan ID, plats eller sökord – kan stängas av under Inställningar → Data",
-        "WMap är förberedd för fler språk: texterna ligger nu i en egen språkfil, fler språk kommer",
         "Sökning, rutter och tidtabeller kan nu själva byta mellan flera servrar när en går ner"
       ]
     }

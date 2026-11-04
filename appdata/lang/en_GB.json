@@ -227,6 +227,11 @@
       "stats": {
         "title": "Anonymous usage statistics",
         "hint": "Once a day: that WMap was open today and how often each service was asked (e.g. search 12×). No ID, no location, no search terms."
+      },
+      "repair": {
+        "title": "Check and reload app",
+        "hint": "Checks every stored file of the app, fetches damaged files and any newer version from the server and reloads – in case something is missing after an update.",
+        "running": "Checking …"
       }
     },
     "map": {
@@ -4667,7 +4672,8 @@
       "loading": "Loading WMap {version}. Afterwards you’ll see what’s new.",
       "moment": "One moment …",
       "percent": "{pct}%",
-      "failed": "Loading didn’t work. Your version stays as it is."
+      "failed": "Loading didn’t work. Your version stays as it is.",
+      "unavailable": "Update not available yet: it is not complete on the server. Your version stays as it is – please try again later."
     },
     "app": {
       "title": "New version of the WMap app",
@@ -4685,11 +4691,13 @@
       "deny": "Don’t send"
     },
     "changes": {
+      "3.1.1": [
+        "Fix: after an update, some texts were sometimes missing (e.g. in the settings) or the map stayed blank. An update is now only applied once all files have been loaded completely and match"
+      ],
       "3.1.0": [
         "WMap is now available in German, English, French, Polish, Swedish, Norwegian and Danish – right from the start in your device’s language. Language and colour scheme can be chosen straight in the welcome screen",
         "Better search: if the search service doesn’t answer, WMap keeps searching via other servers. Routes and timetables also switch on their own when a server fails",
         "Anonymous usage statistics: once a day, without ID, location or search terms – can be switched off under Settings → Data",
-        "WMap is ready for more languages: the texts now live in their own language file, more languages will follow",
         "Search, routes and timetables can now switch between several servers on their own when one fails"
       ]
     }

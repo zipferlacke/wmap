@@ -17,7 +17,8 @@ Ziele:
     appdata/lang/languages.json welche Sprachen es gibt (eine Datei je Sprache im selben Ordner)
     appdata/sw-files.json       was der Service Worker vorab lädt (alle Dateien,
                                 die die Seiten über import/@import/url()/src/href
-                                erreichen – aus wuefl-libs nur die genutzten)
+                                erreichen – aus wuefl-libs nur die genutzten), mit
+                                BUILD und je Datei einem Prüfwert (sw.js precache)
     src-tauri/tauri.conf.json   Version der App (Android: versionCode daraus)
     src-tauri/Cargo.toml        Version des Rust-Pakets
     src-tauri/Cargo.lock        dieselbe, damit Cargo nichts nachträgt
@@ -109,10 +110,36 @@ def write_languages(check):
 LIBS = 'libs/wuefl-libs/'
 
 
-def write_files(check):
-    path = ROOT / 'appdata/sw-files.json'
-    files = app_files()
-    text = json.dumps(files, ensure_ascii=False, indent=0) + '\n'
+LIST = 'appdata/sw-files.json'
+
+
+def file_hashes():
+    """Je Datei der Anfang ihres SHA-256 – der Service Worker vergleicht beim Vorladen (sw.js precache). Die Liste
+    selbst ohne Prüfwert (null): Sie trägt BUILD und hinge sonst von sich selbst ab."""
+    out = {}
+    for rel in app_files():
+        f = ROOT / ('index.html' if rel == './' else rel)
+        if rel == LIST:
+            out[rel] = None
+        elif f.is_file():
+            out[rel] = hashlib.sha256(f.read_bytes()).hexdigest()[:12]
+    return out
+
+
+def build_of(hashes):
+    """BUILD: Prüfsumme über alle Prüfwerte"""
+    h = hashlib.sha256()
+    for rel, sha in hashes.items():
+        if sha:
+            h.update(f'{rel}\0{sha}\0'.encode())
+    return h.hexdigest()[:10]
+
+
+def write_files(check, hashes, build):
+    """appdata/sw-files.json: { build, files: { Pfad: Prüfwert } } – gehört genau zu diesem sw.js (BUILD). Passt
+    beim Vorladen eine Datei nicht (Upload noch nicht fertig), installiert sich die Fassung nicht."""
+    path = ROOT / LIST
+    text = json.dumps({'build': build, 'files': hashes}, ensure_ascii=False, indent=0) + '\n'
     old = path.read_text(encoding='utf-8') if path.exists() else ''
     if old == text:
         return None
@@ -120,30 +147,24 @@ def write_files(check):
     # (Verweis aufs Nachbarprojekt, in .gitignore). Dann nur den Rest vergleichen.
     if check and not (ROOT / LIBS).is_dir():
         try:
-            before = [x for x in json.loads(old) if not x.startswith(LIBS)]
-        except ValueError:
+            before = {k: v for k, v in json.loads(old)['files'].items() if not k.startswith(LIBS)}
+        except (ValueError, KeyError, TypeError, AttributeError):
             before = None
-        if before == [x for x in files if not x.startswith(LIBS)]:
+        if before == {k: v for k, v in hashes.items() if not k.startswith(LIBS)}:
             return None
     if not check:
         path.write_text(text, encoding='utf-8')
-    return 'appdata/sw-files.json: Dateiliste neu'
+    return f'{LIST}: Dateiliste neu'
 
 
 BUILD = r"(const BUILD = ')([^']*)(')"
 
 
-def write_build(check):
-    """Prüfsumme über den Inhalt aller vorab geladenen Dateien → BUILD in sw.js"""
+def write_build(check, build):
+    """BUILD in sw.js – ändert sich eine Datei bei gleicher Nummer, ist es trotzdem ein neuer Service Worker"""
     # Im Export von git-release fehlt libs/wuefl-libs – dort lässt sich nichts prüfen
     if check and not (ROOT / LIBS).is_dir():
         return None
-    h = hashlib.sha256()
-    for rel in app_files():
-        f = ROOT / ('index.html' if rel == './' else rel)
-        if f.is_file():
-            h.update(rel.encode() + b'\0' + f.read_bytes() + b'\0')
-    build = h.hexdigest()[:10]
     path = ROOT / 'sw.js'
     text = path.read_text(encoding='utf-8')
     m = re.search(BUILD, text)
@@ -176,12 +197,14 @@ def main():
     langs = write_languages(check)
     if langs:
         off.append(langs)
-    files = write_files(check)
+    hashes = file_hashes()
+    build = build_of(hashes)
+    files = write_files(check, hashes, build)
     if files:
         off.append(files)
-    build = write_build(check)
-    if build:
-        off.append(build)
+    stand = write_build(check, build)
+    if stand:
+        off.append(stand)
     if not off:
         print(f'Version {version} steht überall.')
         return 0

@@ -227,6 +227,11 @@
       "stats": {
         "title": "Anonym brugsstatistik",
         "hint": "Én gang om dagen: at WMap var åben i dag, og hvor ofte hver tjeneste blev spurgt (f.eks. søgning 12×). Uden ID, uden position, uden søgeord."
+      },
+      "repair": {
+        "title": "Kontrollér og genindlæs appen",
+        "hint": "Kontrollerer hver gemt fil i appen, henter beskadigede filer og en eventuel nyere version fra serveren og genindlæser – hvis noget mangler efter en opdatering.",
+        "running": "Kontrollerer …"
       }
     },
     "map": {
@@ -4622,7 +4627,8 @@
       "loading": "WMap {version} indlæses. Bagefter kan du se, hvad der er nyt.",
       "moment": "Et øjeblik …",
       "percent": "{pct} %",
-      "failed": "Indlæsningen mislykkedes. Din version forbliver, som den er."
+      "failed": "Indlæsningen mislykkedes. Din version forbliver, som den er.",
+      "unavailable": "Opdateringen er ikke tilgængelig endnu: den er ikke komplet på serveren. Din version forbliver, som den er – prøv igen senere."
     },
     "app": {
       "title": "Ny version af WMap-appen",
@@ -4640,11 +4646,13 @@
       "deny": "Send ikke"
     },
     "changes": {
+      "3.1.1": [
+        "Rettelse: efter en opdatering manglede der nogle gange tekster (f.eks. i indstillingerne), eller kortet forblev tomt. En opdatering tages nu først i brug, når alle filer er hentet fuldstændigt og passer sammen"
+      ],
       "3.1.0": [
         "WMap findes nu på tysk, engelsk, fransk, polsk, svensk, norsk og dansk – fra starten på din enheds sprog. Sprog og farveskema vælger du direkte i velkomstvinduet",
         "Bedre søgning: svarer søgetjenesten ikke, søger WMap videre via andre servere. Også ruter og køreplaner skifter selv, når en server svigter",
         "Anonym brugsstatistik: én gang om dagen, uden ID, position eller søgeord – kan slås fra under Indstillinger → Data",
-        "WMap er klar til flere sprog: teksterne ligger nu i en egen sprogfil, flere sprog følger",
         "Søgning, ruter og køreplaner kan nu selv skifte mellem flere servere, når en svigter"
       ]
     }

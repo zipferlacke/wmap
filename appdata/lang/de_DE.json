@@ -227,6 +227,11 @@
       "stats": {
         "title": "Anonyme Nutzungsstatistik",
         "hint": "Einmal am Tag: dass WMap heute offen war und wie oft welcher Dienst gefragt wurde (z. B. Suche 12×). Ohne Kennung, ohne Ort, ohne Suchbegriffe."
+      },
+      "repair": {
+        "title": "App prüfen und neu laden",
+        "hint": "Prüft jede gespeicherte Datei der App, holt Kaputtes und eine neuere Version vom Server und lädt neu – falls nach einem Update etwas fehlt.",
+        "running": "Wird geprüft …"
       }
     },
     "map": {
@@ -4596,7 +4601,8 @@
       "loading": "WMap {version} wird geladen. Danach siehst du, was neu ist.",
       "moment": "Einen Moment …",
       "percent": "{pct} %",
-      "failed": "Das Laden hat nicht geklappt. Deine Version bleibt, wie sie ist."
+      "failed": "Das Laden hat nicht geklappt. Deine Version bleibt, wie sie ist.",
+      "unavailable": "Update noch nicht verfügbar: Auf dem Server ist es noch nicht vollständig. Deine Version bleibt, wie sie ist – bitte später noch einmal versuchen."
     },
     "app": {
       "title": "Neue Version der WMap-App",

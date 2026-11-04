@@ -230,6 +230,11 @@
       "stats": {
         "title": "Anonym bruksstatistikk",
         "hint": "Én gang om dagen: at WMap var åpen i dag og hvor ofte hver tjeneste ble spurt (f.eks. søk 12×). Uten ID, uten posisjon, uten søkeord."
+      },
+      "repair": {
+        "title": "Kontroller og last inn appen på nytt",
+        "hint": "Kontrollerer hver lagrede fil i appen, henter skadede filer og eventuelt en nyere versjon fra serveren og laster inn på nytt – i tilfelle noe mangler etter en oppdatering.",
+        "running": "Kontrollerer …"
       }
     },
     "map": {
@@ -4568,7 +4573,8 @@
       "loading": "WMap {version} lastes inn. Etterpå ser du hva som er nytt.",
       "moment": "Et øyeblikk …",
       "percent": "{pct} %",
-      "failed": "Innlastingen mislyktes. Versjonen din forblir som den er."
+      "failed": "Innlastingen mislyktes. Versjonen din forblir som den er.",
+      "unavailable": "Oppdateringen er ikke tilgjengelig ennå: den er ikke komplett på serveren. Versjonen din forblir som den er – prøv igjen senere."
     },
     "app": {
       "title": "Ny versjon av WMap-appen",
@@ -4586,11 +4592,13 @@
       "deny": "Ikke send"
     },
     "changes": {
+      "3.1.1": [
+        "Fiks: etter en oppdatering manglet det noen ganger tekster (f.eks. i innstillingene), eller kartet forble tomt. En oppdatering tas nå først i bruk når alle filene er lastet ned fullstendig og stemmer"
+      ],
       "3.1.0": [
         "WMap finnes nå på tysk, engelsk, fransk, polsk, svensk, norsk og dansk – fra start på språket til enheten din. Språk og fargeskjema velger du rett i velkomstbildet",
         "Bedre søk: svarer ikke søketjenesten, søker WMap videre via andre servere. Også ruter og rutetider bytter selv når en server faller ut",
         "Anonym bruksstatistikk: én gang om dagen, uten ID, posisjon eller søkeord – kan slås av under Innstillinger → Data",
-        "WMap er klar for flere språk: tekstene ligger nå i en egen språkfil, flere språk kommer",
         "Søk, ruter og rutetider kan nå selv bytte mellom flere servere når én faller ut"
       ]
     }

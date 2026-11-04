@@ -9,6 +9,14 @@
     "messages": [],
     "changelog": [
         {
+            "version": "3.1.1",
+            "date": "2026-11-04",
+            "appVersion": "2.3.1",
+            "changes": [
+                "Fix: Nach einem Update fehlten manchmal Texte (etwa in den Einstellungen) oder die Karte blieb leer. Ein Update wird jetzt erst übernommen, wenn alle Dateien vollständig und passend geladen sind"
+            ]
+        },
+        {
             "version": "3.1.0",
             "date": "2026-11-03",
             "appVersion": "2.3.1",

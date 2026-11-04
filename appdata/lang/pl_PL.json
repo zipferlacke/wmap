@@ -227,6 +227,11 @@
       "stats": {
         "title": "Anonimowe statystyki użycia",
         "hint": "Raz dziennie: że WMap była dziś otwarta i jak często pytano który serwis (np. wyszukiwanie 12×). Bez identyfikatora, bez lokalizacji, bez wyszukiwanych haseł."
+      },
+      "repair": {
+        "title": "Sprawdź i przeładuj aplikację",
+        "hint": "Sprawdza każdy zapisany plik aplikacji, pobiera z serwera uszkodzone pliki i ewentualnie nowszą wersję, a potem przeładowuje – na wypadek, gdyby po aktualizacji czegoś brakowało.",
+        "running": "Sprawdzanie …"
       }
     },
     "map": {
@@ -4780,7 +4785,8 @@
       "loading": "Pobieranie WMap {version}. Potem zobaczysz, co nowego.",
       "moment": "Chwileczkę …",
       "percent": "{pct} %",
-      "failed": "Nie udało się pobrać. Twoja wersja pozostaje bez zmian."
+      "failed": "Nie udało się pobrać. Twoja wersja pozostaje bez zmian.",
+      "unavailable": "Aktualizacja nie jest jeszcze dostępna: na serwerze nie jest jeszcze kompletna. Twoja wersja zostaje bez zmian – spróbuj ponownie później."
     },
     "app": {
       "title": "Nowa wersja aplikacji WMap",
@@ -4798,11 +4804,13 @@
       "deny": "Nie wysyłaj"
     },
     "changes": {
+      "3.1.1": [
+        "Poprawka: po aktualizacji czasem brakowało tekstów (np. w ustawieniach) albo mapa pozostawała pusta. Aktualizacja jest teraz stosowana dopiero wtedy, gdy wszystkie pliki zostały pobrane w całości i do siebie pasują"
+      ],
       "3.1.0": [
         "WMap jest teraz dostępna po niemiecku, angielsku, francusku, polsku, szwedzku, norwesku i duńsku – od początku w języku twojego urządzenia. Język i schemat kolorów wybierzesz od razu na ekranie powitalnym",
         "Lepsze wyszukiwanie: gdy usługa wyszukiwania nie odpowiada, WMap szuka dalej przez inne serwery. Trasy i rozkłady jazdy też same przełączają się, gdy serwer zawiedzie",
         "Anonimowe statystyki użycia: raz dziennie, bez identyfikatora, lokalizacji i wyszukiwanych haseł – do wyłączenia w Ustawienia → Dane",
-        "WMap jest gotowa na kolejne języki: teksty są teraz w osobnym pliku językowym, kolejne języki wkrótce",
         "Wyszukiwanie, trasy i rozkłady jazdy mogą teraz same przełączać się między kilkoma serwerami, gdy jeden zawiedzie"
       ]
     }

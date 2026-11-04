@@ -227,6 +227,11 @@
       "stats": {
         "title": "Statistiques d’utilisation anonymes",
         "hint": "Une fois par jour : que WMap a été ouverte aujourd’hui et combien de fois chaque service a été sollicité (p. ex. recherche 12×). Sans identifiant, sans position, sans termes de recherche."
+      },
+      "repair": {
+        "title": "Vérifier et recharger l’application",
+        "hint": "Vérifie chaque fichier enregistré de l’application, récupère sur le serveur les fichiers endommagés et une éventuelle version plus récente, puis recharge – au cas où quelque chose manquerait après une mise à jour.",
+        "running": "Vérification …"
       }
     },
     "map": {
@@ -4698,7 +4703,8 @@
       "loading": "Chargement de WMap {version}. Tu verras ensuite les nouveautés.",
       "moment": "Un instant …",
       "percent": "{pct} %",
-      "failed": "Le chargement a échoué. Ta version reste telle quelle."
+      "failed": "Le chargement a échoué. Ta version reste telle quelle.",
+      "unavailable": "Mise à jour pas encore disponible : elle n’est pas encore complète sur le serveur. Ta version reste telle quelle – réessaie plus tard."
     },
     "app": {
       "title": "Nouvelle version de l’appli WMap",
@@ -4716,11 +4722,13 @@
       "deny": "Ne pas envoyer"
     },
     "changes": {
+      "3.1.1": [
+        "Correctif : après une mise à jour, certains textes manquaient parfois (par ex. dans les paramètres) ou la carte restait vide. Une mise à jour n’est désormais appliquée que lorsque tous les fichiers sont chargés complets et cohérents"
+      ],
       "3.1.0": [
         "WMap est désormais disponible en allemand, anglais, français, polonais, suédois, norvégien et danois – dès le départ dans la langue de ton appareil. Langue et thème de couleurs se choisissent directement dans l’accueil",
         "Meilleure recherche : si le service de recherche ne répond pas, WMap continue via d’autres serveurs. Itinéraires et horaires changent aussi d’eux-mêmes quand un serveur tombe en panne",
         "Statistiques d’utilisation anonymes : une fois par jour, sans identifiant, position ni termes de recherche – désactivables dans Réglages → Données",
-        "WMap est prête pour d’autres langues : les textes sont désormais dans un fichier de langue à part, d’autres langues suivront",
         "La recherche, les itinéraires et les horaires peuvent désormais passer d’eux-mêmes d’un serveur à l’autre quand l’un tombe en panne"
       ]
     }

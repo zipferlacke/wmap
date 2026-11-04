@@ -94,9 +94,19 @@ const session = {
  * Beim Start einer Seite. `dialogs`: Willkommen, Neuigkeiten und Nachrichten
  * zeigen (nur die Karte beim normalen Start); das Banner kommt immer.
  */
+/**
+ * Laufende Version: vom Service Worker (sw.js VERSION) – sie gehört zu den Dateien in seinem Speicher, auch wenn ein
+ * Update halb kaputt ist. Ohne ihn (erster Besuch, localhost ohne SW): config.js.
+ */
+export async function runningVersion() {
+  const r = await window.wmapUpdater?.version?.().catch(() => null);
+  return r?.version ?? APP_VERSION;
+}
+
 export async function appNews({ dialogs = false } = {}) {
   const m = await load();
   if (!m) return;
+  const current = await runningVersion();
   if (!m.offline && navigator.onLine) await checkUpdates(m);
   // Gerade aktualisiert: gleich zeigen, was neu ist – auf jeder Seite
   if (session.get(UPDATED)) { session.set(UPDATED, null); dialogs = true; }
@@ -105,12 +115,12 @@ export async function appNews({ dialogs = false } = {}) {
   const seen = local.get(SEEN) ?? null;
   const save = (s) => local.set(SEEN, s);
   if (!seen) {
-    save({ version: APP_VERSION, messages: [] });
+    save({ version: current, messages: [] });
     if (m.welcome?.length) await welcome(m);
     const { permissionsHere, showPermissions } = await import('./permissions.js');
     if (permissionsHere) await showPermissions();
-  } else if (compareVersions(seen.version, APP_VERSION) < 0) {
-    save({ ...seen, version: APP_VERSION });
+  } else if (compareVersions(seen.version, current) < 0) {
+    save({ ...seen, version: current });
     await showChangelog(m, { since: seen.version });
   }
 
@@ -182,7 +192,7 @@ async function welcome(m) {
   statsSetting.markAsked();
   return ask({
     auto: true, icon: 'waving_hand', title: t('news.welcome.title'), className: 'news',
-    html: `${choices}${paragraphs(ownValue('news.welcome') ?? m.welcome)}<p class="news-version">${t('news.version', { version: esc(APP_VERSION) })}</p>`,
+    html: `${choices}${paragraphs(ownValue('news.welcome') ?? m.welcome)}<p class="news-version">${t('news.version', { version: esc(await runningVersion()) })}</p>`,
     buttons: [{ value: 'ok', label: t('news.welcome.go'), icon: 'map', primary: true }],
     setup: (dlg) => dlg.querySelector('.news-choices').addEventListener('change', (e) => {
       if (e.target.name === 'theme') theme.set(e.target.value);
@@ -201,7 +211,8 @@ async function welcome(m) {
  */
 export async function showChangelog(m = null, { since = null } = {}) {
   m ??= await load();
-  const list = (m?.changelog ?? []).filter((v) => compareVersions(v.version, APP_VERSION) <= 0
+  const current = await runningVersion();
+  const list = (m?.changelog ?? []).filter((v) => compareVersions(v.version, current) <= 0
     && (since === null || compareVersions(v.version, since) > 0));
   if (!list.length) return;
   const title = since === null ? t('news.changelog.all')
@@ -221,6 +232,7 @@ export async function showChangelog(m = null, { since = null } = {}) {
 /** Neue Version? Zwingend bei minVersion bzw. minAppVersion (die Popups gehen dann nicht zu). */
 export async function checkUpdates(m) {
   const latest = m.changelog?.[0]?.version ?? null;
+  const current = await runningVersion();
   const app = await appVersion();
   if (app && m.minAppVersion && compareVersions(app, m.minAppVersion) < 0) return appRequired(m.minAppVersion);
   // Die App ist nicht die aktuelle: erst sie, dann die Oberfläche – das Web-Update wird nicht angeboten
@@ -228,11 +240,11 @@ export async function checkUpdates(m) {
   const want = m.changelog?.find((e) => e.appVersion)?.appVersion;
   if (app && want && compareVersions(app, want) < 0) {
     // Geht die Oberfläche hier gar nicht mehr (minVersion), führt kein Weg an der neuen App vorbei
-    if (m.minVersion && compareVersions(APP_VERSION, m.minVersion) < 0) return appRequired(want);
+    if (m.minVersion && compareVersions(current, m.minVersion) < 0) return appRequired(want);
     return session.get(LATER_APP) === want ? null : appHint(app, want);
   }
-  if (m.minVersion && compareVersions(APP_VERSION, m.minVersion) < 0) return uiUpdate(latest, { forced: true });
-  if (latest && compareVersions(APP_VERSION, latest) < 0 && session.get(LATER) !== latest) return uiUpdate(latest, { forced: false });
+  if (m.minVersion && compareVersions(current, m.minVersion) < 0) return uiUpdate(latest, { forced: true, current });
+  if (latest && compareVersions(current, latest) < 0 && session.get(LATER) !== latest) return uiUpdate(latest, { forced: false, current });
   return null;
 }
 
@@ -265,11 +277,11 @@ async function underway() {
 /** Steht eine neuere Nummer an? Die kommt nur über „Aktualisieren“ (data/offline.js freshOnOpen) */
 export async function versionOffered() {
   const latest = (await load())?.changelog?.[0]?.version;
-  return !!latest && compareVersions(APP_VERSION, latest) < 0;
+  return !!latest && compareVersions(await runningVersion(), latest) < 0;
 }
 
 /** Neue Oberfläche: „Neue Version verfügbar“ (mit Später) bzw. zwingend; nach „Aktualisieren“ nur noch der Ladebalken */
-async function uiUpdate(latest, { forced }) {
+async function uiUpdate(latest, { forced, current = APP_VERSION }) {
   await whenFree();
   if (!forced && await underway()) return null;
   const buttons = forced ? [{ value: 'update', label: t('news.update.button'), icon: 'system_update', primary: true }]
@@ -277,7 +289,7 @@ async function uiUpdate(latest, { forced }) {
   return updateDialog({
     icon: 'system_update',
     title: forced ? t('news.update.forced_title') : t('news.update.title'),
-    html: `<p class="update-text">${forced ? t('news.update.forced_text', { version: esc(APP_VERSION) })
+    html: `<p class="update-text">${forced ? t('news.update.forced_text', { version: esc(current) })
       : t('news.update.text', { version: esc(latest ?? '') })}</p>
       <div class="update-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><i></i></div>`,
     buttons, closable: false,
@@ -291,7 +303,10 @@ async function uiUpdate(latest, { forced }) {
       text.textContent = t('news.update.loading', { version: latest ?? '' });
       bar.hidden = false;
       status(dlg, t('news.update.moment'));
+      // Passt auf dem Server nicht alles zur neuen Fassung (Upload unvollständig), installiert sie sich nicht (sw.js)
+      let unavailable = false;
       const onProgress = (e) => {
+        if (e.data?.type === 'update-unavailable') unavailable = true;
         if (e.data?.type !== 'update-progress' || !e.data.total) return;
         const pct = Math.round((e.data.done / e.data.total) * 100);
         bar.setAttribute('aria-valuenow', pct);
@@ -304,7 +319,7 @@ async function uiUpdate(latest, { forced }) {
         actions.style.display = '';
         text.textContent = before;
         bar.hidden = true;
-        status(dlg, t('news.update.failed'));
+        status(dlg, t(unavailable ? 'news.update.unavailable' : 'news.update.failed'));
       }
       return false;
     },
