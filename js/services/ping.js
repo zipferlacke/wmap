@@ -1,7 +1,8 @@
 /**
  * Einmal am Tag „WMap war heute offen“ an den WMap-Server (bEnd/api_stats.php, ping) – für die Zahl der aktiven und
  * neuen Geräte in stats.php. Ohne Kennung, ohne Ort: nur ob das Gerät neu ist bzw. sich diese Woche / diesen Monat
- * zum ersten Mal meldet, dazu was die App seit dem letzten Mal wie oft gefragt hat (services/usage.js).
+ * zum ersten Mal meldet, ob es schon in der Vorwoche / im Vormonat da war (daraus die verlorenen Geräte), dazu was die
+ * App seit dem letzten Mal wie oft gefragt hat (services/usage.js).
  * Scheitert es (offline), versucht es der nächste Start. Nur wenn die Nutzungsstatistik an ist (statsSetting).
  */
 import { api } from './api.js';
@@ -12,6 +13,8 @@ const LAST = 'wmap.ping';     // Tag (JJJJ-MM-TT, UTC) des letzten Pings
 const day = (d) => d.toISOString().slice(0, 10);
 /** Montag der Woche als Tag – gleiche Woche, gleicher Wert */
 const week = (d) => day(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - ((d.getUTCDay() + 6) % 7))));
+const lastWeek = (d) => week(new Date(+d - 7 * 86_400_000));
+const lastMonth = (d) => day(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1))).slice(0, 7);
 
 export async function ping() {
   if (!statsSetting.active()) return;
@@ -26,6 +29,8 @@ export async function ping() {
       new: !last,
       week: !before || week(before) !== week(now),
       month: !last || last.slice(0, 7) !== day(now).slice(0, 7),
+      back_week: !!before && week(before) === lastWeek(now),
+      back_month: !!last && last.slice(0, 7) === lastMonth(now),
       services,
     });
     localStorage.setItem(LAST, day(now));

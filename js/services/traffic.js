@@ -9,6 +9,7 @@
 import { API } from '../core/config.js';
 import { nearestOnLine } from '../core/geo.js';
 import { t } from '../core/i18n.js';
+import { used } from './usage.js';
 
 const SERVICES = ['closure', 'roadworks', 'warning'];
 const CACHE_MS = 5 * 60 * 1000;
@@ -19,6 +20,7 @@ async function service(road, svc, signal) {
   const key = `${road}|${svc}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.items;
+  used('autobahn');
   const res = await fetch(`${API.autobahn}/${road}/services/${svc}`, { signal });
   if (!res.ok) throw new Error(t('services.traffic.error.status', { status: res.status }));
   const data = await res.json();

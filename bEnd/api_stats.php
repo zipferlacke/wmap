@@ -6,7 +6,8 @@
  *                         kind frage (Ja/Nein-Frage unterwegs) · bearbeitet · neu
  *                         via  karte (direkt in OSM) · hinweis (OSM-Hinweis)
  *   summary {}            → { osm: {kind: {via: n}}, events: {event: n}, months: [{month, event, frage, n}] }
- *   ping {new, week, month, services: {dienst: n}}   einmal am Tag je Gerät → Tabelle Counts (ping:*, client:*)
+ *   ping {new, week, month, back_week, back_month, services: {dienst: n}}   einmal am Tag je Gerät → Tabelle Counts
+ *                         (ping:*, client:*); back_*: das letzte Mal war in der Vorwoche / im Vormonat
  * Konten, Touren, Plugins und Bewertungen trägt der Server selbst ein (log_event()).
  */
 
@@ -19,9 +20,15 @@ function log_event($event, $frage = null, $detail = null){
     $db_helper->execSql("INSERT INTO Statistics (event, frage, detail) VALUES (?, ?, ?)", [$event, $frage, $detail], "stat");
 }
 
-/** Zähler des Tages (Tabelle Counts) hochzählen – Fehler sind egal */
+/** Kommt die Anfrage aus den Tests (test/common.py setzt den Cookie wmap_test=1)? */
+function is_test(){
+    return ($_COOKIE["wmap_test"] ?? "") === "1";
+}
+
+/** Zähler des Tages (Tabelle Counts) hochzählen – Fehler sind egal; Anfragen aus den Tests unter test:… */
 function count_up($name, $n = 1){
     global $db_helper;
+    if (is_test()) $name = "test:$name";
     $db_helper->execSql("INSERT INTO Counts (day, name, n) VALUES (?, ?, ?) ON CONFLICT(day, name) DO UPDATE SET n = n + excluded.n",
         [gmdate("Y-m-d"), $name, $n], "count");
 }
@@ -42,7 +49,7 @@ function stats($requestArray, $data){
         case 'ping':
             // Einmal am Tag je Gerät (services/ping.js) – ohne Kennung: nur Ja/Nein und was die App angefragt hat
             count_up("ping:active");
-            foreach (["new", "week", "month"] as $k) if (!empty($data[$k])) count_up("ping:$k");
+            foreach (["new", "week", "month", "back_week", "back_month"] as $k) if (!empty($data[$k])) count_up("ping:$k");
             $services = is_array($data["services"] ?? null) ? array_slice($data["services"], 0, 30, true) : [];
             foreach ($services as $name => $n) {
                 if (!preg_match('/^[a-z][a-z0-9_]{0,19}$/', (string)$name)) continue;

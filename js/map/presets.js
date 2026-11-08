@@ -10,6 +10,7 @@
  */
 import { esc } from '../core/geo.js';
 import { t } from '../core/i18n.js';
+import { used } from '../services/usage.js';
 
 const BGR_BASE = 'https://services.bgr.de/wms/geologie/guek250/';
 const BGR = (layers) => `${BGR_BASE}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap`
@@ -67,6 +68,7 @@ async function bgrInfo(info, [lon, lat], zoom, signal) {
     STYLES: '', CRS: 'EPSG:3857', BBOX: [x - r, y - r, x + r, y + r].map((v) => v.toFixed(1)).join(','),
     WIDTH: '101', HEIGHT: '101', I: '50', J: '50', INFO_FORMAT: 'application/geo+json', FEATURE_COUNT: '5',
   });
+  used('bgr');
   const res = await fetch(`${BGR_BASE}?${q}`, { signal });
   if (!res.ok) throw new Error(t('layers.info.answer', { source: 'BGR', status: res.status }));
   const { features = [] } = await res.json();
@@ -80,6 +82,7 @@ async function bgrInfo(info, [lon, lat], zoom, signal) {
 }
 
 async function macrostratInfo([lon, lat], signal) {
+  used('macrostrat');
   const res = await fetch(`https://macrostrat.org/api/v2/geologic_units/map?lat=${lat.toFixed(5)}&lng=${lon.toFixed(5)}`, { signal });
   if (!res.ok) throw new Error(t('layers.info.answer', { source: 'Macrostrat', status: res.status }));
   const data = (await res.json())?.success?.data ?? [];

@@ -3,9 +3,10 @@
 1. Weiterleitung: Suche und Rückwärtssuche kommen an, fremde Dienste und Pfade nicht (404).
 2. App: „wmap:photon“ steht hinter den direkten Servern; eine Suche zählt je Dienst (wmap.usage).
 3. Ping (nur wenn die Nutzungsstatistik an und gefragt ist): einmal am Tag – mit den Zählern der App, danach ist wmap.usage leer und wmap.ping gesetzt; ein zweiter Start
-   am selben Tag schickt nichts.
-4. stats.php: ohne Schlüssel 403; mit Schlüssel Geräte, Anfragen (client:photon), Weiterleitung und Diagramme, keine
-   JS-Fehler. Der Schlüssel steht in bEnd/keys.php (fehlt er, wird der Teil übersprungen).
+   am selben Tag schickt nichts. Letzter Ping im Vormonat / in der Vorwoche → back_month / back_week, sonst nicht.
+4. stats.php: ohne Schlüssel 403; mit Schlüssel Geräte, Anfragen – die Tests getrennt (Cookie wmap_test, test:…) –,
+   Diagramme je Dienst, Weiterleitung und Diagramme, keine
+   JS-Fehler; Zeitpicker Tag / Woche / Monat → Werte je Tag, Jahr → je Monat, ohne Ausweichen auf gröbere Werte. Der Schlüssel steht in bEnd/keys.php (fehlt er, wird der Teil übersprungen).
 """
 import json
 import re
@@ -22,7 +23,7 @@ checks = {}
 
 def get(path):
     try:
-        with urllib.request.urlopen(BASE + path, timeout=60) as r:
+        with urllib.request.urlopen(urllib.request.Request(BASE + path, headers={'Cookie': 'wmap_test=1'}), timeout=60) as r:
             return r.status, r.read().decode('utf-8', 'replace')
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode('utf-8', 'replace')
@@ -65,6 +66,22 @@ with Browser(420, 900) as b:
     checks['3. Ping gesendet, Zähler geleert'] = isinstance(sent, list) and bool(re.match(r'\d{4}-\d\d-\d\d$', sent[0] or '')) and sent[1] is None
     checks['3. zweiter Start am selben Tag schickt nichts'] = isinstance(sent, list) and sent[2] == '{"photon":5}'
 
+    # 3a. Vorwoche / Vormonat – was der Ping schickt, aus fetch abgefangen
+    back = module(b, """const p = await import('./js/services/ping.js');
+        const sent = [];
+        const orig = window.fetch;
+        window.fetch = async (url, init) => { if (init?.body instanceof FormData) sent.push(JSON.parse(init.body.get('data'))); return orig(url, init); };
+        const now = new Date();
+        const day = (d) => d.toISOString().slice(0, 10);
+        const runs = [new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 15)), new Date(+now - 7 * 864e5), new Date(+now - 400 * 864e5)];
+        for (const d of runs) { localStorage.setItem('wmap.ping', day(d)); await p.ping(); }
+        window.fetch = orig;
+        return sent.map((x) => [x.back_month, x.back_week]);""")
+    print('Vormonat, Vorwoche, lange her:', back)
+    checks['3a. Vormonat → back_month'] = isinstance(back, list) and back[0][0] is True
+    checks['3a. Vorwoche → back_week'] = isinstance(back, list) and back[1][1] is True
+    checks['3a. lange her → keins'] = isinstance(back, list) and back[2] == [False, False]
+
     # 3b. Ausgeschaltet: nichts gezählt, nichts geschickt
     off = module(b, """const u = await import('./js/services/usage.js');
         const p = await import('./js/services/ping.js');
@@ -86,16 +103,33 @@ with Browser(420, 900) as b:
     else:
         checks['4. ohne Schlüssel 403'] = get('bEnd/stats.php')[0] == 403
         b.open(f'bEnd/stats.php?key={m.group(1)}', 4)
+        b.js("for (const d of document.querySelectorAll('details')) d.open = true")
+        time.sleep(2)
         page = b.js("""return {
             tiles: [...document.querySelectorAll('.tile')].map((t) => t.textContent.replace(/\\s+/g, ' ').trim()),
-            client: [...document.querySelectorAll('td')].some((td) => td.textContent === 'photon'),
-            servers: document.querySelectorAll('section:nth-of-type(3) tr').length,
-            charts: document.querySelectorAll('.chart .dg_canvas, .chart canvas, .chart svg').length,
+            tests: [...document.querySelectorAll('#requests td')].map((td) => td.textContent),
+            api: !!document.querySelector('#chart-api canvas, #chart-api svg'),
+            proxyTitle: document.querySelector('#servers .chart')?.textContent.match(/Weiterleitung \\S+ je \\S+/)?.[0],
+            servers: document.querySelectorAll('#servers tr').length,
+            charts: document.querySelectorAll('.chart canvas, .chart svg').length,
         }""")
+        views = {}
+        for v in ('day', 'week', 'month', 'year'):
+            b.js(f"document.querySelector('#picker .dgp_stufe[data-stufe={v}]').click()")
+            time.sleep(1.5)
+            views[v] = b.js("""const t = document.querySelector('#chart-devices').textContent;
+                return [/Geräte je (Tag|Woche|Monat)/.exec(t)?.[0], t.includes('feiner lässt sich'), document.querySelector('#fine').textContent]""")
+        b.js("document.querySelector('#picker .dgp_stufe[data-stufe=month]').click()")
+        print('Ansichten:', views)
+        checks['4. Tag, Woche, Monat → je Tag, Jahr → je Monat'] = [x[0] for x in views.values()] == ['Geräte je Tag', 'Geräte je Tag', 'Geräte je Tag', 'Geräte je Monat']
+        checks['4. kein Ausweichen auf gröbere Werte'] = not any(x[1] for x in views.values())
         print('stats.php:', json.dumps(page, ensure_ascii=False))
         b.shot('stats')
-        checks['4. Geräte heute gezählt'] = any(re.match(r'^[1-9][\d.]*\s*Aktiv heute$', t) for t in page['tiles'])
-        checks['4. Anfragen der App (photon)'] = page['client']
+        checks['4. Kachel aktiv heute'] = any(re.match(r'^[\d.]+\s*Aktiv heute', t) for t in page['tiles'])
+        checks['4. Tests getrennt gezählt (Ping, photon, Weiterleitung)'] = all(x in page['tests'] for x in ('ping:active', 'client:photon', 'proxy:photon'))
+        checks['4. API als eigenes Diagramm'] = page['api']
+        checks['4. Weiterleitung folgt dem Picker'] = bool(page['proxyTitle'])
+        checks['4. Kachel verloren'] = any('Verloren im' in t for t in page['tiles'])
         checks['4. Server der Weiterleitung'] = page['servers'] > 1
         checks['4. Diagramme gezeichnet'] = page['charts'] >= 3
 

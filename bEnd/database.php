@@ -144,6 +144,8 @@ class DB_Helper{
             //   proxy:<dienst>         Anfragen über proxy.php (Erfolg und Fehler stehen in ProxyCalls)
             //   client:<dienst>        Anfragen, die die App selbst stellt (Photon, Valhalla …) – kommt mit dem Ping
             //   ping:active|new|week|month   Geräte: heute aktiv, neu, erstmals diese Woche / diesen Monat
+            //   ping:back_week|back_month    davon schon in der Vorwoche / im Vormonat da (verloren = aktiv davor − zurück)
+            //   test:<name>            dasselbe aus den Tests (Cookie wmap_test=1) – zählt nirgends sonst mit
             // day - name - n
             // ===================================
             "CREATE TABLE IF NOT EXISTS Counts (

@@ -36,7 +36,7 @@ def token(**over):
 
 def api(path, data=None, bearer=None):
     body = urllib.parse.urlencode({'request': json.dumps(path), 'data': json.dumps(data or {})}).encode()
-    req = urllib.request.Request(API, body, {'Authorization': f'Bearer {bearer}'} if bearer else {})
+    req = urllib.request.Request(API, body, {'Cookie': 'wmap_test=1', **({'Authorization': f'Bearer {bearer}'} if bearer else {})})
     raw = urllib.request.urlopen(req).read()
     try:
         return json.loads(raw)

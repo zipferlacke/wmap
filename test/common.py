@@ -35,6 +35,11 @@ class Browser:
         self.d.quit()
 
     def open(self, path, wait=3):
+        if not getattr(self, '_test_cookie', False):
+            # Cookie vor der ersten echten Seite: der Server zählt alles aus den Tests getrennt (test:…, bEnd/api_stats.php)
+            self.d.get(BASE + 'test-cookie')
+            self.d.add_cookie({'name': 'wmap_test', 'value': '1', 'path': '/'})
+            self._test_cookie = True
         self.d.get(BASE + path)
         time.sleep(wait)
 
