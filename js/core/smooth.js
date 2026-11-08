@@ -11,7 +11,7 @@
  *                              mit Richtung und Tempo des GPS vorausgerechnet –
  *                              sonst hinkt der Punkt in Fahrt hinterher
  *   Ausreißer                  Sprung, der nicht zum Tempo passt, oder viel
- *                              ungenauer als bisher: verworfen – drei
+ *                              ungenauer als zuvor: verworfen – drei
  *                              hintereinander gelten aber
  *
  * Im Stand kommt nichts Neues heraus – das spart auch das Nachführen der Karte.

@@ -325,8 +325,7 @@ if (!CAR) { if (map.loaded()) resumeNav(); else map.once('load', resumeNav); }
 // Willkommen, Neues nach einem Update, Nachrichten – nur beim normalen Start,
 // nicht wenn ein Link etwas öffnet und nicht vor einer unterbrochenen
 // Navigation („Navigation fortsetzen?“). Gleich jetzt, nicht erst wenn die
-// Karte fertig geladen ist: bei schwachem Netz käme das Willkommen sonst
-// irgendwann, mitten in die Bedienung
+// Karte fertig geladen ist (bei schwachem Netz käme es sonst mitten in der Bedienung)
 if (!CAR) {
   const linked = /[?&](view|q|from|to|reach|action|ort|route|anfrage|geo|sim|tour|track)\b/.test(location.search);
   appNews({ dialogs: !linked && !nav.active && !savedNav() });

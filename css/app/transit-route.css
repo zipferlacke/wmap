@@ -171,7 +171,7 @@
     .oh-raw { width: 100%; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--surface); color: inherit; font: inherit; }
     input[type=time]::-webkit-calendar-picker-indicator { display: none; }
     /* Chrome auf Android hält rechts 24 px für einen Pfeil frei (auch ohne
-       Pfeil) – dadurch wurde „12:00“ abgeschnitten */
+       Pfeil) – dadurch würde „12:00“ abgeschnitten */
     input[type=time]::-webkit-date-and-time-value { margin: 0; text-align: center; }
     /* Firefox zeigt ein Uhr-Symbol im Feld, das sich nicht ausblenden lässt */
     @supports (-moz-appearance: none) { input[type=time] { width: 5.8rem; } }

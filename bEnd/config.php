@@ -4,7 +4,7 @@
  *
  * OSM_ISSUER / OSM_CLIENT_ID: Angemeldet wird mit dem OpenStreetMap-Konto.
  * Die Client-ID ist dieselbe wie in js/core/config.js (OSM_AUTH.live) – sie
- * ist nicht geheim. Ein Client-Geheimnis gehört weder hierher noch in die App.
+ * ist nicht geheim. Ein Client-Geheimnis wird nicht verwendet.
  */
 const OSM_ISSUER = "https://www.openstreetmap.org";
 const OSM_CLIENT_ID = "jv-baCEuub6hnMq3q9FlzYyaAuZI0Vqj_3kY3QkDDfQ";

@@ -69,7 +69,7 @@ export async function computeRoutes() {
     compactRoute(true);
     selectRoute(routes[0].id, { fit: true });
     // Im Auto erst mit „Los“ (car/car.js): dort rechnet schon das Ansehen eines Orts die Route –
-    // „zuletzt gefahren“ füllte sich sonst mit Zielen, zu denen man nie gefahren ist
+    // „zuletzt gefahren“ soll nur Ziele enthalten, zu denen man gefahren ist
     if (!CAR) rememberRoute();
   } catch (err) {
     if (err.name === 'AbortError') return;
@@ -249,7 +249,7 @@ function renderTransitSheet(view, r) {
     </button>
     ${x.id === r.id ? `<ol class="step-list transit-legs">${transitLegsHtml(trip, state.leg, prefs.change)}</ol>` : ''}`).join('')}`;
   $('.along', view).innerHTML = '';
-  // Die Wegbeschreibung unten entfällt – sie steht jetzt oben bei der Verbindung
+  // Die Wegbeschreibung unten entfällt – sie steht oben bei der Verbindung
   $('.steps .step-list', view).innerHTML = '';
   const saved = connections.all().some((c) => c.key === trip.key);
   $('.transit-actions', view).innerHTML = `

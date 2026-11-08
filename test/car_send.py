@@ -42,7 +42,7 @@ with Browser(width=412, height=915) as b:
         b.js(FAKE + " dispatchEvent(new CustomEvent('wmap:car', { detail: true }));")
     b.wait("return window.__wmap?.state.routes.length > 0", 60)
     b.js("dispatchEvent(new CustomEvent('wmap:car', { detail: true }))")
-    # Über window.__wmap – ein eigener Import von core.js legte eine zweite Karte samt leerem Zustand an
+    # Über window.__wmap – ein eigener Import von core.js legt eine zweite Karte samt leerem Zustand an
     r = b.d.execute_async_script("""const done = arguments[0]; (async () => {
       const { state } = window.__wmap;
       const alt = state.routes.at(-1);

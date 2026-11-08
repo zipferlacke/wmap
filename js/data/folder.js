@@ -115,7 +115,7 @@ import { parseXml } from '../core/xml.js';
 import { inSw } from './store.js';
 import { locale, t } from '../core/i18n-text.js';
 // Seite: Gleicht der Service Worker ab (js/sw/sync.js)? Dann geht die Arbeit dorthin – ein Seitenwechsel bricht sie
-// nicht ab. Ohne ihn (erster Besuch, alter Browser, Tests mit _useBackend) wie früher hier
+// nicht ab. Ohne ihn (erster Besuch, alter Browser, Tests mit _useBackend) läuft sie hier
 const link = inSw ? null : import('../core/sw-link.js');
 async function viaSw() {
   if (inSw || testBackend) return null;
@@ -384,7 +384,7 @@ export const folder = {
     if (syncing && decide) await syncing.catch(() => {});
     if (syncing) return syncing;
     // „Fertig“ erst melden, wenn `busy` nicht mehr gilt: Wer darauf neu zeichnet (pages/sync.js, dashboard.js),
-    // fragt `folder.busy` – vorher gemeldet blieb „Gleiche ab …“ stehen, bis sich sonst etwas tat
+    // fragt `folder.busy`
     syncing = run(interactive, decide).finally(() => {
       syncing = null;
       dispatchEvent(new CustomEvent('wmap:folder-progress', { detail: { done: true } }));

@@ -2,7 +2,7 @@
  * Verbindung der Seite zum Abgleich im Service Worker (js/sw/sync.js) – auf jeder Seite geladen:
  *
  *   swCall(type, data)    Auftrag an ihn („sync:folder“, „sync:auto“ …) → Ergebnis; null, wenn es ihn (noch) nicht
- *                         gibt – dann gleicht die Seite selbst ab wie früher
+ *                         gibt – dann gleicht die Seite selbst ab
  *                         Jede Nachricht nennt die Sprache der Seite (`lang`): Seine Meldungen kommen in ihr
  *   Bote                  „tauri“ { cmd, args }: Befehle der App-Plugins für ihn ausführen (core/tauri.js)
  *   Meldungen             „event“ → dasselbe Ereignis hier (detail.remote = true), „local“ → in den localStorage
@@ -17,7 +17,7 @@ import { CHOICE, t } from './i18n-text.js';
 
 const sw = 'serviceWorker' in navigator ? navigator.serviceWorker : null;
 const ALIVE_MS = 20000;
-// Die Texte der Seite laden, ohne darauf zu warten: Sonst käme die Antwort an ihn (Bote) erst danach
+// Die Texte der Seite laden, ohne darauf zu warten; die Antwort an ihn (Bote) braucht sie
 import('./i18n.js').catch(() => {});
 const lang = () => { try { return localStorage.getItem(CHOICE) || undefined; } catch { return undefined; } };
 let aliveTimer = null;
@@ -60,8 +60,7 @@ function alive(on) {
   aliveTimer = on ? setInterval(() => send('sync:alive').catch(() => {}), ALIVE_MS) : null;
 }
 
-// Nur einmal je Fenster – wird die Datei ein zweites Mal ausgewertet (Testtreiber), führte die Seite sonst jeden
-// Auftrag doppelt aus
+// Nur einmal je Fenster: Wird die Datei ein zweites Mal ausgewertet (Testtreiber), bliebe es bei einer Ausführung je Auftrag
 const first = !window.__wmapSwLink;
 window.__wmapSwLink = true;
 if (sw && first) {

@@ -104,8 +104,7 @@ async function appCurrent() {
  * Liste zu einer anderen Fassung oder passt eine Datei nicht – der Upload läuft noch, ein Teil ist alt –, wird es
  * ein paar Sekunden später noch einmal versucht (dann am Browser-Cache vorbei); bleibt es falsch, verwirft diese
  * Fassung ihren Speicher und installiert sich nicht. Die alte bleibt, der Browser versucht es beim nächsten Öffnen
- * wieder. Früher blieb so eine Mischung aus alten und neuen Dateien gespeichert, bis die nächste Fassung kam – Karte
- * leer, Texte als Schlüssel (3.1.0). messages.json kommt ohnehin immer frisch (versionFile) und wird nicht
+ * wieder. So bleibt keine Mischung aus alten und neuen Dateien gespeichert. messages.json kommt ohnehin immer frisch (versionFile) und wird nicht
  * verglichen. Auf localhost nicht.
  */
 const TRIES = 4;
@@ -152,7 +151,7 @@ async function precache() {
         if (tries) await pause(check(f) ? AGAIN_MS : 800);
         try {
           const res = await fetch(new Request(f, { cache: tries ? 'reload' : 'no-cache' }));
-          // Ohne Prüfwert wie früher: Fehlt die Datei, scheitert nicht gleich die ganze Fassung
+          // Ohne Prüfwert: Fehlt die Datei, scheitert nicht gleich die ganze Fassung
           if (!check(f)) {
             if (res.ok) await cache.put(f, res);
             ok = res.ok || res.status === 404;

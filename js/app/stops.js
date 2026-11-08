@@ -24,7 +24,7 @@ export function resetStop() { stop = null; }
  * Straße, also eine Richtung. Daraus „Linien an diesem Steig“ (Linie →
  * Ziel, nächste Abfahrt) und die Abfahrten. OSM (Overpass, oft Sekunden)
  * läuft nebenher: Linienfarben und der Verlauf auf der Karte; ohne Fahrplan
- * (Ausland) zeigt es die Linien wie bisher.
+ * (Ausland) zeigt es die Linien.
  */
 export async function showStop(f, tags, title, signal) {
   const point = f.geometry.coordinates;

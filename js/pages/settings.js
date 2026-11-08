@@ -204,7 +204,7 @@ root.addEventListener('click', async (e) => {
     } catch (err) { toast(t('settings.toast.geo_failed', { error: err.message })); }
   }
   if (act === 'history') { recent.clear(); toast(t('settings.toast.history_cleared')); }
-  // Gekapselt (core/updater.js): geht auch, wenn ein Update etwas kaputt gemacht hat
+  // Gekapselt (core/updater.js): funktioniert auch bei einem fehlerhaften Update
   if (act === 'repair') {
     if (!window.wmapUpdater) { location.reload(); return; }
     const label = b.innerHTML;

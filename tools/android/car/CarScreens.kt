@@ -73,8 +73,8 @@ object CarIcons {
 
   /**
    * Eigenes Symbol (res/drawable) – als fertiges Bild, nicht als Nummer:
-   * Android Auto merkt sich Bilder zu Nummern, nach einem Update mit neuen
-   * Symbolen zeigte es sonst die alten an falscher Stelle. `color`: Farbe
+   * Android Auto merkt sich Bilder zu Nummern und würde nach einem Update mit neuen
+   * Symbolen die alten an falscher Stelle zeigen. `color`: Farbe
    * (z. B. Blau für die Suche), sonst weiß.
    */
   fun res(ctx: CarContext, id: Int, color: Int = 0xFFFFFFFF.toInt()): CarIcon = cache.get("r$id/$color") ?: run {
@@ -515,7 +515,7 @@ class CategoryScreen(ctx: CarContext, s: WMapSession, private val id: String, ti
  * Startseite). Orte leer: „In der Nähe“ (Parkplatz, Tanken als Knöpfe),
  * dann Zuhause, Arbeit, Lesezeichen, zuletzt gefahren. „In der Nähe“ öffnet
  * das Raster mit den großen Symbolen anstelle der Suche, nicht über ihr
- * (replace) – sonst wäre es bis zur Routenwahl ein Bildschirm zu viel
+ * (replace), damit bis zur Routenwahl ein Bildschirm weniger nötig ist
  * (höchstens fünf hintereinander).
  * Meine Touren: die fürs Auto geplanten, das Suchfeld filtert.
  * `route`: über das Routen-Symbol – ein Ort führt gleich zur Route.

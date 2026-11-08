@@ -37,7 +37,7 @@ async function read(file) {
 /** Erster Start: die Sprache des Geräts, gibt es sie nicht, Englisch → Code */
 export const firstLanguage = (codes, device) => matchLanguage(codes, device) ?? (codes.includes(DEFAULT) ? DEFAULT : FALLBACK);
 
-// Wer WMap schon kennt (Begrüßung gesehen) und nichts gewählt hat, bleibt bei Deutsch wie bisher – ihm bietet
+// Wer WMap schon kennt (Begrüßung gesehen) und nichts gewählt hat, bleibt bei Deutsch – ihm bietet
 // ui/news.js die Sprache des Geräts einmal an. Neu: gleich die Sprache des Geräts, merken (nur einmal nachsehen)
 let wanted = storage.get(CHOICE) ?? (storage.get(SEEN) ? FALLBACK : null);
 if (!wanted) {

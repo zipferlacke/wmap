@@ -84,8 +84,8 @@ export function streetView(map, { base = () => 'map', setBase = () => {}, onShar
   /*
    * Mitte, Zoom und Höhe der Mitte aus Kamera-Ort, Augenhöhe und Blick – wie MapLibres
    * calculateCameraOptionsFromCameraLngLatAltRotation, aber die Mitte liegt auf dem Boden unter einem. MapLibre nimmt
-   * die Höhe der bisherigen Mitte: war die einmal 0 (gleich nach dem Einschalten des Geländes), schaute die Kamera
-   * auf Meereshöhe, die Mitte lag Kilometer weit weg (Zoom 14, Streifen am Boden) und blieb dort.
+   * die Höhe der bisherigen Mitte; ist die 0 (gleich nach dem Einschalten des Geländes), liegt die Kamera
+   * auf Meereshöhe und die Mitte Kilometer weit weg.
    */
   function camera(g) {
     // Genau 90°: Kamera und Mitte gleich hoch – MapLibre rechnet dann für die Kachel unter einem atan(0/0) (NaN)
@@ -107,9 +107,8 @@ export function streetView(map, { base = () => 'map', setBase = () => {}, onShar
 
   /*
    * MapLibre sucht die Kacheln vom Punkt unter der Kamera aus: getCameraPoint am Bildschirm, zurück auf den Boden.
-   * Ab 90° Neigung liegt der unendlich weit oben – heraus kam immer der Ort beim Start, nach 100–200 m Weg dann
-   * NaN: Es teilte Kacheln bis Zoom 26, warf und lud nichts mehr (leere Karte, keine Häuser). Hier ist der Ort
-   * bekannt: unter pos. → zurücksetzen
+   * Ab 90° Neigung liegt der unendlich weit oben, das Ergebnis wird NaN und MapLibre teilt Kacheln bis Zoom 26.
+   * Hier ist der Ort bekannt: unter pos. → zurücksetzen
    */
   function fixCameraPoint() {
     const tr = map._camera?.transform ?? map.transform, own = tr.screenPointToMercatorCoordinate;

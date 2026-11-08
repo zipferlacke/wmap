@@ -1351,13 +1351,12 @@ export function showHover(map, lngLat) {
  * Karte so groß wie ihr Platz: Hat der Platz beim Start noch keine Größe (App
  * startet, Seite noch nicht gelayoutet), nimmt MapLibre 400 × 300 und
  * übersieht die erste Änderung danach (sein ResizeObserver verwirft den
- * ersten Aufruf) – die Karte blieb dann klein in der Ecke, bis man neu lud.
- * Darum selbst nachsehen und bei Abweichung anpassen.
+ * ersten Aufruf). Darum selbst nachsehen und bei Abweichung anpassen.
  */
 /*
  * Scheitert das Laden einer Kartenquelle (TileJSON von OpenFreeMap: kurz kein Netz beim Start, Aussetzer),
- * versucht MapLibre es nie wieder – die Karte blieb dann bis zum Neustart ohne Straßen, Orte und Namen, nur mit
- * Relief. Darum selbst neu laden: nach 2, 5, 10 s, dann alle 30 s, und sofort, wenn das Netz zurück ist oder die
+ * versucht MapLibre es nicht erneut; die Karte hätte bis zum Neustart keine Straßen, Orte und Namen, nur Relief.
+ * Darum lädt diese Funktion selbst neu: nach 2, 5, 10 s, dann alle 30 s, und sofort, wenn das Netz zurück ist oder die
  * App wieder vorn ist.
  */
 function retryFailedSources(map) {

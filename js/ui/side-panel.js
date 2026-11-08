@@ -10,7 +10,7 @@
  * Was die Bibliothek (noch) nicht anbietet und hier über ihren Griff läuft:
  *   - Startgröße: am Handy 58 % der Höhe – größer ziehen bleibt möglich. Ohne das wäre die Leiste so hoch
  *     wie beim Öffnen und ließe sich nur kleiner ziehen.
- *   - Größe und „eingeklappt“ merken (`key`, derselbe Speicher wie bisher)
+ *   - Größe und „eingeklappt“ merken (`key`)
  *   - `collapse(on)` aus dem Programm
  * Der Griff nimmt Zeiger- und Tastenereignisse auch aus einem Skript an – damit wird gezogen und geklappt.
  */
@@ -43,7 +43,7 @@ export function sidePanel(src, { id = 'panel', label = '', title = '', className
       dlg.append(...src.childNodes);
       src.remove();
       // Vor den Listenern der Bibliothek: Die Leiste bleibt stehen – Enter in einem Feld der Kopfzeile und Esc
-      // schlössen sie sonst (und nähmen sie aus dem Dokument)
+      // schlössen sie (und nähmen sie aus dem Dokument)
       dlg.querySelector('.uD-form').addEventListener('submit', (e) => { e.preventDefault(); e.stopImmediatePropagation(); });
       dlg.addEventListener('cancel', (e) => { e.preventDefault(); e.stopImmediatePropagation(); onEsc?.(); });
     },

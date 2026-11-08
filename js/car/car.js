@@ -458,7 +458,7 @@ let gestureTimer = null;
 function hold() {
   nav.pauseFollow();
   pauseDrive();
-  // Mit dem Finger auf der Karte zählt jedes Bild – solange öfter zeichnen, sonst ruckelt das Verschieben
+  // Mit dem Finger auf der Karte zählt jedes Bild: währenddessen öfter zeichnen, damit das Verschieben nicht ruckelt
   capFps(GESTURE_FPS);
   clearTimeout(gestureTimer);
   gestureTimer = setTimeout(() => capFps(CAR_FPS), 1200);
@@ -535,7 +535,7 @@ const methods = {
   /** Standort (wieder) abfragen – nach der Freigabe am Handy */
   locate() { startDrive(); return true; },
   // Verschieben und Zoomen mit dem Finger: Das Auto meldet viele kleine Schritte – je Bild einer,
-  // zusammengefasst (sonst arbeitet eine träge Seite jeden einzeln nach und die Karte läuft dem Finger hinterher)
+  // zusammengefasst (einzeln abgearbeitet liefe die Karte dem Finger hinterher)
   pan(dx, dy) {
     hold();
     gesture.dx += dx; gesture.dy += dy;
@@ -696,7 +696,7 @@ setInterval(() => {
 }, 400);
 
 // Grafik verloren (kommt im Auto vor, z. B. nach dem Wechsel der Fläche):
-// kommt sie nicht gleich wieder, die Seite neu laden – sonst bleibt die Karte weiß
+// kommt sie nicht gleich wieder, wird die Seite neu geladen (die Karte bliebe weiß)
 map.on('webglcontextlost', () => {
   console.warn('WebGL-Kontext verloren');
   const timer = setTimeout(() => location.reload(), 3000);

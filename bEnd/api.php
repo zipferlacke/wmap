@@ -33,7 +33,7 @@ $requestArray = json_decode($_POST["request"] ?? "[]", true) ?: [];
 $data = json_decode($_POST["data"] ?? "{}", true) ?: [];
 
 $request = array_shift($requestArray);
-// Wie oft welcher Teil gefragt wird (stats.php) – nur bekannte Namen, sonst wächst die Tabelle mit jedem Unsinn
+// Wie oft welcher Teil gefragt wird (stats.php) – nur bekannte Namen, damit die Tabelle nicht mit beliebigen Namen wächst
 if (preg_match('/^[a-z]{1,20}$/', (string)$request) && preg_match('/^[a-z_]{1,30}$/', (string)($requestArray[0] ?? "")))
     count_up("api:$request.".$requestArray[0]);
 switch ($request) {

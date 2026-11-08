@@ -1197,7 +1197,7 @@ function pickChart(e) {
 content.addEventListener('click', (e) => {
   const tk = selected;
   if (!tk || !('start' in tk)) return;
-  // Diagramm ins Vollbild (Knopf der Bibliothek, das Diagramm steckt jetzt in ihrem <dialog>): Die Umschalter
+  // Diagramm ins Vollbild (Knopf der Bibliothek, das Diagramm steckt in ihrem <dialog>): Die Umschalter
   // ziehen mit um und beim Schließen wieder zurück vor das Diagramm
   if (e.target.closest('.dg_fsbtn') && elevation?.fullscreen) {
     const dlg = $('dialog.dg_fs:open'), bar = $('.weg-chart-tabs', content);

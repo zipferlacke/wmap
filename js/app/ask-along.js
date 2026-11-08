@@ -202,7 +202,7 @@ function passPlaces(p, speed) {
     const d = distance(p, q.point);
     if (d < near) {
       // Langsamstes Tempo in der Nähe merken – im Auto nur fragen, wenn man etwas sehen konnte;
-      // und ob der Laden an unserer Straße liegt (jetzt ist er sicher auf der Karte zu sehen)
+      // und ob der Laden an unserer Straße liegt (dann ist er sicher auf der Karte zu sehen)
       const was = s.passing.get(q.key);
       s.passing.set(q.key, { slowest: Math.min(speed, was?.slowest ?? Infinity), front: was?.front ?? (s.profile !== 'car' || facesUs(q.point)) });
     } else if (d > near + 40 && s.passing.has(q.key)) {

@@ -20,7 +20,7 @@
 /*
  * Knöpfe, Popups und Quellenangabe folgen dem hellen bzw. dunklen Modus
  * (System oder Einstellungen → Darstellung, js/theme.js). MapLibre zeichnet
- * sie sonst immer weiß – im dunklen Modus stand dann helle Schrift auf Weiß.
+ * sie standardmäßig immer weiß.
  * Die Symbole von MapLibre sind Bilder: im Dunkeln umgekehrt, der Farbton
  * (blau beim Standort) bleibt dabei erhalten.
  */

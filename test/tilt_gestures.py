@@ -3,7 +3,7 @@
 Neigen als Geste (Strg + Ziehen, 30° → 80°) zoomt mit: steiler → näher; zurück → wieder wie vorher.
 Schieben mit einem Finger bei 75°: der Weg des Fingers im Maßstab vorn mal 0,63 (0,5 + 0,5 · cos(Neigung)) – mit
 Gelände unten im Bild und ohne Gelände nahe am Horizont gleich weit; Nachrollen kürzer als der Wisch. Am Woog bei größter Neigung (85°) schieben und loslassen: die Karte bleibt, wo sie ist
-(MapLibre 5 legte die Mitte darüber nach jeder Geste 10 km weg).
+(MapLibre 5 rückt die Mitte darüber sonst nach jeder Geste 10 km weg).
 Beim Neigen kommt „Bewegung zu Ende“ (moveend, zoomend) höchstens einmal – nicht je Bild (sonst baut die Karte mitten in
 der Geste Häuser und Namen neu).
 """
@@ -67,7 +67,7 @@ with Browser(412, 900) as b:
     canvas = b.d.find_element('css selector', '.maplibregl-canvas')
 
     # 3./4. Schieben bei 75°: der Weg des Fingers im Maßstab vorn mal 0,63 – mit Gelände unten im Bild und ohne Gelände
-    #       nahe am Horizont gleich (vorher: Bildmitte bzw. Punkt unter dem Finger, Kilometer); Nachrollen kürzer
+    #       nahe am Horizont gleich; Nachrollen kürzer
     def wipe(pitch, y0, terrain=True):
         b.js(f"const m = window.__wmap.map; m.jumpTo({{ center: [8.6547, 49.8722], zoom: 17, pitch: {pitch}, bearing: 0 }});"
              + ("" if terrain else "window.__ter = m.getTerrain(); m.setTerrain(null);"))
@@ -94,7 +94,7 @@ with Browser(412, 900) as b:
     print(f'75° ohne Gelände, nahe am Horizont gewischt: {d2:.0f} m (erwartet etwa {want2:.0f} m)')
     checks['4. Ohne Gelände nahe am Horizont genauso weit (nicht Kilometer)'] = 0.5 * want2 < d2 < 1.6 * want2
 
-    # 5. Woog, größte Neigung: Schieben und loslassen – kein Hinausfliegen (MapLibre 5 legte die Mitte 10 km weg)
+    # 5. Woog, größte Neigung: Schieben und loslassen – kein Hinausfliegen (die Mitte rückt nicht 10 km weg)
     maxp = b.js("return window.__wmap.map.getMaxPitch()")
     b.js("window.__wmap.map.jumpTo({ center: [8.66845, 49.87190], zoom: 19.6, pitch: 90, bearing: -85 })")
     settle()
