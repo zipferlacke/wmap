@@ -2901,6 +2901,14 @@
       "only_open": "Nur offene",
       "closed": "{n} zu",
       "also_private": "Auch private"
+    },
+    "charging": {
+      "only_free": "Nur freie",
+      "plugs": "Stecker",
+      "searching": "Suche freie Ladepunkte …",
+      "found_free": "{n} Standorte mit freiem Ladepunkt",
+      "none_free": "Kein freier Ladepunkt bis {km} km",
+      "failed": "Belegung nicht erreichbar – Ladesäulen aus der Karte"
     }
   },
   "lines": {
@@ -3033,6 +3041,24 @@
       "live": "Preise live",
       "closed": "Gerade geschlossen",
       "source": "Quelle: MTS-K über Tankerkönig"
+    },
+    "charging": {
+      "title": "Ladepunkte",
+      "free": "{free} von {total} frei",
+      "busy": "{n} belegt",
+      "broken": "{n} außer Betrieb",
+      "points": "{n} Ladepunkte",
+      "no_live": "Belegung wird nicht gemeldet",
+      "updated": "Stand {time}",
+      "source": "Quelle: MobiData BW (Bundesnetzagentur, Betreiber)",
+      "plugs": {
+        "ccs": "CCS",
+        "type2": "Typ 2",
+        "chademo": "CHAdeMO",
+        "tesla": "Tesla",
+        "schuko": "Schuko",
+        "other": "Sonstige"
+      }
     }
   },
   "reach": {

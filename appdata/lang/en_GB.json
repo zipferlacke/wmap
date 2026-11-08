@@ -2874,6 +2874,14 @@
       "only_open": "Open only",
       "closed": "{n} closed",
       "also_private": "Private too"
+    },
+    "charging": {
+      "only_free": "Free only",
+      "plugs": "Plugs",
+      "searching": "Looking for free charging points …",
+      "found_free": "{n} locations with a free charging point",
+      "none_free": "No free charging point within {km} km",
+      "failed": "Occupancy unavailable – chargers from the map"
     }
   },
   "lines": {
@@ -3020,6 +3028,24 @@
       "live": "Live prices",
       "closed": "Currently closed",
       "source": "Source: MTS-K via Tankerkönig"
+    },
+    "charging": {
+      "title": "Charging points",
+      "free": "{free} of {total} free",
+      "busy": "{n} in use",
+      "broken": "{n} out of order",
+      "points": "{n} charging points",
+      "no_live": "Occupancy not reported",
+      "updated": "As of {time}",
+      "source": "Source: MobiData BW (Federal Network Agency, operators)",
+      "plugs": {
+        "ccs": "CCS",
+        "type2": "Type 2",
+        "chademo": "CHAdeMO",
+        "tesla": "Tesla",
+        "schuko": "Schuko",
+        "other": "Other"
+      }
     }
   },
   "reach": {

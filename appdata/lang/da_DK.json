@@ -2865,6 +2865,14 @@
       "only_open": "Kun åbne",
       "closed": "{n} lukket",
       "also_private": "Også private"
+    },
+    "charging": {
+      "only_free": "Kun ledige",
+      "plugs": "Stik",
+      "searching": "Søger efter ledige ladepunkter …",
+      "found_free": "{n} steder med ledigt ladepunkt",
+      "none_free": "Intet ledigt ladepunkt inden for {km} km",
+      "failed": "Belægning ikke tilgængelig – ladere fra kortet"
     }
   },
   "lines": {
@@ -3005,6 +3013,24 @@
       "live": "Priser live",
       "closed": "Lukket lige nu",
       "source": "Kilde: MTS-K via Tankerkönig"
+    },
+    "charging": {
+      "title": "Ladepunkter",
+      "free": "{free} af {total} ledige",
+      "busy": "{n} optaget",
+      "broken": "{n} ude af drift",
+      "points": "{n} ladepunkter",
+      "no_live": "Belægning meldes ikke",
+      "updated": "Status {time}",
+      "source": "Kilde: MobiData BW (Bundesnetzagentur, operatører)",
+      "plugs": {
+        "ccs": "CCS",
+        "type2": "Type 2",
+        "chademo": "CHAdeMO",
+        "tesla": "Tesla",
+        "schuko": "Schuko",
+        "other": "Andre"
+      }
     }
   },
   "reach": {

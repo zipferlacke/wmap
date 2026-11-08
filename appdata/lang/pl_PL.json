@@ -2996,6 +2996,15 @@
       "only_open": "Tylko otwarte",
       "closed": "Zamknięte: {n}",
       "also_private": "Także prywatne"
+    },
+    "charging": {
+      "only_free": "Tylko wolne",
+      "plugs": "Wtyczki",
+      "searching": "Szukam wolnych punktów ładowania …",
+      "found_free": "{n} lokalizacji z wolnym punktem ładowania",
+      "none_free": "Brak wolnego punktu ładowania w promieniu {km} km",
+      "found": "{n} lokalizacji {area}",
+      "failed": "Zajętość niedostępna – ładowarki z mapy"
     }
   },
   "lines": {
@@ -3136,6 +3145,24 @@
       "live": "Ceny na żywo",
       "closed": "Teraz zamknięte",
       "source": "Źródło: MTS-K przez Tankerkönig"
+    },
+    "charging": {
+      "title": "Punkty ładowania",
+      "free": "{free} z {total} wolne",
+      "busy": "{n} zajęte",
+      "broken": "{n} nieczynne",
+      "points": "{n} punktów ładowania",
+      "no_live": "Zajętość nie jest podawana",
+      "updated": "Stan {time}",
+      "source": "Źródło: MobiData BW (Federalna Agencja Sieci, operatorzy)",
+      "plugs": {
+        "ccs": "CCS",
+        "type2": "Typ 2",
+        "chademo": "CHAdeMO",
+        "tesla": "Tesla",
+        "schuko": "Schuko",
+        "other": "Inne"
+      }
     }
   },
   "reach": {

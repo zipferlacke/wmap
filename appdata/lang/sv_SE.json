@@ -2866,6 +2866,15 @@
       "only_open": "Bara öppna",
       "closed": "{n} stängda",
       "also_private": "Även privata"
+    },
+    "charging": {
+      "only_free": "Bara lediga",
+      "plugs": "Kontakter",
+      "searching": "Söker lediga laddpunkter …",
+      "found_free": "{n} platser med ledig laddpunkt",
+      "none_free": "Ingen ledig laddpunkt inom {km} km",
+      "found": "{n} platser {area}",
+      "failed": "Beläggning ej tillgänglig – laddare från kartan"
     }
   },
   "lines": {
@@ -3008,6 +3017,24 @@
       "live": "Priser live",
       "closed": "Stängt just nu",
       "source": "Källa: MTS-K via Tankerkönig"
+    },
+    "charging": {
+      "title": "Laddpunkter",
+      "free": "{free} av {total} lediga",
+      "busy": "{n} upptagna",
+      "broken": "{n} ur funktion",
+      "points": "{n} laddpunkter",
+      "no_live": "Beläggning rapporteras inte",
+      "updated": "Läge {time}",
+      "source": "Källa: MobiData BW (Bundesnetzagentur, operatörer)",
+      "plugs": {
+        "ccs": "CCS",
+        "type2": "Typ 2",
+        "chademo": "CHAdeMO",
+        "tesla": "Tesla",
+        "schuko": "Schuko",
+        "other": "Övriga"
+      }
     }
   },
   "reach": {

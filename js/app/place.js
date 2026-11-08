@@ -8,6 +8,8 @@ import { byId } from '../core/categories.js';
 import { describePoi, poiCard, categoryFor } from '../ui/poi-info.js';
 import * as osm from '../osm/objects.js';
 import { placeMedia, fuelPrices, fuelKey } from '../services/media.js';
+import { chargerAt } from '../services/charging.js';
+import { chargerHtml } from './charging.js';
 import { isStop } from '../services/transit.js';
 import { places } from '../data/saved.js';
 import { share, placeUrl } from '../ui/share.js';
@@ -180,6 +182,8 @@ export async function showPlace(f, { push = true, fly = true, over = false } = {
     // Erst das, was wir schon wissen – die Details kommen nach
     show(f.properties.osm_key ? { [f.properties.osm_key]: f.properties.osm_value } : {});
   }
+  // Ladesäule aus der Ladesäulen-Datenbank (ohne OSM-ID): Belegung steht schon fest
+  if (f.properties._charger) media.insertAdjacentHTML('beforeend', chargerHtml(f.properties._charger));
   if (!type || !id) return;
 
   placeCtl?.abort();
@@ -289,8 +293,8 @@ export function showPoint(point, { fly = false, name = '', zoom = null } = {}) {
 }
 
 /**
- * Bild, Kurzbeschreibung aus Wikipedia und – bei Tankstellen – aktuelle
- * Preise. Alles optional; was es nicht gibt, bleibt weg.
+ * Bild, Kurzbeschreibung aus Wikipedia, bei Tankstellen aktuelle Preise,
+ * bei Ladesäulen Stecker und Belegung. Alles optional; was es nicht gibt, bleibt weg.
  */
 async function enrich(tags, point, box, signal) {
   const jobs = [placeMedia(tags, { signal }).then((m) => {
@@ -312,6 +316,11 @@ async function enrich(tags, point, box, signal) {
           <div><small>${t('place.fuel.diesel')}</small><strong>${eur(pr.diesel)}</strong></div>
           <p>${pr.open ? t('place.fuel.live') : t('place.fuel.closed')} · ${t('place.fuel.source')}</p>
         </div>`);
+    }).catch(() => {}));
+  }
+  if (categoryFor(tags)?.id === 'charging') {
+    jobs.push(chargerAt(point, { signal }).then((s) => {
+      if (!signal.aborted && s) box.insertAdjacentHTML('beforeend', chargerHtml(s));
     }).catch(() => {}));
   }
   // Abfahrten an Bahnhöfen kommen mit allen anderen Haltestellen aus dem

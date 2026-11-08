@@ -15,6 +15,7 @@ import { clearReach } from './reach.js';
 import { leaveRouteMode } from './route-plan.js';
 import { openSheet, remember } from './views.js';
 import { t } from '../core/i18n.js';
+import { chargeFilter, freeChip, runChargers, saveFilter } from './charging.js';
 
 /* ── Kategorie ────────────────────────────────────────────────────────────── */
 
@@ -67,6 +68,14 @@ export async function runCategory(cat, placeText = null, { bounds = null, label 
 
   const center = [(area.bounds[0] + area.bounds[2]) / 2, (area.bounds[1] + area.bounds[3]) / 2];
   const ref = state.position && distance(state.position, center) < 20000 ? state.position : center;
+  const redo = () => { if (current_()) runCategory(cat, null, { ...area, push: false }); };
+  const charging = cat.id === 'charging';
+  // Ladesäulen mit „Nur freie“: aus der Ladesäulen-Datenbank (Belegung), sonst – und wenn sie nicht antwortet – aus der Karte
+  if (charging && chargeFilter.free) {
+    const onPick = (f) => showPlace(f, { over: true, fly: false });
+    if (await runChargers({ cat, ref, view, signal, current: current_, onPick, redo })) return;
+    toast(t('category.charging.failed'));
+  }
   const show = (allShapes, all, final) => {
     all.forEach((p) => { p.properties.dist = distance(ref, p.geometry.coordinates); });
     all.sort((a, b) => a.properties.dist - b.properties.dist);
@@ -81,7 +90,8 @@ export async function runCategory(cat, placeText = null, { bounds = null, label 
       : points.length ? `${t('category.found', { n: `${points.length}${all.length >= 400 ? '+' : ''}`, area: area.label })}${hiddenText}`
         : `${t('category.none', { category: cat.label, area: area.label })}${hiddenText}`;
     renderResultList($('.cat-list', view), points.slice(0, 80), cat, (p) => t('category.distance', { distance: fmtDistance(p.properties.dist) }),
-      { filter: f, redo: () => { if (state.category?.category === cat) show(allShapes, all, final); } });
+      { filter: f, redo: () => { if (state.category?.category === cat) show(allShapes, all, final); },
+        ...(charging ? { extra: freeChip(), onExtra: () => { chargeFilter.free = !chargeFilter.free; saveFilter(); redo(); } } : {}) });
   };
 
   // Sofort: die Punkte aus den Kartenkacheln des Suchbereichs – unabhängig
@@ -234,9 +244,9 @@ export function filterHits(points, shapes = []) {
   return { points: out, shapes: shapes.filter((f) => !gone.has(f.properties.id)), closed, priv, hours };
 }
 
-/** Chips über der Liste: „Nur offene“ (an), „Private“ (aus) – nur, wenn es etwas zu filtern gibt */
-function filterChips(f) {
-  const chips = [];
+/** Chips über der Liste: `extra`, „Nur offene“ (an), „Private“ (aus) – nur, wenn es etwas zu filtern gibt */
+function filterChips(f, extra = '') {
+  const chips = extra ? [extra] : [];
   if (f.hours || f.closed) {
     chips.push(`<button type="button" class="chip" data-hf="open" aria-pressed="${hitFilter.open}"><span class="msr">schedule</span> ${t('category.filter.only_open')}${
       hitFilter.open && f.closed ? ` <small>${t('category.filter.closed', { n: f.closed })}</small>` : ''}</button>`);
@@ -249,10 +259,11 @@ function filterChips(f) {
 
 /**
  * Trefferliste für Kategorie, Erreichbarkeit und „Entlang der Route“. `opts.filter` (aus filterHits) und
- * `opts.redo()` (alles neu filtern und zeigen): dann stehen die Filter-Chips oben.
+ * `opts.redo()` (alles neu filtern und zeigen): dann stehen die Filter-Chips oben. `opts.extra`: ein weiterer Chip
+ * (mit data-free), `opts.onExtra()` beim Antippen.
  */
-export function renderResultList(ul, points, cat, meta, { filter = null, redo = null } = {}) {
-  ul.innerHTML = (filter && redo ? filterChips(filter) : '') + points.map((p, i) => {
+export function renderResultList(ul, points, cat, meta, { filter = null, redo = null, extra = '', onExtra = null } = {}) {
+  ul.innerHTML = (filter && redo ? filterChips(filter, extra) : '') + points.map((p, i) => {
     const info = describePoi(parseTags(p.properties.tags), { name: p.properties.name });
     const c = cat?.byName ? info.category ?? cat : cat ?? info.category;
     // Der Zugang steht schon als Hinweis da – nicht noch einmal als Angabe
@@ -268,6 +279,7 @@ export function renderResultList(ul, points, cat, meta, { filter = null, redo = 
   ul.onclick = (e) => {
     const hf = e.target.closest('[data-hf]')?.dataset.hf;
     if (hf && redo) { hitFilter[hf] = !hitFilter[hf]; redo(); return; }
+    if (onExtra && e.target.closest('[data-free]')) { onExtra(); return; }
     const b = e.target.closest('button[data-i]');
     if (!b) return;
     const p = points[Number(b.dataset.i)];
