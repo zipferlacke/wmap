@@ -7,7 +7,7 @@
  *                         via  karte (direkt in OSM) · hinweis (OSM-Hinweis)
  *   summary {}            → { osm: {kind: {via: n}}, events: {event: n}, months: [{month, event, frage, n}] }
  *   ping {new, week, month, back_week, back_month, services: {dienst: n}}   einmal am Tag je Gerät → Tabelle Counts
- *                         (ping:*, client:*); back_*: das letzte Mal war in der Vorwoche / im Vormonat
+ *                         (ping:*, client:*, feat:*); back_*: das letzte Mal war in der Vorwoche / im Vormonat
  * Konten, Touren, Plugins und Bewertungen trägt der Server selbst ein (log_event()).
  */
 
@@ -50,11 +50,15 @@ function stats($requestArray, $data){
             // Einmal am Tag je Gerät (services/ping.js) – ohne Kennung: nur Ja/Nein und was die App angefragt hat
             count_up("ping:active");
             foreach (["new", "week", "month", "back_week", "back_month"] as $k) if (!empty($data[$k])) count_up("ping:$k");
-            $services = is_array($data["services"] ?? null) ? array_slice($data["services"], 0, 30, true) : [];
+            // Dienste → client:<dienst>; Features (services/usage.js) → feat:<feature> und feat:<feature>:<dienst>
+            $services = is_array($data["services"] ?? null) ? array_slice($data["services"], 0, 120, true) : [];
             foreach ($services as $name => $n) {
-                if (!preg_match('/^[a-z][a-z0-9_]{0,19}$/', (string)$name)) continue;
+                $name = (string)$name;
+                if (preg_match('/^feat:[a-z][a-z0-9_]{0,19}(:[a-z][a-z0-9_]{0,19})?$/', $name)) $key = $name;
+                elseif (preg_match('/^[a-z][a-z0-9_]{0,19}$/', $name)) $key = "client:$name";
+                else continue;
                 $n = (int)$n;
-                if ($n > 0) count_up("client:$name", min($n, 100000));
+                if ($n > 0) count_up($key, min($n, 100000));
             }
             return [0, true];
 

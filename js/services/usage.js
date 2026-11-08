@@ -3,6 +3,9 @@
  * Anfrage. services/ping.js schickt die Summen einmal am Tag an den WMap-Server (stats.php zeigt sie).
  *
  *   used('photon')       eine Anfrage an Photon
+ *   feature('lines')     eine Nutzung des Features „Linie suchen“ (Zähler feat:lines)
+ *   used('efa', 'lines') eine Anfrage an EFA, dazu unter dem Feature (feat:lines:efa) – so zeigt stats.php, wie viele
+ *                        Anfragen eine Nutzung braucht
  *   takeUsage()          → { photon: 12, … } und wieder bei null anfangen
  *   statsSetting         Nutzungsstatistik an (Vorgabe) oder aus – gefragt wird in der Begrüßung bzw. einmal danach
  *                        (ui/news.js), ändern lässt sie sich in den Einstellungen. Vor der Frage wird nichts gezählt
@@ -31,12 +34,15 @@ export const statsSetting = {
 
 const read = () => { try { return JSON.parse(store.get(KEY)) ?? {}; } catch { return {}; } };
 
-export function used(name) {
+function bump(...names) {
   if (!statsSetting.active()) return;
   const u = read();
-  u[name] = (u[name] ?? 0) + 1;
+  for (const n of names) u[n] = (u[n] ?? 0) + 1;
   store.set(KEY, JSON.stringify(u));
 }
+
+export const used = (name, feat = null) => bump(name, ...(feat ? [`feat:${feat}:${name}`] : []));
+export const feature = (name) => bump(`feat:${name}`);
 
 export function takeUsage() {
   const u = read();

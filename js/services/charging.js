@@ -15,7 +15,7 @@
  *   open:  nach den Öffnungszeiten gerade offen (true/false), null ohne Angabe
  */
 import { distance } from '../core/geo.js';
-import { used } from './usage.js';
+import { feature, used } from './usage.js';
 
 export const OCPDB = 'https://api.mobidata-bw.de/ocpdb/api/public/v1/locations';
 
@@ -34,8 +34,8 @@ const SAME_PLACE = 30;          // m – zwei Einträge so nah beieinander sind 
 const LIMIT = 1000;              // Standorte je Abfrage (etwa 5 KB je Standort)
 
 /** → { items, full } – full: es gab mehr als LIMIT, `items` ist dann ein Ausschnitt (nicht nach Entfernung) */
-async function fetchArea(point, radius, signal) {
-  used('ocpdb');
+async function fetchArea(point, radius, signal, feat) {
+  used('ocpdb', feat);
   const [lon, lat] = point;
   const res = await fetch(`${OCPDB}?${new URLSearchParams({ lat: lat.toFixed(5), lon: lon.toFixed(5), radius: Math.round(radius), limit: LIMIT })}`, { signal });
   if (!res.ok) throw new Error(String(res.status));
@@ -113,15 +113,16 @@ function merge(list) {
 }
 
 /** → Standorte nach Entfernung; `.full`: mehr als LIMIT im Umkreis, die Liste ist ein Ausschnitt */
-export async function chargersNear(point, radius, { signal } = {}) {
-  const { items, full } = await fetchArea(point, radius, signal);
+export async function chargersNear(point, radius, { signal, feature: feat = null } = {}) {
+  const { items, full } = await fetchArea(point, radius, signal, feat);
   const list = merge(items.map((l) => summarize(l, point)).filter((s) => s.total)).sort((a, b) => a.dist - b.dist);
   list.full = full;
   return list;
 }
 
 export async function chargerAt(point, { signal } = {}) {
-  const [best] = (await chargersNear(point, 80, { signal })).filter((s) => s.dist <= 80);
+  feature('charger_card');
+  const [best] = (await chargersNear(point, 80, { signal, feature: 'charger_card' })).filter((s) => s.dist <= 80);
   return best ?? null;
 }
 
@@ -133,9 +134,10 @@ export const hasPlug = (s, plugs = []) => !plugs.length || s.plugs.some((p) => p
 export const STEPS = [1000, 3000, 8000, 25000];
 
 export async function freeChargers(point, plugs = [], n = 5, { signal, steps = STEPS, open = false } = {}) {
+  feature('chargers_free');
   let found = [];
   for (const radius of steps) {
-    const all = await chargersNear(point, radius, { signal });
+    const all = await chargersNear(point, radius, { signal, feature: 'chargers_free' });
     found = all.filter((s) => freeFor(s, plugs) > 0 && !(open && s.open === false));
     // Genug gefunden – oder schon so viele Standorte, dass ein größerer Umkreis nur mehr Daten brächte
     if (found.length >= n || all.full) break;

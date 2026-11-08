@@ -1,11 +1,12 @@
 """Weiterleitung und Statistik (bEnd/proxy.php, bEnd/stats.php, services/ping.js, services/usage.js):
 
 1. Weiterleitung: Suche und Rückwärtssuche kommen an, fremde Dienste und Pfade nicht (404).
-2. App: „wmap:photon“ steht hinter den direkten Servern; eine Suche zählt je Dienst (wmap.usage).
+2. App: „wmap:photon“ steht hinter den direkten Servern; eine Suche zählt je Dienst (wmap.usage); ein Feature zählt seine
+   Nutzung (feat:lines) und die Anfragen dabei je Dienst (feat:lines:efa).
 3. Ping (nur wenn die Nutzungsstatistik an und gefragt ist): einmal am Tag – mit den Zählern der App, danach ist wmap.usage leer und wmap.ping gesetzt; ein zweiter Start
    am selben Tag schickt nichts. Letzter Ping im Vormonat / in der Vorwoche → back_month / back_week, sonst nicht.
 4. stats.php: ohne Schlüssel 403; mit Schlüssel Geräte, Anfragen – die Tests getrennt (Cookie wmap_test, test:…) –,
-   Diagramme je Dienst, Weiterleitung und Diagramme, keine
+   Diagramme je Dienst, Features (Anfragen je Nutzung), Weiterleitung und Diagramme, keine
    JS-Fehler; Zeitpicker Tag / Woche / Monat → Werte je Tag, Jahr → je Monat, ohne Ausweichen auf gröbere Werte. Der Schlüssel steht in bEnd/keys.php (fehlt er, wird der Teil übersprungen).
 """
 import json
@@ -54,8 +55,15 @@ with Browser(420, 900) as b:
     print('Suche über askServer:', used)
     checks['2. Suche kommt an (direkt oder über WMap) und zählt'] = isinstance(used, list) and used[0] and used[1].get('photon') == 1 and used[2] == 'wmap:photon'
 
+    feat = module(b, """const u = await import('./js/services/usage.js');
+        localStorage.removeItem('wmap.usage');
+        u.feature('lines'); u.used('efa', 'lines'); u.used('efa', 'lines'); u.used('overpass');
+        return JSON.parse(localStorage.getItem('wmap.usage'));""")
+    print('Feature:', feat)
+    checks['2. Feature: Nutzung und Anfragen je Dienst'] = feat == {'feat:lines': 1, 'efa': 2, 'feat:lines:efa': 2, 'overpass': 1}
+
     # 3. Ping mit den Zählern
-    b.js("localStorage.removeItem('wmap.ping'); localStorage.setItem('wmap.usage', JSON.stringify({ photon: 3, valhalla: 1 }))")
+    b.js("localStorage.removeItem('wmap.ping'); localStorage.setItem('wmap.usage', JSON.stringify({ photon: 3, valhalla: 1, 'feat:lines': 1, 'feat:lines:efa': 2 }))")
     sent = module(b, """const p = await import('./js/services/ping.js');
         await p.ping();
         const first = [localStorage.getItem('wmap.ping'), localStorage.getItem('wmap.usage')];
@@ -108,6 +116,7 @@ with Browser(420, 900) as b:
         page = b.js("""return {
             tiles: [...document.querySelectorAll('.tile')].map((t) => t.textContent.replace(/\\s+/g, ' ').trim()),
             tests: [...document.querySelectorAll('#requests td')].map((td) => td.textContent),
+            features: !!document.querySelector('#features table, #features p'),
             api: !!document.querySelector('#chart-api canvas, #chart-api svg'),
             proxyTitle: document.querySelector('#servers .chart')?.textContent.match(/Weiterleitung \\S+ je \\S+/)?.[0],
             servers: document.querySelectorAll('#servers tr').length,
@@ -127,6 +136,7 @@ with Browser(420, 900) as b:
         b.shot('stats')
         checks['4. Kachel aktiv heute'] = any(re.match(r'^[\d.]+\s*Aktiv heute', t) for t in page['tiles'])
         checks['4. Tests getrennt gezählt (Ping, photon, Weiterleitung)'] = all(x in page['tests'] for x in ('ping:active', 'client:photon', 'proxy:photon'))
+        checks['4. Features aus dem Ping (bei den Tests)'] = all(x in page['tests'] for x in ('feat:lines', 'feat:lines:efa')) and page['features']
         checks['4. API als eigenes Diagramm'] = page['api']
         checks['4. Weiterleitung folgt dem Picker'] = bool(page['proxyTitle'])
         checks['4. Kachel verloren'] = any('Verloren im' in t for t in page['tiles'])

@@ -5,7 +5,7 @@
  *
  *   „wmap:<dienst>“  über den WMap-Server (bEnd/proxy.php) – für Server ohne CORS oder mit Schlüssel; kommt immer
  *                 erst nach den direkten dran
- *   Gezählt       jede Anfrage je Dienst (services/usage.js, für stats.php)
+ *   Gezählt       jede Anfrage je Dienst, mit `feature` auch unter dem Feature (services/usage.js, für stats.php)
  *
  *   Reihenfolge   je Seitenaufruf einmal gemischt, dann bleibt es beim selben Server, bis er ausfällt
  *   Ausfall       Netzfehler, Zeitlimit, 429 und 5xx: einmal wiederholen, dann der nächste; der Server hat 10 Minuten
@@ -66,9 +66,9 @@ function withTimeout(signal, ms) {
 }
 
 /** `init` wie bei fetch, `timeout` je Versuch → Response; wirft nur, wenn kein Server geantwortet hat */
-export async function askServer(name, path, init = {}, { timeout = TIMEOUT_MS } = {}) {
+export async function askServer(name, path, init = {}, { timeout = TIMEOUT_MS, feature = null } = {}) {
   const { signal } = init;
-  used(name);
+  used(name, feature);
   let lastRes = null, lastErr = null;
   for (const base of candidates(name)) {
     for (let again = true; ; again = false) {
