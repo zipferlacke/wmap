@@ -23,6 +23,9 @@ export const API = {
   valhalla: ['https://valhalla1.openstreetmap.de'],
   // EFA (NVBW): Abfahrten und Verbindungen
   efa: ['https://www.efa-bw.de/nvbw/'],
+  // RMV (HAFAS) und TRIAS der EFA-BW: brauchen einen Schlüssel, darum nur über den WMap-Server (bEnd/proxy.php)
+  rmv: ['wmap:rmv'],
+  trias: ['wmap:trias'],
   // OSM-API: einzelne Objekte nach Klick – Tags und Umriss in ~0,1 s
   osm: 'https://api.openstreetmap.org/api/0.6',
   // Wikipedia/Wikidata/Commons: Bilder und Kurzbeschreibung zu Orten

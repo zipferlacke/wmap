@@ -3,6 +3,7 @@
  * Weiterleitung für Dienste, die die App nicht selbst fragen kann – weil der Server den Abruf aus dem Browser nicht
  * erlaubt (kein CORS) oder weil er einen Schlüssel braucht, der nicht in die App gehört:
  *   GET proxy.php/<dienst>/<pfad>?<anfrage>      z. B. proxy.php/photon/api?q=Göttingen&limit=5
+ *   POST proxy.php/<dienst>                      Dienste mit `method` POST (TRIAS: XML-Anfrage im Körper)
  * Die App fragt hierher erst, wenn ihre eigenen Server ausfallen (js/services/servers.js, Eintrag „wmap:<dienst>“).
  *
  *   Server        je Dienst eine Liste (PROXY); gemischt, ausgefallene haben 10 Minuten Pause (Tabelle ProxyState)
@@ -10,15 +11,17 @@
  *   Gezählt       je Stunde und Server Erfolg, Fehler und Antwortzeit (ProxyCalls), je Tag die Anfragen (Counts) –
  *                 ohne Inhalt der Anfrage und ohne Adresse
  *   Begrenzt      PROXY_PER_MINUTE Anfragen je Absender und Minute (Hash aus Adresse und Tag, Tabelle RateLimit)
- *   Schlüssel     `key` am Dienst: { name, param } – der Wert steht in bEnd/keys.php
- *                 (config.php wmap_keys())
+ *   Schlüssel     `key` am Dienst: { name, param } hängt ihn an die Anfrage, { name, xml } setzt ihn in das
+ *                 XML-Element dieses Namens im Körper – der Wert steht in bEnd/keys.php (config.php wmap_keys())
+ *   Weitere       `method` (GET), `timeout` (PROXY_TIMEOUT), `cache` Sekunden im Browser (600, 0: nicht speichern)
  */
 require_once(__DIR__."/config.php");
 
 $origin = $_SERVER["HTTP_ORIGIN"] ?? "";
 header("Access-Control-Allow-Origin: ".($origin !== "" ? $origin : "*"));
 header("Vary: Origin");
-header("Access-Control-Allow-Methods: GET, OPTIONS");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
 if (($_SERVER["REQUEST_METHOD"] ?? "") === "OPTIONS") exit;
 
 require_once(__DIR__."/database.php");
@@ -36,6 +39,21 @@ const PROXY = [
             'https://photon.vanoosterhout.cloud',
             'https://photon.kllswitch.com',
         ],
+    ],
+    // RMV (HAFAS): Bus & Bahn, Schlüssel als accessId
+    'rmv' => [
+        'paths' => ['location.nearbystops', 'location.name', 'departureBoard', 'trip', 'journeyDetail'],
+        'servers' => ['https://www.rmv.de/hapi'],
+        'key' => ['name' => 'rmv', 'param' => 'accessId'],
+        'timeout' => 15, 'cache' => 20,
+    ],
+    // TRIAS der EFA-BW (NVBW): Bus & Bahn, XML per POST, Schlüssel im Element RequestorRef
+    'trias' => [
+        'paths' => [''],
+        'servers' => ['https://efa-bw.de/trias'],
+        'method' => 'POST',
+        'key' => ['name' => 'efa_bw', 'xml' => 'RequestorRef'],
+        'timeout' => 15, 'cache' => 20,
     ],
     // Beispiel mit Schlüssel (noch nicht freigeschaltet):
     // 'tankerkoenig' => ['paths' => ['json/list.php'], 'servers' => ['https://creativecommons.tankerkoenig.de'],
@@ -59,6 +77,13 @@ $conf = PROXY[$service] ?? null;
 if (!$conf || !in_array($path, $conf["paths"], true)) proxy_fail(404, "nix gefunden... Anfrage falsch");
 $query = $_SERVER["QUERY_STRING"] ?? "";
 if (strlen($query) > 2000) proxy_fail(414, "Anfrage zu lang");
+$method = $conf["method"] ?? "GET";
+if (($_SERVER["REQUEST_METHOD"] ?? "GET") !== $method) proxy_fail(405, "Falsche Methode");
+$content = null;
+if ($method === "POST") {
+    $content = (string)file_get_contents("php://input", false, null, 0, 20001);
+    if ($content === "" || strlen($content) > 20000) proxy_fail(413, "Anfrage leer oder zu lang");
+}
 
 // Je Absender und Minute – die Freiwilligen hinter den Servern bitten ausdrücklich darum
 $minute = intdiv(time(), 60);
@@ -71,7 +96,13 @@ if ($n > PROXY_PER_MINUTE) proxy_fail(429, "Zu viele Anfragen – bitte kurz war
 if (isset($conf["key"])) {
     $value = (string)(wmap_keys()[$conf["key"]["name"]] ?? "");
     if ($value === "") proxy_fail(503, "Dienst nicht eingerichtet");
-    $query .= ($query === "" ? "" : "&").rawurlencode($conf["key"]["param"])."=".rawurlencode($value);
+    if (isset($conf["key"]["xml"])) {
+        $tag = preg_quote($conf["key"]["xml"], "#");
+        $content = preg_replace("#(<(?:[\\w-]+:)?$tag>)[^<]*(</(?:[\\w-]+:)?$tag>)#", '${1}'.htmlspecialchars($value, ENT_XML1).'${2}', $content, 1, $found);
+        if (!$found) proxy_fail(400, "Anfrage ohne ".$conf["key"]["xml"]);
+    } else {
+        $query .= ($query === "" ? "" : "&").rawurlencode($conf["key"]["param"])."=".rawurlencode($value);
+    }
 }
 
 // Reihenfolge: gemischt, die in Pause ans Ende (sind alle in Pause, wird trotzdem gefragt)
@@ -96,13 +127,15 @@ $record = function ($server, $ok, $ms, $error = null) use ($db_helper, $service,
 
 count_up("proxy:$service");
 $ctx = stream_context_create(["http" => [
-    "timeout" => PROXY_TIMEOUT, "ignore_errors" => true,
-    "header" => "User-Agent: WMap (https://app.wuefl.de/wmap/)\r\nAccept: application/json\r\n",
-]]);
+    "method" => $method, "timeout" => $conf["timeout"] ?? PROXY_TIMEOUT, "ignore_errors" => true,
+    "header" => "User-Agent: WMap (https://app.wuefl.de/wmap/)\r\nAccept: application/json, text/xml\r\n"
+        .($content !== null ? "Content-Type: text/xml; charset=utf-8\r\n" : ""),
+] + ($content !== null ? ["content" => $content] : [])]);
+$cache = (int)($conf["cache"] ?? 600);
 foreach ($servers as $server) {
     $t = microtime(true);
     $http_response_header = [];
-    $body = @file_get_contents("$server/$path".($query === "" ? "" : "?$query"), false, $ctx);
+    $body = @file_get_contents($server.($path === "" ? "" : "/$path").($query === "" ? "" : "?$query"), false, $ctx);
     $ms = (int)round((microtime(true) - $t) * 1000);
     $status = preg_match('#^HTTP/\S+\s+(\d{3})#', $http_response_header[0] ?? "", $m) ? (int)$m[1] : 0;
     if ($body === false || $status === 0 || $status === 429 || $status >= 500) {
@@ -116,7 +149,7 @@ foreach ($servers as $server) {
     foreach ($http_response_header as $h) if (stripos($h, "Content-Type:") === 0) $type = trim(substr($h, 13));
     http_response_code($status);
     header("Content-Type: $type");
-    header("Cache-Control: private, max-age=600");
+    header($cache ? "Cache-Control: private, max-age=$cache" : "Cache-Control: no-store");
     echo $body;
     exit;
 }
