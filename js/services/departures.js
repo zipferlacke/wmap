@@ -22,8 +22,8 @@ import { t, lang, FALLBACK } from '../core/i18n.js';
 
 const COORD = 'WGS84[dd.ddddd]';
 
-async function efa(path, params, signal) {
-  const res = await askServer('efa', `${path}?${new URLSearchParams({ outputFormat: 'rapidJSON', ...(lang === FALLBACK ? {} : { language: lang.split('_')[0] }), ...params })}`, { signal }, { timeout: 20000 });
+async function efa(path, params, signal, feature = null) {
+  const res = await askServer('efa', `${path}?${new URLSearchParams({ outputFormat: 'rapidJSON', ...(lang === FALLBACK ? {} : { language: lang.split('_')[0] }), ...params })}`, { signal }, { timeout: 20000, feature });
   if (!res.ok) throw new Error(t('services.departures.error.status', { status: res.status }));
   return res.json();
 }
@@ -38,11 +38,11 @@ function efaTime(when) {
 }
 
 /** Haltestelle der EFA zum Punkt → Kennung oder null */
-async function stopNear([lon, lat], name, signal) {
+async function stopNear([lon, lat], name, signal, feature) {
   const d = await efa('XML_COORD_REQUEST', {
     coord: `${lon.toFixed(5)}:${lat.toFixed(5)}:${COORD}`, coordOutputFormat: COORD,
     inclFilter: '1', type_1: 'STOP', radius_1: '300', max: '8',
-  }, signal);
+  }, signal, feature);
   const list = d.locations ?? [];
   const low = (name ?? '').toLowerCase();
   return (low && list.find((l) => l.name?.toLowerCase().includes(low)))?.id ?? list[0]?.id ?? null;
@@ -57,19 +57,19 @@ export const samePlatform = (a, b) => !!a && !!b && a.split(':').slice(2).join('
  * @param o.stopId  Kennung aus einer früheren Antwort – spart das Suchen der Haltestelle
  * @param o.when    ab dieser Zeit (Date), sonst ab jetzt
  */
-export async function departures(point, { name = '', ifopt = '', stopId = null, when = null, limit = 40, signal } = {}) {
+export async function departures(point, { name = '', ifopt = '', stopId = null, when = null, limit = 40, signal, feature = null } = {}) {
   const parts = ifopt.split(':');
   const fromIfopt = parts.length >= 3 && parts[0] === 'de' ? parts.slice(0, 3).join(':') : null;
   const ask = (stop) => efa('XML_DM_REQUEST', {
     name_dm: stop, type_dm: 'any', mode: 'direct', useRealtime: '1', limit: String(limit), depType: 'stopEvents',
     coordOutputFormat: COORD, ...(when ? { ...efaTime(when), itdDateTimeDepArr: 'dep' } : {}),
-  }, signal);
-  let stop = stopId ?? fromIfopt ?? await stopNear(point, name, signal);
+  }, signal, feature);
+  let stop = stopId ?? fromIfopt ?? await stopNear(point, name, signal, feature);
   if (!stop) return { stop: null, stopId: null, list: [] };
   let d = await ask(stop);
   // Der IFOPT aus OSM passt nicht immer zur EFA (anderer Kreis) – dann über die Lage
   if (!d.stopEvents?.length && fromIfopt) {
-    stop = await stopNear(point, name, signal);
+    stop = await stopNear(point, name, signal, feature);
     if (stop) d = await ask(stop);
   }
   const list = (d.stopEvents ?? []).map((e) => {
@@ -103,7 +103,7 @@ export async function departures(point, { name = '', ifopt = '', stopId = null, 
  * → { coords: [[lon, lat]], stops: [{ name, point, time, platform, id }], index }
  *   index: dieser Halt in der Folge (−1, wenn nicht gefunden)
  */
-export async function tripCourse(dep, { signal } = {}) {
+export async function tripCourse(dep, { signal, feature = null } = {}) {
   if (!dep.lineId || dep.tripCode === null) throw new Error(t('services.departures.error.no_course'));
   const pad = (n) => String(n).padStart(2, '0');
   const when = dep.time;
@@ -111,7 +111,7 @@ export async function tripCourse(dep, { signal } = {}) {
     coordOutputFormat: COORD, line: dep.lineId, stop: dep.platformId, tripCode: String(dep.tripCode),
     date: `${when.getFullYear()}${pad(when.getMonth() + 1)}${pad(when.getDate())}`, time: `${pad(when.getHours())}${pad(when.getMinutes())}`,
     tStOTType: 'all', useRealtime: '1',
-  }, signal);
+  }, signal, feature);
   const leg = d.leg;
   if (!leg?.stopSequence?.length) throw new Error(t('services.departures.error.no_course'));
   const stops = leg.stopSequence.map((x) => {
@@ -312,7 +312,7 @@ function bookingLink(rides) {
  * @param o.change   Umsteigezeit mindestens, Minuten
  * @param o.fastest  schnellste Verbindung zusätzlich zeigen
  */
-export async function journeys(from, to, { when = new Date(), arrive = false, params = {}, change = 0, fastest = true, signal } = {}) {
+export async function journeys(from, to, { when = new Date(), arrive = false, params = {}, change = 0, fastest = true, signal, feature = null } = {}) {
   const ask = (extra) => efa('XML_TRIP_REQUEST2', {
     coordOutputFormat: COORD,
     type_origin: 'coord', name_origin: `${from[0].toFixed(5)}:${from[1].toFixed(5)}:${COORD}`,
@@ -322,7 +322,7 @@ export async function journeys(from, to, { when = new Date(), arrive = false, pa
     // Ohne Verläufe und Fußweg-Texte – die kommen per refineJourney()
     genC: '0', genP: '0',
     ...params, ...extra,
-  }, signal);
+  }, signal, feature);
   const answers = await Promise.allSettled([ask({}), change > 5 ? ask({ changeSpeed: 'slow' }) : Promise.resolve({})]);
   if (signal?.aborted) throw new DOMException('Abgebrochen', 'AbortError');
   if (answers[0].status === 'rejected') throw answers[0].reason;
@@ -374,7 +374,7 @@ function sliceBetween(line, a, b) {
  * Scheitert etwas, bleibt der Abschnitt von Halt zu Halt.
  * → true, wenn sich etwas geändert hat
  */
-export async function refineJourney(route, { signal } = {}) {
+export async function refineJourney(route, { signal, feature = null } = {}) {
   if (route.refined) return false;
   route.refined = true;
   let changed = false;
@@ -384,14 +384,14 @@ export async function refineJourney(route, { signal } = {}) {
     try {
       if (l.walk) {
         if (cum([a, b]).at(-1) < 30) return;
-        const w = await segment(a, b, 'foot', { signal });
+        const w = await segment(a, b, 'foot', { signal, feature });
         l.coords = w.coords;
         l.steps = w.maneuvers.filter((m) => ![1, 2, 3, 4, 5, 6].includes(m.type))
           .map((m) => ({ text: m.instruction, distance: Math.round((m.length ?? 0) * 1000) }));
         l.distance = Math.round(w.length);
         changed = true;
       } else if (l.lineId && l.tripCode !== null) {
-        const c = await tripCourse({ lineId: l.lineId, tripCode: l.tripCode, platformId: l.stopId, time: l.planned }, { signal });
+        const c = await tripCourse({ lineId: l.lineId, tripCode: l.tripCode, platformId: l.stopId, time: l.planned }, { signal, feature });
         const part = sliceBetween(c.coords, a, b);
         // Nur nehmen, wenn es plausibel ist (nicht viel länger als von Halt zu Halt)
         if (part && cum(part).at(-1) < 2.5 * Math.max(cum(l.coords).at(-1), l.distance || 0, 2000)) {

@@ -52,7 +52,7 @@ const quote = (s) => String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
  * `background`: nur Zugabe (Farben) – Overpass ohne parallele Nachfragen
  * → { here: [{ id, route, ref, name, from, to, colour, … }], all: […] }
  */
-export async function linesAt([lon, lat], name, { ref = null, background = false, signal } = {}) {
+export async function linesAt([lon, lat], name, { ref = null, background = false, signal, feature = null } = {}) {
   const at = (r) => `around:${r},${lat.toFixed(6)},${lon.toFixed(6)}`;
   const stop = '[~"^(public_transport|highway|railway|amenity)$"~"^(platform|stop_position|station|bus_stop|tram_stop|halt|stop|bus_station|ferry_terminal)$"]';
   const rel = `[type=route][route~"^(${KINDS})$"]`;
@@ -61,7 +61,7 @@ export async function linesAt([lon, lat], name, { ref = null, background = false
   const q = `[out:json][timeout:25];${mine}make grenze;out;
     (${name ? `nwr(${at(150)})[name="${quote(name)}"]${stop};` : ''}nwr(${at(30)})${stop};)->.s;
     (rel(bn.s)${rel};rel(bw.s)${rel};)->.b;(.b; - .a;)->.c;.c out tags;`;
-  const els = await run(q, signal, { background });
+  const els = await run(q, signal, { background, feature });
   const cut = els.findIndex((e) => e.type === 'grenze');
   const pick = (list) => list.filter((e) => e.type === 'relation').map((e) => ({ id: e.id, ...e.tags }));
   const here = pick(els.slice(0, cut));
@@ -112,12 +112,12 @@ const kmTo = (center, e) => (e.center
  * Linien dieses Namens um den Punkt → Relationen wie bei linesAt. Dieselbe Nummer gibt es überall: es bleibt der
  * Verkehrsverbund der nächsten (und was ohnehin ganz nah fährt).
  */
-export async function findLines({ ref, kinds }, center, { signal } = {}) {
+export async function findLines({ ref, kinds }, center, { signal, feature = null } = {}) {
   const dy = LINE_KM / 111.32, dx = dy / Math.cos(center[1] * Math.PI / 180);
   const bbox = [center[1] - dy, center[0] - dx, center[1] + dy, center[0] + dx].map((v) => v.toFixed(4)).join(',');
   // „S3“ steht in OSM auch als „S 3“
   const name = ref.replace(/^([A-Z]+)(\d)/, '$1 ?$2');
-  const els = await run(`[out:json][timeout:25];rel[type=route][route~"^(${kinds?.join('|') ?? KINDS})$"]["ref"~"^${name}$",i](${bbox});out tags center;`, signal);
+  const els = await run(`[out:json][timeout:25];rel[type=route][route~"^(${kinds?.join('|') ?? KINDS})$"]["ref"~"^${name}$",i](${bbox});out tags center;`, signal, { feature });
   const list = els.filter((e) => e.type === 'relation').sort((a, b) => kmTo(center, a) - kmTo(center, b));
   if (!list.length) return [];
   const net = (e) => e.tags?.network ?? e.tags?.operator ?? '';
@@ -201,10 +201,10 @@ export function mountTransitLine(map) {
    * Linie holen und zeigen → { tags, stops: [Name], bounds, next }
    * @param from  Haltestelle: der Weg bis hierher blass, was kommt kräftig
    */
-  async function show(id, { from = null } = {}) {
+  async function show(id, { from = null, feature = null } = {}) {
     ctl?.abort();
     ctl = new AbortController();
-    const els = await run(`[out:json][timeout:25];rel(${id})->.r;.r out geom;node(r.r);out qt;way(r.r:"platform");out tags center qt;`, ctl.signal);
+    const els = await run(`[out:json][timeout:25];rel(${id})->.r;.r out geom;node(r.r);out qt;way(r.r:"platform");out tags center qt;`, ctl.signal, { feature });
     const rel = els.find((e) => e.type === 'relation' && e.id === id);
     if (!rel) throw new Error(t('services.transit.not_found'));
     const tags = rel.tags ?? {};

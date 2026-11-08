@@ -6,6 +6,7 @@ import * as geocode from '../services/geocode.js';
 import { findLines, lineStopsHtml, parseLineQuery, transitHtml } from '../services/transit.js';
 import { toast } from '../ui/dialogs.js';
 import { $, afterLayout, fitTo } from './core.js';
+import { feature } from '../services/usage.js';
 import { clearCategory } from './category.js';
 import { clearPlace } from './place.js';
 import { clearReach } from './reach.js';
@@ -29,7 +30,7 @@ function paint() {
 
 async function showDirection(id, s = shown) {
   try {
-    const line = await transitLine.show(id);
+    const line = await transitLine.show(id, { feature: 'lines' });
     if (shown !== s) return;
     s.active = id;
     s.line = line;
@@ -47,6 +48,7 @@ async function showLines(query, center) {
   clearReach();
   const s = { title: query.label, where: query.place ? t('map.in_place', { place: query.place }) : t('map.around_here'), list: null, active: null, line: null };
   shown = s;
+  feature('lines');
   remember('lines', () => { shown = s; openSheet('lines'); paint(); if (s.active) showDirection(s.active, s); });
   openSheet('lines');
   paint();
@@ -57,7 +59,7 @@ async function showLines(query, center) {
       if (!f) { s.list = []; toast(t('search.toast.not_found', { text: query.place })); paint(); return; }
       at = f.geometry.coordinates;
     }
-    const list = await findLines(query, at);
+    const list = await findLines(query, at, { feature: 'lines' });
     if (shown !== s) return;
     s.list = list;
     paint();

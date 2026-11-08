@@ -22,6 +22,7 @@ import { compactRoute, isSet, transitWhen } from './route-plan.js';
 import { loadTraffic, runAlong } from './traffic-along.js';
 import { closeSheet, openSheet } from './views.js';
 import { t } from '../core/i18n.js';
+import { feature } from '../services/usage.js';
 
 /* ── Routen berechnen und zeigen ──────────────────────────────────────────── */
 
@@ -55,8 +56,9 @@ export async function computeRoutes() {
     if (signal.aborted) return;
     const drive = park ? [...points.slice(0, -1), park.point] : points;
     // Bus & Bahn: Verbindungen nach Fahrplan (Zwischenziele zählen hier nicht)
+    if (PROFILES[state.profile].transit) feature('transit_route');
     const routes = PROFILES[state.profile].transit
-      ? await journeys(points[0], points.at(-1), { ...transitWhen(), params: transitParams(), change: prefs.change, fastest: prefs.fastest, signal })
+      ? await journeys(points[0], points.at(-1), { ...transitWhen(), params: transitParams(), change: prefs.change, fastest: prefs.fastest, signal, feature: 'transit_route' })
       : await getRoutes(drive, state.profile, {
         highways: prefs.highways, avoid: state.avoid.map((p) => avoidRing(p)), signal,
       });
@@ -168,7 +170,7 @@ export function selectRoute(id, { fit = false } = {}) {
   if (fit) fitRouteSettled();
   // Bus & Bahn: echten Verlauf und Fußwege der gewählten Verbindung nachladen
   if (r.transit && !r.refined) {
-    refineJourney(r).then((changed) => {
+    refineJourney(r, { feature: 'transit_route' }).then((changed) => {
       if (!changed || current() !== r) return;
       showRoutes(map, state.routes, r.id, state.leg);
       const box = $('[data-view="route"] .transit-legs');
@@ -205,7 +207,7 @@ async function loadEarlier() {
   const first = routes[0].transit;
   try {
     const list = await journeys(state.points[0], state.points.at(-1), {
-      when: new Date(first.arr - 60000), arrive: true, params: transitParams(), change: prefs.change, signal: routeCtl?.signal,
+      when: new Date(first.arr - 60000), arrive: true, params: transitParams(), change: prefs.change, signal: routeCtl?.signal, feature: 'transit_route',
     });
     if (state.routes !== routes) return;
     const known = new Set(routes.map((x) => x.transit.key));
