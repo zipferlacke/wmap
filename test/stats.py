@@ -3,7 +3,8 @@
 1. Weiterleitung: Suche und Rückwärtssuche kommen an, fremde Dienste und Pfade nicht (404).
 2. App: „wmap:photon“ steht hinter den direkten Servern; eine Suche zählt je Dienst (wmap.usage); ein Feature zählt seine
    Nutzung (feat:lines) und die Anfragen dabei je Dienst (feat:lines:efa).
-3. Ping (nur wenn die Nutzungsstatistik an und gefragt ist): einmal am Tag – mit den Zählern der App, danach ist wmap.usage leer und wmap.ping gesetzt; ein zweiter Start
+3. Ping (nur wenn die Nutzungsstatistik an und gefragt ist): einmal am Tag, mit App oder Website (isApp: im Browser
+   Website, nach einem Start als App immer App) – mit den Zählern der App, danach ist wmap.usage leer und wmap.ping gesetzt; ein zweiter Start
    am selben Tag schickt nichts. Letzter Ping im Vormonat / in der Vorwoche → back_month / back_week, sonst nicht.
 4. stats.php: ohne Schlüssel 403; mit Schlüssel Geräte, Anfragen – die Tests getrennt (Cookie wmap_test, test:…) –,
    Diagramme je Dienst, Features (Anfragen je Nutzung), Weiterleitung und Diagramme, keine
@@ -74,6 +75,17 @@ with Browser(420, 900) as b:
     checks['3. Ping gesendet, Zähler geleert'] = isinstance(sent, list) and bool(re.match(r'\d{4}-\d\d-\d\d$', sent[0] or '')) and sent[1] is None
     checks['3. zweiter Start am selben Tag schickt nichts'] = isinstance(sent, list) and sent[2] == '{"photon":5}'
 
+    # 3c. App oder Website
+    app = module(b, """const p = await import('./js/services/ping.js');
+        localStorage.removeItem('wmap.installed');
+        const r = [p.isApp()];
+        localStorage.setItem('wmap.installed', '1');
+        r.push(p.isApp());
+        localStorage.removeItem('wmap.installed');
+        return r;""")
+    print('App/Website:', app)
+    checks['3c. im Browser Website, nach einem Start als App App'] = app == [False, True]
+
     # 3a. Vorwoche / Vormonat – was der Ping schickt, aus fetch abgefangen
     back = module(b, """const p = await import('./js/services/ping.js');
         const sent = [];
@@ -136,6 +148,13 @@ with Browser(420, 900) as b:
         b.shot('stats')
         checks['4. Kachel aktiv heute'] = any(re.match(r'^[\d.]+\s*Aktiv heute', t) for t in page['tiles'])
         checks['4. Tests getrennt gezählt (Ping, photon, Weiterleitung)'] = all(x in page['tests'] for x in ('ping:active', 'client:photon', 'proxy:photon'))
+        checks['4. Ping getrennt nach Website (bei den Tests)'] = 'ping:web:active' in page['tests']
+        # Zähler der App getrennt nach App/Website: gespeichert, in der Tabelle nicht gezeigt
+        now = int(time.time() * 1000)
+        st, raw = get(f'bEnd/stats.php?key={m.group(1)}&data=1&stufe=day&start={now - 2 * 86400000}&end={now}&keys=test:web:client:photon')
+        web = sum(x['change'] for x in json.loads(raw).get('test:web:client:photon', [])) if st == 200 else 0
+        print('web:client:photon:', web)
+        checks['4. Anfragen getrennt nach Website gespeichert, nicht gezeigt'] = web > 0 and not any(x.startswith(('web:', 'app:')) for x in page['tests'])
         checks['4. Features aus dem Ping (bei den Tests)'] = all(x in page['tests'] for x in ('feat:lines', 'feat:lines:efa')) and page['features']
         checks['4. API als eigenes Diagramm'] = page['api']
         checks['4. Weiterleitung folgt dem Picker'] = bool(page['proxyTitle'])
