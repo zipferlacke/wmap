@@ -1,9 +1,13 @@
 /**
- * Linie aus der Suche: „Bus 11“, „Göttingen Linie 9“, „Darmstadt Bus L“. Der Vorschlag kommt sofort und ohne Anfrage –
- * erst das Antippen fragt OpenStreetMap (services/transit.js findLines) und zeigt die erste Richtung auf der Karte.
+ * Linie aus der Suche: „Bus 11“, „Göttingen Linie 9“, „Darmstadt Bus L“. Der Vorschlag kommt sofort und ohne Anfrage.
+ * Das Antippen sucht die Linien dieses Namens in OpenStreetMap (services/transit.js findLines, eine Abfrage mit den
+ * Halten, ohne Wege) und zeigt die erste Richtung auf der Karte: Verlauf und Halte mit Zeiten der nächsten Fahrt ab dem
+ * ersten Halt (services/timetable departures, tripCourse – einer der drei Fahrplan-Anbieter), sonst der Verlauf aus
+ * OpenStreetMap.
  */
 import * as geocode from '../services/geocode.js';
-import { findLines, lineStopsHtml, parseLineQuery, transitHtml } from '../services/transit.js';
+import { colorOf, findLines, lineStopsHtml, parseLineQuery, transitHtml } from '../services/transit.js';
+import { departures, tripCourse } from '../services/timetable/index.js';
 import { toast } from '../ui/dialogs.js';
 import { $, afterLayout, fitTo } from './core.js';
 import { feature } from '../services/usage.js';
@@ -28,9 +32,32 @@ function paint() {
   if (shown.line) box.querySelector(`[data-line="${shown.active}"]`)?.insertAdjacentHTML('afterend', lineStopsHtml(shown.line));
 }
 
+const plain = (s) => String(s ?? '').toLowerCase().replace(/\s+/g, '');
+
+/** Abfahrt dieser Linie in Richtung der Relation: gleiche Nummer, Ziel passt (sonst die erste mit der Nummer) */
+function matching(list, rel) {
+  const same = list.filter((d) => plain(d.line) === plain(rel.ref) && d.course);
+  const to = plain(rel.to);
+  return same.find((d) => to && (plain(d.to).includes(to) || to.includes(plain(d.to)))) ?? same[0] ?? null;
+}
+
+/** Verlauf aus dem Fahrplan: nächste Fahrt der Linie ab ihrem ersten Halt (rel.stop) → wie transitLine.show, oder null */
+async function fromTimetable(rel) {
+  const { stop } = rel;
+  if (!stop) return null;
+  const { list } = await departures(stop.point, { name: stop.name, limit: 60, feature: 'lines' });
+  const dep = matching(list, rel);
+  if (!dep) return null;
+  const course = await tripCourse(dep, { feature: 'lines' });
+  if (course.coords.length < 2 && course.stops.filter((x) => x.point).length < 2) return null;
+  return transitLine.showCourse(`line:${rel.id}`, { ...course, color: colorOf(rel) });
+}
+
 async function showDirection(id, s = shown) {
   try {
-    const line = await transitLine.show(id, { feature: 'lines' });
+    const rel = s.list?.find((r) => r.id === id);
+    const line = (rel && await fromTimetable(rel).catch((err) => { if (err.name === 'AbortError') throw err; return null; }))
+      ?? await transitLine.show(id, { feature: 'lines' });
     if (shown !== s) return;
     s.active = id;
     s.line = line;

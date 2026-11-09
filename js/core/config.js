@@ -67,7 +67,7 @@ export const PROFILES = {
     label: t('common.profiles.car'), icon: 'directions_car', costing: 'auto', nav: true,
     radius: 400, announce: { far: 500, near: 60 },
   },
-  /* Bus & Bahn: Verbindungen nach Fahrplan (services/departures.js, EFA), keine Navigation */
+  /* Bus & Bahn: Verbindungen nach Fahrplan (services/timetable: EFA, RMV, TRIAS), keine Navigation */
   transit: {
     label: t('common.profiles.transit'), icon: 'directions_transit', nav: true, transit: true,
     radius: 150, announce: { far: 80, near: 15 },

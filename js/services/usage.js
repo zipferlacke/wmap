@@ -6,6 +6,7 @@
  *   feature('lines')     eine Nutzung des Features „Linie suchen“ (Zähler feat:lines)
  *   used('efa', 'lines') eine Anfrage an EFA, dazu unter dem Feature (feat:lines:efa) – so zeigt stats.php, wie viele
  *                        Anfragen eine Nutzung braucht
+ *   served('departures', 'rmv', ok, ms)   welcher Anbieter die Nutzung bedient hat, wie schnell bzw. dass er scheiterte
  *   takeUsage()          → { photon: 12, … } und wieder bei null anfangen
  *   statsSetting         Nutzungsstatistik an (Vorgabe) oder aus – gefragt wird in der Begrüßung bzw. einmal danach
  *                        (ui/news.js), ändern lässt sie sich in den Einstellungen. Vor der Frage wird nichts gezählt
@@ -37,12 +38,23 @@ const read = () => { try { return JSON.parse(store.get(KEY)) ?? {}; } catch { re
 function bump(...names) {
   if (!statsSetting.active()) return;
   const u = read();
-  for (const n of names) u[n] = (u[n] ?? 0) + 1;
+  for (const n of names) {
+    const [k, by = 1] = Array.isArray(n) ? n : [n];
+    u[k] = (u[k] ?? 0) + by;
+  }
   store.set(KEY, JSON.stringify(u));
 }
 
 export const used = (name, feat = null) => bump(name, ...(feat ? [`feat:${feat}:${name}`] : []));
 export const feature = (name) => bump(`feat:${name}`);
+/**
+ * Welcher Anbieter eine Nutzung bedient hat (Fahrplan: efa, rmv, trias): ok → src:<feature>:<anbieter> und die
+ * Antwortzeit in srcms:…, gescheitert → srcfail:… – stats.php vergleicht damit dieselbe Anfrage je Anbieter
+ */
+export const served = (feat, provider, ok, ms) => {
+  if (!feat) return;
+  bump(ok ? [`src:${feat}:${provider}`] : [`srcfail:${feat}:${provider}`], ...(ok ? [[`srcms:${feat}:${provider}`, Math.round(ms)]] : []));
+};
 
 export function takeUsage() {
   const u = read();

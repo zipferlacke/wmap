@@ -2,7 +2,7 @@
  * Haltestellen: Abfahrten nach Fahrplan, Steige, Fahrt im Detail, Linien aus OSM.
  */
 import { linesAt, transitHtml, mountTransitLine, lineStopsHtml, colorOf } from '../services/transit.js';
-import { departures, samePlatform, tripCourse } from '../services/departures.js';
+import { departures, samePlatform, tripCourse } from '../services/timetable/index.js';
 import { clock } from '../ui/share.js';
 import { toast } from '../ui/dialogs.js';
 import { distance, esc } from '../core/geo.js';
@@ -112,7 +112,7 @@ function sideOf(s) {
   return new Set(near.filter(([, d]) => d <= near[0][1] + 8).map(([id]) => id));
 }
 
-const tripKey = (x) => `${x.lineId}|${x.tripCode}|${+x.time}`;
+const tripKey = (x) => x.key;
 
 /** Passende OSM-Linie zu einer Abfahrt (gleiche Nummer, Ziel passt) */
 function relFor(x, all = stop?.all ?? []) {

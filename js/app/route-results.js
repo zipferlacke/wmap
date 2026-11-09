@@ -8,9 +8,9 @@ import { routeCategories } from '../core/categories.js';
 import { getRoutes, maneuverIcon } from '../services/routing.js';
 import { ElevationProfile } from '../ui/elevation.js';
 import { recent, tours, shapeOf } from '../data/store.js';
-import { journeys, refineJourney } from '../services/departures.js';
+import { journeys, refineJourney } from '../services/timetable/index.js';
 import { legBadge, changesText, transitLegsHtml } from '../ui/transit-legs.js';
-import { prefs, transitParams } from '../ui/route-prefs.js';
+import { prefs, transitClasses } from '../ui/route-prefs.js';
 import { connections } from '../data/saved.js';
 import { share, routeUrl, clock } from '../ui/share.js';
 import { toast } from '../ui/dialogs.js';
@@ -58,7 +58,7 @@ export async function computeRoutes() {
     // Bus & Bahn: Verbindungen nach Fahrplan (Zwischenziele zählen hier nicht)
     if (PROFILES[state.profile].transit) feature('transit_route');
     const routes = PROFILES[state.profile].transit
-      ? await journeys(points[0], points.at(-1), { ...transitWhen(), params: transitParams(), change: prefs.change, fastest: prefs.fastest, signal, feature: 'transit_route' })
+      ? await journeys(points[0], points.at(-1), { ...transitWhen(), classes: transitClasses(), change: prefs.change, fastest: prefs.fastest, signal, feature: 'transit_route' })
       : await getRoutes(drive, state.profile, {
         highways: prefs.highways, avoid: state.avoid.map((p) => avoidRing(p)), signal,
       });
@@ -207,7 +207,7 @@ async function loadEarlier() {
   const first = routes[0].transit;
   try {
     const list = await journeys(state.points[0], state.points.at(-1), {
-      when: new Date(first.arr - 60000), arrive: true, params: transitParams(), change: prefs.change, signal: routeCtl?.signal, feature: 'transit_route',
+      when: new Date(first.arr - 60000), arrive: true, classes: transitClasses(), change: prefs.change, src: first.src, signal: routeCtl?.signal, feature: 'transit_route',
     });
     if (state.routes !== routes) return;
     const known = new Set(routes.map((x) => x.transit.key));
