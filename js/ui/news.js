@@ -37,7 +37,7 @@
  * alles und meldet den Fortschritt (sw.js „update-progress“) – läuft das schon im Hintergrund, steht der Balken gleich
  * dort –, dann wird er aktiv, die Seite lädt neu. Scheitert das Laden, bleibt alles, wie es ist, und die Knöpfe kommen wieder.
  *
- * In anderen Sprachen stehen die Texte unter „news“ in der Sprachdatei: `welcome`, `changes` { Version: [Punkte] },
+ * In anderen Sprachen stehen die Texte unter „news“ in der Sprachdatei: `welcome.text` [Absätze], `changes` { Version: [Punkte] },
  * `messages` { id: { title, text } }. Was dort fehlt, bleibt so, wie es in messages.json steht.
  *
  * In der Android-App folgt auf das Willkommen der Dialog zu den
@@ -192,7 +192,7 @@ async function welcome(m) {
   statsSetting.markAsked();
   return ask({
     auto: true, icon: 'waving_hand', title: t('news.welcome.title'), className: 'news',
-    html: `${choices}${paragraphs(ownValue('news.welcome') ?? m.welcome)}<p class="news-version">${t('news.version', { version: esc(await runningVersion()) })}</p>`,
+    html: `${choices}${paragraphs(ownValue('news.welcome.text') ?? m.welcome)}<p class="news-version">${t('news.version', { version: esc(await runningVersion()) })}</p>`,
     buttons: [{ value: 'ok', label: t('news.welcome.go'), icon: 'map', primary: true }],
     setup: (dlg) => dlg.querySelector('.news-choices').addEventListener('change', (e) => {
       if (e.target.name === 'theme') theme.set(e.target.value);
