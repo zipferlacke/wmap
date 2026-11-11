@@ -149,6 +149,10 @@ with Browser(420, 900) as b:
         checks['4. Kachel aktiv heute'] = any(re.match(r'^[\d.]+\s*Aktiv heute', t) for t in page['tiles'])
         checks['4. Tests getrennt gezählt (Ping, photon, Weiterleitung)'] = all(x in page['tests'] for x in ('ping:active', 'client:photon', 'proxy:photon'))
         checks['4. Ping getrennt nach Website (bei den Tests)'] = 'ping:web:active' in page['tests']
+        # Zugriffe: messages.json kommt über appdata/messages.php, das den Abruf zählt
+        news = get('appdata/messages.json')
+        checks['4. Zugriffe: messages.json kommt ganz an, Abruf gezählt (bei den Tests), Kacheln da'] = news[0] == 200 and 'changelog' in json.loads(news[1]) \
+            and 'hit:page' in page['tests'] and sum(1 for t in page['tiles'] if re.match(r'^[\d.]+\s*(Heute|7 Tage|30 Tage)$', t)) == 3
         # Zähler der App getrennt nach App/Website: gespeichert, in der Tabelle nicht gezeigt
         now = int(time.time() * 1000)
         st, raw = get(f'bEnd/stats.php?key={m.group(1)}&data=1&stufe=day&start={now - 2 * 86400000}&end={now}&keys=test:web:client:photon')

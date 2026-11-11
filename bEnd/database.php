@@ -226,7 +226,7 @@ class DB_Helper{
     }
 
     /**
-     * Liegen die Tabellen der Statistik noch in wmap.sqlite (Stand vor 3.2): Zeilen nach stats.sqlite, dort löschen –
+     * Liegen die Tabellen der Statistik noch in wmap.sqlite: Zeilen nach stats.sqlite, dort löschen –
      * je Tabelle ganz oder gar nicht. Danach steht in wmap.sqlite nur noch, was zu Konten, Touren, Plugins und
      * geteilten Links gehört.
      */
