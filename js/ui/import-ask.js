@@ -31,6 +31,8 @@ import { askMerge } from './merge-ask.js';
 import { bulk } from '../data/tracks.js';
 import { takeFile, prepareMerge } from '../data/import-files.js';
 import { locale, t } from '../core/i18n.js';
+import { fmtDistance } from '../core/geo.js';
+import { imperial } from '../core/units.js';
 
 /** Die Frage für alle → 'best' | 'each' | 'skip' (nur mit `skip`: Beschriftung des Knopfs) | null */
 export async function askAll({ title, text, later = t('common.cancel'), icon = 'library_add', auto = false, skip = null }) {
@@ -63,7 +65,7 @@ export async function askNew({ title, text, later = t('common.later'), icon = 'd
 }
 
 const day = (t) => new Date(t).toLocaleDateString(locale, { day: 'numeric', month: 'numeric', year: 'numeric' });
-const km = (m) => { const d = m < 9950 ? 1 : 0; return `${(m / 1000).toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: false })} ${t('common.units.km')}`; };
+const km = (m) => { if (imperial()) return fmtDistance(m); const d = m < 9950 ? 1 : 0; return `${(m / 1000).toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: false })} ${t('common.units.km')}`; };
 
 /**
  * Neue Dateien: [{ file, kind: 'new' | 'tour', start, length, has: [{ key, detail, on }], look }] – `has`: was die Datei

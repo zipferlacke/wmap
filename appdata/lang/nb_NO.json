@@ -27,13 +27,26 @@
       "h": "t",
       "min": "min",
       "s": "s",
-      "kmh": "km/t"
+      "kmh": "km/t",
+      "mi": "mi",
+      "ft": "ft",
+      "mph": "mph"
     },
     "speech": {
       "kilometers": "{x} kilometer",
       "meters": "{x} meter",
       "kilometers_plain": "{x} kilometer",
-      "meters_plain": "{x} meter"
+      "meters_plain": "{x} meter",
+      "miles": {
+        "one": "{x} mile",
+        "other": "{x} miles"
+      },
+      "feet": "{x} fot",
+      "miles_plain": {
+        "one": "{x} mile",
+        "other": "{x} miles"
+      },
+      "feet_plain": "{x} fot"
     },
     "profiles": {
       "foot": "Til fots",
@@ -120,6 +133,20 @@
       },
       "language": {
         "title": "Språk"
+      },
+      "units": {
+        "title": "Enheter",
+        "options": {
+          "metric": "Kilometer og meter",
+          "imperial": "Miles og fot"
+        }
+      },
+      "clock": {
+        "title": "Tidsformat",
+        "options": {
+          "24": "24 timer",
+          "12": "12 timer (AM/PM)"
+        }
       },
       "geo": "Åpne kartlenker (geo:) med WMap",
       "permissions": "Tillatelser – posisjon, Health Connect"
@@ -4583,7 +4610,12 @@
     "message_title": "Nyhet",
     "welcome": {
       "title": "Velkommen til WMap",
-      "go": "Kom i gang"
+      "go": "Kom i gang",
+      "text": [
+        "<b>WMap</b> er et kart uten sporing: søk, naviger, planlegg og ta opp ruter og turer – til fots, på sykkel, med bil og med buss &amp; tog.",
+        "Alt bygger på åpne data fra OpenStreetMap. Du trenger ingen konto og har full kontroll over dataene dine.",
+        "Skriv inn et sted, en adresse eller bare «bakeri» øverst for å finne bakerier i nærheten – eller trykk på <span class=\"msr\">directions</span> for å planlegge en rute."
+      ]
     },
     "version": "Versjon {version}",
     "changelog": {

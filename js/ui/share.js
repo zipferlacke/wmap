@@ -20,7 +20,7 @@
  */
 import { packJson, unpackJson, local } from '../data/store.js';
 import { ask } from './dialogs.js';
-import { esc } from '../core/geo.js';
+import { esc, clockFormat } from '../core/geo.js';
 import { PUBLIC_URL } from '../core/config.js';
 import { locale, t } from '../core/i18n.js';
 
@@ -172,4 +172,4 @@ export async function myName() {
   return v;
 }
 
-export const clock = (ms) => new Date(ms).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+export const clock = (ms) => new Date(ms).toLocaleTimeString(locale, { ...clockFormat() });

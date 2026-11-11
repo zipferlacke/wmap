@@ -27,13 +27,26 @@
       "h": "t",
       "min": "min",
       "s": "s",
-      "kmh": "km/t"
+      "kmh": "km/t",
+      "mi": "mi",
+      "ft": "ft",
+      "mph": "mph"
     },
     "speech": {
       "kilometers": "{x} kilometer",
       "meters": "{x} meter",
       "kilometers_plain": "{x} kilometer",
-      "meters_plain": "{x} meter"
+      "meters_plain": "{x} meter",
+      "miles": {
+        "one": "{x} mile",
+        "other": "{x} miles"
+      },
+      "feet": "{x} fod",
+      "miles_plain": {
+        "one": "{x} mile",
+        "other": "{x} miles"
+      },
+      "feet_plain": "{x} fod"
     },
     "profiles": {
       "foot": "Til fods",
@@ -120,6 +133,20 @@
       },
       "language": {
         "title": "Sprog"
+      },
+      "units": {
+        "title": "Enheder",
+        "options": {
+          "metric": "Kilometer og meter",
+          "imperial": "Miles og fod"
+        }
+      },
+      "clock": {
+        "title": "Tidsformat",
+        "options": {
+          "24": "24 timer",
+          "12": "12 timer (AM/PM)"
+        }
       },
       "geo": "Åbn kortlinks (geo:) med WMap",
       "permissions": "Tilladelser – lokation, Health Connect"
@@ -4636,7 +4663,12 @@
     "message_title": "Nyhed",
     "welcome": {
       "title": "Velkommen til WMap",
-      "go": "Kom i gang"
+      "go": "Kom i gang",
+      "text": [
+        "<b>WMap</b> er et kort uden sporing: søg, navigér, planlæg og optag ruter og ture – til fods, på cykel, i bil og med bus &amp; tog.",
+        "Alt bygger på åbne data fra OpenStreetMap. Du behøver ingen konto og har fuld kontrol over dine data.",
+        "Skriv et sted, en adresse eller blot „bager“ øverst for at finde bagere i nærheden – eller tryk på <span class=\"msr\">directions</span> for at planlægge en rute."
+      ]
     },
     "version": "Version {version}",
     "changelog": {

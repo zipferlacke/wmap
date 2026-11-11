@@ -18,6 +18,7 @@ import { mountBuildings } from './buildings.js';
 import { tiltGestures } from './tilt-gestures.js';
 import { POI_ICON, addPoiIcon } from './poi-icons.js';
 import { t } from '../core/i18n.js';
+import { imperial } from '../core/units.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const fc = (features) => ({ type: 'FeatureCollection', features });
@@ -133,6 +134,14 @@ export function createMap(container, {
   collapseAttribution(map.getContainer());
   keepSized(map);
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+  // Maßstab unten rechts: beim Zoomen sichtbar, kurz danach wieder weg (css/maplibre_custom.css)
+  map.addControl(new maplibregl.ScaleControl({ maxWidth: 110, unit: imperial() ? 'imperial' : 'metric' }), 'bottom-right');
+  let scaleOff = null;
+  map.on('zoom', () => {
+    map.getContainer().classList.add('scale-on');
+    clearTimeout(scaleOff);
+    scaleOff = setTimeout(() => map.getContainer().classList.remove('scale-on'), 2500);
+  });
 
   // App: Der Punkt auf der Karte nutzt dieselbe Standortabfrage wie die
   // Navigation (Plugin, core/native.js) – in Bewegung jede Sekunde, im Stand

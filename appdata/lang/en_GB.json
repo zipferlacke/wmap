@@ -27,13 +27,26 @@
       "h": "h",
       "min": "min",
       "s": "s",
-      "kmh": "km/h"
+      "kmh": "km/h",
+      "mi": "mi",
+      "ft": "ft",
+      "mph": "mph"
     },
     "speech": {
       "kilometers": "{x} kilometres",
       "meters": "{x} metres",
       "kilometers_plain": "{x} kilometres",
-      "meters_plain": "{x} metres"
+      "meters_plain": "{x} metres",
+      "miles": {
+        "one": "{x} mile",
+        "other": "{x} miles"
+      },
+      "feet": "{x} feet",
+      "miles_plain": {
+        "one": "{x} mile",
+        "other": "{x} miles"
+      },
+      "feet_plain": "{x} feet"
     },
     "profiles": {
       "foot": "On foot",
@@ -120,6 +133,20 @@
       },
       "language": {
         "title": "Language"
+      },
+      "units": {
+        "title": "Units",
+        "options": {
+          "metric": "Kilometres and metres",
+          "imperial": "Miles and feet"
+        }
+      },
+      "clock": {
+        "title": "Time format",
+        "options": {
+          "24": "24-hour",
+          "12": "12-hour (am/pm)"
+        }
       },
       "geo": "Open map links (geo:) with WMap",
       "permissions": "Permissions – location, Health Connect"
@@ -4681,7 +4708,12 @@
     "message_title": "News",
     "welcome": {
       "title": "Welcome to WMap",
-      "go": "Let’s go"
+      "go": "Let’s go",
+      "text": [
+        "<b>WMap</b> is a map without tracking: search, navigate, plan and record routes and tours – on foot, by bike, by car and by bus &amp; train.",
+        "Everything is built on open data from OpenStreetMap. You don’t need an account and stay in full control of your data.",
+        "Type a place, an address or simply “bakery” at the top to find bakeries nearby – or tap <span class=\"msr\">directions</span> to plan a route."
+      ]
     },
     "version": "Version {version}",
     "changelog": {

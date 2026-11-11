@@ -3,6 +3,7 @@
  * Koordinaten immer als [lon, lat] wie in GeoJSON und MapLibre.
  */
 import { locale, perLanguage, t } from './i18n-text.js';
+import { M_PER_FOOT, M_PER_MILE, clock12, imperial, speedOf } from './units.js';
 
 const R = 6371008.8;
 const RAD = Math.PI / 180;
@@ -183,12 +184,27 @@ export function bboxAround([lon, lat], r) {
 
 const nf = (v, d = 0) => v.toLocaleString(locale, { maximumFractionDigits: d, minimumFractionDigits: d });
 // Einheiten einmal je Sprache holen: Die Anzeige läuft auch in der Navigation dauernd
-const units = perLanguage(() => ({ m: t('common.units.m'), km: t('common.units.km'), h: t('common.units.h'), min: t('common.units.min'), s: t('common.units.s') }));
+const units = perLanguage(() => ({
+  m: t('common.units.m'), km: t('common.units.km'), h: t('common.units.h'), min: t('common.units.min'), s: t('common.units.s'),
+  mi: t('common.units.mi'), ft: t('common.units.ft'), kmh: t('common.units.kmh'), mph: t('common.units.mph'),
+}));
 
+/** Strecke: metrisch „850 m“, „3,4 km“ – in Meilen (core/units.js) „400 ft“, „2.1 mi“ */
 export function fmtDistance(m) {
+  if (imperial()) {
+    const ft = m / M_PER_FOOT;
+    if (ft < 500) return `${nf(Math.max(0, Math.round(ft / 10) * 10))} ${units().ft}`;
+    const mi = m / M_PER_MILE;
+    return `${nf(mi, mi < 9.95 ? 1 : 0)} ${units().mi}`;
+  }
   if (m < 950) return `${nf(Math.max(0, Math.round(m / 10) * 10))} ${units().m}`;
   return `${nf(m / 1000, m < 9950 ? 1 : 0)} ${units().km}`;
 }
+
+/** „km/h“ bzw. „mph“ */
+export const speedUnit = () => (imperial() ? units().mph : units().kmh);
+/** Tempo aus m/s mit Einheit: „23,4 km/h“ bzw. „14.5 mph“ */
+export const fmtSpeed = (mps, decimals = 1) => `${nf(speedOf(mps), decimals)} ${speedUnit()}`;
 
 export function fmtDuration(s) {
   const u = units();
@@ -214,13 +230,25 @@ export function fmtTime(s) {
 /** Entfernung für die Ansage: „In 300 Metern“, „In 1,5 Kilometern“. */
 /** `form`: '_plain' für die Grundform („300 Meter“ statt „in 300 Metern“) */
 export function speakDistance(m, form = '') {
+  if (imperial()) {
+    if (m >= 300) {
+      const mi = Math.round(m / M_PER_MILE * 10) / 10;
+      const shown = mi < 9.95 ? mi : Math.round(mi);
+      return t(`common.speech.miles${form}`, { x: nf(shown, Number.isInteger(shown) ? 0 : 1), n: shown });
+    }
+    const ft = m / M_PER_FOOT;
+    const step = ft > 300 ? 100 : 50;
+    return t(`common.speech.feet${form}`, { x: Math.max(step, Math.round(ft / step) * step) });
+  }
   if (m >= 950) return t(`common.speech.kilometers${form}`, { x: nf(Math.round(m / 100) / 10, m < 9950 ? 1 : 0) });
   const step = m > 300 ? 100 : m > 100 ? 50 : 10;
   return t(`common.speech.meters${form}`, { x: Math.max(step, Math.round(m / step) * step) });
 }
 
+/** Angaben für Intl/toLocale…: Uhrzeit „14:05“ bzw. „2:05 PM“ (core/units.js) */
+export const clockFormat = () => ({ hour: clock12() ? 'numeric' : '2-digit', minute: '2-digit', hour12: clock12() });
 export function fmtClock(date) {
-  return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString(locale, clockFormat());
 }
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g,

@@ -25,6 +25,7 @@ import { myOsmStats, allOsmStats, statsText } from '../osm/stats.js';
 import { toast } from '../ui/dialogs.js';
 import { permissionsHere, showPermissions } from '../ui/permissions.js';
 import { lang, languages, locale, setLanguage, t } from '../core/i18n.js';
+import { CLOCK_KEY, UNITS_KEY, clockSystem, refreshUnits, unitSystem } from '../core/units.js';
 import { statsSetting } from '../services/usage.js';
 
 const root = document.querySelector('.settings');
@@ -54,6 +55,18 @@ const render = () => {
           ${langs.map((l) => `<option value="${l.code}" ${lang === l.code ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}
         </select>
       </label>` : ''}
+      <label class="settings-select">
+        <span><strong>${t('settings.look.units.title')}</strong></span>
+        <select name="units">
+          ${['metric', 'imperial'].map((v) => `<option value="${v}" ${unitSystem() === v ? 'selected' : ''}>${t(`settings.look.units.options.${v}`)}</option>`).join('')}
+        </select>
+      </label>
+      <label class="settings-select">
+        <span><strong>${t('settings.look.clock.title')}</strong></span>
+        <select name="clock">
+          ${['24', '12'].map((v) => `<option value="${v}" ${clockSystem() === v ? 'selected' : ''}>${t(`settings.look.clock.options.${v}`)}</option>`).join('')}
+        </select>
+      </label>
       ${geoHandler ? `<button type="button" class="button settings-row" data-act="geo"><span class="msr">pin_drop</span> ${t('settings.look.geo')}</button>` : ''}
       ${permissionsHere ? `<button type="button" class="button settings-row" data-act="perms"><span class="msr">verified_user</span> ${t('settings.look.permissions')}</button>` : ''}
     </section>
@@ -168,6 +181,8 @@ addEventListener('wmap:login', (e) => {
 root.addEventListener('change', (e) => {
   const el = e.target;
   if (el.name === 'language') { setLanguage(el.value); location.reload(); }
+  if (el.name === 'units') { local.set(UNITS_KEY, el.value); refreshUnits(); }
+  if (el.name === 'clock') { local.set(CLOCK_KEY, el.value); refreshUnits(); }
   if (el.name === 'offline') offlineSetting.set(el.checked);
   if (el.name === 'theme') theme.set(el.value);
   if (el.name === 'navzoom') navSettings.zoom = el.value;

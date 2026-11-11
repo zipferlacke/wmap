@@ -27,13 +27,26 @@
       "h": "tim",
       "min": "min",
       "s": "s",
-      "kmh": "km/h"
+      "kmh": "km/h",
+      "mi": "mi",
+      "ft": "ft",
+      "mph": "mph"
     },
     "speech": {
       "kilometers": "{x} kilometer",
       "meters": "{x} meter",
       "kilometers_plain": "{x} kilometer",
-      "meters_plain": "{x} meter"
+      "meters_plain": "{x} meter",
+      "miles": {
+        "one": "{x} mile",
+        "other": "{x} miles"
+      },
+      "feet": "{x} fot",
+      "miles_plain": {
+        "one": "{x} mile",
+        "other": "{x} miles"
+      },
+      "feet_plain": "{x} fot"
     },
     "profiles": {
       "foot": "Till fots",
@@ -120,6 +133,20 @@
       },
       "language": {
         "title": "Språk"
+      },
+      "units": {
+        "title": "Enheter",
+        "options": {
+          "metric": "Kilometer och meter",
+          "imperial": "Miles och fot"
+        }
+      },
+      "clock": {
+        "title": "Tidsformat",
+        "options": {
+          "24": "24 timmar",
+          "12": "12 timmar (AM/PM)"
+        }
       },
       "geo": "Öppna kartlänkar (geo:) med WMap",
       "permissions": "Behörigheter – plats, Health Connect"
@@ -4613,7 +4640,12 @@
     "message_title": "Nyhet",
     "welcome": {
       "title": "Välkommen till WMap",
-      "go": "Nu kör vi"
+      "go": "Nu kör vi",
+      "text": [
+        "<b>WMap</b> är en karta utan spårning: sök, navigera, planera och spela in rutter och turer – till fots, med cykel, med bil och med buss &amp; tåg.",
+        "Allt bygger på öppna data från OpenStreetMap. Du behöver inget konto och har full kontroll över dina data.",
+        "Skriv en plats, en adress eller bara ”bageri” högst upp för att hitta bagerier i närheten – eller tryck på <span class=\"msr\">directions</span> för att planera en rutt."
+      ]
     },
     "version": "Version {version}",
     "changelog": {

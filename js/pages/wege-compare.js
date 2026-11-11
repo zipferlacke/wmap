@@ -24,7 +24,7 @@ import { ElevationProfile } from '../ui/elevation.js';
 import { paceOf, cadName, sportName, sportOf } from '../data/track-look.js';
 import { metrics } from '../data/track-stats.js';
 import { local } from '../data/store.js';
-import { fmtDistance, fmtTime, esc } from '../core/geo.js';
+import { fmtDistance, fmtTime, fmtSpeed, esc, clockFormat } from '../core/geo.js';
 import { locale, t } from '../core/i18n.js';
 // Auswahl mit Suche für <select data-sp-picker> (legt sich selbst an)
 import '../../libs/wuefl-libs/selectpicker/selectpicker.js';
@@ -32,7 +32,7 @@ import '../../libs/wuefl-libs/selectpicker/selectpicker.js';
 const DAY = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: '2-digit' });
 const SHORT = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' });
 const DM = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'numeric' });
-const HM = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' });
+const HM = new Intl.DateTimeFormat(locale, { ...clockFormat() });
 const FULL = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'numeric', year: 'numeric' });
 
 const moving = (tk) => tk.moving || (tk.end - tk.start) / 1000;
@@ -66,16 +66,16 @@ function figures(tk) {
  */
 function rows(ref) {
   const pace = paceOf(ref);
-  const speed = (v) => (pace ? `${clock(pace.per / v)} ${pace.unit}` : t('wege.compare.unit.kmh', { v: num(v * 3.6, 1) }));
+  const speed = (v) => (pace ? `${clock(pace.per / v)} ${pace.unit}` : fmtSpeed(v));
   const sign = (v) => (v > 0 ? '+' : v < 0 ? '−' : '±');
   return [
     ['time', t('wege.compare.rows.time'), fmtTime, (a, b) => `${sign(b - a)}${clock(b - a)}`, -1],
     ['dist', t('wege.compare.rows.dist'), fmtDistance, (a, b) => (Math.abs(b - a) < 5 ? t('wege.compare.unit.zero_m') : `${sign(b - a)}${fmtDistance(Math.abs(b - a))}`), 1],
     ['speed', pace ? t('wege.compare.rows.pace') : t('wege.compare.rows.speed'), speed,
-      (a, b) => (pace ? `${sign(pace.per / b - pace.per / a)}${clock(pace.per / b - pace.per / a)} ${pace.unit}` : `${sign(b - a)}${t('wege.compare.unit.kmh', { v: num(Math.abs(b - a) * 3.6, 1) })}`), 1,
+      (a, b) => (pace ? `${sign(pace.per / b - pace.per / a)}${clock(pace.per / b - pace.per / a)} ${pace.unit}` : `${sign(b - a)}${fmtSpeed(Math.abs(b - a))}`), 1,
       // Zeit je km: die Prozente auf die Zeit, nicht auf die Geschwindigkeit (schneller = weniger Minuten)
       pace ? (a, b) => a / b - 1 : null],
-    ['top', t('wege.compare.rows.top'), (v) => t('wege.compare.unit.kmh', { v: num(v * 3.6, 1) }), (a, b) => `${sign(b - a)}${t('wege.compare.unit.kmh', { v: num(Math.abs(b - a) * 3.6, 1) })}`, 1],
+    ['top', t('wege.compare.rows.top'), (v) => fmtSpeed(v), (a, b) => `${sign(b - a)}${fmtSpeed(Math.abs(b - a))}`, 1],
     ['hr', t('wege.compare.rows.hr'), (v) => `${Math.round(v)}`, (a, b) => `${sign(Math.round(b) - Math.round(a))}${Math.abs(Math.round(b) - Math.round(a))}`, -1],
     ['hrMax', t('wege.compare.rows.hr_max'), (v) => `${Math.round(v)}`, (a, b) => `${sign(b - a)}${Math.abs(Math.round(b - a))}`, -1],
     ['beats', t('wege.compare.rows.beats'), (v) => num(Math.round(v)), (a, b) => `${sign(Math.round(b - a))}${num(Math.abs(Math.round(b - a)))}`, -1],

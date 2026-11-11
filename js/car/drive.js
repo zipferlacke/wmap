@@ -15,7 +15,8 @@
  */
 import { askServer } from '../services/servers.js';
 import { trustedSpeed, glideMarker } from '../core/smooth.js';
-import { distance } from '../core/geo.js';
+import { distance, speedUnit } from '../core/geo.js';
+import { limitOf, speedOf } from '../core/units.js';
 import { map, state, SIMULATING } from '../app/core.js';
 import { nav } from '../app/nav.js';
 import { alongMap } from '../app/ask-along.js';
@@ -97,8 +98,11 @@ box.innerHTML = `
 map.getContainer().append(box);
 const $ = (s) => box.querySelector(s);
 
+/** `kmh` und `limit` wie angezeigt: km/h bzw. mph (shown) */
+const shown = (mps, limitKmh) => ({ kmh: Math.round(speedOf(mps)), limit: limitOf(limitKmh) });
 function paint({ kmh, limit, street }) {
   $('.car-kmh strong').textContent = String(kmh);
+  $('.car-kmh small').textContent = speedUnit();
   $('.car-limit').hidden = !limit;
   $('.car-limit').textContent = limit ?? '';
   $('.car-speed').classList.toggle('over', !!limit && kmh > limit + 3);
@@ -201,8 +205,8 @@ function fixed(pos) {
   } else marker.setLngLat(point);
   marker.setRotation((heading ?? 0));
   camera(point, kmh, dt);
-  lookUpLimit(point, current.street).then(() => { if (!nav.active) paint({ kmh: current.kmh, limit: limit.value, street: current.street }); });
-  paint({ kmh, limit: limit.value, street: current.street });
+  lookUpLimit(point, current.street).then(() => { if (!nav.active) paint({ ...shown(v, limit.value), street: current.street }); });
+  paint({ ...shown(v, limit.value), street: current.street });
 }
 
 /*

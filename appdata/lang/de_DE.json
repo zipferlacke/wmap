@@ -27,13 +27,26 @@
       "h": "h",
       "min": "min",
       "s": "s",
-      "kmh": "km/h"
+      "kmh": "km/h",
+      "mi": "mi",
+      "ft": "ft",
+      "mph": "mph"
     },
     "speech": {
       "kilometers": "{x} Kilometern",
       "meters": "{x} Metern",
       "kilometers_plain": "{x} Kilometer",
-      "meters_plain": "{x} Meter"
+      "meters_plain": "{x} Meter",
+      "miles": {
+        "one": "{x} Meile",
+        "other": "{x} Meilen"
+      },
+      "feet": "{x} Fuß",
+      "miles_plain": {
+        "one": "{x} Meile",
+        "other": "{x} Meilen"
+      },
+      "feet_plain": "{x} Fuß"
     },
     "profiles": {
       "foot": "Zu Fuß",
@@ -120,6 +133,20 @@
       },
       "language": {
         "title": "Sprache"
+      },
+      "units": {
+        "title": "Maßeinheiten",
+        "options": {
+          "metric": "Kilometer und Meter",
+          "imperial": "Meilen und Fuß"
+        }
+      },
+      "clock": {
+        "title": "Uhrzeit",
+        "options": {
+          "24": "24 Stunden",
+          "12": "12 Stunden (AM/PM)"
+        }
       },
       "geo": "Karten-Links (geo:) mit WMap öffnen",
       "permissions": "Berechtigungen – Standort, Health Connect"

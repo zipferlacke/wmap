@@ -16,7 +16,8 @@ import { folder } from '../data/folder.js';
 import { healthAvailable, healthSync } from '../services/health.js';
 import { autoSync } from '../data/auto-sync.js';
 import { ask, toast } from '../ui/dialogs.js';
-import { esc } from '../core/geo.js';
+import { esc, fmtDistance } from '../core/geo.js';
+import { imperial } from '../core/units.js';
 import { APP_VERSION } from '../core/config.js';
 import { appVersion } from '../core/native.js';
 import { runningVersion, showChangelog } from '../ui/news.js';
@@ -27,7 +28,7 @@ import { locale, t } from '../core/i18n.js';
 const $ = (s, root = document) => root.querySelector(s);
 mountAppBar();
 
-const km = (m) => t('dashboard.unit.km', { v: Math.round(m / 1000).toLocaleString(locale) });
+const km = (m) => (imperial() ? fmtDistance(m) : t('dashboard.unit.km', { v: Math.round(m / 1000).toLocaleString(locale) }));
 // Für Einzahl/Mehrzahl: n wählt die Form, count steht im Text
 const n = (x) => ({ n: x, count: x.toLocaleString(locale) });
 

@@ -15,7 +15,7 @@
  * Farbe aus dem Tag „colour“, sonst rot (Bus) bzw. nach Verkehrsart.
  */
 import { run } from './overpass.js';
-import { esc, cumulative, nearestOnLine } from '../core/geo.js';
+import { esc, cumulative, nearestOnLine, clockFormat } from '../core/geo.js';
 import { theme } from '../core/theme.js';
 import { locale, t, words } from '../core/i18n.js';
 
@@ -333,7 +333,7 @@ function sliceLine(line, cum, a, b) {
 export function lineStopsHtml({ stops, next }) {
   if (!stops.length) return '';
   const nm = (x) => (typeof x === 'string' ? x : x.name);
-  const tm = (x) => (x?.time ? `<time>${x.time.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</time>` : '');
+  const tm = (x) => (x?.time ? `<time>${x.time.toLocaleTimeString(locale, { ...clockFormat() })}</time>` : '');
   const list = next?.length > 1 ? next : stops;
   const summary = !next ? t('services.transit.stops', { n: stops.length })
     : next.length > 1 ? t('services.transit.stops_left', { n: next.length - 1, to: esc(nm(next.at(-1))), arrival: next.at(-1).time ? t('services.transit.arrival', { time: tm(next.at(-1)).replace(/<\/?time>/g, '') }) : '' })

@@ -34,6 +34,7 @@ import './app/traffic-along.js';
 import './app/stops.js';
 import './app/report.js';
 import { locale, t } from './core/i18n.js';
+import { clockFormat } from './core/geo.js';
 
 /* ══════════════════════════════════════════════════════════════════════════
    Startansicht, Menü oben rechts, Maße
@@ -286,7 +287,7 @@ function openShared(p) {
   if (mins) {
     const ago = Math.round((Date.now() - mins * 60000) / 60000);
     sub.textContent = ago < 1 ? t('map.link.shared.now') : ago < 90 ? t('map.link.shared.minutes', { n: ago })
-      : t('map.link.shared.date', { date: new Date(mins * 60000).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) });
+      : t('map.link.shared.date', { date: new Date(mins * 60000).toLocaleString(locale, { day: 'numeric', month: 'short', ...clockFormat() }) });
   }
   geocode.reverse([lon, lat]).then((r) => {
     if (state.place !== f || !r) return;

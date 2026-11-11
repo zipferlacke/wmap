@@ -51,3 +51,14 @@
 }
 .maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--surface); }
 .maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--surface); }
+
+/* Maßstab unten rechts: nur beim Zoomen und kurz danach (map/map.js setzt .scale-on) */
+.maplibregl-ctrl.maplibregl-ctrl-scale {
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  color: var(--clr-neutral-900);
+  border-color: var(--clr-neutral-900);
+  opacity: 0;
+  transition: opacity .4s;
+  pointer-events: none;
+}
+.scale-on .maplibregl-ctrl.maplibregl-ctrl-scale { opacity: 1; }

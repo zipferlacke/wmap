@@ -10,7 +10,7 @@
  * Zeiten dürfen Date oder Millisekunden sein (gemerkte Verbindungen).
  */
 import { clock } from './share.js';
-import { fmtDistance, esc, cumulative } from '../core/geo.js';
+import { fmtDistance, fmtSpeed, esc, cumulative } from '../core/geo.js';
 import { locale, t } from '../core/i18n.js';
 
 export const legBadge = (l) => (l.walk ? `<span class="msr leg-walk" title="${t('transit_legs.walk')}">directions_walk</span>`
@@ -55,7 +55,7 @@ export function transitLegsHtml(trip, open = null, change = 5) {
     const m = legMeters(l);
     let title, sub;
     if (l.walk) {
-      const speed = m && secs > 60 ? ` · ${(m / secs * 3.6).toLocaleString(locale, { maximumFractionDigits: 1 })} ${t('common.units.kmh')}` : '';
+      const speed = m && secs > 60 ? ` · ${fmtSpeed(m / secs)}` : '';
       title = t('transit_legs.walk_to', { to: l.to });
       sub = `${minutes(secs)}${m ? ` · ${fmtDistance(m)}` : ''}${speed}`;
     } else {

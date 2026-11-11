@@ -27,13 +27,26 @@
       "h": "h",
       "min": "min",
       "s": "s",
-      "kmh": "km/h"
+      "kmh": "km/h",
+      "mi": "mi",
+      "ft": "ft",
+      "mph": "mph"
     },
     "speech": {
       "kilometers": "{x} kilomètres",
       "meters": "{x} mètres",
       "kilometers_plain": "{x} kilomètres",
-      "meters_plain": "{x} mètres"
+      "meters_plain": "{x} mètres",
+      "miles": {
+        "one": "{x} mile",
+        "other": "{x} miles"
+      },
+      "feet": "{x} pieds",
+      "miles_plain": {
+        "one": "{x} mile",
+        "other": "{x} miles"
+      },
+      "feet_plain": "{x} pieds"
     },
     "profiles": {
       "foot": "À pied",
@@ -120,6 +133,20 @@
       },
       "language": {
         "title": "Langue"
+      },
+      "units": {
+        "title": "Unités",
+        "options": {
+          "metric": "Kilomètres et mètres",
+          "imperial": "Miles et pieds"
+        }
+      },
+      "clock": {
+        "title": "Format de l’heure",
+        "options": {
+          "24": "24 heures",
+          "12": "12 heures (AM/PM)"
+        }
       },
       "geo": "Ouvrir les liens de carte (geo:) avec WMap",
       "permissions": "Autorisations – position, Health Connect"
@@ -4712,7 +4739,12 @@
     "message_title": "Nouveauté",
     "welcome": {
       "title": "Bienvenue dans WMap",
-      "go": "C’est parti"
+      "go": "C’est parti",
+      "text": [
+        "<b>WMap</b> est une carte sans pistage : rechercher, naviguer, planifier et enregistrer des itinéraires et des randonnées – à pied, à vélo, en voiture et en bus &amp; train.",
+        "Tout repose sur les données ouvertes d’OpenStreetMap. Aucun compte n’est nécessaire et vous gardez le contrôle total de vos données.",
+        "Saisissez en haut un lieu, une adresse ou simplement « boulangerie » pour trouver les boulangeries à proximité – ou touchez <span class=\"msr\">directions</span> pour planifier un itinéraire."
+      ]
     },
     "version": "Version {version}",
     "changelog": {

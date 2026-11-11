@@ -8,7 +8,7 @@
  */
 import { PLUGS, freeChargers, freeFor, hasPlug, STEPS } from '../services/charging.js';
 import { local } from '../data/store.js';
-import { esc, fmtDistance } from '../core/geo.js';
+import { esc, fmtDistance, clockFormat } from '../core/geo.js';
 import { afterLayout, fitTo, map, showHl, viewPadding } from './core.js';
 import { hitFilter } from './category.js';
 import { t, locale } from '../core/i18n.js';
@@ -29,7 +29,7 @@ export function chargerHtml(s) {
         p.broken ? ` <small>${t('place.charging.broken', { n: p.broken })}</small>` : ''}`;
     return `<li><span class="plug">${esc(plugName(p.type))}</span><span class="kw">${kw(p.kw)}</span><span class="state">${state}</span></li>`;
   }).join('');
-  const time = s.updated ? new Date(s.updated).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  const time = s.updated ? new Date(s.updated).toLocaleString(locale, { day: '2-digit', month: '2-digit', ...clockFormat() }) : '';
   return `<div class="charger">
       <h4><span class="msr">ev_station</span> ${t('place.charging.title')}${s.operator ? ` <small>${esc(s.operator)}</small>` : ''}</h4>
       <ul>${rows}</ul>

@@ -27,13 +27,26 @@
       "h": "h",
       "min": "min",
       "s": "s",
-      "kmh": "km/h"
+      "kmh": "km/h",
+      "mi": "mi",
+      "ft": "ft",
+      "mph": "mph"
     },
     "speech": {
       "kilometers": "{x} kilometrów",
       "meters": "{x} metrów",
       "kilometers_plain": "{x} kilometrów",
-      "meters_plain": "{x} metrów"
+      "meters_plain": "{x} metrów",
+      "miles": {
+        "one": "{x} milę",
+        "other": "{x} mil"
+      },
+      "feet": "{x} stóp",
+      "miles_plain": {
+        "one": "{x} milę",
+        "other": "{x} mil"
+      },
+      "feet_plain": "{x} stóp"
     },
     "profiles": {
       "foot": "Pieszo",
@@ -120,6 +133,20 @@
       },
       "language": {
         "title": "Język"
+      },
+      "units": {
+        "title": "Jednostki",
+        "options": {
+          "metric": "Kilometry i metry",
+          "imperial": "Mile i stopy"
+        }
+      },
+      "clock": {
+        "title": "Format czasu",
+        "options": {
+          "24": "24-godzinny",
+          "12": "12-godzinny (AM/PM)"
+        }
       },
       "geo": "Otwieraj linki do map (geo:) w WMap",
       "permissions": "Uprawnienia – lokalizacja, Health Connect"
@@ -4795,7 +4822,12 @@
     "message_title": "Nowość",
     "welcome": {
       "title": "Witaj w WMap",
-      "go": "Zaczynamy"
+      "go": "Zaczynamy",
+      "text": [
+        "<b>WMap</b> to mapa bez śledzenia: wyszukuj, nawiguj, planuj i nagrywaj trasy i wycieczki – pieszo, rowerem, samochodem oraz autobusem i pociągiem.",
+        "Wszystko opiera się na otwartych danych OpenStreetMap. Nie potrzebujesz konta i masz pełną kontrolę nad swoimi danymi.",
+        "Wpisz u góry miejsce, adres lub po prostu „piekarnia”, aby znaleźć piekarnie w pobliżu – albo dotknij <span class=\"msr\">directions</span>, aby zaplanować trasę."
+      ]
     },
     "version": "Wersja {version}",
     "changelog": {
