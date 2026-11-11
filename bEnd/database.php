@@ -2,10 +2,14 @@
 /**
  * Datenbank von WMap (SQLite) – gleicher Aufbau wie bei wuecash:
  * openDatabase() legt fehlende Tabellen an, execSql() gibt [0, Zeilen] oder
- * [1, Meldung] zurück. Die Datei liegt in data/ (per .htaccess gesperrt).
+ * [1, Meldung] zurück. Zwei Dateien in data/ (per .htaccess gesperrt):
+ *   wmap.sqlite    Konten, Anmeldungen, Touren, Bewertungen, Plugins, geteilte Links
+ *   stats.sqlite   Statistik (Statistics, Counts) und Weiterleitung (ProxyCalls, ProxyState, RateLimit)
  */
 class DB_Helper{
     private $pdo;
+    /** Liegen in data/stats.sqlite (angehängt als „stat“), alles andere in data/wmap.sqlite */
+    const STAT_TABLES = ["Statistics", "Counts", "ProxyCalls", "ProxyState", "RateLimit"];
 
     public function openDatabase(){
         try {
@@ -16,6 +20,9 @@ class DB_Helper{
             $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->pdo->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
             $this->pdo->exec("PRAGMA foreign_keys = ON");
+            // Statistik und Weiterleitung in einer eigenen Datei, angehängt als „stat“ – Tabellennamen ohne Vorsatz
+            // finden sie dort, Abfragen über beide Dateien (stats.php: Konten) gehen wie in einer
+            $this->pdo->exec("ATTACH DATABASE ".$this->pdo->quote(__DIR__."/data/stats.sqlite")." AS stat");
         } catch (PDOException $e) {
             return array(1, "Es gab einen Fehler bei der Verbindung zur Datenbank:".$e->getMessage());
         }
@@ -115,14 +122,14 @@ class DB_Helper{
             //   plugin_neu   detail: public|private + Quelltyp
             //   bewertung    detail: Sterne
             // ===================================
-            "CREATE TABLE IF NOT EXISTS Statistics (
+            "CREATE TABLE IF NOT EXISTS stat.Statistics (
                 id                  INTEGER     PRIMARY KEY AUTOINCREMENT,
                 time                DATETIME    DEFAULT CURRENT_TIMESTAMP,
                 event               TEXT,
                 frage               INTEGER,
                 detail              TEXT
             )",
-            "CREATE INDEX IF NOT EXISTS StatisticsEvent ON Statistics (event, time)",
+            "CREATE INDEX IF NOT EXISTS stat.StatisticsEvent ON Statistics (event, time)",
 
             // ===================================
             // Shares – kurzer Link beim Teilen (api_share.php): der gepackte Inhalt des Links, 30 Tage
@@ -145,10 +152,11 @@ class DB_Helper{
             //   client:<dienst>        Anfragen, die die App selbst stellt (Photon, Valhalla …) – kommt mit dem Ping
             //   ping:active|new|week|month   Geräte: heute aktiv, neu, erstmals diese Woche / diesen Monat
             //   ping:back_week|back_month    davon schon in der Vorwoche / im Vormonat da (verloren = aktiv davor − zurück)
+            //   hit:page               Seitenaufrufe: Abrufe von appdata/messages.json (appdata/messages.php)
             //   test:<name>            dasselbe aus den Tests (Cookie wmap_test=1) – zählt nirgends sonst mit
             // day - name - n
             // ===================================
-            "CREATE TABLE IF NOT EXISTS Counts (
+            "CREATE TABLE IF NOT EXISTS stat.Counts (
                 day                 TEXT        NOT NULL,
                 name                TEXT        NOT NULL,
                 n                   INTEGER     NOT NULL DEFAULT 0,
@@ -159,7 +167,7 @@ class DB_Helper{
             // ProxyCalls – Weiterleitung (proxy.php) je Stunde und Server: wie erreichbar, wie schnell
             // hour (UTC, „2026-11-03 14“) - service - server - ok - fail - ms (Summe der Antwortzeiten der ok)
             // ===================================
-            "CREATE TABLE IF NOT EXISTS ProxyCalls (
+            "CREATE TABLE IF NOT EXISTS stat.ProxyCalls (
                 hour                TEXT        NOT NULL,
                 service             TEXT        NOT NULL,
                 server              TEXT        NOT NULL,
@@ -172,7 +180,7 @@ class DB_Helper{
             // ===================================
             // ProxyState – je Server: Pause nach Ausfall, zuletzt erreicht / ausgefallen (Sekunden), letzter Fehler
             // ===================================
-            "CREATE TABLE IF NOT EXISTS ProxyState (
+            "CREATE TABLE IF NOT EXISTS stat.ProxyState (
                 server              TEXT        PRIMARY KEY,
                 until               INTEGER     DEFAULT 0,
                 last_ok             INTEGER,
@@ -183,7 +191,7 @@ class DB_Helper{
             // ===================================
             // RateLimit – Anfragen je Minute und Absender (Hash aus Adresse und Tag, keine IP) – wird laufend geleert
             // ===================================
-            "CREATE TABLE IF NOT EXISTS RateLimit (
+            "CREATE TABLE IF NOT EXISTS stat.RateLimit (
                 minute              INTEGER     NOT NULL,
                 who                 TEXT        NOT NULL,
                 n                   INTEGER     NOT NULL DEFAULT 0,
@@ -194,6 +202,8 @@ class DB_Helper{
             $result = $this->execSql($sql, [], "openDatabase");
             if($result[0] == 1)                     {return($result);}
         }
+        $result = $this->moveStatTables();
+        if($result[0] == 1)                     {return($result);}
         // Gemeinsam planen (api_share.php): Schlüssel zum Ändern, Stand, wer zuletzt und wann
         $cols = array_column($this->execSql("PRAGMA table_info(Shares)", [], "openDatabase")[1], "name");
         foreach (["token" => "TEXT", "rev" => "INTEGER DEFAULT 1", "editor" => "TEXT", "changed" => "INTEGER"] as $col => $type) {
@@ -213,6 +223,32 @@ class DB_Helper{
             if($result[0] == 1)                     {return($result);}
         }
         return $this->execSql("CREATE UNIQUE INDEX IF NOT EXISTS UsersOsm ON Users (osm_id)", [], "openDatabase");
+    }
+
+    /**
+     * Liegen die Tabellen der Statistik noch in wmap.sqlite (Stand vor 3.2): Zeilen nach stats.sqlite, dort löschen –
+     * je Tabelle ganz oder gar nicht. Danach steht in wmap.sqlite nur noch, was zu Konten, Touren, Plugins und
+     * geteilten Links gehört.
+     */
+    private function moveStatTables(){
+        $old = array_column($this->execSql("SELECT name FROM main.sqlite_master WHERE type = 'table' AND name IN ('".implode("', '", self::STAT_TABLES)."')", [], "openDatabase")[1] ?? [], "name");
+        foreach ($old as $table) {
+            if (!in_array($table, self::STAT_TABLES, true)) continue;
+            try {
+                $this->pdo->exec("BEGIN IMMEDIATE");
+                // Eine andere Anfrage war schneller: nichts mehr zu tun
+                $there = $this->pdo->query("SELECT COUNT(*) FROM main.sqlite_master WHERE type = 'table' AND name = ".$this->pdo->quote($table))->fetchColumn();
+                if ($there) {
+                    $this->pdo->exec("INSERT OR IGNORE INTO stat.$table SELECT * FROM main.$table");
+                    $this->pdo->exec("DROP TABLE main.$table");
+                }
+                $this->pdo->exec("COMMIT");
+            } catch (PDOException $e) {
+                try { $this->pdo->exec("ROLLBACK"); } catch (PDOException $e2) { /* keine offene Transaktion */ }
+                return array(1, "Es gab einen Fehler beim Umzug der Statistik: ".$table);
+            }
+        }
+        return array(0);
     }
 
     public function execSql($sql, $input, $action){
