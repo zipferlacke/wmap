@@ -15,7 +15,7 @@ import { places } from '../data/saved.js';
 import { share, placeUrl } from '../ui/share.js';
 import { toast } from '../ui/dialogs.js';
 import { editPlace, addPlace } from '../osm/edit.js';
-import { bboxAround, esc } from '../core/geo.js';
+import { bboxAround, distance, esc } from '../core/geo.js';
 import { fmtDms, fmtLatLon, fmtMgrs, fmtPlus, fmtUtm } from '../core/coords.js';
 import { local } from '../data/store.js';
 import { clearCategory, runCategory } from './category.js';
@@ -274,6 +274,8 @@ export function paintPlaceActions() {
   }));
 }
 
+const HOUSE_M = 40;
+
 /** Langes Drücken / Rechtsklick (oder Koordinate in der Suche): der Punkt als Ort, Adresse per Rückwärtssuche. */
 export function showPoint(point, { fly = false, name = '', zoom = null } = {}) {
   const f = { type: 'Feature', geometry: { type: 'Point', coordinates: point }, properties: { name: name || t('map.point_on_map'), _point: true } };
@@ -288,6 +290,19 @@ export function showPoint(point, { fly = false, name = '', zoom = null } = {}) {
     // Adresse als Vorschlag, falls hier ein Ort eingetragen wird
     f.properties._address = r.properties;
     const d = geocode.describe(r);
+    // Auf ein Haus gedrückt (Adresse mit Hausnummer höchstens 40 m entfernt): Die Adresse ist der Titel, der Ort
+    // darunter – auch als Name beim Teilen, Merken und als Wegpunkt. Sonst „Punkt auf der Karte“, „bei …“
+    const p = r.properties;
+    const house = !name && p.street && p.housenumber && distance(point, r.geometry.coordinates) <= HOUSE_M;
+    if (house) {
+      // Nur die Adresse – ein Geschäft im Haus (Name des Treffers) ist nicht das, worauf gedrückt wurde
+      const address = geocode.describe({ properties: { ...p, name: undefined } });
+      f.properties.name = address.title;
+      $('[data-view="place"] .place-title').textContent = address.title;
+      sub(address.subtitle);
+      paintPlaceActions();
+      return;
+    }
     sub(t('map.near_place', { place: [d.title, d.subtitle].filter(Boolean).join(', ') }));
   }).catch(() => sub(''));
 }
