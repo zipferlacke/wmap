@@ -1,0 +1,51 @@
+WMap er et kart for underveis: finn steder, planlegg ruter, naviger, planlegg og ta opp turer, oppdag turstier. Alt bygger på åpne data fra OpenStreetMap. Du trenger ingen konto, det finnes ikke noe abonnement og ingen reklame, og rutene dine blir på enheten din.
+
+Kart
+• Et oversiktlig kart med lokale navn, lyst eller mørkt etter enheten din
+• 3D-terreng og bygninger, høyder helt ned til meteren og jorden som globus når du zoomer helt ut
+• Satellitt: flybilder for store deler av Tyskland, Sentinel-2 over hele verden. Bygningene vises i 3D med flybildet på taket
+• Tur-, sykkel- og terrengsykkelruter fra Waymarked Trails, relieff, trafikklys
+
+Søk og rute
+• Adresser, steder og kategorier som kafé, bensinstasjon eller lekeplass, i utsnittet eller langs ruten
+• Ruter til fots, på sykkel, med bil og med buss og bane, med alternativer og høydeprofil
+• Trykk på et stopp: neste avganger etter rutetabellen, i sanntid der det finnes, og i tillegg turens forløp med alle stopp
+• Bokmerker med egne navn og lister; Hjem og Jobb står øverst i søket
+• Rekkevidde: hvor langt du kommer på 5 til 60 minutter, og hva som finnes der
+
+Navigasjon
+• Stemmeanvisninger til riktig tid, kjørefelt, fartsgrense og ankomsttid
+• Kartfliser langs ruten lastes ned på forhånd, slik at dekningshull ikke merkes
+• Med bil til en butikk eller et spisested: Turen ender på parkeringsplassen rett utenfor
+• Bilde-i-bilde: kart, svingpil og avstand er fortsatt synlige i det lille vinduet
+
+Android Auto
+• Kart, søk og navigasjon på skjermen i bilen, anvisninger i høyttalerne
+• Turene dine planlagt for bilen, bokmerker og siste reisemål, pluss parkeringsplasser, bensinstasjoner og ladestasjoner i nærheten
+• Planlagt på mobilen, kjørt i bilen: send et sted, en rute eller en tur til bilen med ett trykk
+• Også uten rute: fart, fartsgrense og veinavn
+
+Turer
+• Planlegg en tur for fottur, spasertur, racersykkel, tursykkel, gravel, terrengsykkel eller bil, om ønskelig i dagsetapper
+• Ta over kjente stier og planlegg dem på nytt, mens originalen ligger i bakgrunnen
+• Ta opp ruter med tid, distanse, fart og høydemeter, pluss årsoversikt – også med skjermen av
+• Analyser: diagrammer for høyde, fart, puls, frekvens og effekt, runder med raskeste og tregeste
+• Sammenlign treninger og se hvordan du blir bedre
+• Ta over treninger med rute fra Health Connect, for eksempel fra klokken
+• Åpne GPX- og FIT-filer, lagre som GPX eller FIT, del turer med lenke eller publiser dem
+
+Utforsk
+Merkede turstier, lange sykkelruter og terrengsykkelruter i nærheten eller etter navn: forløp, etapper, lengde, merking og beskrivelse. Ett trykk åpner stien i planleggeren.
+
+Frakoblet
+Kartområder laster du ned til enheten på forhånd, og størrelsen vises først. Siden «Frakoblet» viser alt som er tilgjengelig uten nett: områder, turer og kartene til navigasjonen.
+
+Dine data
+Turer og opptak ligger på enheten din. Hvis du vil, kan du koble til en mappe, for eksempel Nextcloud, Dropbox eller Proton Drive. Der ligger hver tur som en GPX-fil som alle andre apper kan lese, og alle enhetene dine synkroniseres via den. Du trenger bare en konto for å publisere og for plugins. Du logger inn med OpenStreetMap-kontoen din, det finnes ikke noe eget passord.
+
+Bidra
+Manglende åpningstider eller nye steder legger du rett inn i OpenStreetMap. Underveis stiller WMap et kort spørsmål, for eksempel «Finnes bakeriet fortsatt?» – ett trykk er nok. Slik blir kartet bedre for alle.
+
+WMap finnes også i nettleseren på app.wuefl.de/wmap og for Linux, Windows og macOS.
+
+Merk: WMap er et privat prosjekt. Det representerer ingen myndighet og har ingen tilknytning til offentlige organer. Dataene kommer fra åpne kilder: kartdata fra OpenStreetMap (openstreetmap.org), trafikkmeldinger fra Autobahn GmbH des Bundes (verkehr.autobahn.de), rutetider via NVBWs reiseplanlegger (efa-bw.de).

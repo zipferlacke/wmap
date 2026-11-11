@@ -1,0 +1,447 @@
+<de-DE>
+Kurzbeschreibung: Karte, Navigation, Touren – offen, ohne Konto, mit Bus & Bahn und Android Auto
+Vollständige Beschreibung:
+WMap ist eine Karte für unterwegs: Orte suchen, Routen planen, navigieren, Touren planen und aufzeichnen, Wanderwege entdecken. Alles beruht auf offenen Daten von OpenStreetMap. Sie brauchen kein Konto, es gibt kein Abo und keine Werbung, und Ihre Wege bleiben auf Ihrem Gerät.
+
+Karte
+• Klare Karte mit deutschen Namen, hell oder dunkel passend zum Gerät
+• 3D-Gelände und Gebäude, Höhen bis auf den Meter, ganz herausgezoomt die Erde als Globus
+• Satellit: Luftbilder für große Teile Deutschlands, weltweit Sentinel-2. Die Gebäude stehen in 3D, mit dem Luftbild auf dem Dach
+• Wander-, Rad- und Mountainbike-Wege von Waymarked Trails, Relief, Ampeln
+
+Suchen und Route
+• Adressen, Orte und Kategorien wie Café, Tankstelle oder Spielplatz, im Ausschnitt oder entlang der Route
+• Routen zu Fuß, mit dem Rad, mit dem Auto sowie mit Bus und Bahn, mit Alternativen und Höhenprofil
+• Haltestellen antippen: nächste Abfahrten nach Fahrplan, wo verfügbar in Echtzeit, dazu der Weg der Fahrt mit allen Halten
+• Lesezeichen mit eigenen Namen und Listen, Zuhause und Arbeit stehen in der Suche ganz oben
+• Erreichbar: wie weit Sie in 5 bis 60 Minuten kommen und was es dort gibt
+
+Navigation
+• Sprachansagen zum richtigen Zeitpunkt, Fahrspuren, Tempolimit und Ankunftszeit
+• Kacheln entlang der Route werden vorab geladen, damit Funklöcher nicht auffallen
+• Mit dem Auto zu einem Geschäft oder Lokal: Die Fahrt endet am Parkplatz direkt davor
+• Bild in Bild: Karte, Abbiegepfeil und Entfernung bleiben im Mini-Fenster sichtbar
+
+Android Auto
+• Karte, Suche und Navigation auf dem Bildschirm im Auto, Ansagen über die Lautsprecher
+• Ihre fürs Auto geplanten Touren, Lesezeichen und letzten Ziele, dazu Parkplätze, Tankstellen und Ladesäulen in der Nähe
+• Am Handy geplant, im Auto gefahren: Ort, Route oder Tour mit einem Tipp ans Auto senden
+• Auch ohne Route: Tempo, Tempolimit und Straßenname
+
+Touren
+• Tour planen für Wandern, Spazieren, Rennrad, Tourenrad, Gravel, Mountainbike oder Auto, auf Wunsch in Tagesetappen
+• Bekannte Wege übernehmen und neu planen, dabei liegt das Original im Hintergrund
+• Wege aufzeichnen mit Zeit, Strecke, Tempo und Höhenmetern, dazu Jahresübersicht – auch bei ausgeschaltetem Bildschirm
+• Auswerten: Diagramme für Höhe, Tempo, Puls, Frequenz und Leistung, Runden mit schnellster und langsamster
+• Trainings vergleichen und sehen, wie Sie sich steigern
+• Trainings mit Route aus Health Connect übernehmen, etwa von der Uhr
+• GPX- und FIT-Dateien öffnen, als GPX oder FIT speichern, Touren per Link teilen oder veröffentlichen
+
+Entdecken
+Markierte Wanderwege, Radfernwege und MTB-Strecken in der Nähe oder nach Namen: Verlauf, Etappen, Länge, Wegzeichen und Beschreibung. Ein Tipp öffnet den Weg im Planer.
+
+Offline
+Karten-Gebiete laden Sie vorab aufs Gerät, die Größe steht vorher da. Die Seite „Offline“ zeigt alles, was ohne Netz verfügbar ist: Gebiete, Touren und die Karten der Navigation.
+
+Ihre Daten
+Touren und Aufzeichnungen liegen auf Ihrem Gerät. Wenn Sie möchten, verbinden Sie einen Ordner, etwa Nextcloud, Dropbox oder Proton Drive. Dort liegt jede Tour als GPX-Datei, die jede andere App lesen kann, und alle Ihre Geräte gleichen sich darüber ab. Ein Konto brauchen Sie nur zum Veröffentlichen und für Plugins. Angemeldet wird mit Ihrem OpenStreetMap-Konto, ein eigenes Passwort gibt es nicht.
+
+Mitmachen
+Fehlende Öffnungszeiten oder neue Orte tragen Sie direkt in OpenStreetMap ein. Unterwegs fragt WMap kurz nach, etwa „Gibt es die Bäckerei noch?“ – ein Tipp genügt. So wird die Karte für alle besser.
+
+WMap gibt es auch im Browser unter app.wuefl.de/wmap sowie für Linux, Windows und macOS.
+
+Hinweis: WMap ist ein privates Projekt. Es vertritt keine Behörde und steht in keiner Verbindung zu einer staatlichen Stelle. Die Daten stammen aus offenen Quellen: Kartendaten von OpenStreetMap (openstreetmap.org), Verkehrsmeldungen von der Autobahn GmbH des Bundes (verkehr.autobahn.de), Fahrpläne über die Fahrplanauskunft der NVBW (efa-bw.de).
+</de-DE>
+
+<en-GB>
+Kurzbeschreibung: Map, navigation, tours – open, no account, with bus & train and Android Auto
+Vollständige Beschreibung:
+WMap is a map for when you're out and about: search for places, plan routes, navigate, plan and record tours, discover hiking trails. Everything is built on open data from OpenStreetMap. You don't need an account, there's no subscription and no advertising, and your routes stay on your device.
+
+Map
+• A clear map with local names, light or dark to match your device
+• 3D terrain and buildings, elevations down to the metre, and the Earth as a globe when fully zoomed out
+• Satellite: aerial imagery for large parts of Germany, Sentinel-2 worldwide. Buildings appear in 3D, with the aerial image on the roof
+• Hiking, cycling and mountain bike trails from Waymarked Trails, relief, traffic lights
+
+Search and routes
+• Addresses, places and categories such as café, petrol station or playground, in the visible area or along the route
+• Routes on foot, by bike, by car and by bus and train, with alternatives and an elevation profile
+• Tap a stop: next departures according to the timetable, in real time where available, plus the route of the journey with all its stops
+• Bookmarks with your own names and lists; Home and Work appear at the top of the search
+• Reachable: how far you can get in 5 to 60 minutes and what is there
+
+Navigation
+• Voice guidance at the right moment, lanes, speed limit and arrival time
+• Tiles along the route are loaded in advance, so dead spots go unnoticed
+• Driving to a shop or restaurant: the trip ends at the car park right in front of it
+• Picture-in-picture: map, turn arrow and distance stay visible in the mini window
+
+Android Auto
+• Map, search and navigation on the car's display, announcements through the speakers
+• Your tours planned for the car, bookmarks and recent destinations, plus nearby car parks, petrol stations and charging points
+• Planned on your phone, driven in the car: send a place, route or tour to the car with one tap
+• Even without a route: speed, speed limit and street name
+
+Tours
+• Plan a tour for hiking, walking, road bike, touring bike, gravel, mountain bike or car, split into daily stages if you like
+• Take over known trails and re-plan them, with the original staying in the background
+• Record routes with time, distance, speed and elevation gain, plus a yearly overview – even with the screen off
+• Analyse: charts for elevation, speed, heart rate, cadence and power, laps with the fastest and slowest
+• Compare workouts and see how you are improving
+• Import workouts with a route from Health Connect, for example from your watch
+• Open GPX and FIT files, save as GPX or FIT, share tours by link or publish them
+
+Discover
+Marked hiking trails, long-distance cycle routes and MTB trails nearby or by name: course, stages, length, waymarks and description. One tap opens the trail in the planner.
+
+Offline
+Download map areas to your device in advance; the size is shown beforehand. The "Offline" page shows everything that is available without a network: areas, tours and the navigation maps.
+
+Your data
+Tours and recordings are stored on your device. If you like, connect a folder, such as Nextcloud, Dropbox or Proton Drive. Every tour is kept there as a GPX file that any other app can read, and all your devices sync through it. You only need an account to publish and for plugins. You sign in with your OpenStreetMap account; there is no separate password.
+
+Get involved
+Add missing opening hours or new places directly to OpenStreetMap. While you're out, WMap asks a quick question, such as "Is the bakery still there?" – one tap is enough. That's how the map gets better for everyone.
+
+WMap is also available in the browser at app.wuefl.de/wmap and for Linux, Windows and macOS.
+
+Note: WMap is a private project. It does not represent any authority and has no connection to any government body. The data comes from open sources: map data from OpenStreetMap (openstreetmap.org), traffic reports from the Autobahn GmbH des Bundes (verkehr.autobahn.de), timetables via the NVBW journey planner (efa-bw.de).
+</en-GB>
+
+<en-US>
+Kurzbeschreibung: Map, navigation, tours – open, no account, with bus & train and Android Auto
+Vollständige Beschreibung:
+WMap is a map for when you're out and about: search for places, plan routes, navigate, plan and record tours, discover hiking trails. Everything is built on open data from OpenStreetMap. You don't need an account, there's no subscription and no ads, and your routes stay on your device.
+
+Map
+• A clear map with local names, light or dark to match your device
+• 3D terrain and buildings, elevations down to the meter, and the Earth as a globe when fully zoomed out
+• Satellite: aerial imagery for large parts of Germany, Sentinel-2 worldwide. Buildings appear in 3D, with the aerial image on the roof
+• Hiking, cycling and mountain bike trails from Waymarked Trails, relief, traffic lights
+
+Search and routes
+• Addresses, places and categories such as café, gas station or playground, in the visible area or along the route
+• Routes on foot, by bike, by car and by bus and train, with alternatives and an elevation profile
+• Tap a stop: next departures according to the schedule, in real time where available, plus the route of the trip with all its stops
+• Bookmarks with your own names and lists; Home and Work appear at the top of the search
+• Reachable: how far you can get in 5 to 60 minutes and what is there
+
+Navigation
+• Voice guidance at the right moment, lanes, speed limit and arrival time
+• Tiles along the route are loaded in advance, so dead zones go unnoticed
+• Driving to a store or restaurant: the trip ends at the parking lot right in front of it
+• Picture-in-picture: map, turn arrow and distance stay visible in the mini window
+
+Android Auto
+• Map, search and navigation on the car's display, announcements through the speakers
+• Your tours planned for the car, bookmarks and recent destinations, plus nearby parking lots, gas stations and charging stations
+• Planned on your phone, driven in the car: send a place, route or tour to the car with one tap
+• Even without a route: speed, speed limit and street name
+
+Tours
+• Plan a tour for hiking, walking, road bike, touring bike, gravel, mountain bike or car, split into daily stages if you like
+• Take over known trails and re-plan them, with the original staying in the background
+• Record routes with time, distance, speed and elevation gain, plus a yearly overview – even with the screen off
+• Analyze: charts for elevation, speed, heart rate, cadence and power, laps with the fastest and slowest
+• Compare workouts and see how you are improving
+• Import workouts with a route from Health Connect, for example from your watch
+• Open GPX and FIT files, save as GPX or FIT, share tours by link or publish them
+
+Discover
+Marked hiking trails, long-distance bike routes and MTB trails nearby or by name: course, stages, length, waymarks and description. One tap opens the trail in the planner.
+
+Offline
+Download map areas to your device in advance; the size is shown beforehand. The "Offline" page shows everything that is available without a network: areas, tours and the navigation maps.
+
+Your data
+Tours and recordings are stored on your device. If you like, connect a folder, such as Nextcloud, Dropbox or Proton Drive. Every tour is kept there as a GPX file that any other app can read, and all your devices sync through it. You only need an account to publish and for plugins. You sign in with your OpenStreetMap account; there is no separate password.
+
+Get involved
+Add missing opening hours or new places directly to OpenStreetMap. While you're out, WMap asks a quick question, such as "Is the bakery still there?" – one tap is enough. That's how the map gets better for everyone.
+
+WMap is also available in the browser at app.wuefl.de/wmap and for Linux, Windows and macOS.
+
+Note: WMap is a private project. It does not represent any authority and has no connection to any government agency. The data comes from open sources: map data from OpenStreetMap (openstreetmap.org), traffic reports from the Autobahn GmbH des Bundes (verkehr.autobahn.de), schedules via the NVBW journey planner (efa-bw.de).
+</en-US>
+
+<fr-FR>
+Kurzbeschreibung: Carte, navigation, parcours – libre, sans compte, bus/train et Android Auto
+Vollständige Beschreibung:
+WMap est une carte pour vos déplacements : chercher des lieux, planifier des itinéraires, naviguer, planifier et enregistrer des parcours, découvrir des sentiers. Tout repose sur les données ouvertes d'OpenStreetMap. Ni compte, ni abonnement, ni publicité : vos trajets restent sur votre appareil.
+
+Carte
+• Carte claire aux noms locaux, thème clair ou sombre selon l'appareil
+• Relief et bâtiments en 3D, altitudes au mètre près, la Terre en globe en dézoomant
+• Satellite : images aériennes pour une grande partie de l'Allemagne, Sentinel-2 dans le monde. Bâtiments en 3D, image aérienne sur le toit
+• Sentiers, pistes cyclables et VTT de Waymarked Trails, relief, feux
+
+Recherche et itinéraire
+• Adresses, lieux et catégories (café, station-service, aire de jeux), dans la zone affichée ou le long du trajet
+• Itinéraires à pied, à vélo, en voiture, en bus et train, avec variantes et profil altimétrique
+• Touchez un arrêt : prochains départs selon l'horaire, en temps réel si disponible, et trajet de la course avec tous ses arrêts
+• Favoris avec noms personnalisés et listes ; Domicile et Travail en tête de la recherche
+• Zone accessible : jusqu'où aller en 5 à 60 minutes, et ce qu'il y a là
+
+Navigation
+• Instructions vocales au bon moment, voies, limitation de vitesse, heure d'arrivée
+• Tuiles de l'itinéraire chargées d'avance : zones sans réseau inaperçues
+• En voiture vers un commerce ou un restaurant : le trajet finit sur le parking juste devant
+• Image dans l'image : carte, flèche et distance restent visibles dans la mini-fenêtre
+
+Android Auto
+• Carte, recherche et navigation sur l'écran de la voiture, instructions par haut-parleurs
+• Parcours prévus pour la voiture, favoris et dernières destinations, plus parkings, stations-service et bornes proches
+• Planifié sur le téléphone, suivi en voiture : envoyez lieu, itinéraire ou parcours à la voiture d'une touche
+• Même sans itinéraire : vitesse, limitation et nom de la rue
+
+Parcours
+• Planifiez un parcours en randonnée, promenade, vélo de route, vélo de randonnée, gravel, VTT ou voiture, en étapes journalières si besoin
+• Reprenez des sentiers connus et replanifiez-les, l'original reste en fond
+• Enregistrez vos trajets (durée, distance, vitesse, dénivelé), bilan annuel – même écran éteint
+• Analyse : graphiques d'altitude, vitesse, pouls, cadence et puissance, tours le plus rapide et le plus lent
+• Comparez vos entraînements et suivez votre progression
+• Reprenez de Health Connect les entraînements avec itinéraire, p. ex. de la montre
+• Ouvrez des fichiers GPX et FIT, enregistrez en GPX ou FIT, partagez ou publiez des parcours
+
+Découvrir
+Sentiers balisés, itinéraires cyclables longue distance et parcours VTT à proximité ou par nom : tracé, étapes, longueur, balisage, description. Une touche l'ouvre dans le planificateur.
+
+Hors ligne
+Téléchargez des zones de carte à l'avance, la taille est indiquée avant. La page « Hors ligne » liste ce qui marche sans réseau : zones, parcours, cartes de navigation.
+
+Vos données
+Parcours et enregistrements restent sur votre appareil. Si vous le souhaitez, connectez un dossier, p. ex. Nextcloud, Dropbox ou Proton Drive. Chaque parcours y est un fichier GPX lisible par toute autre appli, et vos appareils se synchronisent ainsi. Un compte ne sert qu'à publier et pour les plugins : connexion avec OpenStreetMap, sans mot de passe propre à WMap.
+
+Contribuer
+Ajoutez directement dans OpenStreetMap les horaires manquants ou de nouveaux lieux. En chemin, WMap pose une petite question, p. ex. « La boulangerie existe-t-elle encore ? » – une touche suffit. La carte s'améliore pour tous.
+
+WMap existe aussi dans le navigateur (app.wuefl.de/wmap) et pour Linux, Windows et macOS.
+
+Remarque : WMap est un projet privé, sans lien avec une autorité. Sources ouvertes : cartes d'OpenStreetMap (openstreetmap.org), informations routières de l'Autobahn GmbH des Bundes (verkehr.autobahn.de), horaires via le calculateur d'itinéraires de la NVBW (efa-bw.de).
+</fr-FR>
+
+<da-DK>
+Kurzbeschreibung: Kort, navigation, ture – åbent, uden konto, med bus & tog og Android Auto
+Vollständige Beschreibung:
+WMap er et kort til turen: find steder, planlæg ruter, naviger, planlæg og optag ture, opdag vandrestier. Alt bygger på åbne data fra OpenStreetMap. Du behøver ingen konto, der er intet abonnement og ingen reklamer, og dine ruter bliver på din enhed.
+
+Kort
+• Et overskueligt kort med lokale navne, lyst eller mørkt, så det passer til din enhed
+• 3D-terræn og bygninger, højder helt ned til meteren og jorden som globus, når du zoomer helt ud
+• Satellit: luftfotos for store dele af Tyskland, Sentinel-2 over hele verden. Bygningerne står i 3D med luftfotoet på taget
+• Vandre-, cykel- og mountainbikestier fra Waymarked Trails, relief, lyskryds
+
+Søgning og rute
+• Adresser, steder og kategorier som café, tankstation eller legeplads, i udsnittet eller langs ruten
+• Ruter til fods, på cykel, i bil og med bus og tog, med alternativer og højdeprofil
+• Tryk på et stoppested: næste afgange efter køreplanen, i realtid hvor det er muligt, og desuden turens forløb med alle stop
+• Bogmærker med egne navne og lister; Hjem og Arbejde står øverst i søgningen
+• Rækkevidde: hvor langt du kommer på 5 til 60 minutter, og hvad der er dér
+
+Navigation
+• Stemmeanvisninger på det rigtige tidspunkt, kørespor, fartgrænse og ankomsttid
+• Kort langs ruten hentes på forhånd, så huller i dækningen ikke mærkes
+• I bil til en butik eller restaurant: Turen slutter på parkeringspladsen lige foran
+• Billede-i-billede: kort, drejepil og afstand er stadig synlige i det lille vindue
+
+Android Auto
+• Kort, søgning og navigation på skærmen i bilen, anvisninger i højttalerne
+• Dine ture planlagt til bilen, bogmærker og seneste destinationer samt parkeringspladser, tankstationer og ladestandere i nærheden
+• Planlagt på mobilen, kørt i bilen: send et sted, en rute eller en tur til bilen med et enkelt tryk
+• Også uden rute: fart, fartgrænse og vejnavn
+
+Ture
+• Planlæg en tur til vandring, gåtur, racercykel, turcykel, gravel, mountainbike eller bil, om ønsket i dagsetaper
+• Overtag kendte stier og planlæg dem om, mens originalen ligger i baggrunden
+• Optag ruter med tid, distance, fart og højdemeter samt årsoversigt – også med slukket skærm
+• Analysér: diagrammer for højde, fart, puls, kadence og effekt, omgange med den hurtigste og langsomste
+• Sammenlign træninger og se, hvordan du bliver bedre
+• Overtag træninger med rute fra Health Connect, f.eks. fra uret
+• Åbn GPX- og FIT-filer, gem som GPX eller FIT, del ture via link eller udgiv dem
+
+Udforsk
+Afmærkede vandrestier, lange cykelruter og MTB-ruter i nærheden eller efter navn: forløb, etaper, længde, markeringer og beskrivelse. Et tryk åbner stien i planlæggeren.
+
+Offline
+Du henter kortområder til enheden på forhånd, og størrelsen står der på forhånd. Siden "Offline" viser alt, der er tilgængeligt uden net: områder, ture og navigationens kort.
+
+Dine data
+Ture og optagelser ligger på din enhed. Hvis du vil, kan du forbinde en mappe, f.eks. Nextcloud, Dropbox eller Proton Drive. Dér ligger hver tur som en GPX-fil, som enhver anden app kan læse, og alle dine enheder synkroniserer via den. Du har kun brug for en konto til at udgive og til plugins. Du logger ind med din OpenStreetMap-konto, der er ingen separat adgangskode.
+
+Vær med
+Manglende åbningstider eller nye steder kan du indtaste direkte i OpenStreetMap. Undervejs stiller WMap et kort spørgsmål, f.eks. "Findes bageren stadig?" – et tryk er nok. Sådan bliver kortet bedre for alle.
+
+WMap findes også i browseren på app.wuefl.de/wmap samt til Linux, Windows og macOS.
+
+Bemærk: WMap er et privat projekt. Det repræsenterer ingen myndighed og har ingen forbindelse til offentlige instanser. Dataene stammer fra åbne kilder: kortdata fra OpenStreetMap (openstreetmap.org), trafikmeldinger fra Autobahn GmbH des Bundes (verkehr.autobahn.de), køreplaner via NVBW's rejseplanlægger (efa-bw.de).
+</da-DK>
+
+<no-NO>
+Kurzbeschreibung: Kart, navigasjon, turer – åpent, uten konto, med buss og bane og Android Auto
+Vollständige Beschreibung:
+WMap er et kart for underveis: finn steder, planlegg ruter, naviger, planlegg og ta opp turer, oppdag turstier. Alt bygger på åpne data fra OpenStreetMap. Du trenger ingen konto, det finnes ikke noe abonnement og ingen reklame, og rutene dine blir på enheten din.
+
+Kart
+• Et oversiktlig kart med lokale navn, lyst eller mørkt etter enheten din
+• 3D-terreng og bygninger, høyder helt ned til meteren og jorden som globus når du zoomer helt ut
+• Satellitt: flybilder for store deler av Tyskland, Sentinel-2 over hele verden. Bygningene vises i 3D med flybildet på taket
+• Tur-, sykkel- og terrengsykkelruter fra Waymarked Trails, relieff, trafikklys
+
+Søk og rute
+• Adresser, steder og kategorier som kafé, bensinstasjon eller lekeplass, i utsnittet eller langs ruten
+• Ruter til fots, på sykkel, med bil og med buss og bane, med alternativer og høydeprofil
+• Trykk på et stopp: neste avganger etter rutetabellen, i sanntid der det finnes, og i tillegg turens forløp med alle stopp
+• Bokmerker med egne navn og lister; Hjem og Jobb står øverst i søket
+• Rekkevidde: hvor langt du kommer på 5 til 60 minutter, og hva som finnes der
+
+Navigasjon
+• Stemmeanvisninger til riktig tid, kjørefelt, fartsgrense og ankomsttid
+• Kartfliser langs ruten lastes ned på forhånd, slik at dekningshull ikke merkes
+• Med bil til en butikk eller et spisested: Turen ender på parkeringsplassen rett utenfor
+• Bilde-i-bilde: kart, svingpil og avstand er fortsatt synlige i det lille vinduet
+
+Android Auto
+• Kart, søk og navigasjon på skjermen i bilen, anvisninger i høyttalerne
+• Turene dine planlagt for bilen, bokmerker og siste reisemål, pluss parkeringsplasser, bensinstasjoner og ladestasjoner i nærheten
+• Planlagt på mobilen, kjørt i bilen: send et sted, en rute eller en tur til bilen med ett trykk
+• Også uten rute: fart, fartsgrense og veinavn
+
+Turer
+• Planlegg en tur for fottur, spasertur, racersykkel, tursykkel, gravel, terrengsykkel eller bil, om ønskelig i dagsetapper
+• Ta over kjente stier og planlegg dem på nytt, mens originalen ligger i bakgrunnen
+• Ta opp ruter med tid, distanse, fart og høydemeter, pluss årsoversikt – også med skjermen av
+• Analyser: diagrammer for høyde, fart, puls, frekvens og effekt, runder med raskeste og tregeste
+• Sammenlign treninger og se hvordan du blir bedre
+• Ta over treninger med rute fra Health Connect, for eksempel fra klokken
+• Åpne GPX- og FIT-filer, lagre som GPX eller FIT, del turer med lenke eller publiser dem
+
+Utforsk
+Merkede turstier, lange sykkelruter og terrengsykkelruter i nærheten eller etter navn: forløp, etapper, lengde, merking og beskrivelse. Ett trykk åpner stien i planleggeren.
+
+Frakoblet
+Kartområder laster du ned til enheten på forhånd, og størrelsen vises først. Siden «Frakoblet» viser alt som er tilgjengelig uten nett: områder, turer og kartene til navigasjonen.
+
+Dine data
+Turer og opptak ligger på enheten din. Hvis du vil, kan du koble til en mappe, for eksempel Nextcloud, Dropbox eller Proton Drive. Der ligger hver tur som en GPX-fil som alle andre apper kan lese, og alle enhetene dine synkroniseres via den. Du trenger bare en konto for å publisere og for plugins. Du logger inn med OpenStreetMap-kontoen din, det finnes ikke noe eget passord.
+
+Bidra
+Manglende åpningstider eller nye steder legger du rett inn i OpenStreetMap. Underveis stiller WMap et kort spørsmål, for eksempel «Finnes bakeriet fortsatt?» – ett trykk er nok. Slik blir kartet bedre for alle.
+
+WMap finnes også i nettleseren på app.wuefl.de/wmap og for Linux, Windows og macOS.
+
+Merk: WMap er et privat prosjekt. Det representerer ingen myndighet og har ingen tilknytning til offentlige organer. Dataene kommer fra åpne kilder: kartdata fra OpenStreetMap (openstreetmap.org), trafikkmeldinger fra Autobahn GmbH des Bundes (verkehr.autobahn.de), rutetider via NVBWs reiseplanlegger (efa-bw.de).
+</no-NO>
+
+<pl-PL>
+Kurzbeschreibung: Mapa, nawigacja, trasy – otwarta, bez konta, z komunikacją i Android Auto
+Vollständige Beschreibung:
+WMap to mapa w drogę: szukaj miejsc, planuj dojazd, nawiguj, planuj i nagrywaj trasy, odkrywaj szlaki. Wszystko opiera się na otwartych danych OpenStreetMap. Nie potrzebujesz konta, nie ma abonamentu ani reklam, a Twoje trasy zostają na Twoim urządzeniu.
+
+Mapa
+• Czytelna mapa z lokalnymi nazwami, jasna lub ciemna wg urządzenia
+• Teren i budynki w 3D, wysokości co do metra, a po maksymalnym oddaleniu Ziemia jako globus
+• Satelita: zdjęcia lotnicze dla dużej części Niemiec, na całym świecie Sentinel-2. Budynki są w 3D, ze zdjęciem lotniczym na dachu
+• Szlaki piesze, rowerowe i rowerów górskich z Waymarked Trails, rzeźba terenu, sygnalizacja świetlna
+
+Szukanie i trasa
+• Adresy, miejsca i kategorie, takie jak kawiarnia, stacja paliw czy plac zabaw – w widocznym obszarze lub wzdłuż trasy
+• Trasy piesze, rowerowe, samochodowe oraz komunikacją publiczną, z alternatywami i profilem wysokości
+• Dotknij przystanku: najbliższe odjazdy według rozkładu, tam gdzie to możliwe w czasie rzeczywistym, a do tego przebieg kursu ze wszystkimi przystankami
+• Zakładki z własnymi nazwami i listy; Dom i Praca są na samej górze wyszukiwania
+• Zasięg: jak daleko dotrzesz w 5 do 60 minut i co tam jest
+
+Nawigacja
+• Komunikaty głosowe we właściwym momencie, pasy ruchu, limit prędkości, godzina przyjazdu
+• Kafelki wzdłuż trasy są pobierane z wyprzedzeniem, więc brak zasięgu nie przeszkadza
+• Samochodem do sklepu lub lokalu: jazda kończy się na parkingu tuż przed nim
+• Obraz w obrazie: mapa, strzałka skrętu i odległość pozostają widoczne w małym oknie
+
+Android Auto
+• Mapa, wyszukiwanie i nawigacja na ekranie auta, komunikaty przez głośniki
+• Trasy zaplanowane dla samochodu, zakładki i ostatnie cele, a także pobliskie parkingi, stacje paliw i ładowania
+• Zaplanowane w telefonie, przejechane w samochodzie: miejsce, trasę lub wycieczkę wyślesz do auta jednym dotknięciem
+• Także bez trasy: prędkość, ograniczenie prędkości i nazwa ulicy
+
+Trasy
+• Zaplanuj trasę na wędrówkę, spacer, szosówkę, rower trekkingowy, gravel, rower górski lub samochód, w razie potrzeby w etapach dziennych
+• Przejmuj znane szlaki i planuj je od nowa, a oryginał pozostaje w tle
+• Nagrywaj trasy z czasem, dystansem, prędkością i przewyższeniem, plus przegląd roczny – także przy wyłączonym ekranie
+• Analiza: wykresy wysokości, prędkości, tętna, kadencji i mocy, okrążenia z najszybszym i najwolniejszym
+• Porównuj treningi i sprawdzaj, jak robisz postępy
+• Przejmuj z Health Connect treningi z trasą, na przykład z zegarka
+• Otwieraj pliki GPX i FIT, zapisuj jako GPX lub FIT, udostępniaj trasy linkiem lub publikuj
+
+Odkrywaj
+Oznakowane szlaki piesze, długodystansowe trasy rowerowe i trasy MTB w pobliżu lub według nazwy: przebieg, etapy, długość, znaki szlaku i opis. Jedno dotknięcie otwiera szlak w planerze.
+
+Offline
+Obszary map pobierasz na urządzenie z wyprzedzeniem, a ich rozmiar widzisz wcześniej. Strona „Offline” pokazuje wszystko, co jest dostępne bez sieci: obszary, trasy i mapy nawigacji.
+
+Twoje dane
+Trasy i nagrania są na Twoim urządzeniu. Jeśli chcesz, połącz folder, np. Nextcloud, Dropbox lub Proton Drive. Każda trasa leży tam jako plik GPX czytelny dla innych aplikacji, a Twoje urządzenia synchronizują się przez ten folder. Konto jest potrzebne tylko do publikowania i do wtyczek. Logujesz się kontem OpenStreetMap, własnego hasła nie ma.
+
+Współtwórz
+Brakujące godziny otwarcia lub nowe miejsca dopiszesz od razu w OpenStreetMap. W drodze WMap zadaje krótkie pytanie, na przykład „Czy piekarnia jeszcze istnieje?” – wystarczy jedno dotknięcie. Dzięki temu mapa staje się lepsza dla wszystkich.
+
+WMap działa też w przeglądarce pod adresem app.wuefl.de/wmap oraz na Linuksie, Windowsie i macOS.
+
+Uwaga: WMap to projekt prywatny, niezwiązany z żadnym urzędem ani organem państwowym. Dane pochodzą z otwartych źródeł: dane mapowe z OpenStreetMap (openstreetmap.org), komunikaty drogowe od Autobahn GmbH des Bundes (verkehr.autobahn.de), rozkłady jazdy przez wyszukiwarkę połączeń NVBW (efa-bw.de).
+</pl-PL>
+
+<sv-SE>
+Kurzbeschreibung: Karta, navigering, turer – öppet, utan konto, med buss & tåg och Android Auto
+Vollständige Beschreibung:
+WMap är en karta för när du är på språng: sök platser, planera rutter, navigera, planera och spela in turer, upptäck vandringsleder. Allt bygger på öppna data från OpenStreetMap. Du behöver inget konto, det finns ingen prenumeration och ingen reklam, och dina rutter stannar på din enhet.
+
+Karta
+• En tydlig karta med lokala namn, ljus eller mörk efter enheten
+• 3D-terräng och byggnader, höjder ner till meter och jorden som glob när du zoomar ut helt
+• Satellit: flygbilder för stora delar av Tyskland, Sentinel-2 över hela världen. Byggnaderna står i 3D med flygbilden på taket
+• Vandrings-, cykel- och mountainbikeleder från Waymarked Trails, reliefskuggning, trafikljus
+
+Sök och rutt
+• Adresser, platser och kategorier som café, bensinstation eller lekplats, i kartutsnittet eller längs rutten
+• Rutter till fots, med cykel, med bil samt med buss och tåg, med alternativ och höjdprofil
+• Tryck på en hållplats: nästa avgångar enligt tidtabellen, i realtid där det finns, och dessutom turens sträckning med alla stopp
+• Bokmärken med egna namn och listor; Hemma och Jobbet står överst i sökningen
+• Nåbart: hur långt du kommer på 5 till 60 minuter och vad som finns där
+
+Navigering
+• Röstinstruktioner i rätt ögonblick, körfält, hastighetsgräns och ankomsttid
+• Kartrutor längs rutten hämtas i förväg, så att luckor i täckningen inte märks
+• Med bil till en butik eller restaurang: Resan slutar på parkeringen precis utanför
+• Bild-i-bild: karta, svängpil och avstånd syns kvar i det lilla fönstret
+
+Android Auto
+• Karta, sökning och navigering på skärmen i bilen, instruktioner i högtalarna
+• Dina turer planerade för bilen, bokmärken och senaste mål, plus parkeringar, bensinstationer och laddstationer i närheten
+• Planerat i mobilen, körs i bilen: skicka en plats, rutt eller tur till bilen med ett tryck
+• Även utan rutt: hastighet, hastighetsgräns och gatunamn
+
+Turer
+• Planera en tur för vandring, promenad, racercykel, touringcykel, gravel, mountainbike eller bil, på önskemål i dagsetapper
+• Ta över kända leder och planera om dem, medan originalet ligger kvar i bakgrunden
+• Spela in rutter med tid, sträcka, hastighet och höjdmeter, plus årsöversikt – även med avstängd skärm
+• Analysera: diagram för höjd, hastighet, puls, frekvens och effekt, varv med snabbaste och långsammaste
+• Jämför träningspass och se hur du blir bättre
+• Ta över träningspass med rutt från Health Connect, till exempel från klockan
+• Öppna GPX- och FIT-filer, spara som GPX eller FIT, dela turer via länk eller publicera dem
+
+Upptäck
+Märkta vandringsleder, långa cykelleder och MTB-leder i närheten eller efter namn: sträckning, etapper, längd, ledmarkeringar och beskrivning. Ett tryck öppnar leden i planeraren.
+
+Offline
+Kartområden laddar du ner till enheten i förväg, och storleken visas först. Sidan ”Offline” visar allt som finns tillgängligt utan nät: områden, turer och navigeringens kartor.
+
+Dina data
+Turer och inspelningar ligger på din enhet. Om du vill kan du ansluta en mapp, till exempel Nextcloud, Dropbox eller Proton Drive. Där ligger varje tur som en GPX-fil som alla andra appar kan läsa, och alla dina enheter synkas via den. Ett konto behöver du bara för att publicera och för plugin. Du loggar in med ditt OpenStreetMap-konto, något eget lösenord finns inte.
+
+Var med
+Saknade öppettider eller nya platser lägger du in direkt i OpenStreetMap. På vägen ställer WMap en kort fråga, till exempel ”Finns bageriet kvar?” – ett tryck räcker. Så blir kartan bättre för alla.
+
+WMap finns också i webbläsaren på app.wuefl.de/wmap samt för Linux, Windows och macOS.
+
+Obs! WMap är ett privat projekt. Det företräder ingen myndighet och har ingen koppling till någon statlig instans. Data kommer från öppna källor: kartdata från OpenStreetMap (openstreetmap.org), trafikmeddelanden från Autobahn GmbH des Bundes (verkehr.autobahn.de), tidtabeller via NVBW:s reseplanerare (efa-bw.de).
+</sv-SE>

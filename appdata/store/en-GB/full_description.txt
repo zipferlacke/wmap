@@ -1,0 +1,51 @@
+WMap is a map for when you're out and about: search for places, plan routes, navigate, plan and record tours, discover hiking trails. Everything is built on open data from OpenStreetMap. You don't need an account, there's no subscription and no advertising, and your routes stay on your device.
+
+Map
+• A clear map with local names, light or dark to match your device
+• 3D terrain and buildings, elevations down to the metre, and the Earth as a globe when fully zoomed out
+• Satellite: aerial imagery for large parts of Germany, Sentinel-2 worldwide. Buildings appear in 3D, with the aerial image on the roof
+• Hiking, cycling and mountain bike trails from Waymarked Trails, relief, traffic lights
+
+Search and routes
+• Addresses, places and categories such as café, petrol station or playground, in the visible area or along the route
+• Routes on foot, by bike, by car and by bus and train, with alternatives and an elevation profile
+• Tap a stop: next departures according to the timetable, in real time where available, plus the route of the journey with all its stops
+• Bookmarks with your own names and lists; Home and Work appear at the top of the search
+• Reachable: how far you can get in 5 to 60 minutes and what is there
+
+Navigation
+• Voice guidance at the right moment, lanes, speed limit and arrival time
+• Tiles along the route are loaded in advance, so dead spots go unnoticed
+• Driving to a shop or restaurant: the trip ends at the car park right in front of it
+• Picture-in-picture: map, turn arrow and distance stay visible in the mini window
+
+Android Auto
+• Map, search and navigation on the car's display, announcements through the speakers
+• Your tours planned for the car, bookmarks and recent destinations, plus nearby car parks, petrol stations and charging points
+• Planned on your phone, driven in the car: send a place, route or tour to the car with one tap
+• Even without a route: speed, speed limit and street name
+
+Tours
+• Plan a tour for hiking, walking, road bike, touring bike, gravel, mountain bike or car, split into daily stages if you like
+• Take over known trails and re-plan them, with the original staying in the background
+• Record routes with time, distance, speed and elevation gain, plus a yearly overview – even with the screen off
+• Analyse: charts for elevation, speed, heart rate, cadence and power, laps with the fastest and slowest
+• Compare workouts and see how you are improving
+• Import workouts with a route from Health Connect, for example from your watch
+• Open GPX and FIT files, save as GPX or FIT, share tours by link or publish them
+
+Discover
+Marked hiking trails, long-distance cycle routes and MTB trails nearby or by name: course, stages, length, waymarks and description. One tap opens the trail in the planner.
+
+Offline
+Download map areas to your device in advance; the size is shown beforehand. The "Offline" page shows everything that is available without a network: areas, tours and the navigation maps.
+
+Your data
+Tours and recordings are stored on your device. If you like, connect a folder, such as Nextcloud, Dropbox or Proton Drive. Every tour is kept there as a GPX file that any other app can read, and all your devices sync through it. You only need an account to publish and for plugins. You sign in with your OpenStreetMap account; there is no separate password.
+
+Get involved
+Add missing opening hours or new places directly to OpenStreetMap. While you're out, WMap asks a quick question, such as "Is the bakery still there?" – one tap is enough. That's how the map gets better for everyone.
+
+WMap is also available in the browser at app.wuefl.de/wmap and for Linux, Windows and macOS.
+
+Note: WMap is a private project. It does not represent any authority and has no connection to any government body. The data comes from open sources: map data from OpenStreetMap (openstreetmap.org), traffic reports from the Autobahn GmbH des Bundes (verkehr.autobahn.de), timetables via the NVBW journey planner (efa-bw.de).
