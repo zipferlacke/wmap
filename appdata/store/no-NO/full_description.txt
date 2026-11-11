@@ -8,10 +8,15 @@ Kart
 
 Søk og rute
 • Adresser, steder og kategorier som kafé, bensinstasjon eller lekeplass, i utsnittet eller langs ruten
-• Ruter til fots, på sykkel, med bil og med buss og bane, med alternativer og høydeprofil
-• Trykk på et stopp: neste avganger etter rutetabellen, i sanntid der det finnes, og i tillegg turens forløp med alle stopp
+• Ruter til fots, på sykkel, og med bil, med alternativer og høydeprofil
 • Bokmerker med egne navn og lister; Hjem og Jobb står øverst i søket
 • Rekkevidde: hvor langt du kommer på 5 til 60 minutter, og hva som finnes der
+
+Kun Tyskland:
+• Buss og bane: ruter, avganger (rutetabell, sanntid der det finnes), turens forløp, linjesøk
+• Ladestasjoner med belegg «x av y ledige»
+• Trafikk: veiarbeid, stengte veier, meldinger
+• Drivstoffpriser på bensinstasjoner
 
 Navigasjon
 • Stemmeanvisninger til riktig tid, kjørefelt, fartsgrense og ankomsttid
@@ -48,4 +53,4 @@ Manglende åpningstider eller nye steder legger du rett inn i OpenStreetMap. Und
 
 WMap finnes også i nettleseren på app.wuefl.de/wmap og for Linux, Windows og macOS.
 
-Merk: WMap er et privat prosjekt. Det representerer ingen myndighet og har ingen tilknytning til offentlige organer. Dataene kommer fra åpne kilder: kartdata fra OpenStreetMap (openstreetmap.org), trafikkmeldinger fra Autobahn GmbH des Bundes (verkehr.autobahn.de), rutetider via NVBWs reiseplanlegger (efa-bw.de).
+Merk: WMap er et privat prosjekt. Det representerer ingen myndighet og har ingen tilknytning til offentlige organer. Dataene kommer fra åpne kilder: kartdata fra OpenStreetMap (openstreetmap.org), trafikkmeldinger fra Autobahn GmbH des Bundes (verkehr.autobahn.de), rutetider via NVBW, RMV og EFA-BW (efa-bw.de).

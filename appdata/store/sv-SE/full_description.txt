@@ -8,10 +8,15 @@ Karta
 
 Sök och rutt
 • Adresser, platser och kategorier som café, bensinstation eller lekplats, i kartutsnittet eller längs rutten
-• Rutter till fots, med cykel, med bil samt med buss och tåg, med alternativ och höjdprofil
-• Tryck på en hållplats: nästa avgångar enligt tidtabellen, i realtid där det finns, och dessutom turens sträckning med alla stopp
+• Rutter till fots, med cykel, och med bil, med alternativ och höjdprofil
 • Bokmärken med egna namn och listor; Hemma och Jobbet står överst i sökningen
 • Nåbart: hur långt du kommer på 5 till 60 minuter och vad som finns där
+
+Endast Tyskland:
+• Buss & tåg: rutter, avgångar (tidtabell, realtid där det finns), turens sträckning, linjesökning
+• Laddstationer med beläggning ”x av y lediga”
+• Trafik: vägarbeten, avstängningar, meddelanden
+• Bensinpriser på bensinstationer
 
 Navigering
 • Röstinstruktioner i rätt ögonblick, körfält, hastighetsgräns och ankomsttid
@@ -48,4 +53,4 @@ Saknade öppettider eller nya platser lägger du in direkt i OpenStreetMap. På 
 
 WMap finns också i webbläsaren på app.wuefl.de/wmap samt för Linux, Windows och macOS.
 
-Obs! WMap är ett privat projekt. Det företräder ingen myndighet och har ingen koppling till någon statlig instans. Data kommer från öppna källor: kartdata från OpenStreetMap (openstreetmap.org), trafikmeddelanden från Autobahn GmbH des Bundes (verkehr.autobahn.de), tidtabeller via NVBW:s reseplanerare (efa-bw.de).
+Obs! WMap är ett privat projekt. Det företräder ingen myndighet och har ingen koppling till någon statlig instans. Data kommer från öppna källor: kartdata från OpenStreetMap (openstreetmap.org), trafikmeddelanden från Autobahn GmbH des Bundes (verkehr.autobahn.de), tidtabeller via NVBW, RMV och EFA-BW (efa-bw.de).

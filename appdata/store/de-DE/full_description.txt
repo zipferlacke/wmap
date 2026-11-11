@@ -1,21 +1,26 @@
 WMap ist eine Karte für unterwegs: Orte suchen, Routen planen, navigieren, Touren planen und aufzeichnen, Wanderwege entdecken. Alles beruht auf offenen Daten von OpenStreetMap. Sie brauchen kein Konto, es gibt kein Abo und keine Werbung, und Ihre Wege bleiben auf Ihrem Gerät.
 
 Karte
-• Klare Karte mit deutschen Namen, hell oder dunkel passend zum Gerät
+• Klare Karte mit deutschen Namen, hell oder dunkel nach Gerät
 • 3D-Gelände und Gebäude, Höhen bis auf den Meter, ganz herausgezoomt die Erde als Globus
-• Satellit: Luftbilder für große Teile Deutschlands, weltweit Sentinel-2. Die Gebäude stehen in 3D, mit dem Luftbild auf dem Dach
+• Satellit: Luftbilder für große Teile Deutschlands, weltweit Sentinel-2. Gebäude in 3D, mit Luftbild auf dem Dach
 • Wander-, Rad- und Mountainbike-Wege von Waymarked Trails, Relief, Ampeln
 
 Suchen und Route
 • Adressen, Orte und Kategorien wie Café, Tankstelle oder Spielplatz, im Ausschnitt oder entlang der Route
-• Routen zu Fuß, mit dem Rad, mit dem Auto sowie mit Bus und Bahn, mit Alternativen und Höhenprofil
-• Haltestellen antippen: nächste Abfahrten nach Fahrplan, wo verfügbar in Echtzeit, dazu der Weg der Fahrt mit allen Halten
+• Routen zu Fuß, mit dem Rad und mit dem Auto, mit Alternativen und Höhenprofil
 • Lesezeichen mit eigenen Namen und Listen, Zuhause und Arbeit stehen in der Suche ganz oben
 • Erreichbar: wie weit Sie in 5 bis 60 Minuten kommen und was es dort gibt
 
+Nur Deutschland:
+• Bus & Bahn: Route, Abfahrten (Fahrplan, wo möglich Echtzeit), Fahrtverlauf, Linie suchen
+• Ladesäulen mit Belegung „x von y frei“
+• Verkehrslage: Baustellen, Sperrungen, Meldungen
+• Spritpreise an Tankstellen
+
 Navigation
 • Sprachansagen zum richtigen Zeitpunkt, Fahrspuren, Tempolimit und Ankunftszeit
-• Kacheln entlang der Route werden vorab geladen, damit Funklöcher nicht auffallen
+• Kacheln entlang der Route werden vorab geladen, Funklöcher fallen nicht auf
 • Mit dem Auto zu einem Geschäft oder Lokal: Die Fahrt endet am Parkplatz direkt davor
 • Bild in Bild: Karte, Abbiegepfeil und Entfernung bleiben im Mini-Fenster sichtbar
 
@@ -30,7 +35,7 @@ Touren
 • Bekannte Wege übernehmen und neu planen, dabei liegt das Original im Hintergrund
 • Wege aufzeichnen mit Zeit, Strecke, Tempo und Höhenmetern, dazu Jahresübersicht – auch bei ausgeschaltetem Bildschirm
 • Auswerten: Diagramme für Höhe, Tempo, Puls, Frequenz und Leistung, Runden mit schnellster und langsamster
-• Trainings vergleichen und sehen, wie Sie sich steigern
+• Trainings vergleichen und Fortschritte sehen
 • Trainings mit Route aus Health Connect übernehmen, etwa von der Uhr
 • GPX- und FIT-Dateien öffnen, als GPX oder FIT speichern, Touren per Link teilen oder veröffentlichen
 
@@ -44,8 +49,8 @@ Ihre Daten
 Touren und Aufzeichnungen liegen auf Ihrem Gerät. Wenn Sie möchten, verbinden Sie einen Ordner, etwa Nextcloud, Dropbox oder Proton Drive. Dort liegt jede Tour als GPX-Datei, die jede andere App lesen kann, und alle Ihre Geräte gleichen sich darüber ab. Ein Konto brauchen Sie nur zum Veröffentlichen und für Plugins. Angemeldet wird mit Ihrem OpenStreetMap-Konto, ein eigenes Passwort gibt es nicht.
 
 Mitmachen
-Fehlende Öffnungszeiten oder neue Orte tragen Sie direkt in OpenStreetMap ein. Unterwegs fragt WMap kurz nach, etwa „Gibt es die Bäckerei noch?“ – ein Tipp genügt. So wird die Karte für alle besser.
+Fehlende Öffnungszeiten oder neue Orte tragen Sie direkt in OpenStreetMap ein. Unterwegs fragt WMap kurz nach, etwa „Gibt es die Bäckerei noch?“ – ein Tipp genügt. Das hilft allen.
 
 WMap gibt es auch im Browser unter app.wuefl.de/wmap sowie für Linux, Windows und macOS.
 
-Hinweis: WMap ist ein privates Projekt. Es vertritt keine Behörde und steht in keiner Verbindung zu einer staatlichen Stelle. Die Daten stammen aus offenen Quellen: Kartendaten von OpenStreetMap (openstreetmap.org), Verkehrsmeldungen von der Autobahn GmbH des Bundes (verkehr.autobahn.de), Fahrpläne über die Fahrplanauskunft der NVBW (efa-bw.de).
+Hinweis: WMap ist ein privates Projekt. Es vertritt keine Behörde und hat keine Verbindung zu staatlichen Stellen. Die Daten stammen aus offenen Quellen: Kartendaten von OpenStreetMap (openstreetmap.org), Verkehrsmeldungen von der Autobahn GmbH des Bundes (verkehr.autobahn.de), Fahrpläne über NVBW, RMV und EFA-BW (efa-bw.de).

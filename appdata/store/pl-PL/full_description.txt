@@ -2,16 +2,21 @@ WMap to mapa w drogę: szukaj miejsc, planuj dojazd, nawiguj, planuj i nagrywaj 
 
 Mapa
 • Czytelna mapa z lokalnymi nazwami, jasna lub ciemna wg urządzenia
-• Teren i budynki w 3D, wysokości co do metra, a po maksymalnym oddaleniu Ziemia jako globus
-• Satelita: zdjęcia lotnicze dla dużej części Niemiec, na całym świecie Sentinel-2. Budynki są w 3D, ze zdjęciem lotniczym na dachu
+• Teren i budynki w 3D, wysokości co do metra, a po oddaleniu Ziemia jako globus
+• Satelita: zdjęcia lotnicze dla dużej części Niemiec, na całym świecie Sentinel-2. Budynki w 3D, ze zdjęciem na dachu
 • Szlaki piesze, rowerowe i rowerów górskich z Waymarked Trails, rzeźba terenu, sygnalizacja świetlna
 
 Szukanie i trasa
 • Adresy, miejsca i kategorie, takie jak kawiarnia, stacja paliw czy plac zabaw – w widocznym obszarze lub wzdłuż trasy
-• Trasy piesze, rowerowe, samochodowe oraz komunikacją publiczną, z alternatywami i profilem wysokości
-• Dotknij przystanku: najbliższe odjazdy według rozkładu, tam gdzie to możliwe w czasie rzeczywistym, a do tego przebieg kursu ze wszystkimi przystankami
+• Trasy piesze, rowerowe, i samochodowe, z alternatywami i profilem wysokości
 • Zakładki z własnymi nazwami i listy; Dom i Praca są na samej górze wyszukiwania
 • Zasięg: jak daleko dotrzesz w 5 do 60 minut i co tam jest
+
+Tylko Niemcy:
+• Komunikacja publiczna: trasy, odjazdy (rozkład, czas rzeczywisty), przebieg kursu, szukanie linii
+• Ładowarki z zajętością „x z y wolnych”
+• Ruch drogowy: roboty drogowe, zamknięcia, komunikaty
+• Ceny paliw na stacjach
 
 Nawigacja
 • Komunikaty głosowe we właściwym momencie, pasy ruchu, limit prędkości, godzina przyjazdu
@@ -27,10 +32,10 @@ Android Auto
 
 Trasy
 • Zaplanuj trasę na wędrówkę, spacer, szosówkę, rower trekkingowy, gravel, rower górski lub samochód, w razie potrzeby w etapach dziennych
-• Przejmuj znane szlaki i planuj je od nowa, a oryginał pozostaje w tle
+• Przejmuj znane szlaki i planuj je od nowa, a oryginał zostaje w tle
 • Nagrywaj trasy z czasem, dystansem, prędkością i przewyższeniem, plus przegląd roczny – także przy wyłączonym ekranie
 • Analiza: wykresy wysokości, prędkości, tętna, kadencji i mocy, okrążenia z najszybszym i najwolniejszym
-• Porównuj treningi i sprawdzaj, jak robisz postępy
+• Porównuj treningi i śledź postępy
 • Przejmuj z Health Connect treningi z trasą, na przykład z zegarka
 • Otwieraj pliki GPX i FIT, zapisuj jako GPX lub FIT, udostępniaj trasy linkiem lub publikuj
 
@@ -38,14 +43,14 @@ Odkrywaj
 Oznakowane szlaki piesze, długodystansowe trasy rowerowe i trasy MTB w pobliżu lub według nazwy: przebieg, etapy, długość, znaki szlaku i opis. Jedno dotknięcie otwiera szlak w planerze.
 
 Offline
-Obszary map pobierasz na urządzenie z wyprzedzeniem, a ich rozmiar widzisz wcześniej. Strona „Offline” pokazuje wszystko, co jest dostępne bez sieci: obszary, trasy i mapy nawigacji.
+Obszary map pobierasz z wyprzedzeniem, a ich rozmiar widzisz wcześniej. Strona „Offline” pokazuje wszystko, co jest dostępne bez sieci: obszary, trasy i mapy nawigacji.
 
 Twoje dane
 Trasy i nagrania są na Twoim urządzeniu. Jeśli chcesz, połącz folder, np. Nextcloud, Dropbox lub Proton Drive. Każda trasa leży tam jako plik GPX czytelny dla innych aplikacji, a Twoje urządzenia synchronizują się przez ten folder. Konto jest potrzebne tylko do publikowania i do wtyczek. Logujesz się kontem OpenStreetMap, własnego hasła nie ma.
 
 Współtwórz
-Brakujące godziny otwarcia lub nowe miejsca dopiszesz od razu w OpenStreetMap. W drodze WMap zadaje krótkie pytanie, na przykład „Czy piekarnia jeszcze istnieje?” – wystarczy jedno dotknięcie. Dzięki temu mapa staje się lepsza dla wszystkich.
+Brakujące godziny otwarcia lub nowe miejsca dopiszesz od razu w OpenStreetMap. W drodze WMap zadaje krótkie pytanie, na przykład „Czy piekarnia jeszcze istnieje?” – wystarczy jedno dotknięcie. Dzięki temu mapa jest lepsza dla wszystkich.
 
 WMap działa też w przeglądarce pod adresem app.wuefl.de/wmap oraz na Linuksie, Windowsie i macOS.
 
-Uwaga: WMap to projekt prywatny, niezwiązany z żadnym urzędem ani organem państwowym. Dane pochodzą z otwartych źródeł: dane mapowe z OpenStreetMap (openstreetmap.org), komunikaty drogowe od Autobahn GmbH des Bundes (verkehr.autobahn.de), rozkłady jazdy przez wyszukiwarkę połączeń NVBW (efa-bw.de).
+Uwaga: WMap to projekt prywatny, niezwiązany z żadnym urzędem ani organem państwowym. Dane pochodzą z otwartych źródeł: dane mapowe z OpenStreetMap (openstreetmap.org), komunikaty drogowe od Autobahn GmbH des Bundes (verkehr.autobahn.de), rozkłady jazdy przez NVBW, RMV i EFA-BW (efa-bw.de).
