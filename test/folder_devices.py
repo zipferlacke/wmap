@@ -10,7 +10,8 @@
 7. Verzeichnis (Inhalt.json): ein Ordner ohne Änderungszeiten wird beim zweiten Abgleich nicht noch einmal gelesen.
 8. Ordner neu verbunden (Index weg), Einträge noch da: laut Verzeichnis gleich – keine Datei wird gelesen.
 9. Die Ordnung gilt: von Hand hineingelegt (unter „Aufgezeichnete Touren/“) kommt dazu, irgendwo abgelegt nicht.
-10. Von Hand im Ordner gelöscht: der Eintrag verschwindet hier, das Verzeichnis nennt die Datei nicht mehr.
+10. Von Hand im Ordner gelöscht: der Eintrag verschwindet hier, das Verzeichnis nennt die Datei nicht mehr; nach
+    einer Stunde steht er in Gelöscht.json – auch ein Gerät, das die Datei nie im Ordner sah, löscht dann.
 11. Dieselbe Kennung in zwei Dateien (Kopie): die mit dem kleineren Pfad bleibt.
 12. Dieselbe Aufzeichnung unter zwei Kennungen (Health Connect zweimal geholt): die Datei mit der kleineren Kennung
     bleibt, der Puls der anderen kommt dazu, die andere Kennung steht in Gelöscht.json – auch auf einem frischen Gerät.
@@ -151,11 +152,25 @@ out.nineListed = Object.keys(manifest()).some((p) => p.endsWith('Von Hand.gpx'))
 
 // ── 10. Von Hand gelöscht ──
 const gonePath = [...files.keys()].find((p) => p.includes('Verzeichnis 2'));
+const tenTrack = (await tracks.all()).find((t) => t.name === 'Verzeichnis 2');
 files.delete(gonePath);
 out.ten = await folder.sync();
 out.tenNames = (await tracks.all()).map((t) => t.name).filter((n) => /Verzeichnis/.test(n)).sort();
 out.tenListed = Object.keys(manifest()).some((p) => p.includes('Verzeichnis 2'));
 out.tenFiles = [...files.keys()].some((p) => p.includes('Verzeichnis 2'));
+// Bleibt die Datei eine Stunde weg: in Gelöscht.json – ein Gerät, das sie nie im Ordner sah (Index leer), löscht dann auch
+const goneIds = () => Object.keys(JSON.parse(files.get('Gelöscht.json')?.text ?? '{"deleted":{}}').deleted ?? {});
+out.tenSoon = goneIds().includes(tenTrack.id);
+const realNow = Date.now;
+Date.now = () => realNow() + 2 * 3600 * 1000;
+await folder.sync();
+Date.now = realNow;
+out.tenLater = goneIds().includes(tenTrack.id);
+await tracks.putQuiet(tenTrack);
+folder._useBackend(be, 'Nextcloud');
+out.tenOther = await folder.sync();
+out.tenOtherNames = (await tracks.all()).map((t) => t.name).filter((n) => /Verzeichnis/.test(n)).sort();
+out.tenOtherFiles = [...files.keys()].some((p) => p.includes('Verzeichnis 2'));
 
 // ── 11. Kopie: dieselbe Kennung in zwei Dateien ──
 folder._useBackend(be, 'Nextcloud');
@@ -234,6 +249,7 @@ with Browser() as b:
         '8. neu verbunden, Einträge da: laut Verzeichnis gleich – nichts gelesen, nichts doppelt': r['eightReads'] == 0 and r['eightCount'] == 3 and r['eight']['imported'] == 0 and r['eight']['written'] == 0,
         '9. von Hand hineingelegt (egal wohin): nur sie werden gelesen, erst gefragt – dann übernommen und einsortiert': r['nineReads'] == ['Irgendwo.gpx', 'Von Hand.gpx'] and r['nineInbox'] == [['Irgendwo.gpx', 'new'], ['Von Hand.gpx', 'new']] and r['nineBefore'] == [] and r['nineNames'] == ['Irgendwo', 'Von Hand'] and r['nineListed'] and r['nineGone'] and r['nineTake']['imported'] == 2,
         '10. von Hand gelöscht → Eintrag weg, nicht mehr im Verzeichnis, nicht zurückgeschrieben': r['tenNames'] == ['Verzeichnis 1', 'Verzeichnis 3'] and not r['tenListed'] and not r['tenFiles'],
+        '10b. nach einer Stunde in Gelöscht.json (nicht sofort); Gerät ohne Index löscht auch, schreibt nicht zurück': not r['tenSoon'] and r['tenLater'] and r['tenOtherNames'] == ['Verzeichnis 1', 'Verzeichnis 3'] and not r['tenOtherFiles'] and r['tenOther']['written'] == 0,
         '11. Kopie mit derselben Kennung → eine Datei (kleinster Pfad), ein Weg, danach Ruhe': len(r['elevenFiles']) == 1 and '(' not in r['elevenFiles'][0] and r['elevenTracks'] == 1 and r['eleven']['merged'] == 2 and r['elevenAgain']['merged'] == 0,
         '12. dieselbe Aufzeichnung dreimal → kleinste Kennung bleibt, Puls kommt dazu, die anderen in Gelöscht.json': r['twelveTracks'] == [['dupa', True]] and len(r['twelveFiles']) == 1 and r['twelveFiles'][0][1:] == ['dupa', True] and r['twelveGone'] == ['dupb', 'dupc'] and r['twelve']['merged'] == 2 and r['twelveAgain']['merged'] == 0 and r['twelveAgain']['written'] == 0,
         '12. zweites Gerät mit der anderen Kennung → übernimmt die bleibende, schreibt nichts zurück': r['twelveOtherTracks'] == ['dupa'] and r['twelveOtherFiles'] == 1,

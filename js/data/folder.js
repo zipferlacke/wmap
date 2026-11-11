@@ -62,7 +62,8 @@
  * oder am Pfad):
  *   nur im Ordner       → übernehmen
  *   nur in WMap         → Datei schreiben – oder, wenn die Datei schon mal da
- *                         war und im Ordner gelöscht wurde, auch hier löschen
+ *                         war und im Ordner gelöscht wurde, auch hier löschen;
+ *                         bleibt sie eine Stunde weg, kommt sie in Gelöscht.json
  *   beides geändert     → das Neuere gewinnt
  *   in WMap gelöscht    → Datei löschen und in Gelöscht.json eintragen
  *   in Gelöscht.json    → auch hier löschen, nie wieder schreiben – so weiß
@@ -159,6 +160,7 @@ const VIEW_FILE = 'Kartenausschnitt.json';
 const MANIFEST = 'Inhalt.json';
 const READ_AHEAD = 4;     // so viele Dateien werden zugleich gelesen
 const VIEW_EVERY_MS = 2 * 60 * 1000;
+const MISSING_WAIT_MS = 60 * 60 * 1000;   // von Hand gelöscht: so lange warten, ob die Datei wiederkommt (Cloud-Ordner)
 let viewWritten = 0, viewText = null;
 
 async function load() {
@@ -560,10 +562,22 @@ async function syncAll(c, be, decide = null) {
   const gonePath = `${base}Gelöscht.json`;
   const goneFile = at(gonePath);
   let goneThere = {};
-  if (goneFile) { try { goneThere = JSON.parse(await be.read(gonePath)).deleted ?? {}; } catch { /* kaputt: neu schreiben */ } }
+  // Nicht lesbar (Cloud-Ordner hat sie noch nicht geholt): die Datei bleibt in diesem Lauf, wie sie ist – mit ihr
+  // gingen die Einträge der anderen Geräte verloren. Lesbar, aber kaputt: neu schreiben
+  let goneReadable = true;
+  if (goneFile) {
+    const text = await be.read(gonePath).catch(() => null);
+    if (text === null) goneReadable = false;
+    else { try { goneThere = JSON.parse(text).deleted ?? {}; } catch { /* kaputt: neu schreiben */ } }
+  }
   const gone = { ...goneThere };
-  for (const id of local.get(DELETED, []) ?? []) gone[id] ??= Date.now();
-  for (const id of local.get(REVIVED, []) ?? []) delete gone[id];
+  const deletedHere = local.get(DELETED, []) ?? [];
+  const revivedHere = local.get(REVIVED, []) ?? [];
+  for (const id of deletedHere) gone[id] ??= Date.now();
+  for (const id of revivedHere) delete gone[id];
+  // Von Hand im Ordner gelöscht (Datei fehlt, hier bekannt): { Kennung: seit wann } – bleibt sie weg, kommt sie
+  // nach MISSING_WAIT_MS in Gelöscht.json
+  const missing = { ...(c.missing ?? {}) };
   for (const [id, when] of Object.entries(gone)) if (Date.now() - when > GONE_KEEP_MS) delete gone[id];
   const deleted = new Set(Object.keys(gone));
   const index = c.index ?? {};
@@ -985,8 +999,10 @@ async function syncAll(c, be, decide = null) {
   for (const [id, entry] of locals) {
     if (seen.has(id)) continue;
     await step();
-    if (deleted.has(id) || Object.entries(index).some(([path, v]) => v.id === id && inPlace(path))) {
+    const byHand = !deleted.has(id) && Object.entries(index).some(([path, v]) => v.id === id && inPlace(path));
+    if (deleted.has(id) || byHand) {
       // Auf einem Gerät gelöscht bzw. war schon im Ordner und ist dort weg
+      if (byHand) missing[id] ??= Date.now();
       if (entry.kind === 'track') await tracks.removeQuiet(id);
       else if (entry.kind === 'conn') connections.removeQuiet(id);
       else tourRemoveQuiet(id);
@@ -1008,7 +1024,14 @@ async function syncAll(c, be, decide = null) {
   if (merged.changed) await be.write(bmPath, merged.text);
 
   out.settings = await syncSettings(c, be, at(`${base}settings.json`), `${base}settings.json`);
-  if (JSON.stringify(gone) !== JSON.stringify(goneThere)) {
+  // Von Hand gelöscht und nach der Wartezeit immer noch weg: für alle Geräte gelöscht – auch für eins, das die
+  // Datei nie im Ordner gesehen hat (neu verbunden) und sie sonst zurückschriebe. Ist sie wieder da, gilt sie
+  const back = new Set(Object.values(next).map((v) => v.id));
+  for (const [id, since] of Object.entries(missing)) {
+    if (back.has(id)) delete missing[id];
+    else if (Date.now() - since >= MISSING_WAIT_MS) { gone[id] = Date.now(); delete missing[id]; }
+  }
+  if (goneReadable && JSON.stringify(gone) !== JSON.stringify(goneThere)) {
     await be.write(gonePath, JSON.stringify({ app: 'WMap', note: 'Auf einem Gerät gelöscht – nicht wieder anlegen', deleted: gone }, null, 1));
   }
   if (legacy) await be.remove(legacy.path);
@@ -1036,8 +1059,13 @@ async function syncAll(c, be, decide = null) {
 
   c.index = next;
   c.waiting = waiting;
-  local.set(DELETED, []);
-  local.set(REVIVED, []);
+  c.missing = missing;
+  // Nur was dieser Lauf verarbeitet hat – was währenddessen dazukam, gilt beim nächsten. Ohne lesbare
+  // Gelöscht.json bleibt alles stehen, bis es dort eingetragen ist
+  if (goneReadable) {
+    local.set(DELETED, (local.get(DELETED, []) ?? []).filter((id) => !deletedHere.includes(id)));
+    local.set(REVIVED, (local.get(REVIVED, []) ?? []).filter((id) => !revivedHere.includes(id)));
+  }
   return out;
 }
 
@@ -1198,7 +1226,7 @@ function tourRemoveQuiet(id) {
 const SETTINGS = [
   'wmap.theme', 'wmap.nav.zoom', 'wmap.nav.3d', 'wmap.voice', 'wmap.muted', 'wmap.offline', 'wmap.datasaver',
   'wmap.contribute', 'wmap.osm.anon', 'wmap.history', 'wmap.routePrefs', 'wmap.profile', 'wmap.myname',
-  'wmap.lapsize', 'wmap.chart', 'wmap.tankerkoenig',
+  'wmap.lapsize', 'wmap.chart', 'wmap.tankerkoenig', 'wmap.units', 'wmap.clock',
 ];
 
 function snapshot() {
