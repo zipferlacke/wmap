@@ -1,7 +1,7 @@
 <?php
 /**
- * Liefert messages.json und zählt dabei den Zugriff (Tabelle Counts, hit:page): Jede Seite von WMap holt die Datei
- * beim Start – so viele Seitenaufrufe gab es, auch von Geräten ohne Nutzungsstatistik. Gezählt wird nur die Zahl je
+ * Liefert messages.json und zählt dabei den Zugriff (Tabelle Counts, hit:page): Jede Seite von WMap holt die
+ * Neuigkeiten beim Start hier (js/ui/news.js) – so viele Seitenaufrufe gab es, auch von Geräten ohne Nutzungsstatistik. Gezählt wird nur die Zahl je
  * Tag, nichts über das Gerät. Scheitert das Zählen, kommt die Datei trotzdem.
  */
 try {

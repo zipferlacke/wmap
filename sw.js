@@ -251,7 +251,7 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(immutable(url) ? cacheFirst(req) : networkFirst(req, TILES));
   } else if (url.origin === self.location.origin) {
     if (url.pathname.includes('/bEnd/')) return;                     // Server-API: nur Netz
-    if (url.pathname.endsWith('/appdata/messages.json')) e.respondWith(versionFile(req));
+    if (/\/appdata\/messages\.(json|php)$/.test(url.pathname)) e.respondWith(versionFile(req));
     else e.respondWith(DEV ? networkFirst(req, APP) : appFirst(req));
   }
 });
@@ -281,7 +281,7 @@ async function appFirst(req) {
   return res;
 }
 
-/** messages.json: immer frisch vom Server; ohne Netz die gespeicherte – markiert */
+/** messages.json bzw. messages.php (dieselbe Datei, zählt den Abruf): immer frisch vom Server; ohne Netz die gespeicherte – markiert */
 async function versionFile(req) {
   const cache = await caches.open(APP);
   try {
@@ -289,7 +289,7 @@ async function versionFile(req) {
     if (res.ok) cache.put(req, res.clone()).catch(() => {});
     return res;
   } catch (err) {
-    const hit = await cache.match(req, { ignoreSearch: true });
+    const hit = await cache.match(req, { ignoreSearch: true }) ?? await cache.match('appdata/messages.json');
     if (!hit) throw err;
     const headers = new Headers(hit.headers);
     headers.set('X-WMap-Offline', '1');

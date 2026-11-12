@@ -1,5 +1,0 @@
-# Zugriffe zählen: messages.json holt jede Seite beim Start – über messages.php, das zählt (hit:page) und die Datei liefert
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteRule ^messages\.json$ messages.php [L]
-</IfModule>

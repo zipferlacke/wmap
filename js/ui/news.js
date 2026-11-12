@@ -74,11 +74,16 @@ export function compareVersions(a, b) {
 }
 
 let loaded = null;
-/** messages.json vom Server – ohne Netz die gespeicherte (dann `offline: true`, sw.js) */
+/**
+ * messages.json vom Server – ohne Netz die gespeicherte (dann `offline: true`, sw.js). Geholt über messages.php:
+ * Es liefert dieselbe Datei und zählt dabei den Seitenaufruf (bEnd/stats.php „Zugriffe“). Ohne PHP (Kopie der
+ * Dateien auf einem einfachen Server) oder wenn es scheitert: die Datei selbst.
+ */
 function load() {
-  loaded ??= fetch('./appdata/messages.json', { cache: 'no-store' })
+  const get = (file) => fetch(`./appdata/${file}`, { cache: 'no-store' })
     .then(async (r) => (r.ok ? { ...(await r.json()), offline: r.headers.get('X-WMap-Offline') === '1' } : null))
     .catch(() => null);
+  loaded ??= get('messages.php').then((m) => m ?? get('messages.json'));
   return loaded;
 }
 
