@@ -4781,6 +4781,14 @@
     },
     "changes": {
       "3.1.1": [
+        "Allemagne uniquement : bus et train depuis trois sources – départs, détail du trajet et correspondances proviennent de la NVBW, du RMV (Hesse) et de l’EFA-BW ; si l’une est en panne, la suivante prend le relais",
+        "Allemagne uniquement : bornes de recharge avec disponibilité – puissance par prise et « x sur y libres »",
+        "Unités et format de l’heure : kilomètres ou miles, 24 ou 12 heures – dans Réglages → Apparence, préréglés selon le pays de votre appareil",
+        "Échelle en bas à droite de la carte, visible pendant le zoom",
+        "Appui long sur une maison : l’adresse s’affiche en titre au lieu de « Point sur la carte »",
+        "Correctif : la carte s’ouvre de nouveau là où vous l’avez déplacée en dernier – même avec un dossier partagé entre plusieurs appareils",
+        "Correctif : les parcours supprimés dans le dossier ne sont plus réécrits par un autre appareil",
+        "Correctif : le texte de bienvenue manquait au premier démarrage",
         "Correctif : après une mise à jour, certains textes manquaient parfois (par ex. dans les paramètres) ou la carte restait vide. Une mise à jour n’est désormais appliquée que lorsque tous les fichiers sont chargés complets et cohérents"
       ],
       "3.1.0": [

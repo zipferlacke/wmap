@@ -4750,6 +4750,14 @@
     },
     "changes": {
       "3.1.1": [
+        "Germany only: public transport from three sources – departures, journey details and connections come from NVBW, RMV (Hesse) and EFA-BW; if one fails, the next takes over",
+        "Germany only: charging stations with availability – power per connector and “x of y free”",
+        "Units and time format: kilometres or miles, 24-hour or 12-hour – under Settings → Appearance, preset to match your device’s country",
+        "Scale bar at the bottom right of the map, visible while zooming",
+        "Long-press on a house: the address is shown as the title instead of “Point on the map”",
+        "Fix: the map opens again where you last moved it – also with a folder shared between several devices",
+        "Fix: tours deleted in the folder are no longer written back by another device",
+        "Fix: the welcome text was missing on first start",
         "Fix: after an update, some texts were sometimes missing (e.g. in the settings) or the map stayed blank. An update is now only applied once all files have been loaded completely and match"
       ],
       "3.1.0": [

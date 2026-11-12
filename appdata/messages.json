@@ -10,9 +10,17 @@
     "changelog": [
         {
             "version": "3.1.1",
-            "date": "2026-11-04",
+            "date": "2026-11-12",
             "appVersion": "2.3.1",
             "changes": [
+                "Nur Deutschland: Bus & Bahn aus drei Quellen – Abfahrten, Fahrtverlauf und Verbindungen kommen von der NVBW, dem RMV (Hessen) und der EFA-BW; fällt eine aus, übernimmt die nächste",
+                "Nur Deutschland: Ladesäulen mit Belegung – je Stecker die Leistung und „x von y frei“",
+                "Maßeinheiten und Uhrzeit: Kilometer oder Meilen, 24 oder 12 Stunden – unter Einstellungen → Darstellung, voreingestellt nach dem Land deines Geräts",
+                "Maßstab unten rechts auf der Karte, sichtbar beim Zoomen",
+                "Lange auf ein Haus gedrückt: Die Adresse steht im Titel statt „Punkt auf der Karte“",
+                "Fix: Die Karte öffnet wieder dort, wo du sie zuletzt bewegt hast – auch mit einem Ordner für mehrere Geräte",
+                "Fix: Im Ordner gelöschte Touren schreibt ein anderes Gerät nicht mehr zurück",
+                "Fix: Der Willkommenstext beim ersten Start fehlte",
                 "Fix: Nach einem Update fehlten manchmal Texte (etwa in den Einstellungen) oder die Karte blieb leer. Ein Update wird jetzt erst übernommen, wenn alle Dateien vollständig und passend geladen sind"
             ]
         },

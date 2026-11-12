@@ -4682,6 +4682,14 @@
     },
     "changes": {
       "3.1.1": [
+        "Endast Tyskland: buss och tåg från tre källor – avgångar, resans förlopp och förbindelser kommer från NVBW, RMV (Hessen) och EFA-BW; faller en bort tar nästa över",
+        "Endast Tyskland: laddstationer med lediga platser – effekt per kontakt och ”x av y lediga”",
+        "Enheter och tidsformat: kilometer eller miles, 24 eller 12 timmar – under Inställningar → Utseende, förvalt efter din enhets land",
+        "Skala längst ned till höger på kartan, synlig när du zoomar",
+        "Långt tryck på ett hus: adressen står som rubrik i stället för ”Punkt på kartan”",
+        "Rättelse: kartan öppnas åter där du senast flyttade den – även med en mapp för flera enheter",
+        "Rättelse: turer som raderats i mappen skrivs inte längre tillbaka av en annan enhet",
+        "Rättelse: välkomsttexten saknades vid första starten",
         "Fix: efter en uppdatering saknades ibland texter (t.ex. i inställningarna) eller så förblev kartan tom. En uppdatering används nu först när alla filer har laddats helt och stämmer"
       ],
       "3.1.0": [

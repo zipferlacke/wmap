@@ -4864,6 +4864,14 @@
     },
     "changes": {
       "3.1.1": [
+        "Tylko Niemcy: komunikacja z trzech źródeł – odjazdy, przebieg kursu i połączenia pochodzą z NVBW, RMV (Hesja) i EFA-BW; gdy jedno zawiedzie, przejmuje następne",
+        "Tylko Niemcy: stacje ładowania z zajętością – moc każdego złącza i „x z y wolnych”",
+        "Jednostki i format czasu: kilometry lub mile, 24 lub 12 godzin – w Ustawienia → Wygląd, domyślnie według kraju urządzenia",
+        "Podziałka w prawym dolnym rogu mapy, widoczna podczas powiększania",
+        "Długie naciśnięcie domu: w tytule jest adres zamiast „Punkt na mapie”",
+        "Poprawka: mapa znów otwiera się tam, gdzie ją ostatnio przesunięto – także z folderem dla kilku urządzeń",
+        "Poprawka: trasy usunięte w folderze nie są już zapisywane z powrotem przez inne urządzenie",
+        "Poprawka: przy pierwszym uruchomieniu brakowało tekstu powitalnego",
         "Poprawka: po aktualizacji czasem brakowało tekstów (np. w ustawieniach) albo mapa pozostawała pusta. Aktualizacja jest teraz stosowana dopiero wtedy, gdy wszystkie pliki zostały pobrane w całości i do siebie pasują"
       ],
       "3.1.0": [
