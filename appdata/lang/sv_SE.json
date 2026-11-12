@@ -1,0 +1,5102 @@
+{
+  "_meta": {
+    "name": "Svenska",
+    "locale": "sv-SE"
+  },
+  "common": {
+    "language": {
+      "offer_title": "{name} är tillgängligt",
+      "offer_text": "WMap finns också på {name}. Vill du byta? Du kan ändra det senare i inställningarna.",
+      "switch": "Byt",
+      "stay": "Inte nu"
+    },
+    "delete": "Ta bort",
+    "cancel": "Avbryt",
+    "ok": "OK",
+    "sheet": {
+      "grip": "Ändra höjd: dra, tryck två gånger för helt öppen eller stängd"
+    },
+    "close": "Stäng",
+    "save": "Spara",
+    "back": "Tillbaka",
+    "view": "Visa",
+    "not_now": "Inte nu",
+    "units": {
+      "m": "m",
+      "km": "km",
+      "h": "tim",
+      "min": "min",
+      "s": "s",
+      "kmh": "km/h",
+      "mi": "mi",
+      "ft": "ft",
+      "mph": "mph"
+    },
+    "speech": {
+      "kilometers": "{x} kilometer",
+      "meters": "{x} meter",
+      "kilometers_plain": "{x} kilometer",
+      "meters_plain": "{x} meter",
+      "miles": {
+        "one": "{x} mile",
+        "other": "{x} miles"
+      },
+      "feet": "{x} fot",
+      "miles_plain": {
+        "one": "{x} mile",
+        "other": "{x} miles"
+      },
+      "feet_plain": "{x} fot"
+    },
+    "profiles": {
+      "foot": "Till fots",
+      "bike": "Cykel",
+      "car": "Bil",
+      "transit": "Buss & tåg",
+      "hike": "Vandring",
+      "walk": "Promenad",
+      "road": "Racercykel",
+      "tour": "Touringcykel",
+      "gravel": "Gravel",
+      "mtb": "Mountainbike",
+      "drive": "Bil"
+    },
+    "osm_test_server": "OSM-testserver",
+    "later": "Senare",
+    "next": "Nästa",
+    "done": "Klart",
+    "nav": {
+      "map": "Karta",
+      "dashboard": "Översikt",
+      "tours": "Turer",
+      "discover": "Upptäck",
+      "plugins": "Plugins",
+      "main": "Huvudnavigering",
+      "my_tours": "Mina turer",
+      "plan_tour": "Planera tur",
+      "fly": "Flyg",
+      "menu": "Meny"
+    },
+    "weekdays": {
+      "short": {
+        "mo": "Mån",
+        "tu": "Tis",
+        "we": "Ons",
+        "th": "Tors",
+        "fr": "Fre",
+        "sa": "Lör",
+        "su": "Sön"
+      }
+    },
+    "months": {
+      "short": {
+        "jan": "jan",
+        "feb": "feb",
+        "mar": "mar",
+        "apr": "apr",
+        "may": "maj",
+        "jun": "jun",
+        "jul": "jul",
+        "aug": "aug",
+        "sep": "sep",
+        "oct": "okt",
+        "nov": "nov",
+        "dec": "dec"
+      },
+      "long": {
+        "jan": "januari",
+        "feb": "februari",
+        "mar": "mars",
+        "apr": "april",
+        "may": "maj",
+        "jun": "juni",
+        "jul": "juli",
+        "aug": "augusti",
+        "sep": "september",
+        "oct": "oktober",
+        "nov": "november",
+        "dec": "december"
+      }
+    }
+  },
+  "settings": {
+    "look": {
+      "title": "Utseende",
+      "theme": {
+        "title": "Ljust eller mörkt",
+        "hint": "För karta och app. ”Som systemet” följer enhetens läge, även när det byts på kvällen.",
+        "options": {
+          "system": "Som systemet",
+          "light": "Ljust",
+          "dark": "Mörkt"
+        }
+      },
+      "language": {
+        "title": "Språk"
+      },
+      "units": {
+        "title": "Enheter",
+        "options": {
+          "metric": "Kilometer och meter",
+          "imperial": "Miles och fot"
+        }
+      },
+      "clock": {
+        "title": "Tidsformat",
+        "options": {
+          "24": "24 timmar",
+          "12": "12 timmar (AM/PM)"
+        }
+      },
+      "geo": "Öppna kartlänkar (geo:) med WMap",
+      "permissions": "Behörigheter – plats, Health Connect"
+    },
+    "way": {
+      "title": "På väg",
+      "zoom": {
+        "title": "Zoom under navigering",
+        "hint": "Automatiskt: nära i staden, längre bort på motorvägen, närmare före avfarter och svängar.",
+        "options": {
+          "auto": "Automatiskt",
+          "near": "Närmare",
+          "far": "Mer överblick"
+        }
+      },
+      "along": {
+        "title": "Korta frågor på vägen",
+        "hint": "”Ny väg?”, ”Avstängt?”, ”Finns … kvar?”, ”Fortfarande kö?” som en liten pill som försvinner av sig själv – under navigering och vid platsprickan på kartan, obesvarade efteråt under Delta. Bara med Delta.",
+        "options": {
+          "foot": "Till fots",
+          "bike": "Cykel",
+          "car": "Bil"
+        }
+      },
+      "voice": "Röst för anvisningar",
+      "fuel": {
+        "title": "Ställ in bensinpriser",
+        "prompt": "API-nyckel för Tankerkönig (gratis på creativecommons.tankerkoenig.de).\nDen sparas bara i den här webbläsaren. Lämna tomt för att ta bort."
+      },
+      "offline_maps": "Offlinekartor: ladda ner områden till enheten",
+      "offline": {
+        "title": "Spara kartan offline för navigering",
+        "hint": "När navigeringen startar laddas kartan längs rutten – så märker du inte att täckningen försvinner."
+      },
+      "nav3d": {
+        "title": "3D-vy under navigering",
+        "hint": "Lutad ur förarens perspektiv; av: platt uppifrån."
+      },
+      "saver": {
+        "title": "Dataspar",
+        "hint": "Inga 3D-höjddata och inga offlinekartor."
+      },
+      "carlog": {
+        "title": "Android Auto: logga körningen",
+        "hint": "För felsökning när kartan hänger sig i bilen: skriver en fil per körning till Download/WMap. Gäller från nästa start av WMap i bilen."
+      }
+    },
+    "account": {
+      "title": "Konto",
+      "intro": "WMap använder ditt OpenStreetMap-konto – för att lägga till och förbättra platser, dela och betygsätta turer och för egna plugins. WMap har inget eget lösenord; allt annat går utan konto.",
+      "delete": "Ta bort konto – med turer, plugins och betyg",
+      "none": "Inget konto än? Det skapar du när du loggar in på openstreetmap.org.",
+      "login_missing": "Inloggningen hos OpenStreetMap saknas",
+      "signed_in": "Inloggad som {name}",
+      "logout": "Logga ut",
+      "not_set_up": "Inloggningen är inte inställd här än: WMap behöver ett OAuth-klient-ID från {web} (se ”För utvecklare”). Tills dess kan du skicka svar anonymt som tips.",
+      "wmap_missing": "Inloggad hos OpenStreetMap som {name}, men WMap-kontot saknas än",
+      "login_again": "logga in en gång till.",
+      "relogin": "Logga in igen",
+      "queue": "{n} svar väntar på att laddas upp.",
+      "login": "Logga in med OpenStreetMap",
+      "wmap_failed": "Inloggad hos OpenStreetMap, men WMap-kontot gick inte: {error}",
+      "developer": {
+        "title": "För utvecklare",
+        "hint": "WMap-kontot fungerar bara med openstreetmap.org och WMaps klient-ID; på testservern kan du bara prova Redigera karta.",
+        "server": "Server",
+        "client": {
+          "title": "OAuth-klient-ID",
+          "hint": "registrera hos {web}"
+        },
+        "redirect": "Omdirigerings-URL"
+      }
+    },
+    "contribute": {
+      "title": "Delta i OpenStreetMap",
+      "clear": "Ta bort inspelning",
+      "trace": {
+        "title": "Spela in vägen och fråga efteråt",
+        "hint": "WMap minns på den här enheten var du har varit (14 dagar) och ställer en kort fråga efteråt – t.ex. om en parkering kostar något. Inget lämnar enheten innan du svarar och laddar upp."
+      },
+      "anon": {
+        "title": "Skicka som tips utan konto",
+        "hint": "Utan konto skickas dina svar anonymt som tips till OpenStreetMap – kartläggare lägger sedan in dem. Med konto direkt i kartan."
+      },
+      "stats": {
+        "none": "Inga bidrag från den här enheten än.",
+        "mine": "Du har via WMap {stats}.",
+        "all": "Alla tillsammans: {stats}.",
+        "anon_count": "Räkningen sker anonymt, bara antalet – utan konto, enhet eller plats."
+      }
+    },
+    "data": {
+      "title": "Data",
+      "trackshow": {
+        "title": "Inspelade turer på kartan",
+        "hint": "Vilka under ”Mina turer” som ligger på kartan av sig själva. Äldre finns kvar i listan; där kan varje år och varje tur döljas och visas för sig. Ju äldre en tur är, desto blekare ritas den."
+      },
+      "sync": "Säkerhetskopiering &amp; synkronisering – mapp, Health Connect, ZIP",
+      "tracks": "Visa inspelade vägar",
+      "clear_history": "Rensa sökhistorik",
+      "history": {
+        "title": "Kom ihåg varje navigering",
+        "hint": "Även vanliga navigeringar hamnar under Inspelade turer. Planerade turer som du startar och ”Spela in” sparas alltid."
+      },
+      "stats": {
+        "title": "Anonym användningsstatistik",
+        "hint": "En gång om dagen: att WMap var öppen i dag och hur ofta varje tjänst användes (t.ex. sökning 12×). Utan ID, utan plats, utan sökord."
+      },
+      "repair": {
+        "title": "Kontrollera och ladda om appen",
+        "hint": "Kontrollerar varje sparad fil i appen, hämtar skadade filer och eventuell nyare version från servern och laddar om – om något saknas efter en uppdatering.",
+        "running": "Kontrollerar …"
+      }
+    },
+    "map": {
+      "title": "Kartans utseende",
+      "sharpness": {
+        "title": "Kartans skärpa",
+        "hint": "Hur fint kartan ritas (pixeltäthet). Högre: text, linjer och hus blir skarpare – men kräver mer minne och batteri, och kartan går mindre mjukt. Lägre: snålare och mjukare, men något suddigare. Den här skärmen har {dpr}. Gäller från nästa gång kartan öppnas."
+      }
+    },
+    "toast": {
+      "saver_off": "Dataspar av",
+      "saver_on": "Dataspar på – inga 3D-höjddata",
+      "next_open": "Gäller från nästa gång kartan öppnas",
+      "geo": "Webbläsaren frågar nu om WMap får öppna kartlänkar",
+      "history_cleared": "Sökhistorik borttagen",
+      "trace_cleared": "Inspelning borttagen",
+      "fuel_on": "Bensinpriser inställda",
+      "fuel_off": "Bensinpriser avstängda",
+      "geo_failed": "Fungerar inte i den här webbläsaren ({error})",
+      "signed_in": "Inloggad som {name}"
+    },
+    "page_title": "Inställningar – WMap",
+    "title": "Inställningar"
+  },
+  "dashboard": {
+    "page_title": "Översikt – WMap",
+    "title": "Översikt",
+    "tiles": {
+      "label": "Vyer",
+      "sync": {
+        "state": {
+          "busy": "Synkar …",
+          "error": "Fel vid synkning",
+          "folder_at": "Mapp {name} · {date}",
+          "folder": "Mapp {name}",
+          "health_error": "Fel i Health Connect",
+          "health_at": "Health Connect · {date}"
+        },
+        "title": "Säkerhetskopiering & synkning",
+        "text": "Mapp (Nextcloud, Drive …), Health Connect, säkerhetskopia"
+      },
+      "map": {
+        "title": "Karta",
+        "text": "Sök, planera rutt, navigera, spela in"
+      },
+      "planned": {
+        "title": "Planerade turer",
+        "text": "Redo att ge sig av",
+        "none": "inga ännu",
+        "count": {
+          "one": "{count} tur",
+          "other": "{count} turer"
+        }
+      },
+      "recorded": {
+        "title": "Inspelade turer",
+        "text": "Vad du har cyklat och gått",
+        "none": "inga ännu",
+        "this_year": " · {year}: {km}",
+        "count": {
+          "one": "{count} sträcka",
+          "other": "{count} sträckor"
+        }
+      },
+      "discover": {
+        "title": "Upptäck",
+        "text": "Vandrings- och cykelleder, turer från andra"
+      },
+      "plugins": {
+        "title": "Plugins",
+        "text": "Flygbilder, geologi, egna data, tillägg",
+        "active": "{n} aktiva"
+      },
+      "offline": {
+        "title": "Offline",
+        "text": "Kartområden, turer och navigeringskartor på enheten – för att klara dig utan nät",
+        "count": {
+          "one": "{count} område · {size}",
+          "other": "{count} områden · {size}"
+        }
+      },
+      "survey": {
+        "title": "Bidra",
+        "text": "Korta frågor som förbättrar OpenStreetMap",
+        "count": {
+          "one": "{count} ny fråga",
+          "other": "{count} nya frågor"
+        }
+      },
+      "settings": {
+        "title": "Inställningar",
+        "text": "Ljust/mörkt, navigering, offline, konto"
+      }
+    },
+    "store": {
+      "title": "Sparat på den här enheten",
+      "nav": {
+        "title": "Kartor för navigering",
+        "none": "Ingen navigering förladdad",
+        "loaded": {
+          "one": "{count} navigering förladdad – så att täckningshål inte märks. Varje sparas i {days} dagar; när utrymmet tar slut ersätts den äldsta.",
+          "other": "{count} navigeringar förladdade – så att täckningshål inte märks. Varje sparas i {days} dagar; när utrymmet tar slut ersätts den äldsta."
+        },
+        "item": "{date} · {tiles} · {days} kvar",
+        "tiles": {
+          "one": "{count} kartruta",
+          "other": "{count} kartrutor"
+        },
+        "days": {
+          "one": "{count} dag",
+          "other": "{count} dagar"
+        },
+        "viewed": "Dessutom {tiles} av områden du har tittat på.",
+        "areas": "Områden som du själv har laddat ner finns kvar – de visas under <a href=\"./offline-daten.html\">Offline</a> tillsammans med allt annat som finns utan nät.",
+        "delete": {
+          "title": "Ta bort navigeringskartorna?",
+          "text": "Nästa gång du navigerar laddas kartorna längs rutten på nytt. Dina offlineområden finns kvar.",
+          "done": "Navigeringskartor borttagna"
+        }
+      },
+      "routes": {
+        "title": "Senaste rutter",
+        "unnamed": "Rutt",
+        "forget": "Glöm den här rutten",
+        "none": "Inga",
+        "delete_all": "Alla",
+        "deleted": "Senaste rutter borttagna"
+      },
+      "history": {
+        "title": "Sökhistorik",
+        "empty": "Tom",
+        "count": {
+          "one": "{count} post",
+          "other": "{count} poster"
+        },
+        "deleted": "Sökhistoriken borttagen"
+      },
+      "usage_quota": "Totalt tar WMap upp {used} på den här enheten (tillåtet: {quota}).",
+      "usage": "Totalt tar WMap upp {used} på den här enheten."
+    },
+    "thanks": {
+      "title": "Tack!",
+      "text": "WMap finns bara för att många människor delar sina data och tjänster öppet:",
+      "support": "WMap är gratis, utan reklam och utan spårning. Om den hjälper dig:",
+      "support_link": "Stöd utvecklingen"
+    },
+    "about": {
+      "changelog": "Nyheter",
+      "text": "– karta och navigering baserade på öppna data",
+      "imprint": "Impressum",
+      "privacy": "Integritet",
+      "version_app": "{version} · App {app}"
+    },
+    "unit": {
+      "km": "{v} km",
+      "mb": "{v} MB"
+    }
+  },
+  "delete_konto": {
+    "page_title": "Ta bort konto – WMap",
+    "title": "Ta bort konto",
+    "what": {
+      "title": "Vad är ett WMap-konto?",
+      "text": "WMap fungerar utan konto. Du behöver bara ett konto för att dela turer eller plugins och för att betygsätta turer. Du loggar in med ditt OpenStreetMap-konto; WMap sparar bara ditt OSM-namn och ditt OSM-användarnummer – inget lösenord och ingen e-postadress."
+    },
+    "deleted": {
+      "title": "Vad som tas bort",
+      "name": "ditt namn och ditt OSM-användarnummer på WMap-servern",
+      "tours": "alla turer du har sparat – privata och publicerade – inklusive andras betyg på dem",
+      "plugins": "alla plugins du har skapat – privata och publicerade, med uppladdade data",
+      "ratings": "dina betyg och kommentarer på andras turer",
+      "logins": "alla inloggningar på alla enheter",
+      "final": "Borttagningen sker direkt och är slutgiltig; inget av detta finns kvar på servern.",
+      "not_server": "Finns inte på servern: inspelade sträckor, sparade platser, offlinekartor och inställningar. De finns kvar på din enhet tills du tar bort appen eller webbplatsens data i webbläsaren. Ditt OpenStreetMap-konto och allt du har lagt in där finns kvar – det hanterar du på openstreetmap.org."
+    },
+    "now": {
+      "title": "Ta bort nu",
+      "wait": "Ett ögonblick …",
+      "button": "Ta bort kontot för gott",
+      "hint": "Det WMap-konto som hör till det OpenStreetMap-konto du är inloggad med tas bort.",
+      "login": "Logga in med OpenStreetMap"
+    },
+    "no_login": {
+      "title": "Går det inte att logga in?",
+      "text": "Om du inte längre kan logga in, skriv till <a href=\"mailto:contact@wuefl.de?subject=WMap-Konto%20l%C3%B6schen\">contact@wuefl.de</a> med ditt OpenStreetMap-namn och – om möjligt – namnet på en av dina turer eller plugins. Vi tar då bort kontot för hand, senast inom 30 dagar, och bekräftar det för dig."
+    },
+    "summary": {
+      "published": " ({n} publicerade)",
+      "tours": {
+        "one": "{n} tur",
+        "other": "{n} turer"
+      },
+      "plugins": {
+        "one": "{n} plugin",
+        "other": "{n} plugins"
+      },
+      "ratings": {
+        "one": "{n} betyg",
+        "other": "{n} betyg"
+      }
+    },
+    "status": {
+      "logged_out": "Du är inte inloggad här. Logga in med det OpenStreetMap-konto som ditt WMap-konto hör till – sedan kan du ta bort det.",
+      "signed_in": "Inloggad som <strong>{name}</strong>.",
+      "contains": "Till det hör {list}.",
+      "empty": "Till det här kontot hör inga turer, plugins eller betyg.",
+      "expired": "{error} – logga in igen.",
+      "deleted_with": "Kontot <strong>{name}</strong> är borttaget – med {list}.",
+      "deleted": "Kontot <strong>{name}</strong> är borttaget.",
+      "revoke": "Behörigheten för WMap kan du återkalla på openstreetmap.org under Inställningar → OAuth 2-program → Godkända program."
+    },
+    "login_reason": "För att ta bort",
+    "confirm": {
+      "title": "Verkligen ta bort kontot?",
+      "text": "Ditt WMap-konto och alla dina turer, plugins och betyg tas bort direkt och för gott. Det går inte att ångra. Ditt OpenStreetMap-konto förblir som det är.",
+      "button": "Ta bort för gott"
+    },
+    "error": {
+      "title": "Borttagningen misslyckades"
+    }
+  },
+  "ebenen": {
+    "page_title": "Egna lager – WMap",
+    "title": "Egna lager",
+    "back": "Till kartan",
+    "panel_label": "Lager",
+    "add": {
+      "file": "Ladda GeoJSON",
+      "url": "Ladda från länk",
+      "loaded": "”{name}” laddades – {count} objekt",
+      "link": {
+        "title": "GeoJSON från en länk",
+        "text": "Servern måste tillåta hämtning från webbläsaren (CORS). Data hämtas en gång och sparas.",
+        "load": "Ladda",
+        "status": "Servern svarar med {status}",
+        "cors": "Kunde inte hämtas – kanske tillåter servern inte hämtning från webbläsaren (CORS)"
+      },
+      "default_name": "Lager"
+    },
+    "intro": "Egna data som lager – t.ex. geologiska mätpunkter eller mätvärden som GeoJSON. De förblir privata på den här enheten. Numeriska värden kan visas som färgskala.",
+    "list": {
+      "empty": "Inga lager ännu. Ladda en GeoJSON-fil – t.ex. exporterad från QGIS.",
+      "source": {
+        "url": "från {host}",
+        "plugin": "Plugin från {operator}",
+        "file": "från fil"
+      },
+      "color": "Färg",
+      "tiles": "Kartrutor",
+      "objects": "{count} objekt",
+      "hide": "Dölj",
+      "show": "Visa",
+      "fit": "Zooma hit",
+      "opacity": "Opacitet",
+      "color_by": {
+        "title": "Färg efter",
+        "single": "– en färg –"
+      },
+      "on_main": "Även på huvudkartan",
+      "as_plugin": "Som plugin"
+    },
+    "delete": {
+      "title": "Ta bort ”{name}”?",
+      "text": "Lagret försvinner från den här enheten."
+    },
+    "plugin": {
+      "too_big": "För stort för ett plugin (max 2 MB) – erbjud det som länk i stället",
+      "login_reason": "För att ladda upp som plugin",
+      "title": "Spara som plugin",
+      "name": "Namn",
+      "description": {
+        "title": "Beskrivning",
+        "placeholder": "Vad visar lagret? Hur har det mätts?"
+      },
+      "operator": "Leverantör",
+      "data_date": "Datans datum",
+      "publish": "Erbjud offentligt – annars bara för dig",
+      "upload": "Ladda upp",
+      "published": "Publicerat som plugin",
+      "private": "Uppladdat – bara för dig (även på andra enheter)"
+    },
+    "info": {
+      "object": "Objekt"
+    }
+  },
+  "oauth": {
+    "page_title": "WMap – Inloggning",
+    "text": "Loggar in på OpenStreetMap …"
+  },
+  "import": {
+    "page_title": "Öppna GPX – WMap",
+    "title": "Öppna GPX",
+    "unit": {
+      "km": "{v} km"
+    },
+    "values": {
+      "hr": "Puls",
+      "pow": "Effekt"
+    },
+    "card": {
+      "error": "Kan inte öppnas: {error}",
+      "no_times": "utan tider",
+      "saved": "Sparad – visa",
+      "merged": "Kompletterad – visa",
+      "merge": "Slå ihop med den befintliga turen …",
+      "exists": "Finns redan – visa",
+      "save_track": "Spara som inspelad tur",
+      "plan_only": "Utan tider i filen går den bara att öppna som planerad tur.",
+      "dup": {
+        "known": "Den här vägen har du redan: ”{name}”.",
+        "kept": "Inget har tagits över – de befintliga värdena finns kvar.",
+        "nothing": "Filen har inget som saknas här."
+      },
+      "view": "Visa",
+      "open_plan": "Öppna som planerad tur"
+    },
+    "more": {
+      "missing": "{values} (saknas här)",
+      "marks": "Varv från klockan (saknas här)",
+      "points": "noggrannare sträcka ({file} i stället för {here} punkter)",
+      "differ": "{values} avviker",
+      "has": "Filen har mer: {list}.",
+      "differs": "Filen avviker."
+    },
+    "summary": {
+      "fresh": "{n} nya",
+      "plus": "{n} till en tur som redan finns",
+      "same": "{n} finns redan",
+      "done": "{n} har tagits över",
+      "plain": "{n} utan tider (bara som planerad tur)",
+      "bad": "{n} går inte att läsa",
+      "title": "{n} filer",
+      "taking": "Tar över {i} av {n} …",
+      "waiting": "Väntar på ditt svar …",
+      "take": {
+        "one": "Ta över en fil …",
+        "other": "Ta över alla {n} …"
+      },
+      "saved": {
+        "one": "{n} tur har tagits över",
+        "other": "{n} turer har tagits över"
+      },
+      "merged": "{n} sammanslagna",
+      "later": {
+        "one": "{n} väntar till senare",
+        "other": "{n} väntar till senare"
+      },
+      "nothing": "Inget nytt – turerna finns redan"
+    },
+    "empty": {
+      "title": "Öppna GPX- eller FIT-fil",
+      "text": "Välj en GPX- eller FIT-fil – t.ex. från Garmin, Zepp, Komoot eller en annan app. Med tider kan du spara den som inspelad tur, annars öppnar du den som planerad tur."
+    },
+    "pick": {
+      "more": "Välj en fil till",
+      "first": "Välj fil"
+    },
+    "toast": {
+      "kept": "Inget har tagits över – de befintliga värdena finns kvar",
+      "exists": "Den här vägen finns redan",
+      "nothing": "Inget att ta över",
+      "saved": "”{name}” sparad",
+      "merged": "”{name}” kompletterad"
+    },
+    "default_file": "Fil.gpx",
+    "error": {
+      "no_fit": "Ingen FIT-fil",
+      "fit_damaged": "FIT-filen är skadad",
+      "no_gpx": "Ingen giltig GPX-fil",
+      "no_route": "Ingen sträcka i filen"
+    },
+    "default_file_name": "Fil.gpx",
+    "note": {
+      "in_folder": "Den befintliga turen ligger i mappen – {reason}"
+    },
+    "ask": {
+      "skip": "Importera inte",
+      "all": {
+        "text": "{text} Ta över de noggrannare uppgifterna överallt?",
+        "best": "Ja, de noggrannare uppgifterna överallt",
+        "each": "Ställ in själv"
+      },
+      "new": {
+        "text": "{text} Ta över?",
+        "take": "Ta över alla",
+        "each": "Välj"
+      },
+      "file": {
+        "title_n": "Ny fil ({i} av {n})",
+        "title": "Ny fil",
+        "take": "Ta över",
+        "from": "”{file}”{what}. Vad vill du ta över?",
+        "planned": "En planerad tur – utan tider.",
+        "always": "Sträcka, tid och kilometer följer alltid med.",
+        "only_route": "Bara sträckan – inga mätvärden i filen."
+      },
+      "same": "Gör så för alla filer",
+      "continue_later": "Fortsätt senare",
+      "all_best": "De noggrannare uppgifterna för alla",
+      "files_title": "{n} filer",
+      "new_tours": {
+        "one": "{n} ny tur",
+        "other": "{n} nya turer"
+      },
+      "to_existing": "{n} till en tur som redan finns"
+    },
+    "merge": {
+      "title_n": "Slå ihop ({i} av {n})",
+      "title": "Slå ihop",
+      "label": {
+        "shape": "Sträcka · Tid · Kilometer",
+        "hr": "Puls",
+        "pow": "Effekt",
+        "marks": "Varv från klockan"
+      },
+      "shape_hint": "hör ihop – de kommer från samma punkter",
+      "file_named": "filen ”{name}”",
+      "file": "filen",
+      "old_name": "turen ”{name}” som den är i WMap",
+      "new": "Ny",
+      "old": "Tidigare",
+      "exists": "Turen ”{name}” finns redan.",
+      "note_both": "Per rad: ”Ny” ersätter det tidigare, ”Tidigare” låter det vara som det är. Namn, typ och färg förblir alltid de tidigare.",
+      "note_single": "Utan bock följer mätvärdet inte med."
+    }
+  },
+  "offline_data": {
+    "page_title": "Offline – WMap",
+    "title": "Offline",
+    "back": "Till översikten",
+    "tracks": {
+      "keep": {
+        "days30": "från de senaste 30 dagarna",
+        "days90": "från de senaste 90 dagarna",
+        "year": "från det senaste året",
+        "all": "alla",
+        "span": "{span}",
+        "recent": "från den senaste tiden"
+      },
+      "empty": "Inga inspelade turer ännu.",
+      "all_here": {
+        "one": "Hela {count} turen ligger helt på den här enheten. Utan ansluten mapp flyttas inget ut och inget raderas efter tid.",
+        "other": "Alla {count} turer ligger helt på den här enheten. Utan ansluten mapp flyttas inget ut och inget raderas efter tid."
+      },
+      "pinned": " och {count} markerade som ”tillgänglig offline”",
+      "split": {
+        "one": "{n} av {tours} ligger helt i appen: {which}{pinned}.",
+        "other": "{n} av {tours} ligger helt i appen: {which}{pinned}."
+      },
+      "count": {
+        "one": "{count} tur",
+        "other": "{count} turer"
+      },
+      "rest": {
+        "one": "Den övriga ligger i mappen – i appen finns kortet (namn, sträcka, tid, grov sträckning).",
+        "other": "De övriga {n} ligger i mappen – i appen finns kortet (namn, sträcka, tid, grov sträckning)."
+      },
+      "title": "Inspelade turer",
+      "pin_hint": "Gör tillgänglig offline: öppna turen och tryck på ”Tillgänglig offline”. Hur länge turer ligger helt i appen av sig själva ställer du in under <a href=\"./sync.html\">Säkerhetskopiering &amp; synkronisering</a> (”Behåll i appen”).",
+      "view": "Visa inspelade turer",
+      "unpinned": "”{name}” ligger efter nästa avstämning bara i mappen"
+    },
+    "unit": {
+      "gb": "{v} GB",
+      "mb": "{v} MB"
+    },
+    "not_offline": "Inte längre offline",
+    "tiles": {
+      "one": "{count} ruta",
+      "other": "{count} rutor"
+    },
+    "areas": {
+      "terrain": "med terräng",
+      "date": "Datum {date}",
+      "partial": "Ofullständig",
+      "resume": "i redigeraren ”Fortsätt ladda”",
+      "title": "Kartområden",
+      "state_size": {
+        "one": "{count} område ligger helt på enheten – tillsammans {size}. Det finns kvar tills du tar bort det.",
+        "other": "{count} områden ligger helt på enheten – tillsammans {size}. De finns kvar tills du tar bort dem."
+      },
+      "state": {
+        "one": "{count} område ligger helt på enheten. Det finns kvar tills du tar bort det.",
+        "other": "{count} områden ligger helt på enheten. De finns kvar tills du tar bort dem."
+      },
+      "empty": "Inget område har laddats ännu. Ett område är en bit karta som ligger helt på enheten – för att ha med på vägen utan nät.",
+      "new": "Nytt område",
+      "edit": "Redigera områden",
+      "hint": "Kartan för ett område förblir som när den laddades. Uppdatera: tryck på området och sedan ”Ladda om”.",
+      "remove": {
+        "title": "Inte längre offline för ”{name}”?",
+        "freed": "{size} frigörs.",
+        "text": "Området raderas från enheten – utan nät finns kartan där sedan inte längre.",
+        "button": "Ta bort",
+        "done": "”{name}” borttaget"
+      }
+    },
+    "default_tour": "Tur",
+    "planned": {
+      "title": "Planerade turer",
+      "state": {
+        "one": "{count} planerad tur ligger helt i appen – för att ge sig av även utan nät. Ladda ett område för kartan på vägen; vid navigering förladdar WMap kartan längs rutten av sig själv.",
+        "other": "{count} planerade turer ligger helt i appen – för att ge sig av även utan nät. Ladda ett område för kartan på vägen; vid navigering förladdar WMap kartan längs rutten av sig själv."
+      },
+      "empty": "Inga planerade turer ännu.",
+      "view_all": "Visa alla {n}"
+    },
+    "nav": {
+      "title": "Navigeringens kartor",
+      "state": {
+        "one": "{count} navigering förladdad – så att områden utan täckning inte märks på vägen. Varje behålls i {days} dagar; när utrymmet blir knappt går den äldsta.",
+        "other": "{count} navigeringar förladdade – så att områden utan täckning inte märks på vägen. Varje behålls i {days} dagar; när utrymmet blir knappt går den äldsta."
+      },
+      "empty": "Ingen navigering förladdad. När du startar en navigering laddar WMap kartan längs rutten av sig själv.",
+      "item": "Navigering från {date}",
+      "item_sub": "{tiles} · {days} kvar",
+      "days": {
+        "one": "{count} dag",
+        "other": "{count} dagar"
+      },
+      "viewed": "Dessutom {tiles} av besökta trakter – de finns kvar så länge det finns utrymme.",
+      "delete_all": "Radera alla",
+      "deleted_one": "Navigeringens karta raderad",
+      "delete": {
+        "title": "Radera navigeringarnas kartor?",
+        "text": "Vid nästa navigering laddas kartorna längs rutten igen. Dina områden finns kvar.",
+        "done": "Navigeringarnas kartor raderade"
+      }
+    },
+    "usage_quota": "WMap upptar sammanlagt {used} på den här enheten (tillåtet: {quota}).",
+    "usage": "WMap upptar sammanlagt {used} på den här enheten.",
+    "app_offline": "Själva appen fungerar även utan nät; sökning och ruttberäkning kräver det."
+  },
+  "offline": {
+    "page_title": "Offlinekartor – WMap",
+    "title": "Offlinekartor",
+    "back": "Till ”Offline”",
+    "panel_label": "Offlinekartor",
+    "new": {
+      "button": "Nytt område",
+      "title": "Nytt område",
+      "shape": {
+        "label": "Form",
+        "rect": "Rektangel",
+        "free": "Fri form"
+      },
+      "remove_last": "Ta bort sista punkten",
+      "restart": "Börja om",
+      "name": {
+        "title": "Namn",
+        "placeholder": "t.ex. Dalarna",
+        "around": "Område runt {place}",
+        "default": "Område"
+      },
+      "detail": "Detaljnivå",
+      "terrain": "Ta med terräng – skuggning och 3D",
+      "download": "Ladda ner",
+      "remove_selected": "Ta bort markerad punkt",
+      "min_points": "Sätt minst tre punkter.",
+      "hint": {
+        "rect": "Dra i rektangelns hörn för att justera den.",
+        "free": "Tryck på kartan för att sätta punkter – ett tryck nära en kant sätter in punkten där. Punkter går att dra; tryck markerar, dubbeltryck raderar."
+      },
+      "too_big": "För stort – välj ett mindre område eller ”Översikt”.",
+      "calculating": "{count} rutor – beräknar storlek …",
+      "estimate": "<strong>ca {size}</strong> · {tiles} rutor",
+      "tight": "Bara {size} är ledigt – det räcker nog inte.",
+      "no_estimate": "Storleken kan inte hämtas ({error}) – {count} rutor"
+    },
+    "intro": "Områden som ligger helt på enheten – för att ha med på vägen utan nät. De finns kvar tills du raderar dem och kan när som helst laddas om.",
+    "unit": {
+      "mb": "{v} MB",
+      "gb": "{v} GB"
+    },
+    "list": {
+      "terrain": "med terräng",
+      "loading": "Laddar … {pct} % · {size}",
+      "ok": "{size} · {tiles} rutor · {what} · Datum {date}",
+      "partial_size": "Ofullständig ({size}) – {what}",
+      "partial": "Ofullständig – {what}",
+      "fit": "Zooma in",
+      "stop": "Stoppa",
+      "resume": "Fortsätt ladda",
+      "refresh": "Ladda om",
+      "rename": "Byt namn",
+      "empty": "Inga områden ännu. Tryck på ”Nytt område” och välj på kartan vad som ska finnas offline."
+    },
+    "usage": {
+      "total": "Områden tillsammans: {size}.",
+      "free": "Ledigt för WMap: {size}."
+    },
+    "toast": {
+      "stopped": "”{name}” stoppad – fortsätt ladda senare",
+      "done": "”{name}” finns offline ({size})",
+      "failed": "”{name}”: {failed} rutor saknas – ”Fortsätt ladda” försöker igen"
+    },
+    "delete": {
+      "title": "Radera ”{name}”?",
+      "freed": "{size} frigörs.",
+      "text": "Utan nät finns kartan där sedan inte längre."
+    },
+    "areas": {
+      "detail": {
+        "full": "Allt – gator, vägar, hus",
+        "overview": "Översikt – orter och stora vägar",
+        "full_short": "Allt",
+        "overview_short": "Översikt"
+      },
+      "error": {
+        "browser": "Offlinekartor fungerar inte i den här webbläsaren",
+        "too_big": "Området är för stort",
+        "map_not_loaded": "Kartan är inte laddad ännu",
+        "storage_full": "Lagringsutrymmet är fullt – välj ett mindre område eller bara översikt"
+      }
+    },
+    "error": {
+      "source_not_loaded": "Kartkällan är inte laddad ännu"
+    }
+  },
+  "plugins": {
+    "page_title": "Plugin – WMap",
+    "title": "Plugin",
+    "search": "Sök bland plugin",
+    "add": {
+      "title": "Lägg till",
+      "file": "GeoJSON-fil",
+      "folder": "Lägg till pluginmapp",
+      "folder_once": "Läs in mapp",
+      "source": "Adress (även med lösenord)",
+      "script": "Tillägg via adress",
+      "offer": "Erbjud plugin",
+      "howto": "Så bygger du ett plugin – uppbyggnaden av en pluginmapp",
+      "hint": "Egna lager stannar bara på den här enheten. ”Erbjud plugin” lägger ett lager eller tillägg i katalogen – privat (bara för dig, på alla enheter) eller offentligt; det kräver ett WMap-konto."
+    },
+    "filter": {
+      "all": "Alla",
+      "layer": "Kartlager",
+      "extension": "Tillägg",
+      "own": "Egna",
+      "active": "Aktiva"
+    },
+    "kind": {
+      "layer": "Kartlager",
+      "extension": "Tillägg",
+      "own": "Eget lager"
+    },
+    "type": {
+      "geojson": "Data (GeoJSON)",
+      "raster": "Kartrutor",
+      "stored": "Mätdata, sparade här",
+      "script": "JavaScript",
+      "raster_private": "Kartrutor, privata",
+      "objects": "{count} objekt"
+    },
+    "builtin": {
+      "hiking": {
+        "name": "Vandringsleder",
+        "text": "Alla skyltade vandringsleder – från rundslingor till europeiska långvandringsleder, med sina markeringar."
+      },
+      "cycling": {
+        "name": "Cykelleder",
+        "text": "Skyltade cykelrutter: långväga, regionala och lokala rutter."
+      },
+      "mtb": {
+        "name": "Mountainbike",
+        "text": "Skyltade mountainbikeleder."
+      },
+      "description": "{text} Data från OpenStreetMap, ritade av waymarkedtrails.org (CC BY-SA)."
+    },
+    "source": {
+      "self": "du själv",
+      "ext_folder": "Från din pluginmapp: {path}",
+      "ext_url": "Tillagt av dig via adress.",
+      "plugin_folder": "från en pluginmapp",
+      "folder": "från en mapp",
+      "file": "från en fil",
+      "file_path": "Fil: {path}"
+    },
+    "list": {
+      "empty_own": "Inga egna lager än – lägg till en GeoJSON-fil, en mapp eller en adress nedan.",
+      "empty_active": "Inget är aktivt än.",
+      "empty": "Inget hittades.",
+      "server_error": "Katalogen kan inte nås just nu: {error}"
+    },
+    "detail": {
+      "page_title": "{name} – Plugin – WMap",
+      "operator": "Leverantör: {operator}",
+      "data_date": "Datans datum: {date}",
+      "contact": "Kontakt: {contact}",
+      "private": "Privat – bara för dig",
+      "local": "Bara på den här enheten",
+      "back": "Alla plugin",
+      "deactivate": "Inaktivera",
+      "activate": "Aktivera",
+      "on_map": "Visa på kartan",
+      "warning": "Ett tillägg är programkod. När det är aktivt får det göra allt som WMap får – även se din position. Aktivera bara sådant du känner till och litar på leverantören för.",
+      "source": "Källa: {url}",
+      "opacity": {
+        "title": "Opacitet",
+        "label": "Opacitet i procent",
+        "value": "{v} %"
+      }
+    },
+    "activate": {
+      "title": "Aktivera ”{name}”?",
+      "text_url": "Tillägget laddar programkod från {host} och får göra allt i WMap – även se din position. Aktivera bara om du litar på leverantören.",
+      "text_folder": "Tillägget från din pluginmapp ({path}) får göra allt i WMap – även se din position. Aktivera bara om du litar på leverantören."
+    },
+    "toast": {
+      "active": "”{name}” är aktivt – i lagermenyn på kartan",
+      "off": "”{name}” är av"
+    },
+    "error": {
+      "status": "Leverantören svarar med {status}",
+      "unreachable": "Leverantören kan inte nås (eller tillåter inget anrop från webbläsaren)"
+    },
+    "delete": {
+      "title": "Ta bort ”{name}”?",
+      "server": "Pluginet försvinner från katalogen – för alla.",
+      "local": "Det försvinner från den här enheten.",
+      "done": "Borttaget"
+    },
+    "script": {
+      "hint": "En JavaScript-modul (https, .js/.mjs) med <code>export function activate(wmap)</code>. Den körs först när du aktiverar den.",
+      "name": "Namn",
+      "url": {
+        "title": "Adress",
+        "placeholder": "https://…/tillagg.js"
+      },
+      "add": "Lägg till",
+      "bad_url": "Ange en https-adress till en .js-fil"
+    },
+    "offer": {
+      "login_reason": "För att erbjuda ett plugin",
+      "hint": "Ett kartlager eller tillägg som finns hos dig eller en leverantör. Egna mätdata laddar du upp som plugin under ”Egna lager”.",
+      "name": "Namn",
+      "description": "Beskrivning",
+      "operator": "Leverantör",
+      "contact": "Kontakt (webb eller e-post)",
+      "kind": {
+        "title": "Typ",
+        "geojson": "GeoJSON-länk",
+        "raster": "Kartrutor eller WMS",
+        "script": "Tillägg (JavaScript)"
+      },
+      "link": "Länk (https)",
+      "attribution": "Källangivelse",
+      "data_date": "Datans datum",
+      "publish": "Erbjud offentligt – annars bara för dig",
+      "published": "Publicerat – för alla i katalogen",
+      "private": "Sparat – bara för dig"
+    },
+    "folders": {
+      "add_failed": "Mappen fungerade inte: {error}",
+      "remove": {
+        "title": "Ta bort ”{name}”?",
+        "text": "WMap glömmer mappen och tar bort lagren och tilläggen från den. Filerna i mappen finns kvar.",
+        "button": "Ta bort",
+        "label": "Ta bort mapp"
+      },
+      "and": " och ",
+      "loaded": "{what} från ”{name}”",
+      "nothing": "Inget hittades i ”{name}”",
+      "unreadable": " – kunde inte läsas: {files}",
+      "layers": {
+        "one": "{n} lager",
+        "other": "{n} lager"
+      },
+      "extensions": {
+        "one": "{n} tillägg",
+        "other": "{n} tillägg"
+      },
+      "once_hint": "Den här webbläsaren kan bara läsa in en mapp en gång, inte komma ihåg den – det kan appen samt Chrome och Edge. Läs in igen: välj bara samma mapp en gång till.",
+      "title": "Pluginmappar",
+      "reload": "Läs in igen"
+    },
+    "files": {
+      "some_failed": " – {n} kunde inte läsas",
+      "invalid": "Ingen giltig GeoJSON-fil ({files})",
+      "none": "Inga GeoJSON-filer hittades",
+      "loaded": {
+        "one": "{n} lager inläst",
+        "other": "{n} lager inlästa"
+      }
+    },
+    "folder": {
+      "fallback_name": "Mapp",
+      "operator": "från din mapp",
+      "default_name": "Plugin",
+      "error": {
+        "no_script": "script saknas",
+        "no_data": "inga data",
+        "once": "Den här webbläsaren kan bara läsa in mappar en gång",
+        "unknown": "Mappen är inte längre känd",
+        "no_access": "Ingen åtkomst till mappen – tillåt den"
+      }
+    }
+  },
+  "plugin_howto": {
+    "page_title": "Bygga plugin – WMap",
+    "title": "Bygga plugin",
+    "intro": {
+      "title": "Vad det handlar om",
+      "text": "En pluginmapp är en alldeles vanlig mapp på din enhet – eller i Nextcloud, Drive, Syncthing … WMap läser <strong>kartlager</strong> och <strong>tillägg</strong> därifrån. Du kan lägga till flera mappar; WMap minns dem, och ”Läs in igen” hämtar ändrade filer.",
+      "layer": "<strong>Bara ett lager:</strong> lägg en GeoJSON-fil i mappen – klart.",
+      "named": "<strong>Lager med namn, beskrivning och färg:</strong> en undermapp med en <code>wmap-plugin.json</code>.",
+      "tiles": "<strong>Kartrutor</strong> (t.ex. en geologisk karta, WMS): också via <code>wmap-plugin.json</code>.",
+      "extension": "<strong>Riktigt plugin med programkod</strong> (tillägg): en JavaScript-fil som gör något på kartan."
+    },
+    "where": {
+      "title": "Var det fungerar",
+      "app": "<strong>WMap-appen</strong> (Android, Windows, macOS, Linux): välj mapp, så minns WMap den.",
+      "chrome": "<strong>Chrome och Edge</strong> (även som installerad webbapp): likadant – efter en omstart frågar webbläsaren en gång om WMap får läsa igen.",
+      "firefox": "<strong>Firefox och Safari:</strong> bara <em>läsa in en gång</em>. De här webbläsarna erbjuder inte gränssnittet för varaktig mappåtkomst (File System Access) – Mozilla anser det vara för riskabelt, eftersom en webbplats då skulle kunna skriva i riktiga mappar. För att uppdatera väljer du bara samma mapp igen.",
+      "add": "Lägg till: <a href=\"./plugins.html\">Plugin</a> → Lägg till → ”Lägg till pluginmapp”."
+    },
+    "layout": {
+      "title": "Så är en mapp uppbyggd",
+      "code": "Mina plugin/\n├── Jakttorn.geojson              → lagret ”Jakttorn”\n├── Matnat/\n│   ├── wmap-plugin.json          → lager med namn, beskrivning, färg\n│   └── matpunkter.geojson\n├── Geologi/\n│   └── wmap-plugin.json          → kartrutor (tiles)\n└── Vadervarning/\n    ├── wmap-plugin.json          → tillägg (script)\n    └── main.js",
+      "loose_data": "Lösa <code>.geojson</code>-/<code>.json</code>-filer blir ett lager vardera, uppkallat efter filen.",
+      "loose_js": "Lösa <code>.js</code>-filer blir tillägg (se nedan).",
+      "subfolder": "Allt i en undermapp med <code>wmap-plugin.json</code> hör till det pluginet.",
+      "depth": "Undermappar upp till 5 nivåer djupt; filer och mappar som börjar med punkt hoppas över."
+    },
+    "geojson": {
+      "title": "wmap-plugin.json – lager från GeoJSON",
+      "code": "{\n  \"name\": \"Matnät Harz\",\n  \"description\": \"Mätpunkter för grundvatten, uppdateras varje månad.\",\n  \"operator\": \"Vattenförbundet Harz\",\n  \"attribution\": \"© Vattenförbundet Harz, CC BY 4.0\",\n  \"data\": \"matpunkter.geojson\",\n  \"color\": \"#1a73e8\",\n  \"colorBy\": \"pegel\"\n}",
+      "fields": {
+        "name": "Namn i WMap (annars mappens namn)",
+        "description": "Beskrivning på pluginsidan",
+        "operator": "Leverantör och källangivelse",
+        "color": "Färg på punkter, linjer och ytor",
+        "color_by": "Egenskap med tal – färgas från blått (lågt) till rött (högt)",
+        "data": "en fil eller en lista (<code>[\"a.geojson\", \"b.geojson\"]</code>); om den saknas tar WMap alla GeoJSON-filer i mappen"
+      },
+      "hint": "GeoJSON i WGS84 (longitud och latitud), som QGIS, geojson.io &amp; Co. skriver det. WMap visar objektens egenskaper när du trycker på dem."
+    },
+    "tiles": {
+      "title": "wmap-plugin.json – kartrutor",
+      "code": "{\n  \"name\": \"Geologisk karta\",\n  \"tiles\": \"https://example.org/tiles/{z}/{x}/{y}.png\",\n  \"attribution\": \"© Lantmäteriet …\",\n  \"minzoom\": 6,\n  \"maxzoom\": 16,\n  \"opacity\": 0.7\n}",
+      "wms": "För en WMS-tjänst: en rutmall med <code>BBOX={bbox-epsg-3857}</code>, <code>CRS=EPSG:3857</code>, <code>WIDTH=512&amp;HEIGHT=512</code>."
+    },
+    "extension": {
+      "title": "Tillägg – ett riktigt plugin",
+      "json": {
+        "code": "{\n  \"name\": \"Vädervarning\",\n  \"description\": \"Visar varningar för oväder som en yta.\",\n  \"type\": \"extension\",\n  \"script\": \"main.js\"\n}"
+      },
+      "script": {
+        "code": "// main.js – en ES-modul i en enda fil\nexport function activate(wmap) {\n  wmap.onMapReady((map) => {\n    map.addSource('warnung', { type: 'geojson', data: 'https://example.org/warnungen.geojson' });\n    map.addLayer({ id: 'warnung', type: 'fill', source: 'warnung',\n      paint: { 'fill-color': '#e03131', 'fill-opacity': 0.3 } });\n  });\n  wmap.addMenuItem('warning', 'Varningar', () => wmap.toast('Varningar på'));\n}"
+      },
+      "api": {
+        "map": "kartan (MapLibre)",
+        "maplibregl": "MapLibre självt (markörer, popuper …)",
+        "on_map_ready": "fn(map), så snart kartan är laddad",
+        "add_menu_item": "Post i kartans meny (ikoner: Material Symbols)",
+        "toast": "kort meddelande längst ned",
+        "storage": "litet minne bara för det här tillägget",
+        "version": "WMap-version"
+      },
+      "one_file": "En fil, utan <code>import</code> av andra egna filer (bibliotek via <code>https://</code>-adress fungerar).",
+      "activate": "Tillägg körs först när du <strong>aktiverar</strong> dem på pluginsidan – de får göra allt i WMap, även se din position.",
+      "reload": "Efter ändringar: ”Läs in igen”, öppna sedan kartan på nytt."
+    },
+    "share": {
+      "title": "Dela",
+      "text": "Pluginmappar stannar på din enhet. Du ger andra ett plugin genom att dela mappen – eller genom att lägga det i katalogen via ”Erbjud plugin” på pluginsidan (privat eller offentligt, med WMap-konto)."
+    }
+  },
+  "sync": {
+    "page_title": "Säkerhetskopiering & synkronisering – WMap",
+    "title": "Säkerhetskopiering & synkronisering",
+    "never": "aldrig",
+    "auto": {
+      "options": {
+        "off": "Av – bara manuellt",
+        "start": "När WMap öppnas",
+        "every30": "När WMap öppnas och var 30:e minut"
+      },
+      "title": "Automatiskt"
+    },
+    "folder": {
+      "keep": {
+        "options": {
+          "days30": "Senaste 30 dagarna",
+          "days90": "Senaste 90 dagarna",
+          "year": "Senaste året",
+          "all": "Allt"
+        },
+        "title": "Behåll i appen",
+        "shelf": " Just nu: {cards} av {total} finns bara i mappen.",
+        "hint": "Inspelade turer från den här tiden finns helt i appen, äldre bara i mappen – i appen finns ett kort kvar (namn, sträcka, tid, grov färdväg) och resten hämtas från mappen när du öppnar turen. Det du markerar som ”tillgänglig offline” i ”Mina turer” ligger alltid helt i appen. Planerade turer gör det i alla fall.",
+        "toast_all": "Alla turer ligger kvar helt i appen",
+        "toast": "I appen: {span} – äldre ligger i mappen"
+      },
+      "tree": {
+        "title": "Mappstrukturen förklarad",
+        "code": "Din mapp/\n├─ settings.json            Inställningar\n├─ Geplante Touren/         en GPX-fil per tur\n├─ Aufgezeichnete Touren/\n│  └─ 2026/09 September/    en GPX-fil per färd (med puls m.m.) eller klockans FIT-fil\n├─ Bus &amp; Bahn/              en JSON-fil per sparad förbindelse\n├─ Lesezeichen.json         Hem, jobb, bokmärken och listor\n├─ Unbekannte Dateien/         det som inte gick att läsa – raderas efter 30 dagar\n└─ Inhalt.json              Register för snabb avstämning",
+        "hint": "Varje WMap som kopplar samma mapp läser in den och stämmer av mot den. Använd en mapp bara för WMap. GPX- och FIT-filer från annat håll (klocka, Garmin, Komoot …) lägger du bara in, var som helst: WMap frågar vad som ska hända med dem och sorterar dem på rätt plats – även från egna undermappar. En FIT-fil förblir som klockan skrev den. Andra filer (foton, dokument) rör WMap inte. Om du raderar en turfil försvinner posten också i WMap."
+      },
+      "import": "Importera från mapp",
+      "export": "Exportera (ZIP)",
+      "restore": {
+        "text": "Läs in en export som ZIP igen:",
+        "pick": "Välj ZIP"
+      },
+      "broken": {
+        "reveal": "Öppna i filhanteraren",
+        "state": {
+          "one": "En fil är ingen tur eller gick inte att läsa och ligger i mappen under ”Unbekannte Dateien”: {files}{more}. Titta själv om något viktigt finns bland dem – WMap raderar dem 30 dagar efter att de hittades (den första den {until}).",
+          "other": "{n} filer är inga turer eller gick inte att läsa och ligger i mappen under ”Unbekannte Dateien”: {files}{more}. Titta själv om något viktigt finns bland dem – WMap raderar dem 30 dagar efter att de hittades (den första den {until})."
+        }
+      },
+      "others": {
+        "state": {
+          "one": "En fil i mappen är ingen tur och får ligga kvar: {files}{more}.",
+          "other": "{n} filer i mappen är inga turer och får ligga kvar: {files}{more}."
+        },
+        "tidy": "Städa upp …"
+      },
+      "title": "Mapp",
+      "unsupported": "Löpande synkronisering fungerar i <strong>WMap-appen</strong> (Android, Linux, macOS, Windows) och i Chrome eller Edge. Här kan du importera en gång eller exportera allt som ZIP.",
+      "connecting": "Kopplar mappen …",
+      "importing": "Importerar …",
+      "none": "Ingen mapp synkroniseras. Välj en mapp som ditt synkprogram stämmer av (Nextcloud, Proton Drive, Google Drive, Syncthing …) – då har alla dina enheter samma turer, färder, förbindelser, bokmärken och inställningar.",
+      "connect": "Synkronisera mapp",
+      "connected": "Synkroniserad med <strong>{name}</strong>",
+      "permission": "Webbläsaren behöver ditt tillstånd för mappen igen.",
+      "pending": "Den senaste avstämningen avbröts – den fortsätter nästa gång du öppnar en sida.",
+      "busy_hint": "Du kan fortsätta använda WMap. Byter du sida tar nästa sida vid där den här avstämningen slutade.",
+      "error_at": "Fel {when}: {error}",
+      "inbox": {
+        "state": {
+          "one": "En ny fil ligger i mappen och väntar på ditt beslut: {files}{more}",
+          "other": "{n} nya filer ligger i mappen och väntar på ditt beslut: {files}{more}"
+        },
+        "view": "Visa nya filer"
+      },
+      "allow_sync": "Tillåt och stäm av",
+      "sync_now": "Stäm av nu",
+      "change": "Byt mapp",
+      "disconnect": {
+        "button": "Koppla från",
+        "title": "Koppla från mappen?",
+        "text": "WMap stämmer då inte av längre. Filerna i mappen ligger kvar som de är; turer som bara fanns i mappen hämtar WMap först in i appen.",
+        "done": "Mappen är bortkopplad – filerna ligger kvar där de är"
+      },
+      "auto_hint": "WMap stämmer av när det öppnas och en stund efter varje ändring; om du vill även var 30:e minut så länge WMap är öppet.",
+      "change_ask": {
+        "title": "Välja en annan mapp?",
+        "text": "WMap stämmer sedan av mot den nya mappen och skriver allt dit. Den gamla mappen ligger kvar som den är.",
+        "button": "Välj mapp"
+      },
+      "fallback_name": "Mapp",
+      "error": {
+        "app_only": "Fungerar bara i appen",
+        "not_connected": "Mappen är inte kopplad",
+        "unreachable": "Mappen går inte att nå just nu",
+        "file_missing": "Filen till den här färden saknas i mappen",
+        "file_unreadable": "Filen i mappen gick inte att läsa",
+        "move_needs_app": "Flytta kräver den nya appen"
+      },
+      "step": {
+        "load_setting": "Läs in inställning",
+        "check_folder": "Kontrollera mappen",
+        "read_file": "Läs filen",
+        "evaluate": "utvärdera"
+      }
+    },
+    "progress": {
+      "lift": "Flyttar från undermappen ”WMap”",
+      "sync": "Stämmer av",
+      "list": "Läser mappen …",
+      "what": "{what} …",
+      "rest": {
+        "soon": " · strax klart",
+        "seconds": " · cirka {n} s kvar",
+        "minutes": " · cirka {n} min kvar"
+      },
+      "state": "{what} … {i} av {n} ({pct} %){rest}"
+    },
+    "error": {
+      "no_page": "Ingen WMap-sida är öppen",
+      "command": "Kommandot gick inte",
+      "message": "Fel: {error}"
+    },
+    "last_with": "Senaste avstämning: {when} – {result}",
+    "last": "Senaste avstämning: {when}",
+    "health": {
+      "not_granted": "Inte godkänt än – WMap får ännu inte läsa Health Connect.",
+      "granted": {
+        "title": "Godkänt",
+        "routes_always": ", rutter alltid",
+        "routes_ask": ", rutter med fråga",
+        "values": ", med puls m.m."
+      },
+      "taking": "Hämtar {i} av {n} träningspass …",
+      "reading": "Läser Health Connect …",
+      "imported": "{n} importerade",
+      "nothing_new": "inget nytt",
+      "denied": ", {n} rutter inte godkända",
+      "fetching": "Hämtar träningspass …",
+      "fetch": "Hämta träningspass",
+      "permissions": "Behörigheter",
+      "denied_hint": "För rutter med fråga: tryck på WMap i Health Connect och ställ in träningsrutterna på ”Tillåt alltid”.",
+      "auto_hint": "Nya träningspass med rutt läggs till som färder av sig själva – utan frågor.",
+      "toast_nothing": "Inget nytt i Health Connect",
+      "toast_added": {
+        "one": "{n} träningspass importerat",
+        "other": "{n} träningspass importerade"
+      }
+    },
+    "dups": {
+      "values": {
+        "hr": "Puls",
+        "cad": "Kadens",
+        "pow": "Effekt",
+        "hr_avg": "Puls (Ø {avg})"
+      },
+      "origin": {
+        "health_app": "Health Connect · {app}",
+        "health": "Health Connect",
+        "gpx": "GPX-fil",
+        "nav": "Inspelad under navigeringen",
+        "wmap": "Inspelad med WMap"
+      },
+      "points": "{count} punkter",
+      "recorded": "{n} inspelade",
+      "planned": "{n} planerade",
+      "and": " och ",
+      "no_name": "Utan namn",
+      "route_from": "Sträcka (GPS) från",
+      "values_from": "Hälsodata från",
+      "values_one": "Hälsodata: {origin} – {values}",
+      "title": "Dubbla turer",
+      "state": {
+        "one": "{what} tur finns i dubbel uppsättning – till exempel inspelad med klockan och mobilen eller från Health Connect och från mappen.",
+        "other": "{what} turer finns i dubbel uppsättning – till exempel inspelade med klockan och mobilen eller från Health Connect och från mappen."
+      },
+      "hint": "De här turerna finns från flera källor. Välj för varje tur vems sträcka som ska behållas – dess tid och kilometer gäller. Hälsodata (puls, kadens, effekt) läggs till; har flera inspelningar sådana väljer du också från vilken.",
+      "merge": {
+        "button": "Slå ihop",
+        "title": {
+          "one": "Slå ihop {n} dubbel tur?",
+          "other": "Slå ihop {n} dubbla turer?"
+        },
+        "text": "Av varje dubbel tur behålls den valda sträckan med den valda hälsodatan. På andra enheter försvinner dubbletterna också vid nästa avstämning.",
+        "done": {
+          "one": "{n} dubbel tur hopslagen",
+          "other": "{n} dubbla turer hopslagna"
+        }
+      }
+    },
+    "note": "Allt stannar på dina enheter – WMap har ingen server för det. Det som ligger i mappen stäms bara av av ditt eget synkprogram.",
+    "import": {
+      "taken": "{n} övertagna",
+      "skipped": ", {n} fanns redan",
+      "all_there": "Allt finns redan",
+      "none": "Inga GPX-filer i mappen"
+    },
+    "toast": {
+      "no_permission": "Utan tillstånd ingen avstämning",
+      "connected": "Mappen är kopplad – {result}",
+      "connect_failed": "Det gick inte att koppla: {error}",
+      "reveal_failed": "Filhanteraren gick inte att öppna – mappen heter ”Unbekannte Dateien”",
+      "synced": "Avstämt – {result}",
+      "sync_failed": "Avstämningen gick inte: {error}",
+      "import_failed": "Importen gick inte: {error}",
+      "backup_failed": "Säkerhetskopieringen gick inte: {error}",
+      "auto_folder": "Mapp: {label}",
+      "auto_health": "Health Connect: {label}",
+      "folder_empty": "Det finns inga filer i mappen",
+      "no_file": "Ingen fil vald",
+      "restored": "{n} poster återställda från säkerhetskopian",
+      "no_folder": "Ingen mapp vald",
+      "failed": "Avstämningen gick inte"
+    },
+    "export": {
+      "title": "Exportera som",
+      "text": "Alla turer i en ZIP-fil. Inspelade turer som GPX (innehåller allt WMap vet) eller som FIT (sportklockornas format: punkter, puls, kadens, effekt, varv, sport). Planerade turer är alltid GPX.",
+      "gpx": "Inspelningar som GPX",
+      "fit": "Inspelningar som FIT"
+    },
+    "summary": {
+      "imported": "{n} övertagna",
+      "written": "{n} sparade",
+      "removed": "{n} raderade",
+      "moved": "{n} flyttade",
+      "merged": "{n} dubbletter hopslagna",
+      "skipped": "{n} inte importerade",
+      "settings": "Inställningar övertagna",
+      "nothing": "allt är aktuellt"
+    },
+    "times": {
+      "list": "lista {time}",
+      "read": "{n} lästa {time}",
+      "write": "{n} skrivna {time}",
+      "remove": "{n} raderade {time}"
+    },
+    "inbox": {
+      "fresh": {
+        "title": {
+          "one": "Ny fil i mappen",
+          "other": "{n} nya filer i mappen"
+        },
+        "also": {
+          "one": " – dessutom en till en tur som redan finns (efteråt)",
+          "other": " – dessutom {n} till turer som redan finns (efteråt)"
+        },
+        "text": {
+          "one": "I den kopplade mappen ligger en fil som WMap inte känner till än{also}.",
+          "other": "I den kopplade mappen ligger filer som WMap inte känner till än{also}."
+        }
+      },
+      "toast": "Mapp: {summary}",
+      "merges": {
+        "title": {
+          "one": "Fil till en tur som redan finns",
+          "other": "{n} filer till turer som redan finns"
+        },
+        "text": {
+          "one": "I den kopplade mappen ligger en fil till en tur som redan finns i WMap.",
+          "other": "I den kopplade mappen ligger filer till turer som redan finns i WMap."
+        }
+      },
+      "failed": "Avstämningen gick inte",
+      "others": {
+        "title": {
+          "one": "En annan fil i mappen",
+          "other": "{n} andra filer i mappen"
+        },
+        "text": {
+          "one": "I den kopplade mappen ligger en fil som inte är en tur: {names}. WMap håller mappen ordnad: ska den flyttas till ”Unbekannte Dateien”? Där raderar WMap den efter 30 dagar – det gäller sedan även allt som tillkommer senare.",
+          "other": "I den kopplade mappen ligger filer som inte är turer: {names}. WMap håller mappen ordnad: ska de flyttas till ”Unbekannte Dateien”? Där raderar WMap dem efter 30 dagar – det gäller sedan även allt som tillkommer senare."
+        },
+        "move": "Till ”Unbekannte Dateien”",
+        "keep": "Låt ligga"
+      }
+    }
+  },
+  "wege": {
+    "page_title": "Mina turer – WMap",
+    "compare": {
+      "option": "{date} · {name} · {length}",
+      "default_name": "Tur",
+      "unit": {
+        "kmh": "{v} km/h",
+        "zero_m": "±0 m",
+        "watt": "{v} W",
+        "pct": "{v} %"
+      },
+      "rows": {
+        "time": "Tid i rörelse",
+        "dist": "Sträcka",
+        "pace": "Ø tempo",
+        "speed": "Ø hastighet",
+        "top": "max. hastighet",
+        "hr": "Ø puls",
+        "hr_max": "max. puls",
+        "beats": "Hjärtslag per km",
+        "cad": "Ø {name}",
+        "pow": "Ø effekt"
+      },
+      "refs": {
+        "prev": "Förra gången",
+        "last5": "Senaste 5",
+        "avg": "Genomsnitt",
+        "best": "Bästa",
+        "worst": "Sämsta",
+        "avg_of": "Ø av {n}",
+        "label": "Jämför med"
+      },
+      "kinds": {
+        "speed": "Tempo",
+        "hr": "Puls",
+        "cad": "Frekvens",
+        "pow": "Effekt"
+      },
+      "table": {
+        "to_prev": "mot förra gången",
+        "to_next": "mot nästa gång",
+        "title": "Alla som tabell"
+      },
+      "pick": {
+        "set": "I jämförelsen",
+        "set_title": "Turer i jämförelsen",
+        "set_summary": "{n} turer",
+        "focus": "Aktuell",
+        "focus_title": "Vilken är den aktuella?"
+      },
+      "intro": {
+        "same": "Samma sträcka, {n} gånger",
+        "count": "{n} träningspass",
+        "legend": "– den aktuella med kraftig linje, jämförd med de andra: <span class=\"cmp-good\">grönt</span> bättre, <span class=\"cmp-bad\">rött</span> sämre."
+      },
+      "along": {
+        "title": "Förlopp längs sträckan",
+        "label": "Storheter i diagrammet",
+        "none": "Utan tider finns inga förlopp att jämföra."
+      },
+      "trend": {
+        "title": "Utveckling",
+        "label": "Storhet för utvecklingen",
+        "hint": "Per träningspass, det äldsta till vänster – den stora pricken är det aktuella.",
+        "time": "Total tid"
+      },
+      "tile": {
+        "none": "ingen uppgift"
+      },
+      "same_route": "Samma sträcka",
+      "title": "Jämförelse",
+      "need_two": "För att jämföra behövs minst två turer",
+      "loading": "Läser in turerna …",
+      "folder_away": "”{name}” ligger i mappen – den går inte att nå just nu"
+    },
+    "groups": {
+      "foot": "Till fots",
+      "bike": "Cykel",
+      "car": "Bil"
+    },
+    "origin": {
+      "nav": "Navigering"
+    },
+    "unit": {
+      "km": "{v} km",
+      "kmh": "{v} km/h",
+      "m": "{v} m"
+    },
+    "title": "Mina turer",
+    "view": {
+      "sort": {
+        "date": "Datum",
+        "length": "Längd",
+        "time": "Tid",
+        "speed": "Tempo",
+        "name": "Namn",
+        "label": "Sortera efter"
+      },
+      "since": {
+        "any": "När som helst",
+        "days30": "Senaste 30 dagarna",
+        "days90": "Senaste 90 dagarna",
+        "year": "Senaste året",
+        "this_year": "I år",
+        "label": "Period"
+      },
+      "toolbar": "Sortera och filtrera",
+      "dir": {
+        "down": "Fallande – tryck för stigande",
+        "up": "Stigande – tryck för fallande"
+      },
+      "sport": {
+        "label": "Typ",
+        "all": "Alla typer"
+      },
+      "tag": {
+        "label": "Tagg",
+        "all": "Alla taggar"
+      },
+      "reset": "Alla"
+    },
+    "pick": {
+      "all": "Markera alla",
+      "label": "Markerade",
+      "tag": "Tagg",
+      "compare": "Jämför",
+      "count": "{n} valda",
+      "none": "Kryssa i turer",
+      "had_tag": "Alla hade redan ”{tag}”",
+      "tagged": {
+        "one": "Taggen ”{tag}” på {n} tur",
+        "other": "Taggen ”{tag}” på {n} turer"
+      },
+      "more": "Kryssa i fler turer att jämföra"
+    },
+    "conn": {
+      "name": "{from} → {to}",
+      "start": "Start",
+      "dest": "Mål",
+      "next": "Kommande",
+      "past": "Tidigare",
+      "count": {
+        "one": "{n} förbindelse",
+        "other": "{n} förbindelser"
+      },
+      "deleted": "Förbindelsen raderades",
+      "in_past": "Den här förbindelsen ligger i det förflutna.",
+      "again": "Sök igen",
+      "ticket": "Biljett hos tågbolaget"
+    },
+    "empty": {
+      "places": {
+        "title": "Inga platser sparade än.",
+        "text": "Tryck på en plats på kartan och sedan på ”Spara” – i ”Allmänt” eller en egen lista som ”Hannover semester”.",
+        "button": "Till kartan"
+      },
+      "transit": {
+        "title": "Inga förbindelser sparade än.",
+        "text": "Planera en rutt med buss &amp; tåg på kartan och tryck på ”Spara” vid den förbindelse du vill ha.",
+        "button": "Planera rutt"
+      },
+      "planned": {
+        "title": "Inga turer planerade än.",
+        "text": "Planera en tur punkt för punkt, ta över en känd vandringsled under ”Upptäck” – eller spara en rutt som tur."
+      },
+      "recorded": {
+        "title": "Inga turer inspelade än.",
+        "text": "När du navigerar kommer WMap ihåg sträckan – eller starta en inspelning själv."
+      }
+    },
+    "tools": {
+      "plan": "Planera tur",
+      "record": "Spela in",
+      "import": "Importera GPX/FIT"
+    },
+    "tabs": {
+      "planned": "Planerade",
+      "recorded": "Inspelade",
+      "transit": "Buss &amp; tåg",
+      "places": "Platser"
+    },
+    "hint": {
+      "places": "Platser: dina bokmärken i listor – varje lista går att dela, allt på kartan.",
+      "transit": "Buss & tåg: sparade förbindelser – kommande överst, tidigare hopfällda under.",
+      "planned": "Planerade: turer du fortfarande vill cykla eller gå – från planeraren, övertagna eller importerade.",
+      "recorded": "Inspelade: turer du faktiskt har cyklat eller gått.",
+      "on_map": "På kartan: <strong>{label}</strong> – ögat vid året visar och döljer. <a href=\"./settings.html\">Ändra</a>"
+    },
+    "search": {
+      "places": "Sök – namn, lista, plats …",
+      "transit": "Sök – plats, linje, datum …",
+      "planned": "Sök – namn, beskrivning, länk …",
+      "recorded": "Sök – namn, plats, tagg, länk …",
+      "label": "Sök",
+      "open_link": "Öppna länk"
+    },
+    "sync_hint": "Allt stannar på den här enheten. Till andra enheter via en mapp (Nextcloud, Drive …), Health Connect eller en säkerhetskopia: <strong>Säkerhetskopia &amp; synkronisering</strong>",
+    "dup_hint": {
+      "one": "<strong>{n} tur finns i dubbel uppsättning</strong> – slå ihop och välj vems sträcka och hälsodata som ska bli kvar",
+      "other": "<strong>{n} turer finns i dubbel uppsättning</strong> – slå ihop och välj vems sträcka och hälsodata som ska bli kvar"
+    },
+    "places": {
+      "route": "Rutt dit",
+      "shared": {
+        "text": "Delad lista <strong>”{name}”</strong> – {n} platser (röda på kartan)",
+        "take": "Ta över som lista",
+        "drop": "Förkasta",
+        "default_name": "Delad lista",
+        "default_place": "Plats",
+        "bad": "Den delade listan gick inte att läsa"
+      },
+      "fixed": "Hem &amp; jobb",
+      "count": {
+        "one": "{n} plats",
+        "other": "{n} platser"
+      },
+      "share": "Dela lista",
+      "on_map": "På kartan",
+      "share_title": "Listan ”{name}”",
+      "share_text": "{name} – {n} platser i WMap",
+      "name_shared": "{name} (delad)",
+      "taken": {
+        "one": "{n} plats övertagen i ”{name}”",
+        "other": "{n} platser övertagna i ”{name}”"
+      }
+    },
+    "none_for": "Inget hittades för ”{q}”.",
+    "planned": {
+      "sum": {
+        "one": "{n} tur · {km}",
+        "other": "{n} turer · {km}"
+      },
+      "fixed": "fast sträckning",
+      "ascent": "↗ {v} m",
+      "updated": "Senast ändrad {date}",
+      "start": "Starta tur",
+      "car_title": "Skicka till WMap i Android Auto – där visas översikten med ”Kör”",
+      "car": "Till bilen",
+      "open": "Öppna i planeraren",
+      "gpx": "GPX"
+    },
+    "default_tour": "Tur",
+    "default_way": "Tur",
+    "row": {
+      "health": "Med hälsodata (puls, frekvens, effekt)",
+      "pinned": "Tillgänglig offline",
+      "stub": "Ligger i mappen – hämtas när du öppnar den",
+      "compare": "Till jämförelsen",
+      "hide": "Dölj på kartan",
+      "show": "Visa på kartan"
+    },
+    "recorded": {
+      "sum": {
+        "one": "{n} tur · {km} · {time}",
+        "other": "{n} turer · {km} · {time}"
+      },
+      "none": "Inget hittades – ändra filter eller sökning.",
+      "year_hide": "Dölj {y} på kartan",
+      "year_show": "Visa {y} på kartan",
+      "shown": " · {n} på kartan"
+    },
+    "window_title": "{name} – WMap",
+    "import": {
+      "description": "Importerad från {name}",
+      "no_times": " (utan tider)",
+      "original": " – med originalsträckning",
+      "planned": {
+        "one": "{n} tur importerad som planerad tur",
+        "other": "{n} turer importerade som planerade turer"
+      },
+      "failed": "{n} gick inte att läsa",
+      "nothing": "Inget togs över",
+      "no_tour": "Filen innehöll ingen tur"
+    },
+    "drop": {
+      "title": "Släpp GPX eller FIT här",
+      "planned": "tas över som planerad tur",
+      "recorded": "tas över som inspelad tur",
+      "bad": "Det där är inga GPX- eller FIT-filer"
+    },
+    "charts": {
+      "ele": "Höjd",
+      "speed": "Tempo",
+      "hr": "Puls",
+      "cad": "Frekvens",
+      "pow": "Effekt",
+      "label": "Diagram",
+      "mean": "Genomsnitt",
+      "max": "Högsta värde"
+    },
+    "track": {
+      "fetching": "Hämtar turen från mappen …",
+      "missing": "Punkter och mätvärden ligger i mappen – {error}.",
+      "time": "kl. {from}–{to}",
+      "from_health": " · från Health Connect",
+      "opened": "Öppnad fil – inte sparad än.",
+      "shared": "Delad inspelning – inte sparad än.",
+      "name_saved": "Namnet sparades",
+      "need_folder": "Det kräver turen från mappen – den går inte att nå just nu"
+    },
+    "same": {
+      "go": {
+        "one": "Jämför med {n} tur",
+        "other": "Jämför med {n} turer"
+      },
+      "label": "Hur exakt lika",
+      "title": "{n} till – högst {near} m vid sidan, längd ±{len} %"
+    },
+    "tags": {
+      "label": "Taggar",
+      "remove": "Ta bort tagg",
+      "add": "Tagg",
+      "ask": {
+        "title": "Lägg till tagg",
+        "label": "Tagg",
+        "placeholder": "t.ex. Lopp",
+        "add": "Lägg till"
+      }
+    },
+    "stats": {
+      "moving": "i rörelse",
+      "length": "Sträcka",
+      "avg": "Ø {name}",
+      "avg_kmh": "Ø km/h",
+      "max_kmh": "max. km/h",
+      "up": "Uppför",
+      "avg_hr": "Ø puls",
+      "max_hr": "max. puls",
+      "watt": "{v} W",
+      "avg_pow": "Ø effekt",
+      "time": "Tid",
+      "down": "Nedför"
+    },
+    "legend": {
+      "slow": "långsamt",
+      "fast": "snabbt"
+    },
+    "look": {
+      "title": "Typ, färg och visning",
+      "hidden": "dold",
+      "pinned": "tillgänglig offline",
+      "sport": {
+        "title": "Typ",
+        "label": "Typ av tur",
+        "standard": "{name} (standard)",
+        "none": "Ingen – bara GPX"
+      },
+      "color": {
+        "label": "Färg på kartan",
+        "title": "Färg",
+        "auto": "Typens färg ({name})",
+        "own": "Egen färg"
+      },
+      "on_map": "På kartan",
+      "pin_title": "Finns kvar helt i appen – även utan mappen",
+      "pin_on": "Finns kvar helt i appen",
+      "pin_off": "Ligger efter nästa avstämning bara i mappen"
+    },
+    "actions": {
+      "save_track": "Spara som inspelad tur",
+      "plan_title": "Öppna i planeraren som ny tur – sparas först där",
+      "open_plan": "Öppna som planerad tur",
+      "keep": "Spara hos mig",
+      "download_title": "Som GPX- eller FIT-fil",
+      "download": "Ladda ner",
+      "navigate": "Navigera",
+      "as_plan": "Öppna som planering",
+      "share_title": "Dela inspelningen som länk – med tider, tempo och på önskemål puls m.m.",
+      "share": "Dela",
+      "compare_title": "Jämför med andra inspelningar – kryssa i listan"
+    },
+    "laps": {
+      "fastest": "snabbast",
+      "slowest": "långsammast",
+      "title": "Varv",
+      "size": "Varvets längd",
+      "watch": "Klocka",
+      "head": {
+        "lap": "Varv",
+        "time": "Tid",
+        "pace": "Tempo"
+      }
+    },
+    "file_default": "led",
+    "delete": {
+      "title": "Ta bort ”{name}”?",
+      "track": "Leden försvinner från den här enheten.",
+      "tour": "Turen försvinner från den här enheten."
+    },
+    "share": {
+      "title": "Dela inspelning",
+      "text": "Det som delas är turen precis som du spelade in den: sträcka, tider och tempo.",
+      "choose": " Välj vad mer som ska med:",
+      "link": "Dela som länk",
+      "short": "30 dagar online (kort länk)",
+      "send": "Skicka fil …",
+      "file": "Ladda ner …",
+      "message": "{title} – {facts}",
+      "short_failed": "Den korta länken kunde inte skapas",
+      "short_note": "Kort länk: Turen ligger då i 30 dagar på WMap-servern – därefter fungerar länken inte längre."
+    },
+    "download": {
+      "send_title": "Skicka fil som",
+      "title": "Ladda ner som",
+      "text": "GPX innehåller allt WMap vet om turen – även typ, färg och klockans varv. FIT är sportklockornas format: punkter, puls, kadens, effekt, varv och sport.",
+      "gpx": "GPX-fil",
+      "fit": "FIT-fil",
+      "no_send": "Det går inte att skicka här – filen laddas ner"
+    },
+    "shared": {
+      "file_gone": "Filen finns inte kvar – öppna den igen",
+      "bad_link": "Länken kunde inte läsas",
+      "twin_folder": "Den befintliga turen ligger i mappen – {error}",
+      "new_name": "den delade inspelningen från länken",
+      "merged": "”{name}” kompletterad",
+      "same": "Turen finns redan hos dig – filen innehåller inget annat",
+      "saved": "Sparad under Inspelade turer"
+    },
+    "auto_names": {
+      "one": "{n} tur har fått ett namn av typ, trakt och tid på dagen",
+      "other": "{n} turer har fått ett namn av typ, trakt och tid på dagen"
+    }
+  },
+  "entdecken": {
+    "page_title": "Upptäck – WMap",
+    "tabs": {
+      "ways": "Leder",
+      "others": "Från andra"
+    },
+    "title": "Upptäck",
+    "account": {
+      "signed_in": "Inloggad som <strong>{name}</strong>",
+      "need": "För att betygsätta, publicera och erbjuda behöver du ett konto – ditt OpenStreetMap-konto.",
+      "logout": {
+        "button": "Logga ut",
+        "title": "Logga ut, {name}?",
+        "text": "Dina turer och betyg finns kvar. Då är du också utloggad från att redigera kartan."
+      },
+      "login": "Logga in",
+      "login_reason": "För att betygsätta och publicera"
+    },
+    "ways": {
+      "attribution": "Leder: <a href=\"https://waymarkedtrails.org\" target=\"_blank\" rel=\"noopener\">Waymarked Trails</a> (CC BY-SA)",
+      "search": {
+        "placeholder": "Filtrera – eller Enter: sök överallt",
+        "label": "Filtrera eller sök leder",
+        "min": "Skriv minst tre bokstäver för att söka",
+        "here_more": "{n} i utsnittet – söker vidare …",
+        "here": "{n} i utsnittet · ",
+        "everywhere": "Söker ”{q}” överallt …",
+        "found": "{n} leder för ”{q}”",
+        "none": "Ingen {kind}-led ”{q}” hittades"
+      },
+      "tip": "Tips: Tryck på en markerad linje på kartan – då visas lederna på exakt det stället.",
+      "zoom_in": "Zooma in, så visas alla leder i kartutsnittet här – eller sök efter ett namn ovan.",
+      "searching": "Söker leder i kartutsnittet …",
+      "found": {
+        "clipped": "{n} leder runt kartans mitt",
+        "box": "{n} leder i kartutsnittet"
+      },
+      "error_retry": "Kan inte hämtas just nu – försök igen strax ({error})",
+      "round": "Rundslinga",
+      "more": "Fler leder",
+      "stages_here": {
+        "one": "{n} etapp här",
+        "other": "{n} etapper här"
+      },
+      "whole": "Visa hela leden",
+      "filtered": "{i} av {n} – filtrerat på ”{filter}”",
+      "back_to_box": "tillbaka till utsnittet",
+      "here": {
+        "loading": "Vilka leder går här …",
+        "found": "{n} leder på det här stället – vilken?",
+        "none": "Ingen markerad led går här – zooma in och tryck exakt på linjen"
+      },
+      "error": "Kan inte hämtas just nu ({error})"
+    },
+    "known": {
+      "loading": "Sträckningen laddas …",
+      "mark": "<strong>Markering:</strong> {mark}",
+      "osm": "På OpenStreetMap",
+      "stages": "Etapper i kartutsnittet",
+      "planner_hint": "I planeraren ser du höjdprofil och vägtyper och kan spara, ändra eller dela turen.",
+      "opening": "Öppnas …",
+      "open_failed": "Kunde inte öppnas: {error}",
+      "load_failed": "Sträckningen kunde inte laddas: {error}"
+    },
+    "open_planner": "Öppna i planeraren",
+    "others": {
+      "intro": "Turer som WMap-användare har delat – i kartutsnittet. Dina egna delar du i planeraren via menyn → ”Publicera”.",
+      "loading": "Laddar …",
+      "count": "{n} turer här",
+      "none": "Ingen har delat en tur här än – zooma ut lite?",
+      "stars": "{stars} av 5 ({votes})",
+      "not_rated": "inte betygsatt än",
+      "by": "av {author}",
+      "only_you": "bara för dig"
+    },
+    "tour": {
+      "title": "Tur",
+      "rating": "{stars} ({votes})",
+      "ascent": "{m} m",
+      "rate": {
+        "title": "Ditt betyg",
+        "stars": "Stjärnor",
+        "star_n": "{n} stjärnor",
+        "placeholder": "Hur var det? (valfritt)",
+        "button": "Betygsätt",
+        "need_stars": "Tryck på stjärnorna först",
+        "login_reason": "För att betygsätta",
+        "thanks": "Tack för betyget!"
+      },
+      "private": "Bara synlig för dig.",
+      "shared_by": "Delad av {author} på WMap",
+      "delete": {
+        "title": "Ta bort ”{name}”?",
+        "text": "Turen försvinner för alla.",
+        "done": "Borttagen"
+      }
+    }
+  },
+  "tour": {
+    "page_title": "Planera tur – WMap",
+    "name": "Turens namn",
+    "save": "Spara tur",
+    "search": {
+      "placeholder": "Sök plats – välj den sedan på kartan",
+      "label": "Sök plats",
+      "none": "Inget hittades"
+    },
+    "help": {
+      "button": "Guide: så planerar du en tur",
+      "title": "Så planerar du en tur",
+      "start": "<strong>Sätt start:</strong> tryck på kartan – eller sök en plats högst upp.",
+      "points": "<strong>Fler punkter:</strong> tryck på dem. Sträckan följer vägar som passar vald typ (vandring på stigar, racercykel på asfalt …).",
+      "change": "<strong>Ändra:</strong> flytta punkter genom att dra. Tryck på en punkt – ta bort den eller starta där. Tryck på linjen – lägg till en punkt där.",
+      "template": "<strong>Förlaga</strong> (vägar från Upptäck): punkter fastnar på den lila vägen, och mellan dem följer sträckan exakt vägen.",
+      "save": "<strong>Sparas</strong> automatiskt så snart det finns en sträcka. Du hittar turen sedan under ”Mina turer”.",
+      "ok": "Uppfattat"
+    },
+    "tools": {
+      "undo": "Ångra",
+      "reverse": "Vänd om",
+      "roundtrip": "Tillbaka till start",
+      "clear": "Ta bort alla punkter",
+      "discover": "Upptäck turer"
+    },
+    "stats": {
+      "length": "Sträcka",
+      "time": "Tid ca",
+      "up": "Uppför",
+      "down": "Nedför"
+    },
+    "profile": {
+      "title": "Jag är ute och",
+      "label": "Typ av tur"
+    },
+    "stages": {
+      "button": "Etapper – dela upp i dagsturer"
+    },
+    "description": {
+      "title": "Beskrivning",
+      "placeholder": "Vad handlar turen om? Fika, parkering, tips …"
+    },
+    "more": {
+      "share": "Dela",
+      "gpx": "GPX",
+      "publish": "Publicera"
+    },
+    "toast": {
+      "bad_link": "Länken är ofullständig eller skadad",
+      "not_found": "Turen hittades inte – här kan du börja på en ny",
+      "own_change": "Egen ändring – sträckan räknas om nu",
+      "min_points": "Sätt minst två punkter",
+      "saved": "Turen sparad",
+      "need_route": "Planera först en sträcka"
+    },
+    "panel": {
+      "label": "Planera tur",
+      "back": "Till mina turer",
+      "close": "Stäng – till kartan"
+    },
+    "save_state": {
+      "shared": "Lägg till i mina turer – den här turen är inte sparad än",
+      "saved": "Sparad – du hittar den under ”Mina turer”",
+      "dirty": "Sparar …"
+    },
+    "window_title": "{name} – WMap",
+    "new_name": "Ny tur",
+    "hint": {
+      "start": "Tryck på kartan för att sätta start",
+      "next": "Tryck nu på nästa mål"
+    },
+    "point": {
+      "copy": "Kopiera",
+      "copied": "Kopierat: {where}",
+      "remove": "Ta bort punkt",
+      "also_dest": "Även som mål – rundtur",
+      "start_end": "Börja och sluta här",
+      "make_start": "Gör till start",
+      "make_dest": "Gör till mål"
+    },
+    "found": {
+      "start": "Sätt som start",
+      "append": "Lägg till som nästa punkt",
+      "insert": "Infoga där det passar",
+      "discard": "Förkasta",
+      "added": "”{title}” lades till i turen"
+    },
+    "bg": {
+      "gone": "Den här turen finns inte längre",
+      "own_tour": "Egen tur",
+      "known_way": "Känd väg",
+      "loading": "Laddar …",
+      "own_tour_small": "egen tur",
+      "from_osm": "från OpenStreetMap",
+      "pieces": " · {n} delar",
+      "joining": ", sträckningen sätts ihop …",
+      "take": {
+        "title": "Ta över hela sträckningen",
+        "button": "Ta över så här",
+        "busy": "Tar över …",
+        "failed": "Gick inte att ta över ({error})"
+      },
+      "remove": "Ta bort från bakgrunden",
+      "title": "Bakgrund",
+      "hint": "Sätt dina punkter själv – på bakgrunden följer sträckan exakt vägen, vid sidan av routas den. Eller ta över hela sträckningen.",
+      "add": "Lägg till väg eller tur",
+      "hide": "Dölj",
+      "show": "Visa",
+      "fresh": "Planera på nytt",
+      "search": {
+        "placeholder": "Känd väg eller egen tur …",
+        "label": "Sök väg eller tur",
+        "busy": "Söker kända vägar …",
+        "failed": "Vägar kan inte hämtas just nu ({error})"
+      },
+      "fresh_toast": "Sätt dina punkter – bakgrunden finns kvar",
+      "own_tour_length": "Egen tur · {length}"
+    },
+    "status": {
+      "computing": "Beräknar rutt …",
+      "original": "Ursprunglig sträckning – ändra genom att flytta eller lägga till punkter"
+    },
+    "unit": {
+      "m": "{v} m"
+    },
+    "ways": {
+      "loading": "Vägtyper tas fram …",
+      "types": "Vägtyper",
+      "surfaces": "Underlag"
+    },
+    "default_name": {
+      "date": "Tur den {date}",
+      "place": "{profile} från {place}"
+    },
+    "default_tour": "Tur",
+    "share": {
+      "title": "Dela tur",
+      "live": "Ni planerar den här turen redan tillsammans – länken är densamma.",
+      "text": "Bara visa – eller planera tillsammans: den som har länken kan ändra med, och alla ser varje ändring.",
+      "view": "Länk för att titta",
+      "collab_link": "Länk för att planera med",
+      "message": "Tur: {name}"
+    },
+    "collab": {
+      "title": "Planera tillsammans",
+      "link_failed": "Länken för att planera med kunde inte skapas",
+      "message": "Planera med: {name}",
+      "note": "Den som har länken kan ändra turen. Den ligger krypterad i 30 dagar på WMap-servern.",
+      "chip": "Gemensam tur",
+      "last_editor": "senast ändrad av {name}",
+      "join": {
+        "invited_by": "{by} bjuder in dig att planera ”{name}” tillsammans.",
+        "invited": "Du är inbjuden att planera ”{name}” tillsammans.",
+        "into": "Eller koppla ihop med en av dina turer – de slås ihop:",
+        "new": "Som ny tur",
+        "merge": "Koppla ihop med den valda"
+      },
+      "changed": "{name} har ändrat turen",
+      "someone": "Någon",
+      "expired": "Den gemensamma planeringen har gått ut – turen blir kvar hos dig",
+      "push_failed": "Ändringen nådde inte servern – den följer med vid nästa sparning",
+      "joined": "Ihopkopplad – alla med länken ser dina ändringar",
+      "opened": "Gemensam tur – alla med länken ser dina ändringar"
+    },
+    "merge": {
+      "title": "Slå ihop{step}",
+      "points": "Du och {who} har ändrat samma punkter. Tryck på kartan på den version som ska gälla.",
+      "mine": "Din (blå)",
+      "theirs": "Från {who} (orange)",
+      "later": "Senare",
+      "step": " ({n} av {total})",
+      "fixed": "fast ritad",
+      "free": "fritt planerad",
+      "empty": "(tom)",
+      "what": {
+        "name": "namnet",
+        "description": "beskrivningen",
+        "profile": "typen",
+        "fixed": "sträckan"
+      },
+      "other": "Du och {who} har ändrat {what}. Vilken version ska gälla?",
+      "mine_value": "Din: {v}",
+      "theirs_value": "Från {who}: {v}",
+      "others": "den andra",
+      "done": "Sammanslagen med ändringarna från {who}",
+      "both": "{name} har också ändrat – båda ändringarna finns nu med"
+    },
+    "file_default": "tur",
+    "publish": {
+      "title": "Publicera tur",
+      "text": "Andra ser den direkt under ”Upptäck → Från andra” och kan betygsätta den. Ditt namn visas.",
+      "login_reason": "För att publicera",
+      "done": "Publicerad – syns under ”Upptäck”"
+    },
+    "delete_confirm": "Vill du verkligen ta bort ”{name}”?"
+  },
+  "osm": {
+    "login": {
+      "no_client": "Det finns ännu inget OSM-klient-ID inlagt för den här appen (Inställningar)",
+      "cancelled": "Inloggningen avbröts",
+      "failed_with": "Inloggningen misslyckades: {error}",
+      "invalid": "Inloggningen är ogiltig – försök igen",
+      "failed": "Inloggningen misslyckades",
+      "no_id_token": "OpenStreetMap skickade ingen inloggning för WMap-kontot",
+      "expired": "OSM-inloggningen har gått ut – logga in igen",
+      "return_wmap_error": "Inloggad hos OpenStreetMap som {name} – WMap-konto: {error}",
+      "signed_in": "Inloggad som {name}"
+    },
+    "error": {
+      "status": "OSM: {status} {text}",
+      "not_logged_in": "Inte inloggad hos OSM",
+      "no_answer": "OSM svarar inte ({status})"
+    },
+    "stats": {
+      "added": "{n} nya inlagda",
+      "answered": {
+        "one": "{n} fråga besvarad",
+        "other": "{n} frågor besvarade"
+      },
+      "edited": {
+        "one": "{n} plats redigerad",
+        "other": "{n} platser redigerade"
+      },
+      "notes": " (varav {n} som anmärkning)"
+    },
+    "quick_ask": {
+      "no": "Nej, fråga inte",
+      "confirm": "Bekräfta"
+    },
+    "hours": {
+      "days": {
+        "mo": "Måndag",
+        "tu": "Tisdag",
+        "we": "Onsdag",
+        "th": "Torsdag",
+        "fr": "Fredag",
+        "sa": "Lördag",
+        "su": "Söndag",
+        "holidays": "Helgdagar"
+      },
+      "from": "{name} från",
+      "to": "{name} till",
+      "remove": {
+        "title": "Ta bort den här tiden",
+        "label": "Ta bort tid"
+      },
+      "closed": "stängt",
+      "ph_none": "som andra dagar – ingen uppgift",
+      "add": {
+        "title": "Lägg till tid",
+        "times": "Tider",
+        "time": "Tid"
+      },
+      "like_sunday": "som söndag",
+      "none": "ingen uppgift",
+      "gone_summary": "permanent stängt",
+      "always": {
+        "text": "Öppet dygnet runt",
+        "back": "Ange tider per dag i stället"
+      },
+      "gone": {
+        "text": "Permanent stängt – platsen finns inte kvar. Det skickas som anmärkning till kartläggarna, som sedan tar bort den.",
+        "back": "Ange tider i stället"
+      },
+      "raw": {
+        "text": "De här tiderna är för invecklade för listan (t.ex. månader eller skollov) – visas här som text i OSM-skrivsätt.",
+        "back": "Fyll i per dag på nytt i stället"
+      },
+      "title": "Öppettider",
+      "quick": {
+        "copy": "Måndag för tis–fre",
+        "always": "Öppet 24/7",
+        "gone": "Permanent stängt",
+        "raw": "Som text"
+      }
+    },
+    "edit": {
+      "types": {
+        "groups": {
+          "shopping": "Shopping",
+          "food": "Mat & dryck",
+          "services": "Tjänster",
+          "culture": "Kultur & fritid"
+        },
+        "items": {
+          "shop": "Butik (annan)",
+          "supermarket": "Snabbköp",
+          "bakery": "Bageri",
+          "butcher": "Slakteri",
+          "beverages": "Dryckesbutik",
+          "kiosk": "Kiosk",
+          "chemist": "Droghandel",
+          "pharmacy": "Apotek",
+          "farm": "Gårdsbutik",
+          "florist": "Blommor",
+          "books": "Bokhandel",
+          "clothes": "Kläder",
+          "shoes": "Skor",
+          "electronics": "Elektronik",
+          "doityourself": "Byggvaruhus",
+          "bicycle": "Cykelbutik",
+          "optician": "Optiker",
+          "hairdresser": "Frisör",
+          "fuel": "Bensinstation",
+          "cafe": "Café",
+          "restaurant": "Restaurang",
+          "fast_food": "Snabbmat",
+          "ice_cream": "Glassbar",
+          "bar": "Bar / Pub",
+          "biergarten": "Ölträdgård",
+          "office": "Företag / Kontor",
+          "craft": "Hantverksföretag",
+          "car_repair": "Bilverkstad",
+          "doctors": "Läkarmottagning",
+          "dentist": "Tandläkare",
+          "bank": "Bank",
+          "post_office": "Postkontor",
+          "hotel": "Hotell / Pensionat",
+          "apartment": "Semesterlägenhet",
+          "events_venue": "Evenemangslokal",
+          "community_centre": "Medborgarhus / Sal",
+          "theatre": "Teater",
+          "cinema": "Bio",
+          "nightclub": "Nattklubb / Disco",
+          "museum": "Museum",
+          "sports_centre": "Idrottshall / -anläggning"
+        }
+      },
+      "fields": {
+        "name": {
+          "title": "Namn",
+          "placeholder": "t.ex. Bageri Müller"
+        },
+        "phone": {
+          "title": "Telefon",
+          "placeholder": "+46 …"
+        },
+        "website": {
+          "title": "Webbplats",
+          "placeholder": "https://…"
+        },
+        "events": {
+          "title": "Evenemang – sida med datumen",
+          "placeholder": "https://…/program"
+        },
+        "image": {
+          "title": "Bild – länk till ett fritt foto",
+          "placeholder": "t.ex. commons.wikimedia.org/wiki/File:…"
+        },
+        "address": {
+          "street": "Gata",
+          "housenumber": "Nr",
+          "postcode": "Postnr",
+          "city": "Ort"
+        },
+        "description": {
+          "title": "Beskrivning – kort och saklig, ingen reklam",
+          "placeholder": "t.ex. Ekologiskt bageri med café, bröd på egen surdeg"
+        }
+      },
+      "traits": {
+        "toilets": "Toaletter för alla",
+        "wheelchair": "Rullstolsanpassat",
+        "values": {
+          "yes": "Ja",
+          "only": "Endast",
+          "limited": "Delvis",
+          "wlan": "Ja",
+          "no": "Nej",
+          "customers": "Endast kunder"
+        },
+        "title": "Egenskaper"
+      },
+      "sockets": {
+        "count": "Antal",
+        "power": "Effekt",
+        "power_placeholder": "t.ex. 22 kW"
+      },
+      "facts": {
+        "title": "Uppgifter",
+        "hint": "som i platskortet"
+      },
+      "more": {
+        "title": "Mer",
+        "address": "Adress",
+        "events": "Program",
+        "image": "Bild",
+        "traits": "Egenskaper",
+        "all_tags": "alla taggar",
+        "more_tags": "fler taggar"
+      },
+      "raw": {
+        "all": "Alla taggar",
+        "more": "Fler taggar",
+        "hint": "för kännare – nyckel=värde, en rad per tagg",
+        "placeholder": "t.ex. payment:cash=yes",
+        "edit_hint": "Det du ändrar i fälten ovan gäller före det som står här. Radera rad = ta bort taggen.",
+        "add_hint": "Läggs till uppgifterna ovan."
+      },
+      "no_account": {
+        "title": "Anslut OpenStreetMap-konto",
+        "text": "{what} hamnar direkt i OpenStreetMap – den öppna kartan som WMap använder. För det behöver du ett gratis OSM-konto; när det är anslutet i Inställningar hamnar allt på kartan under ditt namn.",
+        "anon": "Utan konto kan du också skicka det som anonym anmärkning – kartläggare i trakten lägger då in det.",
+        "note": "Skicka som anmärkning",
+        "connect": "Anslut konto"
+      },
+      "toast": {
+        "conflict": "Någon annan har ändrat det under tiden – läs in igen",
+        "note_sent": "Anmärkningen skickades – tack!",
+        "saved": "Inlagt i OpenStreetMap – tack!",
+        "view": "Visa",
+        "failed": "Det gick inte: {error}",
+        "unchanged": "Inget ändrat",
+        "need_name": "Ange ett namn"
+      },
+      "what_change": "Din ändring",
+      "edit": {
+        "title": "Redigera {name}",
+        "hint": "Skriv bara in det du själv vet – t.ex. från skylten på plats."
+      },
+      "place": "Plats",
+      "send_note": "Skicka anmärkning",
+      "what_new": "Den nya platsen",
+      "add": {
+        "title": "Lägg in plats",
+        "what": "Vad finns här?",
+        "brand": {
+          "title": "Märke / Kedja",
+          "placeholder": "t.ex. ICA – lämna tomt om det inte är en kedja"
+        },
+        "hint": "Punkten ligger där du tryckte länge. Lägg bara in det som verkligen finns – sett på plats.",
+        "button": "Lägg in"
+      }
+    },
+    "survey": {
+      "mode": {
+        "foot": "till fots",
+        "bike": "med cykel",
+        "car": "med bil"
+      },
+      "surface": {
+        "asphalt": "Asfalt",
+        "paving_stones": "Plattor",
+        "sett": "Kullersten",
+        "concrete": "Betong",
+        "compacted": "Grus (packad)",
+        "gravel": "Grus",
+        "ground": "Jord",
+        "grass": "Gräs",
+        "grass_paver": "Gräsarmering"
+      },
+      "way": {
+        "residential": "Bostadsgata",
+        "road": "Väg",
+        "service": "Infartsväg",
+        "track": "Grusväg",
+        "living_street": "Gårdsgata",
+        "pedestrian": "Gågata",
+        "footway": "Gångväg",
+        "cycleway": "Cykelväg",
+        "path": "Stig",
+        "bridleway": "Ridväg",
+        "fallback": "Väg",
+        "here": "den här {way}"
+      },
+      "quests": {
+        "parking_fee": {
+          "summary": "Parkeringsavgift",
+          "title": "Kostar det något att parkera här?",
+          "free": "Gratis",
+          "paid": "Avgiftsbelagt"
+        },
+        "surface_summary": "Underlag",
+        "parking_surface": {
+          "title": "Vilket underlag har parkeringen?"
+        },
+        "hours_summary": "Öppettider",
+        "hours_check": {
+          "title": "Har {name} fortfarande de här öppettiderna?"
+        },
+        "hours_missing": {
+          "title": "När har {name} öppet?"
+        },
+        "road_surface": {
+          "title": "Vilket underlag har {name}?"
+        },
+        "way_lit": {
+          "summary": "Belysning",
+          "title": "Är {name} belyst?",
+          "yes": "Ja, lyktstolpar",
+          "no": "Nej"
+        },
+        "missing_way": {
+          "summary": "saknad väg",
+          "title": "Här var du utanför alla vägar på kartan – finns det en väg där?",
+          "none": "Nej, GPS:en var oprecis"
+        },
+        "exists": {
+          "summary": "Bekräftat",
+          "title": "Finns {name} kvar?",
+          "yes": "Ja, finns kvar",
+          "gone": "Finns inte längre"
+        },
+        "detour": {
+          "summary": "Avstängning",
+          "title": "Du avvek från rutten här – varför?",
+          "choice": "Valde bara en annan väg",
+          "temporary": "Tillfälligt avstängd",
+          "gone": "Vägen finns inte / permanent avstängd"
+        }
+      },
+      "parking": "Parkering",
+      "say": {
+        "fee": {
+          "no": "gratis",
+          "yes": "avgiftsbelagd"
+        },
+        "access": {
+          "yes": "öppen för alla",
+          "customers": "endast för kunder",
+          "private": "privat"
+        },
+        "lit": {
+          "yes": "belyst",
+          "no": "inte belyst"
+        },
+        "per_hour": " € per timme",
+        "per_day": " € per dygn",
+        "charge": "Pris {v}",
+        "hours": "Öppettider: {v}",
+        "surface": "Underlag: {v}"
+      },
+      "comment": "{parts} kompletterat eller bekräftat – insamlat på plats med WMap",
+      "this_place": "den här platsen",
+      "name": {
+        "detour": "Avvikelse från rutten",
+        "missing_way": "Väg utanför kartan"
+      },
+      "overpass_failed": "Butiker och parkeringar kunde inte kontrolleras just nu (Overpass överbelastad)",
+      "ui": {
+        "mode": {
+          "foot": "till fots",
+          "bike": "med cykel",
+          "car": "med bil"
+        },
+        "off": "Avstängt",
+        "none": "Inga öppna frågor",
+        "searching": "söker fler …",
+        "count": {
+          "one": "{n} fråga om platser där du har varit",
+          "other": "{n} frågor om platser där du har varit"
+        },
+        "disabled": "Bidra är avstängt. Du kan slå på det i inställningarna – då kommer WMap ihåg din väg på den här enheten och ställer sedan några korta frågor.",
+        "looking": "Tittar var du har varit …",
+        "empty": "Efter nästa resa eller promenad med WMap dyker det upp korta frågor här – t.ex. om en parkering kostar något eller om bageriet fortfarande har samma öppettider. Dina svar förbättrar OpenStreetMap.",
+        "scan": "Kolla nu",
+        "account": {
+          "test_server": "Testserver",
+          "signed_in": "Inloggad som <strong>{name}</strong>",
+          "upload": "Ladda upp {n}",
+          "waiting": {
+            "one": "{n} svar väntar på uppladdning.",
+            "other": "{n} svar väntar på uppladdning."
+          },
+          "login": "Logga in på OpenStreetMap"
+        },
+        "hours": {
+          "still": "Stämmer fortfarande",
+          "other": "Andra tider",
+          "gone": "Finns inte längre",
+          "always": "Dygnet runt"
+        },
+        "card": {
+          "show": "Visa på kartan",
+          "delete": "Ta bort frågan",
+          "later": "Vet inte / senare"
+        },
+        "editor": {
+          "open": "Öppet?",
+          "closed": "stängt",
+          "from": "{d} från",
+          "to": "{d} till",
+          "after_break": "{d} efter pausen från",
+          "lunch": "Lunchrast",
+          "pause": "Paus",
+          "back": "Tillbaka",
+          "copy": "Använd måndag för tis–fre",
+          "no_day": "Inte öppet någon dag?",
+          "need_day": "Ange minst en dag med tider"
+        },
+        "toast": {
+          "uploading": "Tack! Laddas upp …",
+          "as_note": "Tack! Skickas som anmärkning till OpenStreetMap",
+          "saved": "Tack! Sparat – laddas upp efter inloggning",
+          "note_sent": "Skickat som anmärkning till OpenStreetMap – tack!",
+          "uploaded": "Uppladdat till OpenStreetMap – tack!"
+        },
+        "result": {
+          "changes": {
+            "one": "{n} ändring",
+            "other": "{n} ändringar"
+          },
+          "skipped": "{n} hoppades över (något har ändrats där under tiden)",
+          "one_note": "1 anmärkning",
+          "sent": "Skickat: {parts}. Tack!"
+        }
+      }
+    }
+  },
+  "map": {
+    "my_location": "Min position",
+    "point_on_map": "Punkt på kartan",
+    "in_place": "i {place}",
+    "near_place": "nära {place}",
+    "around_here": "här i närheten",
+    "sheet": {
+      "grip": "Ändra höjd: dra, tryck två gånger för helt öppet eller stängt"
+    },
+    "menu": {
+      "record": "Spela in",
+      "street_view": "Street View",
+      "share_location": "Dela position",
+      "request_location": "Be om position",
+      "settings": "Inställningar"
+    },
+    "keys": {
+      "title": "Tangentbord",
+      "ok": "Uppfattat",
+      "rows": {
+        "move": "framåt / bakåt",
+        "side": "åt vänster / höger",
+        "turn": "svänga",
+        "look": "titta uppåt / nedåt",
+        "space": "Mellanslag",
+        "up": "högre",
+        "down": "lägre",
+        "esc": "normal vy – i navigeringen: till din egen position",
+        "fly_key": "Flyga",
+        "fly": "Meny → Flyga: musen tittar, W flyger mot bildens mitt, Esc avslutar"
+      }
+    },
+    "share_location": {
+      "text": "Här är jag just nu (kl. {time}):",
+      "of_person": "{name}s position",
+      "plain": "Position"
+    },
+    "request": {
+      "title": "Var är du?",
+      "text": "{name} vill veta var du är just nu. Tryck på länken för att skicka din position:",
+      "answer": {
+        "title": "{name} frågar var du är",
+        "text": "Din position delas en enda gång som en länk – du väljer själv med vem. Inget sparas.",
+        "send": "Skicka position"
+      }
+    },
+    "link": {
+      "tour_missing": "Turen finns inte på den här enheten",
+      "tour_no_route": "Ingen rutt kunde beräknas för turen",
+      "geo_unreadable": "WMap kan inte läsa den här kartlänken",
+      "nothing_found": "Hittade inget för ”{query}”",
+      "shared": {
+        "place": "Delad plats",
+        "now": "Delades nyss",
+        "minutes": "Delades för {n} min sedan",
+        "date": "Delades {date}"
+      }
+    },
+    "locate": {
+      "waiting": "Ingen position än – WMap fortsätter söka (ingen GPS-mottagning?)",
+      "switched_off": "Positionen är avstängd på mobilen",
+      "not_found": "Ingen position hittades – WMap fortsätter söka",
+      "unsupported": "Position stöds inte",
+      "denied": "Åtkomst till position nekades",
+      "unavailable": "Position är inte tillgänglig"
+    },
+    "area": {
+      "radius": "inom 5 km",
+      "view": "i kartutsnittet"
+    },
+    "attribution": {
+      "search": "Sök:",
+      "routing": "Routing:",
+      "heights": "Höjder:",
+      "imprint": "Impressum"
+    },
+    "sharpness": {
+      "auto": "Automatiskt (högst 2)",
+      "low": "Sparsam (1)",
+      "medium": "Medel (1,5)",
+      "high": "Skarp (2)",
+      "max": "Skärmens full upplösning"
+    },
+    "cellular": {
+      "title": "Mobilnät upptäckt",
+      "text": "3D-vyn laddar ner terräng- och höjddata. I mobilnätet kan det förbruka märkbart mycket data. Aktivera nu?",
+      "no": "Stanna i 2D",
+      "yes": "Aktivera 3D"
+    },
+    "fly": {
+      "locked": "<b>Mus</b> titta runt · <b>W/S</b> framåt/bakåt · <b>A/D</b> i sidled · <b>Mellanslag/Shift</b> upp/ner · <b>Esc</b> avsluta",
+      "free": "Pekare mot kanten styr blicken · <b>Klick</b> i kartan: musen tittar fritt · <b>W/S/A/D</b> flyga · <b>Esc</b> avsluta"
+    }
+  },
+  "street": {
+    "stop": "Hållplats {name}",
+    "off_road": "Utanför vägarna",
+    "share": "Dela den här vyn",
+    "share_text": "Kolla, här:",
+    "close": "Karta",
+    "hint": {
+      "touch": "<b>Ett finger</b> vrida · <b>Zoomgest</b> framåt/bakåt · <b>Tryck 2×</b> gå dit",
+      "locked": "<b>Mus</b> titta runt · <b>W/A/S/D</b> gå · <b>Shift</b> springa · <b>Esc</b> frigör musen",
+      "free": "<b>Klicka i bilden</b>: musen tittar · <b>W/A/S/D</b> gå · <b>Dubbelklick</b> gå dit"
+    }
+  },
+  "layers": {
+    "object": {
+      "default_name": "Objekt",
+      "layer": "Lager ”{name}”",
+      "no_properties": "Inga egenskaper"
+    },
+    "geojson": {
+      "invalid": "Det här är inte giltig GeoJSON (JSON-fel)",
+      "not_geojson": "Det här är inte GeoJSON – en FeatureCollection förväntas",
+      "empty": "Filen innehåller inga objekt med koordinater",
+      "not_degrees": "Koordinaterna är inte i grader (WGS84) – räkna om dem först, t.ex. med QGIS"
+    },
+    "extensions": {
+      "failed": "Tillägget ”{name}” kunde inte startas: {error}"
+    },
+    "info": {
+      "loading": "Vad lagren vet här …",
+      "all_unavailable": "Lagren kan inte hämtas just nu ({error})",
+      "unavailable": "Kan inte hämtas just nu ({error})",
+      "answer": "{source} svarar med {status}",
+      "unit": "Geologisk enhet",
+      "rows": {
+        "age": "Ålder",
+        "age_range": "{from} till {to}",
+        "million_years": "Miljoner år",
+        "rock": "Bergart",
+        "description": "Beskrivning"
+      },
+      "legend": {
+        "summary": "Teckenförklaring: {title}",
+        "alt": "Teckenförklaring {title}"
+      }
+    },
+    "presets": {
+      "attribution": "Geologi:",
+      "bgr_operator": "BGR – Bundesanstalt für Geowissenschaften und Rohstoffe",
+      "geo_de": {
+        "name": "Geologi Tyskland",
+        "text": "Geologisk översiktskarta 1:250 000 (GÜK250): vilka bergarter som ligger vid ytan, färgade efter geologisk tidsålder, samt förkastningar och sprickzoner. Syns från zoom 9 – från län till ort. Ett långt tryck på kartan visar tidsåldern på den platsen.",
+        "legend": "Geologisk tidsålder"
+      },
+      "geo_rock": {
+        "name": "Bergarter Tyskland",
+        "text": "Samma översiktskarta (GÜK250), färgad efter bergart i stället för ålder: sand, lera, kalk, granit, skiffer … Bra för vandring och mark. Syns från zoom 9. Ett långt tryck på kartan visar bergarten på den platsen.",
+        "legend": "Bergarter"
+      },
+      "geo_world": {
+        "name": "Geologi världen över",
+        "operator": "Macrostrat (University of Wisconsin–Madison)",
+        "text": "Geologiska kartor från hela världen, sammansatta från många källor – grova för hela länder, mer detaljerade där det finns bra kartor. Färgade efter geologisk tidsålder. Ett långt tryck på kartan visar bergart och ålder på den platsen.",
+        "legend_text": "Färgerna följer den internationella tidsskalan: violett trias, blå jura, grön krita, gul/orange tertiär och kvartär, brun/grå paleozoikum. Ett långt tryck visar enhet och ålder."
+      }
+    }
+  },
+  "search": {
+    "here": "Sök i det här området",
+    "input": {
+      "title": "Sök",
+      "placeholder": "Plats, adress, koordinat, länk …",
+      "clear": "Rensa",
+      "plan_route": "Planera rutt",
+      "categories": "Även kategorier: {list} …"
+    },
+    "sections": {
+      "recent": "Senast använda",
+      "saved": "Bokmärken",
+      "results": "Sökresultat",
+      "discover": "Upptäck"
+    },
+    "discover": {
+      "reach": {
+        "title": "Vad kan jag nå härifrån?",
+        "subtitle": "i minuter eller kilometer från din position"
+      }
+    },
+    "types": {
+      "category": "Kategori",
+      "search": "Sök",
+      "route": "Rutt"
+    },
+    "by_name": {
+      "title": "”{query}” i närheten",
+      "subtitle": "alla med det här namnet här i trakten"
+    },
+    "local": {
+      "subtitle": "från kartan",
+      "type": "Karta",
+      "unreachable": "Sökningen är inte tillgänglig just nu",
+      "only_names": "Bara namn från den inlästa kartytan"
+    },
+    "direct": {
+      "kinds": {
+        "latlon": "Koordinat",
+        "mgrs": "MGRS",
+        "utm": "UTM",
+        "plus": "Plus Code",
+        "link": "Länk"
+      },
+      "pages": {
+        "tour": "Tur",
+        "tracks": "Inspelning eller lista",
+        "map": "Plats eller rutt",
+        "discover": "Upptäck"
+      },
+      "plus_place_missing": "”{text}” hittades inte – nära kartans mitt",
+      "wmap_link": "Öppna WMap-länk",
+      "short_link": {
+        "title": "Kortlänk – bara Google kan lösa upp den",
+        "subtitle": "Öppna länken i webbläsaren och klistra in den långa adressen",
+        "toast": "Kortlänkar (maps.app.goo.gl) kan bara Google lösa upp: öppna dem i webbläsaren och kopiera sedan den långa adressen"
+      },
+      "osm": {
+        "missing": "Det här OSM-objektet finns inte (längre)",
+        "object": "OSM-objekt {id}"
+      }
+    },
+    "bookmark": {
+      "title": "Bokmärke",
+      "name": {
+        "title": "Namn",
+        "placeholder": "t.ex. mormor, föreningen, favoritbageriet"
+      },
+      "list": {
+        "title": "Lista",
+        "new_option": "Ny lista …",
+        "new": {
+          "title": "Ny lista",
+          "placeholder": "t.ex. Semester i Hannover"
+        }
+      },
+      "as_home": "Som hem",
+      "as_work": "Som jobb",
+      "remove": "Ta bort",
+      "toast": {
+        "saved_in": "Sparad i ”{list}”",
+        "change": "Ändra",
+        "removed": "Bokmärket har tagits bort",
+        "saved_as": "Sparad som ”{name}”",
+        "saved_name": "Sparad som ”{name}”"
+      }
+    },
+    "toast": {
+      "not_found": "”{text}” hittades inte",
+      "nothing_found": "Hittade ingenting"
+    },
+    "geocode": {
+      "types": {
+        "city": "Stad",
+        "town": "Stad",
+        "village": "By",
+        "hamlet": "Ortsdel",
+        "suburb": "Stadsdel",
+        "river": "Flod",
+        "stream": "Bäck",
+        "canal": "Kanal",
+        "lake": "Sjö",
+        "water": "Vatten",
+        "peak": "Topp",
+        "station": "Station",
+        "halt": "Hållplats",
+        "bus_stop": "Busshållplats",
+        "parking": "Parkering",
+        "fuel": "Bensinstation",
+        "restaurant": "Restaurang",
+        "cafe": "Café",
+        "bakery": "Bageri",
+        "supermarket": "Snabbköp",
+        "pitch": "Idrottsplats",
+        "park": "Park",
+        "forest": "Skog",
+        "wood": "Skog",
+        "castle": "Slott",
+        "museum": "Museum",
+        "hotel": "Hotell",
+        "school": "Skola",
+        "hospital": "Sjukhus",
+        "pharmacy": "Apotek",
+        "charging_station": "Laddstation",
+        "place_of_worship": "Kyrka",
+        "viewpoint": "Utsiktsplats",
+        "playground": "Lekplats",
+        "residential": "Gata",
+        "primary": "Gata",
+        "secondary": "Gata",
+        "tertiary": "Gata",
+        "unclassified": "Gata",
+        "living_street": "Gata",
+        "service": "Väg",
+        "footway": "Gångväg",
+        "path": "Stig",
+        "track": "Grusväg",
+        "cycleway": "Cykelväg",
+        "motorway": "Motorväg",
+        "administrative": "Område",
+        "state": "Delstat",
+        "country": "Land",
+        "county": "Distrikt",
+        "house": "Adress"
+      },
+      "offline": "Ingen anslutning till nätet – sökningen kräver internet",
+      "unreachable": "Sökningen är inte tillgänglig just nu – tryck på en punkt på kartan eller försök igen om en stund",
+      "failed": "Sökningen misslyckades ({status})",
+      "place": "Plats",
+      "station_words": [
+        "central",
+        "centralen",
+        "centralstation",
+        "järnvägsstation",
+        "tågstation",
+        "station",
+        "stn"
+      ]
+    },
+    "words": {
+      "filler": [
+        "i",
+        "på",
+        "vid",
+        "nära",
+        "om",
+        "av",
+        "den",
+        "det",
+        "de",
+        "en",
+        "ett",
+        "från",
+        "till",
+        "här",
+        "visa",
+        "sök",
+        "mig",
+        "alla",
+        "med",
+        "och",
+        "för",
+        "omgivning",
+        "närmaste",
+        "närmsta",
+        "omkring"
+      ]
+    }
+  },
+  "category": {
+    "recent_nearby": "i närheten",
+    "searching": "Söker {area} …",
+    "found_so_far": "{n} hittade {area} …",
+    "found": "{n} hittade {area}",
+    "hidden": "{n} dolda",
+    "none": "Inga {category} {area}",
+    "failed": "{error} – försök igen om en stund",
+    "no_shapes": "Konturer kan inte hämtas just nu",
+    "distance": "{distance} bort",
+    "filter": {
+      "title": "Filter",
+      "only_open": "Bara öppna",
+      "closed": "{n} stängda",
+      "also_private": "Även privata"
+    },
+    "charging": {
+      "only_free": "Bara lediga",
+      "plugs": "Kontakter",
+      "searching": "Söker lediga laddpunkter …",
+      "found_free": "{n} platser med ledig laddpunkt",
+      "none_free": "Ingen ledig laddpunkt inom {km} km",
+      "found": "{n} platser {area}",
+      "failed": "Beläggning ej tillgänglig – laddare från kartan"
+    }
+  },
+  "lines": {
+    "directions": "Riktningar",
+    "searching": "Söker linje …",
+    "none": "Hittade ingen linje {ref} {where}",
+    "unavailable": "Linjer kan inte hämtas just nu ({error})",
+    "item": {
+      "type": "Linje",
+      "in_place": "Linje i {place}",
+      "around_here": "Linje här i trakten"
+    },
+    "toast": {
+      "unavailable": "Linjen kan inte hämtas just nu ({error})"
+    },
+    "words": {
+      "line": [
+        "linje",
+        "linjen",
+        "line"
+      ],
+      "bus": [
+        "buss",
+        "busslinje",
+        "bussen"
+      ],
+      "tram": [
+        "spårvagn",
+        "spårvagnen",
+        "tram"
+      ],
+      "light_rail": [
+        "stadsbana",
+        "snabbspårvagn",
+        "lokalbana"
+      ],
+      "subway": [
+        "tunnelbana",
+        "tunnelbanan",
+        "t-bana",
+        "tbana",
+        "metro",
+        "u-bahn",
+        "ubahn"
+      ],
+      "suburban": [
+        "s-bahn",
+        "sbahn"
+      ]
+    },
+    "labels": {
+      "line": "Linje",
+      "bus": "Buss",
+      "tram": "Spårvagn",
+      "light_rail": "Stadsbana",
+      "subway": "Tunnelbana",
+      "suburban": "S-Bahn",
+      "train": "Tåg"
+    },
+    "place_words": [
+      "i",
+      "vid",
+      "på"
+    ]
+  },
+  "stops": {
+    "departures": {
+      "title": "Avgångar",
+      "unavailable": "Tidtabellen kan inte hämtas just nu ({error})",
+      "loading": "Tidtabellen laddas …",
+      "none": "Inga avgångar från det här läget inom den närmaste tiden",
+      "cancelled": "inställd",
+      "in_minutes": "om {n} min",
+      "platform": "Läge {platform}",
+      "more": "Fler avgångar",
+      "trip_unavailable": "Sträckningen för {line} kan inte hämtas just nu",
+      "filter": {
+        "here": "Här",
+        "here_platform": "Här · läge {platform}",
+        "all": "Alla lägen"
+      },
+      "earlier": {
+        "title": "Tidigare avgångar",
+        "none": "Hittade inga tidigare avgångar",
+        "failed": "Tidigare avgångar kan inte hämtas just nu – försök igen om en stund"
+      },
+      "source": {
+        "title": "Tidtabell: NVBW EFA-BW",
+        "realtime": "med realtid",
+        "platform_only": "bara det här läget"
+      }
+    },
+    "lines": {
+      "title": "Linjer här",
+      "unavailable": "Kan inte hämtas just nu ({error})",
+      "loading": "Vilka linjer stannar här …",
+      "at_platform": "Linjer vid det här läget",
+      "at_platform_side": "Linjer vid det här läget ({side})",
+      "all": "Alla linjer vid hållplatsen",
+      "all_count": "Alla {n} linjer vid hållplatsen",
+      "only_platform": "Bara det här läget"
+    }
+  },
+  "place": {
+    "address_searching": "Söker adress …",
+    "wikipedia": "Wikipedia",
+    "nearby": {
+      "title": "I närheten",
+      "this_point": "den här punkten"
+    },
+    "coords": {
+      "copy": "Kopiera",
+      "more": "Fler format",
+      "copied": "Kopierat: {text}",
+      "copy_failed": "Det gick inte att kopiera",
+      "formats": {
+        "utm": "UTM",
+        "plus": "Plus Code",
+        "dms": "Grader, minuter, sekunder"
+      }
+    },
+    "actions": {
+      "add_stop": "Lägg till mellanstopp",
+      "as_destination": "Som mål",
+      "as_start": "Som start",
+      "route": "Rutt",
+      "to_car": "Till bilen",
+      "share": "Dela",
+      "look_around": "Titta runt",
+      "save": "Spara",
+      "saved": "Sparad",
+      "add_here": "Lägg till här",
+      "edit": "Redigera"
+    },
+    "fuel": {
+      "euro": "€",
+      "e5": "Super E5",
+      "e10": "Super E10",
+      "diesel": "Diesel",
+      "live": "Priser live",
+      "closed": "Stängt just nu",
+      "source": "Källa: MTS-K via Tankerkönig"
+    },
+    "charging": {
+      "title": "Laddpunkter",
+      "free": "{free} av {total} lediga",
+      "busy": "{n} upptagna",
+      "broken": "{n} ur funktion",
+      "points": "{n} laddpunkter",
+      "no_live": "Beläggning rapporteras inte",
+      "updated": "Läge {time}",
+      "source": "Källa: MobiData BW (Bundesnetzagentur, operatörer)",
+      "plugs": {
+        "ccs": "CCS",
+        "type2": "Typ 2",
+        "chademo": "CHAdeMO",
+        "tesla": "Tesla",
+        "schuko": "Schuko",
+        "other": "Övriga"
+      }
+    }
+  },
+  "reach": {
+    "title": "Nåbart",
+    "search_in": "Sök inom området",
+    "metric": {
+      "title": "Mått",
+      "time": "Tid",
+      "distance": "Sträcka"
+    },
+    "unit": {
+      "min": "min",
+      "km": "km"
+    },
+    "computing": "Från {from} · {profile} · beräknas …",
+    "result": "Från {from} · {profile} · upp till {value} {unit}",
+    "up_to": "upp till {value} {unit}",
+    "searching": "Söker {category} inom det nåbara området …",
+    "none": "Inga {category} går att nå"
+  },
+  "contribute": {
+    "title": "Bidra",
+    "offer": {
+      "one": "{n} kort fråga om din väg",
+      "other": "{n} korta frågor om din väg"
+    },
+    "first": {
+      "title": "Bidra till OpenStreetMap",
+      "text": "WMap sparar din väg på den här enheten och ställer sedan några korta frågor – till exempel om parkeringen kostar något eller om bageriet fortfarande har de öppettiderna. Dina svar gör kartan bättre för alla. Inspelningen lämnar inte enheten och kan stängas av i inställningarna.",
+      "no": "Spela inte in",
+      "yes": "Godkänn"
+    }
+  },
+  "ask_along": {
+    "missing_way": {
+      "name": "Väg som saknas på kartan",
+      "road": "Ny väg?",
+      "way": "Ny stig?"
+    },
+    "detour": {
+      "name": "Avvikelse från rutten",
+      "title": "Avstängt?"
+    },
+    "exists": {
+      "title": "Finns {name} kvar?"
+    }
+  },
+  "report": {
+    "thanks": "Tack!",
+    "goes": {
+      "account": "Hamnar direkt i kartan med ditt OSM-konto.",
+      "anonymous": "Skickas utan konto som tips till OpenStreetMap.",
+      "later": "Sparas tills du loggar in på OSM."
+    },
+    "still": {
+      "roadworks": "Finns vägarbetet kvar?",
+      "closure": "Fortfarande avstängt?",
+      "jam": "Fortfarande kö?",
+      "accident": "Finns olyckan kvar?",
+      "other": "Fortfarande störningar?",
+      "gone": "Nej, borta"
+    },
+    "here": {
+      "title": "Vad vill du rapportera?",
+      "shared": "Andra ser din rapport i några timmar.",
+      "local": "Ingen rapportserver än – rapporten stannar tills vidare på den här enheten.",
+      "toast_shared": "{kind} rapporterad – tack!",
+      "toast_local": "{kind} noterad"
+    },
+    "parking": {
+      "name": "Parkering",
+      "named": "”{name}”",
+      "this_one": "parkeringen här",
+      "thanks": "Tack! Det hjälper alla som vill parkera här.",
+      "fee": {
+        "title": "Är {what} gratis?",
+        "sub": "Du har just kommit fram",
+        "free": "Gratis",
+        "paid": "Kostar pengar",
+        "unknown": "Vet inte"
+      },
+      "price": {
+        "title": "Ungefär hur mycket?",
+        "per_hour": "{price} €/tim",
+        "other": "Annat …",
+        "ask": "Vad kostar det?",
+        "placeholder": "t.ex. 1,50 € per timme eller 6 € per dag"
+      },
+      "access": {
+        "title": "Kan alla parkera där?",
+        "all": "Ja, alla",
+        "customers": "Bara kunder",
+        "private": "Privat"
+      },
+      "remark": {
+        "title": "Något mer till andra?",
+        "sub": "t.ex. bom, höjdbegränsning, bara till kl. 20",
+        "placeholder": "Anteckning (valfritt)",
+        "no": "Nej tack"
+      }
+    }
+  },
+  "traffic": {
+    "title": "Trafikläge motorväg",
+    "blocked": "Helt avstängd",
+    "source": "Källa: Autobahn GmbH des Bundes",
+    "closures": {
+      "one": "En helavstängning på rutten",
+      "other": "{n} helavstängningar på rutten"
+    },
+    "avoid": "Kör förbi",
+    "at": "om {distance}",
+    "kinds": {
+      "closure": "Avstängning",
+      "roadworks": "Vägarbete",
+      "warning": "Varning",
+      "jam": "Kö",
+      "accident": "Olycka",
+      "hazard": "Fara"
+    },
+    "reported": {
+      "title": "Rapporterad {n}×",
+      "by": {
+        "one": "Rapporterad av {n} person, senast {time}",
+        "other": "Rapporterad av {n} personer, senast {time}"
+      }
+    }
+  },
+  "route": {
+    "line": {
+      "change": "Ändra rutt",
+      "prefs": "Inställningar: motorväg, färjor, färdsätt …"
+    },
+    "form": {
+      "swap": "Byt start och mål",
+      "add_via": "Mellanmål",
+      "profiles": {
+        "title": "Färdsätt",
+        "foot": "Till fots",
+        "bike": "Cykel",
+        "car": "Bil",
+        "transit": "Buss & tåg"
+      }
+    },
+    "when": {
+      "mode": {
+        "title": "Avresa eller ankomst",
+        "departure": "Avresa från",
+        "arrival": "Ankomst senast"
+      },
+      "time": "Tidpunkt",
+      "now": "Nu"
+    },
+    "waypoint": {
+      "start": "Välj start",
+      "destination": "Välj mål",
+      "via": "Välj mellanmål",
+      "my_location_hint": "aktuell GPS-position",
+      "point": "Punkt",
+      "tour_start": "Start: {name}"
+    },
+    "status": {
+      "computing": "Rutten beräknas …",
+      "failed": "Rutten gick inte att hämta just nu – försök igen om en stund",
+      "retry": "Försök igen"
+    },
+    "park": "Resan slutar vid parkeringen innan – {distance} till {place}",
+    "ascent": "↗ {m} m",
+    "ticket": "Biljett hos tågbolaget",
+    "connection_saved": "Förbindelsen är sparad – under Mina turer → Förbindelser",
+    "new_tour": "Ny tur",
+    "tags": {
+      "highway": "Motorväg",
+      "no_highway": "utan motorväg",
+      "toll": "Avgift",
+      "ferry": "Färja",
+      "fastest": "Snabbast",
+      "latest": "Senaste avresa",
+      "alternative": "Alternativ",
+      "change": "≥ {min} min byte",
+      "tight": "kort byte: {min} min"
+    },
+    "alternative": {
+      "same": "±0 min"
+    },
+    "earlier": {
+      "title": "Tidigare förbindelser",
+      "none": "Inga tidigare förbindelser hittades",
+      "failed": "Tidigare förbindelser kan inte hämtas just nu – försök igen om en stund"
+    },
+    "share": {
+      "title": "Rutt",
+      "text": "Rutt från {from} till {to} ({profile}, {time}, {distance})",
+      "my_location": "min position",
+      "start": "Start"
+    },
+    "along": {
+      "title": "Längs rutten",
+      "searching": "Söker {category} längs rutten …",
+      "none": "Ingen {category} längs rutten",
+      "none_visible": "Ingen {category} längs rutten – bara dolda",
+      "distance": "vid {along} · {offset} från rutten"
+    },
+    "sheet": {
+      "end": "Avsluta planeringen",
+      "options": "Rutter",
+      "steps": "Vägbeskrivning",
+      "share": "Dela rutt",
+      "save": "Spara som tur",
+      "send_car": "Skicka till bilen",
+      "start": "Starta"
+    }
+  },
+  "nav": {
+    "kmh": "km/h",
+    "pip_failed": "Bild-i-bild gick inte: {error}",
+    "buttons": {
+      "record": "Spela in",
+      "north_up": "Norr uppåt",
+      "heading_up": "Rotera i färdriktningen",
+      "report": "Rapportera: kö, olycka, vägarbete …",
+      "pip": "Bild-i-bild – anvisningar över andra appar",
+      "overview": "Visa hela rutten",
+      "mute": "Stäng av röstanvisningar",
+      "unmute": "Slå på röstanvisningar",
+      "follow_flat": "Följer dig – tryck: platt vy",
+      "follow_tilted": "Följer dig – tryck: lutad vy",
+      "back_to_me": "Tillbaka till min position",
+      "stop": "Avsluta navigeringen",
+      "share": "Dela ankomst",
+      "search": "Sök längs rutten"
+    },
+    "banner": {
+      "exit": "Avfart {n}",
+      "toward": "Mot {places}",
+      "lane_left": "Håll till vänster",
+      "lane_right": "Håll till höger",
+      "then": "Sedan",
+      "arrived": "Framme",
+      "arrived_remaining": "0 min · 0 m"
+    },
+    "gps": {
+      "unsupported": "Den här enheten stöder inte positionering",
+      "weak": "Svag GPS-signal – söker position …",
+      "coarse": "Bara ungefärlig position är tillåten. Tillåt \"Exakt position\" för webbläsaren i telefonens inställningar.",
+      "denied": "Positionen är inte tillåten – tillåt den i webbläsarens inställningar."
+    },
+    "offline": {
+      "loading": "Kartan för sträckan sparas",
+      "ok": "Kartan för sträckan är sparad offline",
+      "off": "Offline – ny beräkning går först när du har nät igen",
+      "back_to_route": "Offline – tillbaka till rutten, ny beräkning går först när du har nät igen"
+    },
+    "share": {
+      "title": "Jag är på väg",
+      "text": "Jag är på väg till {where} – ankomst ca kl. {time}. Här är jag just nu:",
+      "my_destination": "mitt mål",
+      "place": "På väg"
+    },
+    "search_along": {
+      "title": "Längs rutten",
+      "subtitle": "Vad som finns framför dig längs vägen",
+      "searching": "Söker {category} framför dig …",
+      "none": "Ingen {category} framför dig längs vägen",
+      "distance": "om {along} · {offset} vid sidan av"
+    },
+    "resume": {
+      "title": "Fortsätta navigeringen?",
+      "to": "Vidare till {place}.",
+      "unfinished": "Den senaste resan avslutades inte.",
+      "stop": "Avsluta",
+      "go": "Fortsätt"
+    },
+    "record": {
+      "running": "Inspelning pågår",
+      "paused": "Inspelningen är pausad",
+      "continues": "Inspelningen fortsätter",
+      "already": "En inspelning pågår redan",
+      "simulation": "Simuleringen spelas inte in",
+      "saved": "Inspelningen sparad ({distance})",
+      "drive_saved": "Resan sparad ({distance})",
+      "too_short": "För kort för att sparas",
+      "discarded": "Inspelningen kasserad",
+      "track_name": "Till {place}",
+      "dialog": {
+        "text": "Navigeringen fortsätter under tiden.",
+        "resume": "Fortsätt spela in",
+        "pause": "Paus",
+        "stop": "Avsluta och spara",
+        "discard": "Kassera"
+      },
+      "ask": {
+        "title": "Spela in turen?",
+        "text": "Sträckan hamnar med tid och tempo under \"Inspelade turer\". Du kan pausa, avsluta eller starta senare med inspelningsknappen till höger medan du är på väg.",
+        "no": "Utan inspelning"
+      }
+    },
+    "voice_dialog": {
+      "title": "Röst för anvisningar",
+      "select": "Röst",
+      "online": "online",
+      "android": "Appen använder Androids talsyntes – röst och hastighet ställer du in i Android-inställningarna under \"Talsyntes\".",
+      "none": "Den här webbläsaren erbjuder ingen svensk röst.",
+      "hint": "Låter det plåtigt eller förvrängt är oftast en enkel systemröst (eSpeak) vald.\n       \"Google Svenska\" i Chrome eller rösterna i Android, Windows och macOS låter märkbart bättre.",
+      "test": "Prova",
+      "sample": "Om 300 meter sväng höger, sedan håll till vänster.",
+      "done": "Klar"
+    },
+    "voice": {
+      "route_ready": "Rutten är beräknad.",
+      "new_route": "Ny rutt beräknad.",
+      "recalculating": "Beräknar om rutten.",
+      "stop_added": "Mellanstopp läggs till.",
+      "no_connection": "Ingen anslutning. Återvänd till rutten.",
+      "follow": "Följ rutten i {distance}.",
+      "soon": "Om {distance} {what}.",
+      "lane_left": "Håll till vänster.",
+      "lane_right": "Håll till höger.",
+      "then": ", sedan {action}",
+      "onto": "{action} på {ref}",
+      "toward": "{what} mot {places}",
+      "and": "och",
+      "at_signal": "vid trafikljuset {what}",
+      "arrive": {
+        "now": "Du är framme.",
+        "on_right": "Det ligger till höger.",
+        "on_left": "Det ligger till vänster.",
+        "soon": "Om {distance} är du framme.",
+        "then": "sedan är du framme"
+      },
+      "ordinal": {
+        "first": "första",
+        "second": "andra",
+        "third": "tredje",
+        "fourth": "fjärde",
+        "fifth": "femte",
+        "sixth": "sjätte",
+        "seventh": "sjunde",
+        "eighth": "åttonde"
+      },
+      "action": {
+        "depart": "kör iväg",
+        "continue": "fortsätt rakt fram",
+        "keep_straight": "håll rakt fram",
+        "slight_right": "sväng svagt höger",
+        "right": "sväng höger",
+        "sharp_right": "sväng skarpt höger",
+        "slight_left": "sväng svagt vänster",
+        "left": "sväng vänster",
+        "sharp_left": "sväng skarpt vänster",
+        "u_turn": "vänd",
+        "keep_right": "håll till höger",
+        "keep_left": "håll till vänster",
+        "merge": "kör in i filen",
+        "merge_right": "kör in i filen till höger",
+        "merge_left": "kör in i filen till vänster",
+        "ferry_on": "kör ombord på färjan",
+        "ferry_off": "lämna färjan",
+        "roundabout": "i rondellen ta {nth} avfarten",
+        "ramp": {
+          "straight": "ta påfarten rakt fram",
+          "right": "ta påfarten till höger",
+          "left": "ta påfarten till vänster"
+        },
+        "ramp_ref": {
+          "straight": "kör upp på {ref}",
+          "right": "kör upp på {ref} till höger",
+          "left": "kör upp på {ref} till vänster"
+        },
+        "exit": {
+          "right": "ta avfarten till höger",
+          "right_number": "ta avfart {nr} till höger",
+          "left": "ta avfarten till vänster",
+          "left_number": "ta avfart {nr} till vänster"
+        }
+      }
+    }
+  },
+  "car": {
+    "nearby": "I närheten",
+    "destination": "Mål",
+    "tour": "Tur",
+    "allow_location": "Tillåt position i WMap på telefonen",
+    "ask": {
+      "confirm": "Bekräfta"
+    },
+    "errors": {
+      "unknown_category": "Okänd kategori",
+      "no_route_computed": "Rutten kunde inte beräknas",
+      "place_unknown": "Platsen är inte längre känd",
+      "sent_unreadable": "Det skickade gick inte att läsa",
+      "tour_missing": "Turen har inte kommit fram till bilen än – öppna WMap på telefonen en gång",
+      "tour_not_car": "Turen är inte planerad för bil",
+      "unknown_setting": "Okänd inställning",
+      "no_route": "Ingen rutt vald"
+    },
+    "native": {
+      "route": "Rutt",
+      "place": "Plats",
+      "search": "Sök",
+      "arrived": "Framme vid målet",
+      "follow": "Följ rutten",
+      "nearby": "I närheten",
+      "bookmarks": "Bokmärken",
+      "bookmarks_empty": "Inget sparat ännu – öppna en plats och tryck på stjärnan",
+      "bookmarks_hint": "Hemma, jobbet, sparade platser",
+      "nearby_empty": "Hittade inget i närheten",
+      "nearby_hint": "Parkering, tankning, laddning, paus …",
+      "search_tours": "Sök tur …",
+      "search_where": "Vart?",
+      "search_hint": "Plats, adress, parkering …",
+      "places": "Platser",
+      "my_tours": "Mina turer",
+      "tours_empty": "Inga turer planerade för bilen",
+      "nothing": "Hittade inget",
+      "no_route": "Ingen rutt hittades",
+      "place_missing": "Platsen hittades inte",
+      "route_one": "rutt",
+      "route_many": "rutter",
+      "tap_map": "tryck på kartan",
+      "go": "Kör",
+      "computing": "Rutten beräknas fortfarande …",
+      "filter": "Filter",
+      "cancel": "Avbryt",
+      "saved": "Sparad",
+      "chosen": "Vald",
+      "alternative": "Alternativ",
+      "avoid_highways": "Undvik motorvägar",
+      "avoid_tolls": "Undvik betalvägar",
+      "avoid_ferries": "Undvik färjor"
+    }
+  },
+  "permissions": {
+    "location": {
+      "denied": "Positionsåtkomst nekad",
+      "coarse": "Bara ungefärlig – slå på \"Exakt position\" för navigering och inspelning",
+      "off": "Positionen är avstängd på enheten",
+      "turn_on": "Slå på position",
+      "allow": "Tillåt position",
+      "title": "Position",
+      "text": "För din position på kartan, rutter från ”Min position”, navigering och inspelning av dina turer. Inspelade platsdata stannar på din enhet och varken analyseras eller delas."
+    },
+    "notice": {
+      "title": "Aviseringar",
+      "p1": "För att WMap ska kunna fortsätta en påbörjad inspelning även när skärmen är avstängd eller du använder en annan app måste WMap visa en avisering.",
+      "p2": "Så länge inspelningen pågår står <strong>”WMap spelar in”</strong> i statusfältet – så ser du hela tiden att din tur spelas in. Android frågar därför strax om WMap får skicka aviseringar.",
+      "p3": "WMap skickar inga andra aviseringar.",
+      "allow": "Tillåt"
+    },
+    "status": {
+      "blocked": "Inte tillåtet – Android frågar inte igen, tillåt i inställningarna",
+      "granted": "Tillåtet",
+      "not_yet": "Inte tillåtet än"
+    },
+    "button": {
+      "change": "Ändra i inställningarna",
+      "allow_settings": "Tillåt i inställningarna"
+    },
+    "notification": {
+      "title": "Avisering",
+      "text": "Bara under en inspelning: då står ”WMap spelar in” i statusfältet. WMap behöver den här aviseringen för att inspelningen ska fortsätta när skärmen är avstängd eller du använder en annan app. WMap skickar inga andra aviseringar.",
+      "allow": "Tillåt avisering"
+    },
+    "health": {
+      "text": "Läser träningspass från andra appar – Fitbit, Strava, Zepp, Samsung Health … – med rutt och mätvärden (puls, steg- och trampfrekvens, effekt), så att du ser dem under Mina turer som färdvägar med diagram och varv. WMap bara läser och skriver ingenting tillbaka.",
+      "title": "Health Connect",
+      "not_granted": "Inte godkänt än",
+      "grant": "Godkänn Health Connect",
+      "hint_change": "För att ändra eller återkalla öppnas Health Connect – tryck där på WMap (annars under \"Fler hälsoappar\").",
+      "hint_routes": "Rutter: Health Connect frågar fortfarande för varje träningspass.\n      Ställ i Health Connect <strong>WMap → Träningsrutter</strong> på \"Tillåt alltid\" (WMap finns annars under \"Fler hälsoappar\") – då kommer alla utan att fråga.",
+      "hint_values": "Puls och liknande är inte godkänt än –\n      utan dem får du bara tempo och höjd till färdvägarna.",
+      "all": "Träningspass, rutter och mätvärden tillåtna",
+      "routes_yes": "Träningspass och rutter tillåtna",
+      "routes_ask": "Träningspass tillåtna, rutter med fråga",
+      "values_yes": "Mätvärden tillåtna",
+      "values_no": "Mätvärden inte tillåtna",
+      "grant_values": "Godkänn puls och liknande",
+      "change": "Ändra i Health Connect",
+      "open": "Öppna Health Connect"
+    },
+    "intro": {
+      "location": "För det behöver WMap din position.",
+      "health": "För det behöver WMap åtkomst till Health Connect.",
+      "default": "WMap frågar bara efter det en funktion verkligen behöver.",
+      "change_later": "Allt kan ändras senare under <strong>Inställningar → Behörigheter</strong>."
+    },
+    "title": "Behörigheter"
+  },
+  "tracks": {
+    "error": {
+      "save_aborted": "Sparandet avbröts",
+      "storage_full": "Lagringsutrymmet är fullt – turen kunde inte sparas",
+      "only_in_folder": "Rutten finns bara i mappen"
+    },
+    "names": {
+      "imported": "Importerad rutt",
+      "tour": "Tur",
+      "words": {
+        "car": "Bilresa",
+        "drive": "Utflykt",
+        "ride": "Cykeltur",
+        "walk": "Promenad",
+        "hike": "Vandring",
+        "run": "Löprunda",
+        "other": "På väg",
+        "rowing": "Rodd",
+        "paddling": "Paddling",
+        "sailing": "Segling",
+        "swimming": "Simning",
+        "skiing": "Skidåkning",
+        "snowboarding": "Snowboardåkning",
+        "snowshoeing": "Snöskovandring",
+        "skating": "Inlines",
+        "ice_skating": "Skridskoåkning",
+        "surfing": "Surfing",
+        "paragliding": "Paraglidingflygning",
+        "climbing": "Klättring",
+        "golf": "Golf"
+      },
+      "when": {
+        "night": "{what} natten mot {day}",
+        "morning": "{what} på {day}smorgonen",
+        "noon": "{what} på {day}smiddagen",
+        "afternoon": "{what} på {day}seftermiddagen",
+        "evening": "{what} på {day}skvällen"
+      },
+      "with_place": "{what} i {place}",
+      "filler": [
+        "rutt",
+        "tur",
+        "från",
+        "på",
+        "kl",
+        "klockan",
+        "och",
+        "importerad",
+        "aktivitet",
+        "löprunda",
+        "löpning",
+        "springa",
+        "jogga",
+        "cykeltur",
+        "cykling",
+        "cykla",
+        "cykel",
+        "promenad",
+        "gå",
+        "vandring",
+        "vandra",
+        "rodd",
+        "simning",
+        "simma",
+        "namnlös",
+        "ny"
+      ]
+    },
+    "gpx": {
+      "start": "Start",
+      "goal": "Mål",
+      "point": "Punkt {i}"
+    },
+    "toast": {
+      "oldest_removed": {
+        "one": "Lagringsutrymmet är fullt – den äldsta turen har raderats",
+        "other": "Lagringsutrymmet är fullt – de {n} äldsta turerna har raderats"
+      },
+      "shelved": "Lagringsutrymmet är fullt – {n} äldre turer finns nu bara i mappen"
+    },
+    "step": {
+      "load_part": "Läs in mappdelen"
+    },
+    "duplicates": {
+      "where": {
+        "file": "i filen",
+        "double": "i dubbletten"
+      },
+      "points": "{n} punkter",
+      "points_more": "{n} punkter fler {where} ({there} i stället för {here})",
+      "points_fewer": "{n} punkter färre {where} ({there} i stället för {here})",
+      "value_missing": "saknas här – {where} Ø {avg}",
+      "none": "inga",
+      "value_differs": "Ø {there} {where}, Ø {here} här",
+      "laps_new": "{n} varv {where}, inga här",
+      "laps": {
+        "one": "{n} varv",
+        "other": "{n} varv"
+      },
+      "laps_differ": "{there} varv {where}, {here} här",
+      "laps_in_file": "{n} varv {where}",
+      "ask": {
+        "source_file": "fil",
+        "source_wmap": "inspelad med WMap",
+        "title": {
+          "one": "En tur finns två gånger",
+          "other": "{n} turer finns två gånger"
+        },
+        "text": "Samma tur finns flera gånger – till exempel från klockan och mobilen eller från en fil. När du slår ihop dem blir en inspelning kvar per tur.",
+        "from": "Turen ”{name}” finns två gånger. En inspelning blir kvar – välj per rad vems data den behåller.",
+        "new_name": "dubbletten{name}{source} – den raderas efteråt",
+        "old_name": "inspelningen som blir kvar{source}",
+        "merged": {
+          "one": "{n} dubblettur hopslagen",
+          "other": "{n} dubbletturer hopslagna"
+        },
+        "nothing": "Inget hopslaget",
+        "failed": "Det gick inte att slå ihop"
+      }
+    },
+    "recorded_on": "Inspelad {date}",
+    "same_route": {
+      "exact": "Exakt",
+      "close": "Liknande",
+      "rough": "Ungefärlig"
+    },
+    "sports": {
+      "driving": "Bil",
+      "gpx": "GPX"
+    },
+    "show": {
+      "all": "Alla",
+      "year": "I år",
+      "days_365": "Senaste 365 dagarna",
+      "days_30": "Senaste 30 dagarna"
+    },
+    "cadence": {
+      "stroke": "Tagfrekvens",
+      "swim": "Simtagsfrekvens",
+      "pedal": "Trampfrekvens",
+      "step": "Stegfrekvens",
+      "other": "Frekvens"
+    }
+  },
+  "backup": {
+    "error": {
+      "not_zip": "Det här är ingen ZIP-fil",
+      "zip_method": "{path}: komprimeringsmetoden {method} stöds inte",
+      "not_backup": "Det här är ingen WMap-säkerhetskopia"
+    },
+    "to_folder": "Säkerhetskopiera till ”{name}”",
+    "to_zip": "Säkerhetskopiera som ZIP",
+    "done": "Säkerhetskopierat – {summary}",
+    "creating": "Skapar säkerhetskopian …",
+    "saved_as": "Sparad som ”{name}”",
+    "failed": "Säkerhetskopieringen misslyckades: {reason}"
+  },
+  "share": {
+    "tour": {
+      "default_name": "Delad tur",
+      "error": {
+        "no_tour": "Länken innehåller ingen tur"
+      }
+    },
+    "link": {
+      "error": {
+        "key": "Länken är ofullständig – nyckeln stämmer inte",
+        "open": "Länken gick inte att öppna"
+      }
+    },
+    "collab": {
+      "error": {
+        "https": "Att planera tillsammans fungerar bara via https"
+      },
+      "days_left": {
+        "one": "{n} dag kvar",
+        "other": "{n} dagar kvar"
+      },
+      "expired": "Delningen har gått ut",
+      "shared": "Delad",
+      "invited_by": "Inbjuden av {by}",
+      "invited": "Inbjuden"
+    },
+    "open_link": {
+      "title": "Öppna länk",
+      "text": "Klistra in en delad WMap-länk här – tur, gemensam planering eller inspelning.",
+      "input": "Länk",
+      "open": "Öppna",
+      "invalid": "Det här är ingen delad WMap-länk"
+    },
+    "error": {
+      "desktop": "Delning i skrivbordsappen kräver PUBLIC_URL i core/config.js"
+    },
+    "wmap_link": "WMap: {url}",
+    "menu": {
+      "share": "Dela …",
+      "copy_text": "Kopiera text med länk",
+      "copy_link": "Kopiera bara länken",
+      "short": "Skapa kort länk"
+    },
+    "short": {
+      "failed": "Den korta länken kunde inte skapas",
+      "note": "Kort länk: Turen ligger då i 30 dagar på WMap-servern – därefter slutar länken fungera."
+    },
+    "copied": {
+      "text": "Text med länk kopierad",
+      "link": "Länk kopierad",
+      "then": "{done} – klistra in och skicka",
+      "failed": "Det gick inte att kopiera – markera och kopiera själv:"
+    },
+    "my_name": {
+      "title": "Vad heter du?",
+      "text": "Namnet står i förfrågan så att man vet vem som frågar. Det stannar på den här enheten.",
+      "placeholder": "Förnamn"
+    },
+    "route": {
+      "shared_point": "Delad punkt"
+    }
+  },
+  "places": {
+    "kinds": {
+      "home": "Hemma",
+      "work": "Jobbet",
+      "stop": "Hållplats",
+      "fav": "Sparad"
+    },
+    "default_list": "Allmänt"
+  },
+  "services": {
+    "health": {
+      "types": {
+        "walking": "Promenad",
+        "hiking": "Vandring",
+        "snowshoeing": "Snöskor",
+        "running": "Löpning",
+        "running_treadmill": "Löpband",
+        "biking": "Cykling",
+        "biking_stationary": "Motionscykel",
+        "wheelchair": "Rullstol",
+        "skating": "Skridskor",
+        "ice_skating": "Skridskoåkning",
+        "skiing": "Skidor",
+        "snowboarding": "Snowboard",
+        "rowing": "Rodd",
+        "rowing_machine": "Roddmaskin",
+        "paddling": "Paddling",
+        "sailing": "Segling",
+        "surfing": "Surfing",
+        "scuba_diving": "Dykning",
+        "swimming_open_water": "Simning",
+        "swimming_pool": "Simhall",
+        "water_polo": "Vattenpolo",
+        "paragliding": "Skärmflygning",
+        "rock_climbing": "Klättring",
+        "golf": "Golf",
+        "frisbee_disc": "Frisbee",
+        "soccer": "Fotboll",
+        "football_american": "Amerikansk fotboll",
+        "football_australian": "Australisk fotboll",
+        "rugby": "Rugby",
+        "basketball": "Basket",
+        "volleyball": "Volleyboll",
+        "handball": "Handboll",
+        "baseball": "Baseboll",
+        "softball": "Softboll",
+        "cricket": "Cricket",
+        "tennis": "Tennis",
+        "table_tennis": "Bordtennis",
+        "badminton": "Badminton",
+        "squash": "Squash",
+        "racquetball": "Racquetball",
+        "ice_hockey": "Ishockey",
+        "roller_hockey": "Rullskridskohockey",
+        "martial_arts": "Kampsport",
+        "boxing": "Boxning",
+        "fencing": "Fäktning",
+        "dancing": "Dans",
+        "gymnastics": "Gymnastik",
+        "yoga": "Yoga",
+        "pilates": "Pilates",
+        "stretching": "Stretching",
+        "meditation": "Meditation",
+        "guided_breathing": "Andningsövning",
+        "elliptical": "Crosstrainer",
+        "stair_climbing": "Trappgång",
+        "stair_climbing_machine": "Trappmaskin",
+        "weightlifting": "Tyngdlyftning",
+        "strength_training": "Styrketräning",
+        "calisthenics": "Calisthenics",
+        "high_intensity_interval_training": "HIIT",
+        "boot_camp": "Bootcamp",
+        "exercise_class": "Träningspass",
+        "workout": "Workout",
+        "other_workout": "Träning"
+      },
+      "error": {
+        "android_only": "Bara i Android-appen",
+        "update_needed": "Health Connect måste uppdateras först",
+        "not_on_device": "Health Connect finns inte på den här enheten",
+        "no_access": "Utan behörighet till träningspass kan WMap inte läsa något",
+        "not_granted": "Health Connect har inte fått behörighet än"
+      }
+    },
+    "api": {
+      "error": {
+        "unreachable": "WMap-servern kan inte nås just nu",
+        "bad_answer": "WMap-servern svarar inte som den ska",
+        "server": "Serverfel"
+      }
+    },
+    "departures": {
+      "error": {
+        "status": "Tidtabellen svarar med {status}",
+        "no_course": "Ingen sträckning känd",
+        "no_connection": "Ingen förbindelse med buss och tåg hittades"
+      },
+      "walk": {
+        "left": {
+          "into": "Sväng vänster in på {name}",
+          "turn": "Sväng vänster"
+        },
+        "right": {
+          "into": "Sväng höger in på {name}",
+          "turn": "Sväng höger"
+        },
+        "slight_left": {
+          "into": "Sväng svagt vänster in på {name}",
+          "turn": "Sväng svagt vänster"
+        },
+        "slight_right": {
+          "into": "Sväng svagt höger in på {name}",
+          "turn": "Sväng svagt höger"
+        },
+        "sharp_left": {
+          "into": "Sväng skarpt vänster in på {name}",
+          "turn": "Sväng skarpt vänster"
+        },
+        "sharp_right": {
+          "into": "Sväng skarpt höger in på {name}",
+          "turn": "Sväng skarpt höger"
+        },
+        "straight": {
+          "into": "Fortsätt rakt fram in på {name}",
+          "turn": "Fortsätt rakt fram"
+        },
+        "uturn": {
+          "into": "Gör en U-sväng in på {name}",
+          "turn": "Gör en U-sväng"
+        },
+        "straight_on": "Rakt fram",
+        "title": "Gångväg"
+      }
+    },
+    "konto": {
+      "login": {
+        "why_default": "För det",
+        "title": "Logga in med OpenStreetMap",
+        "text": "<p>{why} behöver du ett konto. WMap använder ditt OpenStreetMap-konto – WMap har inget eget lösenord.</p>",
+        "hint": "Har du inget än? Du skapar ett vid inloggningen på openstreetmap.org. Med det kan du också lägga till och förbättra platser på kartan.",
+        "button": "Logga in",
+        "rejected": "WMap-servern godtog inte inloggningen",
+        "failed": "Inloggningen misslyckades"
+      },
+      "no_client": {
+        "title": "Inloggning inte konfigurerad",
+        "text": "Den här WMap saknar fortfarande OpenStreetMap-klient-ID (Inställningar → Konto → För utvecklare)."
+      }
+    },
+    "known_tours": {
+      "kinds": {
+        "hike": "Vandring",
+        "bike": "Cykel",
+        "mtb": "Mountainbike"
+      },
+      "networks": {
+        "hike_europe": "Europeisk fjärrvandringsled",
+        "hike_national": "Nationell fjärrvandringsled",
+        "hike_regional": "Regional vandringsled",
+        "hike_local": "Lokal vandringsled",
+        "bike_europe": "Europeisk cykelled",
+        "bike_national": "Nationell cykelled",
+        "bike_regional": "Regional cykelled",
+        "bike_local": "Lokal cykelled",
+        "mtb_international": "Internationell MTB-led",
+        "mtb_national": "Nationell MTB-led",
+        "mtb_regional": "Regional MTB-led",
+        "mtb_local": "Lokal MTB-led"
+      },
+      "error": {
+        "not_found": "Rutten hittades inte",
+        "status": "Waymarked Trails svarar med {status}",
+        "no_course": "Den här rutten har ingen sträckning",
+        "too_long": "Den här leden är för lång för en gång – välj en etapp"
+      },
+      "unnamed": "Led utan namn",
+      "way": "Led",
+      "marking": "Markering {ref}",
+      "source": "Källa: OpenStreetMap, rutt {id}"
+    },
+    "media": {
+      "fuel_no_answer": "Tankerkönig svarar inte"
+    },
+    "overpass": {
+      "error": {
+        "busy": "Overpass är överbelastad just nu",
+        "unreachable": "Overpass kan inte nås",
+        "status": "Overpass svarar inte ({status})",
+        "no_answer": "Overpass svarar inte just nu"
+      }
+    },
+    "routing": {
+      "error": {
+        "offline": "Ingen nätanslutning – WMap behöver internet för rutten",
+        "busy": "Ruttservern är överbelastad just nu – försök igen om en stund",
+        "unreachable": "Ruttservern kan inte nås just nu – försök igen om en stund",
+        "no_route": "Ingen rutt hittades mellan de här punkterna",
+        "not_near_way": "Punkten ligger inte nära någon väg",
+        "too_long": "Sträckan är för lång för den här profilen",
+        "failed": "Ruttberäkningen misslyckades ({status})"
+      },
+      "surface": {
+        "paved_smooth": "Asfalt",
+        "paved": "Belagd",
+        "paved_rough": "Kullersten",
+        "compacted": "Packad",
+        "dirt": "Grusväg",
+        "gravel": "Grus",
+        "path": "Naturstig",
+        "impassable": "Oframkomlig",
+        "unknown": "Okänd"
+      },
+      "way": {
+        "cycleway": "Cykelväg",
+        "footway": "Gångväg",
+        "mountain_path": "Bergsstig",
+        "path": "Stig",
+        "track": "Traktorväg",
+        "steps": "Trappa",
+        "ferry": "Färja",
+        "motorway": "Motorväg",
+        "primary": "Huvudväg",
+        "residential": "Bostadsgata",
+        "minor": "Mindre väg"
+      }
+    },
+    "traffic": {
+      "error": {
+        "status": "Autobahn-API: {status}"
+      }
+    },
+    "transit": {
+      "kinds": {
+        "bus": "Buss",
+        "trolleybus": "Trådbuss",
+        "share_taxi": "Anropsstyrd buss",
+        "tram": "Spårvagn",
+        "light_rail": "Lätt spårväg",
+        "subway": "Tunnelbana",
+        "train": "Tåg",
+        "monorail": "Enskenebana",
+        "ferry": "Färja"
+      },
+      "lines_here": "Linjer här",
+      "line": "Linje",
+      "show_course": "Visa sträckning",
+      "all_lines": "Alla {n} linjer",
+      "not_found": "Linjen hittades inte",
+      "stops": "{n} hållplatser",
+      "arrival": " (framme {time})",
+      "stops_left": {
+        "one": "Ytterligare {n} hållplats till {to}{arrival}",
+        "other": "Ytterligare {n} hållplatser till {to}{arrival}"
+      },
+      "ends_here": "Slutar här – {n} hållplatser hit"
+    },
+    "car": {
+      "sent": "Skickat till bilen",
+      "waiting": "Skickat – öppna WMap i bilen",
+      "none": "Ingen bil ansluten"
+    }
+  },
+  "categories": {
+    "parking": {
+      "label": "Parkeringar",
+      "one": "Parkering",
+      "terms": [
+        "parkering",
+        "parkeringar",
+        "parkera",
+        "parkeringshus",
+        "parkeringsplats",
+        "garage"
+      ]
+    },
+    "fuel": {
+      "label": "Bensinstationer",
+      "one": "Bensinstation",
+      "terms": [
+        "bensinstation",
+        "tanka",
+        "bensin",
+        "diesel",
+        "bränsle",
+        "mack"
+      ]
+    },
+    "charging": {
+      "label": "Laddstationer",
+      "one": "Laddstation",
+      "terms": [
+        "laddstation",
+        "laddstationer",
+        "laddplats",
+        "laddpunkt",
+        "elbilsladdning",
+        "ladda elbil",
+        "ladda bilen",
+        "wallbox"
+      ]
+    },
+    "bakery": {
+      "label": "Bagerier",
+      "one": "Bageri",
+      "terms": [
+        "bageri",
+        "bagerier",
+        "bagare",
+        "bröd",
+        "fralla",
+        "bakverk"
+      ]
+    },
+    "supermarket": {
+      "label": "Snabbköp",
+      "one": "Snabbköp",
+      "terms": [
+        "snabbköp",
+        "supermarket",
+        "matbutik",
+        "handla",
+        "livsmedel",
+        "mataffär",
+        "dagligvaror"
+      ]
+    },
+    "restaurant": {
+      "label": "Restauranger",
+      "one": "Restaurang",
+      "terms": [
+        "restaurang",
+        "restauranger",
+        "äta",
+        "krog",
+        "värdshus",
+        "matställe"
+      ]
+    },
+    "fastfood": {
+      "label": "Snabbmat",
+      "one": "Snabbmatsställe",
+      "terms": [
+        "snabbmat",
+        "gatukök",
+        "korv",
+        "kebab",
+        "pommes",
+        "pizza",
+        "hamburgare"
+      ]
+    },
+    "cafe": {
+      "label": "Kaféer",
+      "one": "Kafé",
+      "terms": [
+        "kafé",
+        "kaféer",
+        "fik",
+        "kaffe",
+        "fika",
+        "tårta",
+        "konditori"
+      ]
+    },
+    "icecream": {
+      "label": "Glassbarer",
+      "one": "Glassbar",
+      "terms": [
+        "glassbar",
+        "glass",
+        "glasskiosk",
+        "glasserier"
+      ]
+    },
+    "pub": {
+      "label": "Pubar & ölträdgårdar",
+      "one": "Pub",
+      "terms": [
+        "pub",
+        "pubar",
+        "bar",
+        "barer",
+        "ölträdgård",
+        "öl"
+      ]
+    },
+    "toilets": {
+      "label": "Toaletter",
+      "one": "Toalett",
+      "terms": [
+        "toalett",
+        "toaletter",
+        "wc",
+        "dass",
+        "muggen"
+      ]
+    },
+    "water": {
+      "label": "Dricksvatten",
+      "one": "Dricksvatten",
+      "terms": [
+        "dricksvatten",
+        "vattenpost",
+        "vattenkran",
+        "fylla på vatten",
+        "brunn"
+      ]
+    },
+    "rest": {
+      "label": "Rastplatser",
+      "one": "Rastplats",
+      "terms": [
+        "rastplats",
+        "rastplatser",
+        "vilplats",
+        "raststuga",
+        "trafikplats",
+        "paus"
+      ]
+    },
+    "shelter": {
+      "label": "Stugor & vindskydd",
+      "one": "Vindskydd",
+      "terms": [
+        "vindskydd",
+        "skydd",
+        "fjällstuga",
+        "koja",
+        "gapskjul"
+      ]
+    },
+    "bench": {
+      "label": "Bänkar",
+      "one": "Bänk",
+      "terms": [
+        "sittbänk",
+        "bänk",
+        "bänkar",
+        "parkbänk",
+        "picknick"
+      ]
+    },
+    "viewpoint": {
+      "label": "Utsiktsplatser",
+      "one": "Utsiktsplats",
+      "terms": [
+        "utsikt",
+        "utsiktsplats",
+        "utsiktstorn",
+        "vy",
+        "panorama"
+      ]
+    },
+    "peak": {
+      "label": "Toppar",
+      "one": "Topp",
+      "terms": [
+        "topp",
+        "toppar",
+        "berg",
+        "bergstopp",
+        "kulle"
+      ]
+    },
+    "hotel": {
+      "label": "Boenden",
+      "one": "Boende",
+      "terms": [
+        "hotell",
+        "boende",
+        "pensionat",
+        "vandrarhem",
+        "övernattning",
+        "motell",
+        "semesterlägenhet"
+      ]
+    },
+    "camping": {
+      "label": "Campingplatser",
+      "one": "Campingplats",
+      "terms": [
+        "camping",
+        "campingplats",
+        "tältplats",
+        "husbil",
+        "ställplats"
+      ]
+    },
+    "pharmacy": {
+      "label": "Apotek",
+      "one": "Apotek",
+      "terms": [
+        "apotek",
+        "läkemedel",
+        "medicin"
+      ]
+    },
+    "hospital": {
+      "label": "Sjukhus",
+      "one": "Sjukhus",
+      "terms": [
+        "sjukhus",
+        "klinik",
+        "akuten",
+        "akutmottagning",
+        "lasarett"
+      ]
+    },
+    "doctor": {
+      "label": "Läkare",
+      "one": "Läkare",
+      "terms": [
+        "läkare",
+        "doktor",
+        "vårdcentral",
+        "husläkare",
+        "läkarmottagning"
+      ]
+    },
+    "atm": {
+      "label": "Bankomater",
+      "one": "Bankomat",
+      "terms": [
+        "bankomat",
+        "bankomater",
+        "uttagsautomat",
+        "ta ut pengar",
+        "atm",
+        "swedbank",
+        "handelsbanken"
+      ]
+    },
+    "bus": {
+      "label": "Busshållplatser",
+      "one": "Busshållplats",
+      "terms": [
+        "busshållplats",
+        "hållplats",
+        "buss",
+        "bussar"
+      ]
+    },
+    "train": {
+      "label": "Tågstationer",
+      "one": "Tågstation",
+      "terms": [
+        "tågstation",
+        "järnvägsstation",
+        "tåg",
+        "station",
+        "stationer",
+        "s-bahn"
+      ]
+    },
+    "bikeshop": {
+      "label": "Cykelaffärer",
+      "one": "Cykelaffär",
+      "terms": [
+        "cykelaffär",
+        "cykelverkstad",
+        "cykelbutik",
+        "cykelreparation"
+      ]
+    },
+    "bikeparking": {
+      "label": "Cykelparkeringar",
+      "one": "Cykelparkering",
+      "terms": [
+        "cykelparkering",
+        "cykelställ",
+        "cykelstativ",
+        "ställa cykeln"
+      ]
+    },
+    "carrepair": {
+      "label": "Bilverkstäder",
+      "one": "Bilverkstad",
+      "terms": [
+        "bilverkstad",
+        "verkstad",
+        "bilmekaniker",
+        "däck",
+        "däckverkstad"
+      ]
+    },
+    "playground": {
+      "label": "Lekplatser",
+      "one": "Lekplats",
+      "terms": [
+        "lekplats",
+        "lekplatser",
+        "barn",
+        "lekpark"
+      ]
+    },
+    "soccer": {
+      "label": "Fotbollsplaner",
+      "one": "Fotbollsplan",
+      "terms": [
+        "fotbollsplan",
+        "fotboll",
+        "fotbollsplaner",
+        "idrottsplats"
+      ]
+    },
+    "sports": {
+      "label": "Idrottsanläggningar",
+      "one": "Idrottsanläggning",
+      "terms": [
+        "idrottsanläggning",
+        "idrottshall",
+        "sporthall",
+        "stadion",
+        "gym",
+        "träning"
+      ]
+    },
+    "pool": {
+      "label": "Badhus",
+      "one": "Badhus",
+      "terms": [
+        "badhus",
+        "simhall",
+        "friluftsbad",
+        "bada",
+        "badplats",
+        "spa"
+      ]
+    },
+    "river": {
+      "label": "Floder",
+      "one": "Flod",
+      "terms": [
+        "flod",
+        "floder",
+        "älv",
+        "älvar",
+        "å"
+      ]
+    },
+    "stream": {
+      "label": "Bäckar & kanaler",
+      "one": "Bäck",
+      "terms": [
+        "bäck",
+        "bäckar",
+        "kanal",
+        "kanaler",
+        "dike"
+      ]
+    },
+    "lake": {
+      "label": "Sjöar & dammar",
+      "one": "Sjö",
+      "terms": [
+        "sjö",
+        "sjöar",
+        "damm",
+        "dammar",
+        "tjärn",
+        "vattenmagasin"
+      ]
+    },
+    "park": {
+      "label": "Parker",
+      "one": "Park",
+      "terms": [
+        "park",
+        "parker",
+        "grönområde",
+        "trädgård"
+      ]
+    },
+    "forest": {
+      "label": "Skogar",
+      "one": "Skog",
+      "terms": [
+        "skog",
+        "skogar",
+        "skogsområde"
+      ]
+    },
+    "church": {
+      "label": "Kyrkor",
+      "one": "Kyrka",
+      "terms": [
+        "kyrka",
+        "kyrkor",
+        "kapell",
+        "domkyrka",
+        "moské",
+        "synagoga"
+      ]
+    },
+    "castle": {
+      "label": "Slott & borgar",
+      "one": "Slott",
+      "terms": [
+        "slott",
+        "borg",
+        "borgar",
+        "ruin",
+        "fästning"
+      ]
+    },
+    "museum": {
+      "label": "Museer",
+      "one": "Museum",
+      "terms": [
+        "museum",
+        "museer",
+        "utställning",
+        "galleri"
+      ]
+    },
+    "cinema": {
+      "label": "Biografer",
+      "one": "Biograf",
+      "terms": [
+        "biograf",
+        "biografer",
+        "bio",
+        "film"
+      ]
+    },
+    "school": {
+      "label": "Skolor",
+      "one": "Skola",
+      "terms": [
+        "skola",
+        "skolor",
+        "gymnasium",
+        "grundskola"
+      ]
+    },
+    "police": {
+      "label": "Polis",
+      "one": "Polis",
+      "terms": [
+        "polis",
+        "polisstation",
+        "polishus"
+      ]
+    }
+  },
+  "credits": {
+    "map_data": {
+      "what": "Kartdata",
+      "name": "OpenStreetMap-bidragsgivare"
+    },
+    "tiles": {
+      "what": "Kartrutor"
+    },
+    "schema": {
+      "what": "Kartschema"
+    },
+    "heights": {
+      "what": "Höjder"
+    },
+    "search": {
+      "what": "Sök"
+    },
+    "routing": {
+      "what": "Ruttplanering",
+      "name": "Valhalla på FOSSGIS servrar"
+    },
+    "places": {
+      "what": "Platser och vägar"
+    },
+    "trails": {
+      "what": "Vandrings- och cykelleder",
+      "note": "CC BY-SA"
+    },
+    "satellite": {
+      "what": "Satellitbild",
+      "name": "Sentinel-2 cloudless från EOX",
+      "note": "Copernicus-data"
+    },
+    "geology_de": {
+      "what": "Geologi Tyskland",
+      "name": "BGR, GÜK250",
+      "note": "Tillägg"
+    },
+    "geology_world": {
+      "what": "Geologi världen över",
+      "note": "CC BY 4.0, tillägg"
+    },
+    "images": {
+      "what": "Bilder och texter"
+    },
+    "transit": {
+      "what": "Buss & tåg, avgångar",
+      "name": "Reseplanerare (EFA) från NVBW",
+      "note": "Tidtabellsdata DELFI"
+    },
+    "aerial": {
+      "what": "Flygbilder",
+      "name": "Lantmäteriförvaltningarna i de tyska delstaterna",
+      "note": "bl.a. CC BY 4.0, dl-de"
+    },
+    "traffic": {
+      "what": "Trafikläge",
+      "name": "Die Autobahn GmbH des Bundes"
+    },
+    "fuel": {
+      "what": "Bränslepriser",
+      "note": "CC BY 4.0"
+    },
+    "rendering": {
+      "what": "Kartpresentation"
+    }
+  },
+  "map_page": {
+    "back_dashboard": "Tillbaka till översikten",
+    "close_to_map": "Stäng – till kartan",
+    "name": "Namn",
+    "back_list": "Tillbaka till listan"
+  },
+  "elevation": {
+    "chips": {
+      "ascent": "Stigning",
+      "descent": "Nedstigning",
+      "highest": "Högsta punkt",
+      "lowest": "Lägsta punkt"
+    },
+    "height": "Höjd",
+    "title": "Höjdmeter"
+  },
+  "layers_menu": {
+    "own_source": {
+      "title": "Egen källa",
+      "hint": "Kartrutor, en WMS-tjänst eller GeoJSON – även privat med användarnamn och lösenord. Allt stannar bara på den här enheten.",
+      "name": "Namn",
+      "name_example": "t.ex. Mätnät Harz",
+      "kind": "Typ",
+      "kinds": {
+        "tiles": "Kartrutor ({z}/{x}/{y})",
+        "wms": "WMS-tjänst",
+        "geojson": "GeoJSON-fil"
+      },
+      "url": "Adress (https)",
+      "layer": "WMS-lager (bara för WMS)",
+      "layer_example": "t.ex. ni_dop20",
+      "user": "Användarnamn (valfritt)",
+      "password": "Lösenord (valfritt)",
+      "add": "Lägg till",
+      "error": {
+        "https": "Adressen måste börja med https://",
+        "denied": "Åtkomst nekad – kontrollera användarnamn eller lösenord",
+        "status": "Servern svarar med {status}",
+        "no_layer": "Ange WMS-lagret",
+        "no_zxy": "Rutadresser behöver {z}, {x} och {y}",
+        "cors": "Går inte att nå – kanske tillåter servern inte hämtning från webbläsaren (CORS)"
+      },
+      "added": "”{name}” finns nu på kartan"
+    },
+    "attribution": {
+      "satellite": "Satellit: <a href=\"https://s2maps.eu\" target=\"_blank\" rel=\"noopener\">Sentinel-2 cloudless från EOX</a> (Copernicus-data 2020)",
+      "trails": "Leder: <a href=\"https://waymarkedtrails.org\" target=\"_blank\" rel=\"noopener\">Waymarked Trails</a> (CC BY-SA)",
+      "sat_ni": "Flygbild Niedersachsen: © LGLN (CC BY 4.0)",
+      "sat_nw": "Flygbild NRW: © Geobasis NRW (dl-de/zero-2-0)",
+      "sat_by": "Flygbild Bayern: © Bayerische Vermessungsverwaltung (CC BY 4.0)",
+      "sat_he": "Flygbild Hessen: © HVBG",
+      "sat_th": "Flygbild Thüringen: © GDI-Th (CC BY 4.0)",
+      "sat_sn": "Flygbild Sachsen: © GeoSN (dl-de/by-2-0)",
+      "sat_bb": "Flygbild Brandenburg: © GeoBasis-DE/LGB (dl-de/by-2-0)",
+      "sat_be": "Flygbild Berlin: © Geoportal Berlin (dl-de/zero-2-0)",
+      "sat_mv": "Flygbild M-V: © GeoBasis-DE/M-V",
+      "sat_rp": "Flygbild Rheinland-Pfalz: © GeoBasis-DE/LVermGeoRP (dl-de/by-2-0)",
+      "sat_sl": "Flygbild Saarland: © LVGL",
+      "sat_bw": "Flygbild Baden-Württemberg: © LGL-BW (dl-de/by-2-0)"
+    },
+    "trails": {
+      "hiking": "Vandringsleder",
+      "cycling": "Cykelleder",
+      "mtb": "Mountainbike",
+      "hint": "markerade rutter, Waymarked Trails"
+    },
+    "title": "Lager",
+    "base": {
+      "map": "Karta",
+      "sat": "Satellit"
+    },
+    "focus": {
+      "title": "Vandring & cykel",
+      "hint": "Stora vägar tonas ner, vandringsleder och terräng framhävs"
+    },
+    "relief": {
+      "title": "Reliefskuggning",
+      "hint": "Skuggor i sluttningar – även rakt uppifrån"
+    },
+    "own": {
+      "title": "Egna lager & plugin",
+      "plugin_by": "Plugin från {operator}",
+      "private": "privat källa",
+      "tiles": "Kartrutor",
+      "objects": "{count} objekt",
+      "none": "Inga ännu – under ”Hantera” finns geologi, flygbilder och mer."
+    },
+    "manage": "Hantera",
+    "button": "Lager: satellit, vandringsleder, plugin"
+  },
+  "news": {
+    "message_title": "Nyhet",
+    "welcome": {
+      "title": "Välkommen till WMap",
+      "go": "Nu kör vi",
+      "text": [
+        "<b>WMap</b> är en karta utan spårning: sök, navigera, planera och spela in rutter och turer – till fots, med cykel, med bil och med buss &amp; tåg.",
+        "Allt bygger på öppna data från OpenStreetMap. Du behöver inget konto och har full kontroll över dina data.",
+        "Skriv en plats, en adress eller bara ”bageri” högst upp för att hitta bagerier i närheten – eller tryck på <span class=\"msr\">directions</span> för att planera en rutt."
+      ]
+    },
+    "version": "Version {version}",
+    "changelog": {
+      "all": "Vad som finns i WMap",
+      "one": "Nytt i WMap {version}",
+      "since": "Nytt sedan version {version}"
+    },
+    "update": {
+      "button": "Uppdatera",
+      "forced_title": "Uppdatering krävs",
+      "title": "Ny version tillgänglig",
+      "forced_text": "Den här versionen av WMap ({version}) fungerar inte längre – uppdatera, det tar bara ett ögonblick.",
+      "text": "WMap {version} är här. Uppdatera nu? Sedan ser du vad som är nytt.",
+      "loading": "WMap {version} laddas. Sedan ser du vad som är nytt.",
+      "moment": "Ett ögonblick …",
+      "percent": "{pct} %",
+      "failed": "Det gick inte att ladda. Din version förblir som den är.",
+      "unavailable": "Uppdateringen är inte tillgänglig än: den är inte komplett på servern. Din version förblir som den är – försök igen senare."
+    },
+    "app": {
+      "title": "Ny version av WMap-appen",
+      "via_store": "i Play Store",
+      "via_site": "via wuefl.de",
+      "text": "WMap-appen {want} är här – du har {app}. Uppdatera den {where}. Det nya gränssnittet kommer sedan av sig självt.",
+      "to_store": "Till Play Store",
+      "to_site": "Till nedladdningssidan",
+      "required_title": "Uppdatera WMap-appen",
+      "required_text": "Den här versionen kräver en nyare WMap-app (minst {min}). Säkerhetskopiera dina data först och uppdatera sedan {where}."
+    },
+    "stats": {
+      "text": "För att se hur många som använder WMap och vilka tjänster som behövs skickar WMap en gång om dagen ett anonymt meddelande till WMap-servern: att appen var öppen i dag och hur ofta den frågade varje tjänst. Utan ID, utan plats, utan sökord. Du kan ändra det när som helst under <strong>Inställningar → Data</strong>.",
+      "allow": "Tillåt",
+      "deny": "Skicka inte"
+    },
+    "changes": {
+      "3.1.1": [
+        "Endast Tyskland: buss och tåg från tre källor – avgångar, resans förlopp och förbindelser kommer från NVBW, RMV (Hessen) och EFA-BW; faller en bort tar nästa över",
+        "Endast Tyskland: laddstationer med lediga platser – effekt per kontakt och ”x av y lediga”",
+        "Enheter och tidsformat: kilometer eller miles, 24 eller 12 timmar – i välkomstrutan och under Inställningar → Utseende, förvalt efter din enhets land",
+        "Android Auto: menyer och meddelanden på appens språk – med nästa uppdatering av appen",
+        "Skala längst ned till höger på kartan, synlig när du zoomar",
+        "Långt tryck på ett hus: adressen står som rubrik i stället för ”Punkt på kartan”",
+        "Rättelse: kartan öppnas åter där du senast flyttade den – även med en mapp för flera enheter",
+        "Rättelse: turer som raderats i mappen skrivs inte längre tillbaka av en annan enhet",
+        "Rättelse: välkomsttexten saknades vid första starten",
+        "Fix: efter en uppdatering saknades ibland texter (t.ex. i inställningarna) eller så förblev kartan tom. En uppdatering används nu först när alla filer har laddats helt och stämmer"
+      ],
+      "3.1.0": [
+        "WMap finns nu på tyska, engelska, franska, polska, svenska, norska och danska – från början på din enhets språk. Språk och färgschema väljer du direkt i välkomstrutan",
+        "Bättre sökning: om söktjänsten inte svarar söker WMap vidare via andra servrar. Även rutter och tidtabeller byter själva när en server går ner",
+        "Anonym användningsstatistik: en gång om dagen, utan ID, plats eller sökord – kan stängas av under Inställningar → Data",
+        "Sökning, rutter och tidtabeller kan nu själva byta mellan flera servrar när en går ner"
+      ]
+    }
+  },
+  "record": {
+    "title": "Spela in",
+    "choose_hint": "Hur är du på väg? Inspelningen stannar på den här enheten.",
+    "stats": {
+      "distance": "Sträcka",
+      "time": "Tid"
+    },
+    "pause": "Paus",
+    "stop": "Avsluta",
+    "follow": {
+      "title": "Låt kartan följa din position igen",
+      "label": "Följ"
+    },
+    "home": {
+      "title": "Rutt tillbaka till inspelningens start",
+      "label": "Till start",
+      "target": "Inspelningens start"
+    },
+    "toast": {
+      "running": "Inspelning pågår",
+      "no_point": "Ingen punkt inspelad ännu",
+      "discarded": "Inspelningen kasserades",
+      "too_short": "För kort för att sparas",
+      "saved": "”{name}” sparad",
+      "view": "Visa",
+      "save_failed": "Det gick inte att spara: {reason}",
+      "location_blocked": "Platsåtkomst är blockerad – utan den ingen inspelning"
+    },
+    "finish": {
+      "title": "Avsluta inspelningen",
+      "name": "Namn",
+      "discard": "Kassera",
+      "confirm_discard": "Verkligen kassera inspelningen?",
+      "save": "Spara"
+    }
+  },
+  "route_prefs": {
+    "modes": {
+      "long": "Fjärrtåg (ICE, IC)",
+      "regional": "Regionaltåg, S-Bahn",
+      "urban": "U-Bahn, spårvagn",
+      "bus": "Buss"
+    },
+    "transit": {
+      "title": "Förbindelser",
+      "modes": "Färdmedel",
+      "change": "Minsta bytestid",
+      "fastest": "Visa även snabbaste förbindelsen",
+      "fastest_hint": "även om bytet är tight"
+    },
+    "avoid": {
+      "ferries": "Undvik färjor",
+      "highways": "Undvik motorvägar",
+      "tolls": "Undvik vägtullar",
+      "unpaved": "Undvik obelagda vägar"
+    },
+    "title": "Rutt"
+  },
+  "tour_stages": {
+    "toast": {
+      "start": "Tryck på linjen där en dag ska sluta – eller låt den delas automatiskt",
+      "on_line": "Tryck exakt på linjen för att markera dagens slut",
+      "saved": "{n} dagsturer sparade – under ”Mina turer”"
+    },
+    "marker": "Slut dag {n} – tryck för att ta bort",
+    "title": "Etapper",
+    "hint": {
+      "active": "Tryck på linjen där en dag ska sluta; tryck på en flagga för att ta bort den.",
+      "idle": "Med ”Etapper” ovan kan du ändra dagarnas slut."
+    },
+    "auto": {
+      "every": "Var",
+      "split": "Dela automatiskt"
+    },
+    "clear": "Ta bort alla",
+    "day": "Dag {n}",
+    "goal": "Mål",
+    "until_unknown": "till …",
+    "save": "Spara som {n} dagsturer",
+    "saved": {
+      "name": "{base} – dag {n}",
+      "until": " (till {end})",
+      "description": "Etapp {i} av {n}{end} · från ”{base}”"
+    }
+  },
+  "transit_legs": {
+    "walk": "Promenad",
+    "changes": "{n} × byte",
+    "no_change": "utan byte",
+    "vehicle": {
+      "bus": "Buss",
+      "express_bus": "Expressbuss",
+      "tram": "Spårvagn",
+      "light_rail": "Stadsbana",
+      "subway": "U-Bahn",
+      "suburban": "S-Bahn",
+      "ferry": "Färja",
+      "community_bus": "Medborgarbuss",
+      "on_call_bus": "Anropsstyrd buss",
+      "replacement": "Ersättningstrafik"
+    },
+    "walk_to": "Gå till {to}",
+    "platform": "Plattform {n}",
+    "take": "Ta {vehicle}{to}",
+    "ride": "{from}{platform} → {to}{platform_to}, ankomst {time}",
+    "stops": {
+      "one": "{n} hållplats",
+      "other": "{n} hållplatser"
+    },
+    "gap": "{n} min för byte{at}"
+  },
+  "poi": {
+    "values": {
+      "yes_no": {
+        "yes": "ja",
+        "no": "nej",
+        "limited": "begränsat",
+        "designated": "ja",
+        "only": "endast"
+      },
+      "surface": {
+        "asphalt": "asfalt",
+        "paved": "belagd",
+        "concrete": "betong",
+        "concrete_plates": "betongplattor",
+        "paving_stones": "marksten",
+        "sett": "gatsten",
+        "cobblestone": "kullersten",
+        "unhewn_cobblestone": "obearbetad kullersten",
+        "compacted": "kompakterad",
+        "fine_gravel": "fingrus",
+        "gravel": "grus",
+        "pebblestone": "småsten",
+        "unpaved": "obelagd",
+        "dirt": "jord",
+        "earth": "jord",
+        "ground": "naturmark",
+        "grass": "gräs",
+        "grass_paver": "gräsarmering",
+        "sand": "sand",
+        "wood": "trä",
+        "metal": "metall",
+        "mud": "lera",
+        "rock": "berg",
+        "artificial_turf": "konstgräs",
+        "tartan": "tartan"
+      },
+      "parking": {
+        "surface": "Markparkering",
+        "multi_storey": "Parkeringshus",
+        "underground": "Underjordiskt garage",
+        "street_side": "Gatuparkering",
+        "lane": "Parkeringsficka",
+        "rooftop": "Takparkering",
+        "carports": "Carportar",
+        "garage_boxes": "Garage"
+      },
+      "access": {
+        "yes": "allmän",
+        "public": "allmän",
+        "customers": "endast kunder",
+        "private": "privat",
+        "permissive": "tolererad",
+        "permit": "med tillstånd",
+        "destination": "endast boende och ärenden",
+        "residents": "endast boende",
+        "no": "ingen tillgång"
+      },
+      "sockets": {
+        "type2": "Typ 2",
+        "type2_combo": "CCS",
+        "chademo": "CHAdeMO",
+        "schuko": "Schuko",
+        "tesla_supercharger": "Tesla",
+        "type2_cable": "Typ 2 (kabel)",
+        "cee_blue": "CEE blå"
+      },
+      "fuels": {
+        "diesel": "Diesel",
+        "octane_95": "Bensin 95",
+        "e10": "E10",
+        "octane_98": "Bensin 98",
+        "lpg": "Gasol",
+        "cng": "Naturgas",
+        "adblue": "AdBlue",
+        "hydrogen": "Vätgas",
+        "HGV_diesel": "Lastbilsdiesel"
+      },
+      "payment": {
+        "cash": "kontant",
+        "debit_cards": "bankkort",
+        "credit_cards": "kreditkort",
+        "contactless": "kontaktlöst",
+        "app": "app"
+      },
+      "fee": {
+        "no": "gratis",
+        "yes": "avgiftsbelagd"
+      }
+    },
+    "hours": {
+      "until": "till",
+      "status": {
+        "always": "Öppet dygnet runt",
+        "open": "Öppet nu · till {until}",
+        "off_season": "Stängt · öppet {when}",
+        "next": "Stängt · öppnar {next}",
+        "today_closed": "Stängt idag"
+      },
+      "closed": "stängt",
+      "all_day": "hela dagen",
+      "open_months": "Öppet {months}",
+      "holiday": "Helgdag",
+      "holidays": "Helgdagar: {hours}",
+      "always": "dygnet runt",
+      "school_holidays": "Skollov"
+    },
+    "links": {
+      "website": "Webbplats",
+      "menu": "Meny",
+      "events": "Program",
+      "instagram": "Instagram",
+      "facebook": "Facebook"
+    },
+    "facts": {
+      "hours": "Öppettider",
+      "fee": "Avgift",
+      "surface": "Underlag",
+      "access": "Tillträde",
+      "operator": "Operatör",
+      "phone": "Telefon",
+      "cuisine": "Kök",
+      "payment": "Betalning",
+      "ele": "Höjd",
+      "capacity": "Platser (totalt)",
+      "kind": "Typ",
+      "maxstay": "Maximal parkeringstid",
+      "disabled": "Handikapplatser",
+      "charging": "Laddplatser",
+      "fuels": "Drivmedel",
+      "shop": "Butik",
+      "charge_points": "Laddpunkter",
+      "sockets": "Kontakter",
+      "water": "Dricksvatten",
+      "seasonal": "Säsongsbunden",
+      "covered": "Under tak",
+      "min_age": "Minimiålder"
+    },
+    "edit_hint": {
+      "operator": "t.ex. Göteborg Energi",
+      "cuisine": "t.ex. italian;pizza",
+      "ele": "Meter över havet",
+      "capacity": "alla, inte bara de lediga",
+      "maxstay": "t.ex. 2 hours",
+      "charge_points": "Fordon som kan laddas samtidigt",
+      "min_age": "År"
+    },
+    "traits": {
+      "delivery": {
+        "name": "Leverans",
+        "only": "Endast leverans"
+      },
+      "takeaway": {
+        "name": "Take away",
+        "only": "Endast take away"
+      },
+      "organic": {
+        "name": "Ekologiskt",
+        "only": "Endast ekologiskt"
+      },
+      "vegan": {
+        "name": "Veganskt",
+        "yes": "Veganska alternativ"
+      },
+      "vegetarian": {
+        "name": "Vegetariskt",
+        "yes": "Vegetariska alternativ"
+      },
+      "drive_through": {
+        "name": "Drive-in"
+      }
+    },
+    "equipment": {
+      "wheelchair": {
+        "yes": "Rullstolsanpassat",
+        "limited": "Delvis rullstolsanpassat",
+        "no": "Inte rullstolsanpassat"
+      },
+      "outdoor": "Uteservering",
+      "toilets": {
+        "name": "Toaletter",
+        "guests": "Toaletter för gäster",
+        "public": "Allmänna toaletter"
+      },
+      "changing": "Skötbord",
+      "wlan": "Wi-Fi",
+      "air": "Luftkonditionering",
+      "dog": "Hundar tillåtna"
+    },
+    "access_note": {
+      "customers": "Endast för kunder",
+      "destination": "Endast för boende och ärenden",
+      "delivery": "Endast leveranstrafik",
+      "private": "Privat – inte öppet för allmänheten",
+      "no": "Ingen tillgång",
+      "residents": "Endast för boende",
+      "permit": "Endast med tillstånd"
+    },
+    "card": {
+      "unknown": "okänt",
+      "place": "Plats",
+      "still_unknown": "Fortfarande okänt:",
+      "equipment": "Utrustning"
+    }
+  },
+  "server": {
+    "tours": {
+      "not_found": "Turen hittades inte",
+      "needs_name": "Turen behöver ett namn",
+      "no_geometry": "Sträckningen saknas eller är för lång",
+      "no_position": "Turens läge saknas",
+      "not_yours": "Det här är inte din tur",
+      "no_rating": "Den här turen kan inte betygsättas"
+    },
+    "login": {
+      "invalid": "Inloggningen är ogiltig – försök igen",
+      "method": "Inloggningen är ogiltig (metod)",
+      "osm_down": "OpenStreetMap kan inte nås just nu – försök igen senare",
+      "signature": "Inloggningen är ogiltig (signatur)",
+      "osm_only": "WMap-kontot fungerar bara med ett konto på openstreetmap.org",
+      "foreign_app": "Inloggning via ett annat program – logga in i WMap",
+      "expired": "Inloggningen har gått ut – försök igen",
+      "user": "Inloggningen är ogiltig (användare)",
+      "required": "Logga in först"
+    },
+    "plugins": {
+      "needs_name": "Pluginet behöver ett namn",
+      "data_size": "Data saknas eller är större än 2 MB",
+      "geojson": "En GeoJSON-FeatureCollection förväntas",
+      "https": "Källan måste vara en https-länk",
+      "tile_link": "Kartrutelänkar behöver {z}/{x}/{y} – WMS-länkar {bbox-epsg-3857}",
+      "script": "Ett tillägg är en JavaScript-fil (.js eller .mjs)",
+      "not_yours": "Det här är inte ditt plugin",
+      "not_found": "Pluginet hittades inte eller är privat"
+    },
+    "share": {
+      "unknown_kind": "Okänd typ",
+      "bad_content": "Innehållet stämmer inte",
+      "short_too_big": "Turen är för stor för en kort länk",
+      "too_many": "Väldigt många korta länkar har redan skapats i dag – använd den långa länken",
+      "short_failed": "Den korta länken kunde inte skapas",
+      "incomplete": "Länken är inte komplett",
+      "link_gone": "Den här länken finns inte längre – delade turer raderas från servern efter {days} dagar",
+      "too_big": "Turen är för stor",
+      "collab_gone": "Den här gemensamma turen finns inte längre – den låg på servern i {days} dagar",
+      "view_only": "Du får bara titta på den här turen",
+      "save_failed": "Ändringen kunde inte sparas"
+    },
+    "account": {
+      "delete_failed": "Raderingen misslyckades – inget har raderats. Försök igen senare."
+    },
+    "bad_request": "Hittade ingenting... Felaktig begäran"
+  }
+}

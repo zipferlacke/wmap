@@ -12,15 +12,20 @@ export const TERRAIN_TILES = 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp';
 
 /*
  * Bei Listen wechselt services/servers.js selbst zwischen den Servern: weiteren Server einfach dazuschreiben (dieselbe
- * Schnittstelle, Abruf aus dem Browser erlaubt).
+ * Schnittstelle, Abruf aus dem Browser erlaubt). „wmap:<dienst>“ geht über den WMap-Server (bEnd/proxy.php, dort stehen
+ * dessen Server und ggf. der Schlüssel).
  */
 export const API = {
-  // Photon (komoot): tippfehlertolerante Suche über OSM-Daten
-  photon: ['https://photon.komoot.io'],
+  // Photon (komoot): tippfehlertolerante Suche über OSM-Daten; fällt komoot aus, über den WMap-Server zu weiteren
+  // Photon-Servern (bEnd/proxy.php – die erlauben den Abruf aus dem Browser nicht)
+  photon: ['https://photon.komoot.io', 'wmap:photon'],
   // Valhalla (FOSSGIS): nur für die Entwicklung gedacht
   valhalla: ['https://valhalla1.openstreetmap.de'],
   // EFA (NVBW): Abfahrten und Verbindungen
   efa: ['https://www.efa-bw.de/nvbw/'],
+  // RMV (HAFAS) und TRIAS der EFA-BW: brauchen einen Schlüssel, darum nur über den WMap-Server (bEnd/proxy.php)
+  rmv: ['wmap:rmv'],
+  trias: ['wmap:trias'],
   // OSM-API: einzelne Objekte nach Klick – Tags und Umriss in ~0,1 s
   osm: 'https://api.openstreetmap.org/api/0.6',
   // Wikipedia/Wikidata/Commons: Bilder und Kurzbeschreibung zu Orten
@@ -62,7 +67,7 @@ export const PROFILES = {
     label: t('common.profiles.car'), icon: 'directions_car', costing: 'auto', nav: true,
     radius: 400, announce: { far: 500, near: 60 },
   },
-  /* Bus & Bahn: Verbindungen nach Fahrplan (services/departures.js, EFA), keine Navigation */
+  /* Bus & Bahn: Verbindungen nach Fahrplan (services/timetable: EFA, RMV, TRIAS), keine Navigation */
   transit: {
     label: t('common.profiles.transit'), icon: 'directions_transit', nav: true, transit: true,
     radius: 150, announce: { far: 80, near: 15 },
@@ -118,7 +123,7 @@ export const TANKERKOENIG_KEY = '';
 export const MAX_ROUTES = 5;
 
 /** Steht im Changeset (created_by) – bei neuen Versionen mitziehen. */
-export const APP_VERSION = '3.1.0';
+export const APP_VERSION = '3.1.1';
 
 /**
  * Öffentliche Adresse der Web-App (mit / am Ende). Geteilte Links zeigen im

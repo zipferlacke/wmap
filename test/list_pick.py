@@ -36,7 +36,7 @@ BAR = "const b = document.querySelector('.compare-bar'); return b && [b.querySel
 
 with Browser(420, 900) as b:
     b.open('wege.html', 3)
-    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] })); localStorage.removeItem('wmap.wegeView')")
+    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] })); localStorage.setItem('wmap.stats.asked', '1'); localStorage.removeItem('wmap.wegeView')")
     print('Anlegen:', b.d.execute_async_script(MAKE))
     b.open('wege.html', 4)
     row = lambda i: b.css(f'tr[data-id="{i}"] .w-name')

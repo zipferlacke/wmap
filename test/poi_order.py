@@ -57,7 +57,7 @@ with Browser(1200, 850) as b:
     b.d.script.add_preload_script(PRELOAD)
     b.d.set_script_timeout(60)
     b.open('index.html', 2)
-    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] }))")
+    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] })); localStorage.setItem('wmap.stats.asked', '1')")
     b.open('index.html', 4)
     b.wait("return window.__wmap?.map?.getLayer('poi_early') && window.__wmap.map.loaded()", 60)
 
@@ -70,7 +70,7 @@ with Browser(1200, 850) as b:
     check('1. Reihenfolge: spät unten, früh oben', o.index('poi_late') < o.index('poi_r20') and o.index('poi_early') > o.index('poi_r1'), o)
     check('1. rank-Ebenen ohne frühe und späte', info['r1'])
 
-    # 3. zuerst: Teil 2 fragte sonst dieselbe Gegend schon ohne festgelegte Antwort
+    # 3. zuerst: Teil 2 fragt dieselbe Gegend sonst schon ohne festgelegte Antwort ab
     # 3. Privat: zwei Parkplätze aus den Kacheln nehmen und als privat bzw. Kunden melden
     # Unter Zoom 16 fragt WMap Overpass noch nicht – erst die Antwort festlegen, dann hinein
     park = page(b, """m.jumpTo({ center: [9.95, 51.545], zoom: 15.5 }); await new Promise((ok) => m.once('idle', ok));

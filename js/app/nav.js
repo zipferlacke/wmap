@@ -59,7 +59,7 @@ export const nav = new Navigation(map, $('#nav'), {
     if (!again) keepOffline(route);
   },
   onSearch: () => openNavSearch(),
-  // Simulierte Fahrten (?sim) nicht aufzeichnen – dort war niemand
+  // Simulierte Fahrten (?sim) nicht aufzeichnen – es fährt niemand
   onFix: (fix) => {
     if (!SIMULATING) trace.add(fix);
     if (!SIMULATING && recorder.kind === 'nav') recorder.add(fix);
@@ -179,7 +179,7 @@ export async function startNav() {
   if (!SIMULATING) trips.start({ profile: state.profile, destination: navDestination });
   // Aufzeichnen: jede Navigation, wenn so eingestellt („Jede Navigation merken“, Standard aus).
   // Eine Tour (geplant oder eine aufgezeichnete noch einmal): vorher fragen – im Auto geht
-  // keine Rückfrage, dort wird sie wie bisher aufgezeichnet. Unterwegs: Knopf rechts (paintRec)
+  // keine Rückfrage, dort wird sie aufgezeichnet. Unterwegs: Knopf rechts (paintRec)
   let record = historySetting.get();
   if (tourNavigated && !SIMULATING && !recorder.active) {
     record = CAR || await ask({

@@ -8,12 +8,14 @@ import { byId } from '../core/categories.js';
 import { describePoi, poiCard, categoryFor } from '../ui/poi-info.js';
 import * as osm from '../osm/objects.js';
 import { placeMedia, fuelPrices, fuelKey } from '../services/media.js';
+import { chargerAt } from '../services/charging.js';
+import { chargerHtml } from './charging.js';
 import { isStop } from '../services/transit.js';
 import { places } from '../data/saved.js';
 import { share, placeUrl } from '../ui/share.js';
 import { toast } from '../ui/dialogs.js';
 import { editPlace, addPlace } from '../osm/edit.js';
-import { bboxAround, esc } from '../core/geo.js';
+import { bboxAround, distance, esc } from '../core/geo.js';
 import { fmtDms, fmtLatLon, fmtMgrs, fmtPlus, fmtUtm } from '../core/coords.js';
 import { local } from '../data/store.js';
 import { clearCategory, runCategory } from './category.js';
@@ -180,6 +182,8 @@ export async function showPlace(f, { push = true, fly = true, over = false } = {
     // Erst das, was wir schon wissen – die Details kommen nach
     show(f.properties.osm_key ? { [f.properties.osm_key]: f.properties.osm_value } : {});
   }
+  // Ladesäule aus der Ladesäulen-Datenbank (ohne OSM-ID): Belegung steht schon fest
+  if (f.properties._charger) media.insertAdjacentHTML('beforeend', chargerHtml(f.properties._charger));
   if (!type || !id) return;
 
   placeCtl?.abort();
@@ -270,6 +274,8 @@ export function paintPlaceActions() {
   }));
 }
 
+const HOUSE_M = 40;
+
 /** Langes Drücken / Rechtsklick (oder Koordinate in der Suche): der Punkt als Ort, Adresse per Rückwärtssuche. */
 export function showPoint(point, { fly = false, name = '', zoom = null } = {}) {
   const f = { type: 'Feature', geometry: { type: 'Point', coordinates: point }, properties: { name: name || t('map.point_on_map'), _point: true } };
@@ -284,13 +290,26 @@ export function showPoint(point, { fly = false, name = '', zoom = null } = {}) {
     // Adresse als Vorschlag, falls hier ein Ort eingetragen wird
     f.properties._address = r.properties;
     const d = geocode.describe(r);
+    // Auf ein Haus gedrückt (Adresse mit Hausnummer höchstens 40 m entfernt): Die Adresse ist der Titel, der Ort
+    // darunter – auch als Name beim Teilen, Merken und als Wegpunkt. Sonst „Punkt auf der Karte“, „bei …“
+    const p = r.properties;
+    const house = !name && p.street && p.housenumber && distance(point, r.geometry.coordinates) <= HOUSE_M;
+    if (house) {
+      // Nur die Adresse – ein Geschäft im Haus (Name des Treffers) ist nicht das, worauf gedrückt wurde
+      const address = geocode.describe({ properties: { ...p, name: undefined } });
+      f.properties.name = address.title;
+      $('[data-view="place"] .place-title').textContent = address.title;
+      sub(address.subtitle);
+      paintPlaceActions();
+      return;
+    }
     sub(t('map.near_place', { place: [d.title, d.subtitle].filter(Boolean).join(', ') }));
   }).catch(() => sub(''));
 }
 
 /**
- * Bild, Kurzbeschreibung aus Wikipedia und – bei Tankstellen – aktuelle
- * Preise. Alles optional; was es nicht gibt, bleibt weg.
+ * Bild, Kurzbeschreibung aus Wikipedia, bei Tankstellen aktuelle Preise,
+ * bei Ladesäulen Stecker und Belegung. Alles optional; was es nicht gibt, bleibt weg.
  */
 async function enrich(tags, point, box, signal) {
   const jobs = [placeMedia(tags, { signal }).then((m) => {
@@ -312,6 +331,11 @@ async function enrich(tags, point, box, signal) {
           <div><small>${t('place.fuel.diesel')}</small><strong>${eur(pr.diesel)}</strong></div>
           <p>${pr.open ? t('place.fuel.live') : t('place.fuel.closed')} · ${t('place.fuel.source')}</p>
         </div>`);
+    }).catch(() => {}));
+  }
+  if (categoryFor(tags)?.id === 'charging') {
+    jobs.push(chargerAt(point, { signal }).then((s) => {
+      if (!signal.aborted && s) box.insertAdjacentHTML('beforeend', chargerHtml(s));
     }).catch(() => {}));
   }
   // Abfahrten an Bahnhöfen kommen mit allen anderen Haltestellen aus dem

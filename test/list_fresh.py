@@ -33,7 +33,7 @@ ROWS = "return [...document.querySelectorAll('.wege-table tr[data-id]')].map((r)
 
 with Browser(1200, 850) as b:
     b.open('wege.html', 3)
-    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] }))")
+    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] })); localStorage.setItem('wmap.stats.asked', '1')")
     b.open('wege.html', 4)
     before = b.js(ROWS)
     # 1. Speichern mit Meldung

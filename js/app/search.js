@@ -86,8 +86,8 @@ export const suggest = {
   pick(i = this.active) {
     const it = this.items[i < 0 ? 0 : i];
     this.hide();
-    // Noch laufende Suchen verwerfen und den Fokus lösen – sonst taucht die
-    // Liste mit einer verspäteten Antwort über dem Ergebnis wieder auf
+    // Noch laufende Suchen verwerfen und den Fokus lösen: eine verspätete Antwort
+    // soll die Liste nicht über dem Ergebnis wieder öffnen
     searchSeq += 1;
     document.activeElement?.blur?.();
     it?.run();
@@ -363,8 +363,8 @@ $('#search-form').addEventListener('submit', async (e) => {
   if (!text) return;
   // Die Vorschläge zu genau diesem Text stehen schon da: den obersten nehmen
   if (suggest.items.length && suggest.forText === text) { suggest.pick(0); return; }
-  // Sonst frisch suchen – und die verzögerte Vorschlagssuche verwerfen: kam sie nach Enter noch, machte sie diese
-  // Suche ungültig („Nichts gefunden“, obwohl es Treffer gab)
+  // Sonst frisch suchen und die verzögerte Vorschlagssuche verwerfen: sie würde diese
+  // Suche sonst ungültig machen („Nichts gefunden“ trotz Treffern)
   updateSearchSuggestions.cancel();
   const items = await placeSuggestions(q.value, (f) => showPlace(f));
   suggest.hide();

@@ -4,8 +4,8 @@
  * Auto) waren das bei freier Fahrt gut 40 Kartenbilder je Sekunde zu je
  * 15–19 ms: 64–80 % der Rechenzeit (am Pixel 9 gemessen). Die Seite im Auto
  * und die App teilen sich im WebView einen Rechen-Thread; navigierten beide,
- * blieb für jede kaum etwas, das Handy wurde heiß und drosselte – die Karte im
- * Auto hing dann weit hinter dem Standort her und reagierte verzögert.
+ * blieb für jede kaum etwas, das Handy wurde heiß und drosselte; die Karte im
+ * Auto hing hinter dem Standort her.
  *
  *   capFps(20)    höchstens 20 Bilder je Sekunde
  *   capFps(null)  wieder so oft, wie der Bildschirm kann

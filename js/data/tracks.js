@@ -375,8 +375,8 @@ class Recorder {
     const r = await geo.background.sync(state);
     const l = this.#live;
     if (r) this.#always = !!r.always;
-    // Das Gesammelte zuerst, dann, was die Seite inzwischen selbst bekam – sonst gälte das Gesammelte als „zu alt“
-    // (Luftlinie statt Strecke). Sammelt der Dienst immer, braucht es die eigenen Punkte gar nicht
+    // Das Gesammelte zuerst, dann, was die Seite inzwischen selbst bekam (sonst gälte das Gesammelte als „zu alt“,
+    // Luftlinie statt Strecke). Sammelt der Dienst immer, braucht es die eigenen Punkte gar nicht
     const held = this.#held;
     this.#held = [];
     this.#catching = false;

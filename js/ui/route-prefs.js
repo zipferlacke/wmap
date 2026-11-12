@@ -59,13 +59,11 @@ export function valhallaPrefs(costing) {
   return o;
 }
 
-/** EFA-Parameter für die Verkehrsmittel – leer, wenn alle erlaubt sind */
-export function transitParams() {
+/** Erlaubte Verkehrsmittel als Produktklassen (Schema der EFA, services/timetable) – null, wenn alle erlaubt sind */
+export function transitClasses() {
   const on = Object.entries(MODES).filter(([k]) => prefs.modes[k]);
-  if (on.length === Object.keys(MODES).length) return {};
-  const p = { ptOptionsActive: '1', includedMeans: 'checkbox' };
-  for (const c of [...ALWAYS, ...on.flatMap(([, m]) => m.classes)]) p[`inclMOT_${c}`] = '1';
-  return p;
+  if (on.length === Object.keys(MODES).length) return null;
+  return [...ALWAYS, ...on.flatMap(([, m]) => m.classes)];
 }
 
 /** Weicht etwas von der Voreinstellung ab? (Punkt am Filter-Knopf) */

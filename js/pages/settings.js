@@ -25,6 +25,8 @@ import { myOsmStats, allOsmStats, statsText } from '../osm/stats.js';
 import { toast } from '../ui/dialogs.js';
 import { permissionsHere, showPermissions } from '../ui/permissions.js';
 import { lang, languages, locale, setLanguage, t } from '../core/i18n.js';
+import { CLOCK_KEY, UNITS_KEY, clockSystem, refreshUnits, unitSystem } from '../core/units.js';
+import { statsSetting } from '../services/usage.js';
 
 const root = document.querySelector('.settings');
 // Browser am Rechner (Firefox, Chrome, Edge): WMap für „geo:“-Links anmelden.
@@ -53,6 +55,18 @@ const render = () => {
           ${langs.map((l) => `<option value="${l.code}" ${lang === l.code ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}
         </select>
       </label>` : ''}
+      <label class="settings-select">
+        <span><strong>${t('settings.look.units.title')}</strong></span>
+        <select name="units">
+          ${['metric', 'imperial'].map((v) => `<option value="${v}" ${unitSystem() === v ? 'selected' : ''}>${t(`settings.look.units.options.${v}`)}</option>`).join('')}
+        </select>
+      </label>
+      <label class="settings-select">
+        <span><strong>${t('settings.look.clock.title')}</strong></span>
+        <select name="clock">
+          ${['24', '12'].map((v) => `<option value="${v}" ${clockSystem() === v ? 'selected' : ''}>${t(`settings.look.clock.options.${v}`)}</option>`).join('')}
+        </select>
+      </label>
       ${geoHandler ? `<button type="button" class="button settings-row" data-act="geo"><span class="msr">pin_drop</span> ${t('settings.look.geo')}</button>` : ''}
       ${permissionsHere ? `<button type="button" class="button settings-row" data-act="perms"><span class="msr">verified_user</span> ${t('settings.look.permissions')}</button>` : ''}
     </section>
@@ -128,6 +142,7 @@ const render = () => {
       ${toggle('history', t('settings.data.history.title'),
         t('settings.data.history.hint'),
         historySetting.get())}
+      ${toggle('stats', t('settings.data.stats.title'), t('settings.data.stats.hint'), statsSetting.get())}
       <label class="settings-select">
         <span><strong>${t('settings.data.trackshow.title')}</strong><small>${t('settings.data.trackshow.hint')}</small></span>
         <select name="trackshow">
@@ -137,6 +152,8 @@ const render = () => {
       <a class="button settings-row" href="./sync.html"><span class="msr">sync</span> ${t('settings.data.sync')}</a>
       <a class="button settings-row" href="./wege.html"><span class="msr">timeline</span> ${t('settings.data.tracks')}</a>
       <button type="button" class="button settings-row" data-act="history"><span class="msr">history</span> ${t('settings.data.clear_history')}</button>
+      <button type="button" class="button settings-row" data-act="repair"><span class="msr">build</span> ${t('settings.data.repair.title')}</button>
+      <p class="settings-hint">${t('settings.data.repair.hint')}</p>
     </section>
 
     <section>
@@ -164,6 +181,8 @@ addEventListener('wmap:login', (e) => {
 root.addEventListener('change', (e) => {
   const el = e.target;
   if (el.name === 'language') { setLanguage(el.value); location.reload(); }
+  if (el.name === 'units') { local.set(UNITS_KEY, el.value); refreshUnits(); dispatchEvent(new Event('wmap:units')); }
+  if (el.name === 'clock') { local.set(CLOCK_KEY, el.value); refreshUnits(); }
   if (el.name === 'offline') offlineSetting.set(el.checked);
   if (el.name === 'theme') theme.set(el.value);
   if (el.name === 'navzoom') navSettings.zoom = el.value;
@@ -179,6 +198,7 @@ root.addEventListener('change', (e) => {
   if (el.name === 'contribute') contribute.set(el.checked);
   if (el.name === 'anon') anonNotes.set(el.checked);
   if (el.name === 'history') historySetting.set(el.checked);
+  if (el.name === 'stats') { statsSetting.markAsked(); statsSetting.set(el.checked); }
   // Neuer Zeitraum: von Hand ein- und ausgeblendete Jahre gelten nicht weiter
   if (el.name === 'sharpness') { sharpness.set(el.value); toast(t('settings.toast.next_open')); }
   if (el.name === 'trackshow') { trackShow.set(el.value); local.set('wmap.tracks.years', {}); }
@@ -199,6 +219,15 @@ root.addEventListener('click', async (e) => {
     } catch (err) { toast(t('settings.toast.geo_failed', { error: err.message })); }
   }
   if (act === 'history') { recent.clear(); toast(t('settings.toast.history_cleared')); }
+  // Gekapselt (core/updater.js): funktioniert auch bei einem fehlerhaften Update
+  if (act === 'repair') {
+    if (!window.wmapUpdater) { location.reload(); return; }
+    const label = b.innerHTML;
+    b.disabled = true;
+    b.innerHTML = `<span class="msr">hourglass_top</span> ${t('settings.data.repair.running')}`;
+    const r = await window.wmapUpdater.check().catch(() => null);
+    if (r) { toast(r.text); b.disabled = false; b.innerHTML = label; }
+  }
   if (act === 'clear-trace') { trace.clear(); toast(t('settings.toast.trace_cleared')); }
   if (act === 'logout') { await konto.logout(); render(); }
   if (act === 'login') {
@@ -244,3 +273,5 @@ function toggle(name, label, hint, on) {
 
 mountAppBar();
 render();
+// Ergebnis von „App prüfen und neu laden“ (core/updater.js) – die Seite hat danach neu geladen
+{ const note = window.wmapUpdater?.note(); if (note) toast(note.text); }

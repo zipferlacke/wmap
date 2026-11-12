@@ -16,10 +16,11 @@ import { folder } from '../data/folder.js';
 import { healthAvailable, healthSync } from '../services/health.js';
 import { autoSync } from '../data/auto-sync.js';
 import { ask, toast } from '../ui/dialogs.js';
-import { esc } from '../core/geo.js';
+import { esc, fmtDistance } from '../core/geo.js';
+import { imperial } from '../core/units.js';
 import { APP_VERSION } from '../core/config.js';
 import { appVersion } from '../core/native.js';
-import { showChangelog } from '../ui/news.js';
+import { runningVersion, showChangelog } from '../ui/news.js';
 import { questions } from '../osm/survey.js';
 import { contribute } from '../data/trace.js';
 import { locale, t } from '../core/i18n.js';
@@ -27,7 +28,7 @@ import { locale, t } from '../core/i18n.js';
 const $ = (s, root = document) => root.querySelector(s);
 mountAppBar();
 
-const km = (m) => t('dashboard.unit.km', { v: Math.round(m / 1000).toLocaleString(locale) });
+const km = (m) => (imperial() ? fmtDistance(m) : t('dashboard.unit.km', { v: Math.round(m / 1000).toLocaleString(locale) }));
 // Für Einzahl/Mehrzahl: n wählt die Form, count steht im Text
 const n = (x) => ({ n: x, count: x.toLocaleString(locale) });
 
@@ -146,8 +147,11 @@ document.addEventListener('click', async (e) => {
 
 $('.dash-credits').innerHTML = creditList();
 $('.dash-version').textContent = APP_VERSION;
-// In der App: dazu die Version der App selbst – die Oberfläche kommt von app.wuefl.de und kann neuer sein
-appVersion().then((v) => { if (v) $('.dash-version').textContent = t('dashboard.about.version_app', { version: APP_VERSION, app: v }); });
+// Die Version kommt vom Service Worker (gehört zu seinen Dateien); in der App dazu die Version der App selbst – die
+// Oberfläche kommt von app.wuefl.de und kann neuer sein
+Promise.all([runningVersion(), appVersion()]).then(([ui, v]) => {
+  $('.dash-version').textContent = v ? t('dashboard.about.version_app', { version: ui, app: v }) : ui;
+});
 $('.dash-version').addEventListener('click', () => showChangelog());
 paintTiles();
 paintStore();

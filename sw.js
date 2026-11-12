@@ -41,11 +41,11 @@
  *   - nach 10 Tagen wird er gelöscht
  *   - reicht der Platz nicht, weicht zuerst die älteste Navigation
  */
-const VERSION = '3.1.0';            // von appdata/version.py – neue Nummer = Update
+const VERSION = '3.1.1';            // von appdata/version.py – neue Nummer = Update
 // Stand der Dateien (Prüfsumme über alles in sw-files.json, von version.py):
 // dieselbe Nummer noch einmal hochgeladen ist trotzdem ein neuer Service Worker
 // mit eigenem Speicher – Alt und Neu mischen sich nie
-const BUILD = 'aeb75dabf1';
+const BUILD = '693ff9aa35';
 const APP = `wmap-app-${VERSION}-${BUILD}`;
 const APP_PREFIX = 'wmap-app-';
 const SHARE = 'wmap-share';
@@ -99,32 +99,130 @@ async function appCurrent() {
  * Was der Browser gerade erst geladen hat oder was sich nicht geändert hat,
  * kommt mit 304 aus seinem Cache und wird nicht noch einmal übertragen. Sechs
  * zugleich, damit das Vorladen der Seite nicht die Leitung nimmt.
+ *
+ * Nur ganz oder gar nicht: sw-files.json trägt BUILD und je Datei einen Prüfwert (appdata/version.py). Gehört die
+ * Liste zu einer anderen Fassung oder passt eine Datei nicht – der Upload läuft noch, ein Teil ist alt –, wird es
+ * ein paar Sekunden später noch einmal versucht (dann am Browser-Cache vorbei); bleibt es falsch, verwirft diese
+ * Fassung ihren Speicher und installiert sich nicht. Die alte bleibt, der Browser versucht es beim nächsten Öffnen
+ * wieder. So bleibt keine Mischung aus alten und neuen Dateien gespeichert. messages.json kommt ohnehin immer frisch (versionFile) und wird nicht
+ * verglichen. Auf localhost nicht.
  */
+const TRIES = 4;
+const AGAIN_MS = 5000;
+
+async function sha(res) {
+  const buf = await crypto.subtle.digest('SHA-256', await res.clone().arrayBuffer());
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
+}
+
+const pause = (ms) => new Promise((ok) => { setTimeout(ok, ms); });
+
 async function precache() {
   const cache = await caches.open(APP);
-  let files = [];
-  try { files = await (await fetch('appdata/sw-files.json', { cache: 'no-store' })).json(); } catch { /* dann nach und nach */ }
+  let list = null;
+  for (let tries = 0; tries < TRIES; tries += 1) {
+    if (tries) await pause(AGAIN_MS);
+    try { list = await (await fetch('appdata/sw-files.json', { cache: 'no-store' })).json(); } catch { list = null; }
+    if (DEV || !list?.build || list.build === BUILD) break;
+  }
+  if (!DEV && list?.build && list.build !== BUILD) await unavailable(`sw-files.json gehört zu ${list.build}, nicht zu ${BUILD}`);
+  // Ältere Liste (nur Pfade) oder keine: ohne Prüfwerte, dann nach und nach
+  const want = Array.isArray(list) ? {} : (list?.files ?? {});
+  let files = Array.isArray(list) ? list : Object.keys(want);
+  // Sprachen: Deutsch (Rückfall) und die Liste immer, sonst nur, was hier schon geladen wurde – im Speicher der
+  // alten Fassung oder im Browser-Cache (erster Besuch) –, nicht alle für jeden
+  const kept = await Promise.all(files.map(async (f) => !/^appdata\/lang\/(?!de_DE\.|languages\.)/.test(f)
+    || !!(await caches.match(f, { ignoreVary: true }))
+    || (await fetch(f, { cache: 'only-if-cached', mode: 'same-origin' }).then((r) => r.ok, () => false))));
+  files = files.filter((f, i) => kept[i]);
   const queue = files.slice();
   let done = 0;
   const report = async () => {
     for (const c of await self.clients.matchAll({ includeUncontrolled: true })) c.postMessage({ type: 'update-progress', done, total: files.length });
   };
-  // Einzeln: Fehlt eine Datei auf dem Server, scheitert nicht gleich die ganze Version
+  const check = (f) => !DEV && !!want[f] && f !== 'appdata/messages.json';
+  const bad = [];
+  // Passt eine Datei endgültig nicht, ist die Fassung ohnehin hin – nicht noch die übrigen versuchen
   const worker = async () => {
-    while (queue.length) {
+    while (queue.length && !bad.length) {
       const f = queue.shift();
-      for (let tries = 0; tries < 2; tries += 1) {
+      let ok = false;
+      for (let tries = 0; tries < TRIES && !ok; tries += 1) {
+        if (tries) await pause(check(f) ? AGAIN_MS : 800);
         try {
-          const res = await fetch(new Request(f, { cache: 'no-cache' }));
-          if (res.ok) await cache.put(f, res);
-          if (res.ok || res.status === 404) break;
-        } catch { /* Aussetzer: noch einmal, sonst kommt sie beim ersten Aufruf */ }
+          const res = await fetch(new Request(f, { cache: tries ? 'reload' : 'no-cache' }));
+          // Ohne Prüfwert: Fehlt die Datei, scheitert nicht gleich die ganze Fassung
+          if (!check(f)) {
+            if (res.ok) await cache.put(f, res);
+            ok = res.ok || res.status === 404;
+          } else if (res.ok && await sha(res) === want[f]) {
+            await cache.put(f, res);
+            ok = true;
+          }
+        } catch { /* Aussetzer: noch einmal */ }
       }
+      if (!ok && check(f)) bad.push(f);
       done += 1;
       report().catch(() => {});
     }
   };
   await Promise.all(Array.from({ length: 6 }, worker));
+  if (bad.length) await unavailable(`Dateien passen nicht zu dieser Fassung: ${bad.slice(0, 3).join(', ')}${bad.length > 3 ? ' …' : ''}`);
+  // Die Liste mit Prüfwerten gehört zu dieser Fassung – für „App prüfen“ (verify) auch ohne Netz
+  if (list?.files) await cache.put(LIST, new Response(JSON.stringify(list), { headers: { 'Content-Type': 'application/json' } }));
+}
+
+const LIST = 'appdata/sw-files.json';
+
+/** Update nicht verfügbar (Upload unvollständig): Speicher dieser Fassung weg, den Seiten Bescheid, nicht installieren */
+async function unavailable(why) {
+  await caches.delete(APP);
+  for (const c of await self.clients.matchAll({ includeUncontrolled: true })) c.postMessage({ type: 'update-unavailable', why });
+  throw new Error(`${why} – Upload noch nicht fertig`);
+}
+
+/*
+ * „App prüfen“ (js/core/updater.js): Jede gespeicherte Datei dieser Fassung gegen ihren Prüfwert → { version, build,
+ * total, bad: [Pfad] }. Fehlt die Liste im Speicher (installiert vor 3.1.1), die vom Server – nur wenn sie zu
+ * diesem BUILD gehört, sonst list: false. Sprachdateien, die hier nie geladen wurden, zählen nicht.
+ */
+async function verify() {
+  const out = { version: VERSION, build: BUILD, total: 0, bad: [], list: true };
+  if (DEV) return { ...out, dev: true };
+  const cache = await caches.open(APP);
+  let list = await cache.match(LIST).then((r) => r?.json(), () => null).catch(() => null);
+  if (!list?.files) {
+    list = await fetch(LIST, { cache: 'no-store' }).then((r) => r.json()).catch(() => null);
+    if (list?.build !== BUILD) return { ...out, list: false };
+  }
+  for (const [f, want] of Object.entries(list.files)) {
+    if (!want || f === 'appdata/messages.json') continue;
+    const hit = await cache.match(f, { ignoreVary: true });
+    if (!hit && /^appdata\/lang\/(?!de_DE\.|languages\.)/.test(f)) continue;
+    out.total += 1;
+    if (!hit || await sha(hit) !== want) out.bad.push(f);
+  }
+  return out;
+}
+
+/** Kaputte Dateien frisch vom Server – nur, wenn sie zu dieser Fassung passen → { ...verify, fixed, still: [Pfad] } */
+async function repair() {
+  const v = await verify();
+  if (v.dev || !v.list) return { ...v, fixed: 0, still: v.bad };
+  const cache = await caches.open(APP);
+  const list = await cache.match(LIST).then((r) => r?.json()).catch(() => null)
+    ?? await fetch(LIST, { cache: 'no-store' }).then((r) => r.json()).catch(() => null);
+  let fixed = 0;
+  const still = [];
+  for (const f of v.bad) {
+    try {
+      const res = await fetch(new Request(f, { cache: 'reload' }));
+      if (res.ok && await sha(res) === list?.files?.[f]) { await cache.put(f, res); fixed += 1; continue; }
+    } catch { /* bleibt kaputt */ }
+    still.push(f);
+  }
+  if (list?.files && !(await cache.match(LIST))) await cache.put(LIST, new Response(JSON.stringify(list), { headers: { 'Content-Type': 'application/json' } }));
+  return { ...v, fixed, still };
 }
 
 self.addEventListener('activate', (e) => e.waitUntil((async () => {
@@ -153,7 +251,7 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(immutable(url) ? cacheFirst(req) : networkFirst(req, TILES));
   } else if (url.origin === self.location.origin) {
     if (url.pathname.includes('/bEnd/')) return;                     // Server-API: nur Netz
-    if (url.pathname.endsWith('/appdata/messages.json')) e.respondWith(versionFile(req));
+    if (/\/appdata\/messages\.(json|php)$/.test(url.pathname)) e.respondWith(versionFile(req));
     else e.respondWith(DEV ? networkFirst(req, APP) : appFirst(req));
   }
 });
@@ -183,7 +281,7 @@ async function appFirst(req) {
   return res;
 }
 
-/** messages.json: immer frisch vom Server; ohne Netz die gespeicherte – markiert */
+/** messages.json bzw. messages.php (dieselbe Datei, zählt den Abruf): immer frisch vom Server; ohne Netz die gespeicherte – markiert */
 async function versionFile(req) {
   const cache = await caches.open(APP);
   try {
@@ -191,7 +289,7 @@ async function versionFile(req) {
     if (res.ok) cache.put(req, res.clone()).catch(() => {});
     return res;
   } catch (err) {
-    const hit = await cache.match(req, { ignoreSearch: true });
+    const hit = await cache.match(req, { ignoreSearch: true }) ?? await cache.match('appdata/messages.json');
     if (!hit) throw err;
     const headers = new Headers(hit.headers);
     headers.set('X-WMap-Offline', '1');
@@ -253,6 +351,10 @@ self.addEventListener('message', (e) => {
   const { type, urls = [] } = e.data ?? {};
   const port = e.ports[0];
   if (type === 'skip-waiting') self.skipWaiting();
+  // Version kommt vom Service Worker: Sie gehört zu den Dateien in seinem Speicher (js/core/updater.js)
+  if (type === 'version') port?.postMessage({ version: VERSION, build: BUILD });
+  if (type === 'verify') e.waitUntil(verify().then((r) => port?.postMessage(r), (err) => port?.postMessage({ error: String(err) })));
+  if (type === 'repair') e.waitUntil(repair().then((r) => port?.postMessage(r), (err) => port?.postMessage({ error: String(err) })));
   if (type === 'app-files') e.waitUntil(storeApp(urls));
   if (type === 'prefetch') e.waitUntil(prefetch(urls, port));
   if (type === 'area') e.waitUntil(areaBatch(e.data.cache, urls, port));

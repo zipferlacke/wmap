@@ -85,8 +85,8 @@ body.street-locked::after {
 
 /* ── Ebenen-Menü (layer-menu.js) ──────────────────────────────────────────── */
 .layer-ctrl button .msr { font-size: 1.4rem; line-height: var(--ctrl-size); }
-/* Über den Seitenleisten aus wuefl-libs (userDialog, z-index 1000) – sonst lag
-   es in Entdecken und Meine Touren darunter */
+/* Über den Seitenleisten aus wuefl-libs (userDialog, z-index 1000), auch in Entdecken
+   und Meine Touren */
 .layer-menu {
     position: fixed; z-index: 1001;
     top: calc(.75rem + var(--safe-top)); right: 3.4rem;

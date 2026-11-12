@@ -12,6 +12,7 @@ import { API, TANKERKOENIG_KEY } from '../core/config.js';
 import { local } from '../data/store.js';
 import { distance } from '../core/geo.js';
 import { t } from '../core/i18n.js';
+import { used } from './usage.js';
 
 const WIDTH = 640;
 const filePath = (name) => `${API.commons}/${encodeURIComponent(name.replace(/^File:/i, '').trim())}?width=${WIDTH}`;
@@ -23,14 +24,16 @@ export function thumbOf(tags = {}, width = 160) {
   return file ? `${API.commons}/${encodeURIComponent(file.replace(/^File:/i, '').trim())}?width=${width}` : null;
 }
 
-async function json(url, signal) {
+/** `name`: Dienst für die Nutzungsstatistik (services/usage.js) */
+async function json(url, signal, name) {
+  used(name);
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(String(res.status));
   return res.json();
 }
 
 async function wikiSummary(lang, title, signal) {
-  const d = await json(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, '_'))}`, signal);
+  const d = await json(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, '_'))}`, signal, 'wikipedia');
   return {
     image: d.originalimage?.source && d.thumbnail?.source ? d.thumbnail.source.replace(/\/\d+px-/, `/${WIDTH}px-`) : d.thumbnail?.source ?? null,
     extract: d.extract || null,
@@ -50,7 +53,7 @@ export async function placeMedia(tags = {}, { signal } = {}) {
     let wp = tags.wikipedia?.match(/^([a-z]{2,3}):(.+)$/);
     let entity = null;
     if (tags.wikidata && (!wp || !out.image)) {
-      const d = await json(`${API.wikidata}/${tags.wikidata}.json`, signal);
+      const d = await json(`${API.wikidata}/${tags.wikidata}.json`, signal, 'wikidata');
       entity = d.entities?.[tags.wikidata];
       const p18 = entity?.claims?.P18?.[0]?.mainsnak?.datavalue?.value;
       if (!out.image && p18) out.image = filePath(p18);
@@ -84,7 +87,7 @@ export async function fuelPrices([lon, lat], { signal } = {}) {
   const u = new URL(API.tankerkoenig);
   Object.entries({ lat, lng: lon, rad: 1, sort: 'dist', type: 'all', apikey: key })
     .forEach(([k, v]) => u.searchParams.set(k, String(v)));
-  const d = await json(u, signal);
+  const d = await json(u, signal, 'tankerkoenig');
   if (!d.ok) throw new Error(d.message || t('services.media.fuel_no_answer'));
   // Die OSM-Tankstelle und die gemeldete liegen selten exakt übereinander
   const s = (d.stations ?? []).find((x) => distance([lon, lat], [x.lng, x.lat]) < 150);

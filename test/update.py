@@ -110,11 +110,17 @@ with Browser(width=420, height=900) as b:
     # Service Worker: die Version wird ganz vorab geladen
     sw = b.wait("""return navigator.serviceWorker.controller && caches.keys().then(async (k) => {
         const app = k.find((x) => x.startsWith('wmap-app-'));
-        return app ? [app, (await (await caches.open(app)).keys()).length] : null; })""", 90)
-    files = len(json.load(open('../appdata/sw-files.json')))
+        if (!app) return null;
+        const keys = (await (await caches.open(app)).keys()).map((r) => new URL(r.url).pathname);
+        return [app, keys.length, keys.filter((p) => p.includes('/appdata/lang/')).map((p) => p.split('/').pop()).sort()]; })""", 90)
+    # Sprachen: nur Deutsch und die Liste – andere erst, wenn man sie wählt
+    names = json.load(open('../appdata/sw-files.json'))
+    names = list(names['files']) if isinstance(names, dict) else names
+    files = len([f for f in names if not f.startswith('appdata/lang/') or f.endswith(('de_DE.json', 'languages.json'))])
     version = json.load(open('../appdata/messages.json'))['changelog'][0]['version']
     print('Service Worker:', sw, 'von', files)
-    ok_sw = bool(sw) and sw[0].startswith(f'wmap-app-{version}-') and sw[1] >= files * 0.95
+    ok_sw = bool(sw) and sw[0].startswith(f'wmap-app-{version}-') and sw[1] >= files * 0.95 \
+        and sw[2] == ['de_DE.json', 'languages.json']
 
     b.js("const s = document.createElement('script'); s.type = 'module'; s.textContent = arguments[0]; document.head.append(s);", STEPS)
     r = json.loads(b.wait("return window.__result", 60))
@@ -139,7 +145,7 @@ with Browser(width=420, height=900) as b:
     # Aktualisieren: ohne neuen Service Worker die gespeicherte Oberfläche verwerfen, neu laden –
     # danach alles Neue seit der gesehenen Version (auch ohne Karte beim normalen Start)
     b.open('dashboard.html', wait=3)
-    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '2.0.0', messages: [] })); window.__alt = 1;")
+    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '2.0.0', messages: [] })); localStorage.setItem('wmap.stats.asked', '1'); window.__alt = 1;")
     b.js("const s = document.createElement('script'); s.type = 'module'; s.textContent = \"import('./js/ui/news.js').then((m) => m.applyUpdate())\"; document.head.append(s);")
     news = b.wait("return !window.__alt && document.querySelector('dialog.news[open] .uD-title') && [...document.querySelectorAll('dialog.news[open] .news-release h3')].map((h) => h.innerText.match(/[0-9]+[.][0-9]+[.][0-9]+/)?.[0])", 60)
     print('Nach dem Aktualisieren – Versionen im Dialog:', news)

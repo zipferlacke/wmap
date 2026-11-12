@@ -13,7 +13,7 @@ CHECK = """const d = document.querySelector('#f').contentDocument, w = d.documen
 
 with Browser(width=900, height=900) as b:
     b.open('settings.html', wait=1)
-    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] }))")
+    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] })); localStorage.setItem('wmap.stats.asked', '1')")
     bad = 0
     for p in PAGES:
         b.js(f"document.body.innerHTML = '<iframe id=f src=\"{BASE}{p}\" style=\"width:360px;height:760px;border:0\"></iframe>'")

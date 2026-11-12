@@ -22,7 +22,7 @@ function share($requestArray, $data){
     $request = array_shift($requestArray);
     // Zum Ansehen: 30 Tage ab Anlegen; gemeinsam geplant: 30 Tage ab der letzten Änderung – solange geplant wird, bleibt sie
     $old = time() - SHARE_DAYS * 86400;
-    // CAST: PDO gibt die Zahl als Text – ohne Spalte daneben vergliche SQLite Zahl < Text (immer wahr, alles weg)
+    // CAST: PDO übergibt die Zahl als Text; der Vergleich braucht eine Zahl, da SQLite Zahl < Text immer als wahr wertet
     $db_helper->execSql("DELETE FROM Shares WHERE (token IS NULL AND created < CAST(? AS INTEGER)) OR (token IS NOT NULL AND COALESCE(changed, created) < CAST(? AS INTEGER))", [$old, $old], "share");
 
     switch ($request) {

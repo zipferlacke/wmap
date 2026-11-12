@@ -15,6 +15,7 @@ import { encodeShare } from '../data/store.js';
 import { distance, simplify } from '../core/geo.js';
 import { segment } from './routing.js';
 import { t } from '../core/i18n.js';
+import { used } from './usage.js';
 
 export const KINDS = {
   hike: { label: t('services.known_tours.kinds.hike'), icon: 'hiking', routes: 'hiking|foot', profile: 'hike' },
@@ -46,6 +47,7 @@ const toMerc = ([lon, lat]) => [(lon * Math.PI / 180) * R, Math.log(Math.tan(Mat
 const fromMerc = ([x, y]) => [(x / R) * 180 / Math.PI, (2 * Math.atan(Math.exp(y / R)) - Math.PI / 2) * 180 / Math.PI];
 
 async function wmt(kind, path, signal) {
+  used('waymarked');
   const r = await fetch(`https://${WMT_HOST[kind]}.waymarkedtrails.org/api/v1/${path}`, { signal });
   if (!r.ok) throw new Error(r.status === 404 ? t('services.known_tours.error.not_found') : t('services.known_tours.error.status', { status: r.status }));
   return r.json();

@@ -1011,7 +1011,7 @@ async function shareTour() {
 // So steht es auf dem Server (gepackt) – gleich: nichts zu schicken. Lag die Tour schon hier, ist sie womöglich
 // älter als der Link: dann unbekannt, pullCollab holt den neuesten Stand
 // Immer in der Form, in der diese App selbst packt (normCode): Vom Server kommt dieselbe Tour womöglich anders gepackt
-// (Name leer, Reihenfolge …) – ohne das schickte schon das Öffnen „eine Änderung“, und die anderen sahen „… hat geändert“
+// (Name leer, Reihenfolge …) – so löst schon das Öffnen keine „Änderung“ aus, die den anderen als „… hat geändert“ erscheint
 const mineCode = () => encodeShare({ ...tour, name: tour.name || t('tour.default_tour') });
 const normCode = async (code) => { const tk = await decodeShare(code); return encodeShare({ ...tk, name: tk.name || t('tour.default_tour') }); };
 let lastCollabCode = !known && !joining && collabOpen?.code ? await normCode(collabOpen.code).catch(() => null) : null;
@@ -1214,7 +1214,7 @@ function collabGone(err) {
 async function pushCollab() {
   const c = tour.collab;
   if (collabOff(c) || readOnly) return;
-  // Nie zweimal zugleich: sonst kam das zweite Schicken mit demselben Stand als „gleichzeitig geändert“ zurück
+  // Nie zweimal zugleich: ein zweites Schicken mit demselben Stand gälte als „gleichzeitig geändert“
   if (collabBusy) { collabAgain = true; return; }
   collabBusy = true;
   try {

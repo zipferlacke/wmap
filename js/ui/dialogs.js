@@ -101,7 +101,7 @@ function show({ icon = 'help', title, text = '', html = '', buttons, read = null
     });
   }
   // Fokus ins erste Feld, sonst auf das ✕ – nicht auf den Griff (stünde hervorgehoben da) und nicht auf den
-  // Hauptknopf (Enter löschte sonst gleich)
+  // Hauptknopf (Enter würde sofort auslösen)
   const first = dlg.querySelector('input:not([readonly])') ?? dlg.querySelector('.uD-bar-right');
   if (first) first.focus(); else document.activeElement?.blur();
   setup?.(dlg, done);
@@ -125,7 +125,7 @@ export function toast(text, { action } = {}) {
   let el = document.getElementById('toast');
   if (!el) el = Object.assign(document.createElement('div'), { id: 'toast', role: 'status', popover: 'manual' });
   // Immer ganz vorn: Dialoge (showModal) und Seitenleisten liegen in der obersten Ebene, da hilft kein z-index.
-  // Als Popover neu geöffnet kommt der Toast über sie – im obersten Dialog, sonst wäre der Knopf dahinter gesperrt
+  // Als Popover neu geöffnet kommt der Toast über sie – im obersten Dialog (dahinter wäre der Knopf gesperrt)
   const host = [...document.querySelectorAll('dialog[open]')].filter((d) => d.matches(':modal')).pop() ?? document.body;
   if (el.parentNode !== host) host.append(el);
   if (el.showPopover) {

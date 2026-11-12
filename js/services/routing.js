@@ -58,7 +58,7 @@ function unreachable(busy = false) {
   return err;
 }
 
-export async function request(payload, signal, endpoint = 'route') {
+export async function request(payload, signal, endpoint = 'route', feature = null) {
   let res;
   try {
     res = await askServer('valhalla', `/${endpoint}`, {
@@ -66,7 +66,7 @@ export async function request(payload, signal, endpoint = 'route') {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
       signal,
-    }, { timeout: 60000 });
+    }, { timeout: 60000, feature });
   } catch (err) {
     if (err.name === 'AbortError') throw err;
     throw unreachable();
@@ -361,16 +361,16 @@ const MAX_STRAIGHT = { pedestrian: 90000, bicycle: 135000 };
  * teilen und wieder zusammensetzen – so gehen auch Fernwanderwege und
  * mehrtägige Radtouren mit wenigen gesetzten Punkten.
  */
-export async function segment(a, b, profile, { signal } = {}) {
+export async function segment(a, b, profile, { signal, feature = null } = {}) {
   const max = MAX_STRAIGHT[PROFILES[profile]?.costing];
   const d = straight(a, b);
   if (max && d > max) {
     const n = Math.ceil(d / max);
     const pts = Array.from({ length: n + 1 }, (_, i) => [a[0] + ((b[0] - a[0]) * i) / n, a[1] + ((b[1] - a[1]) * i) / n]);
-    const parts = await Promise.all(pts.slice(1).map((p, i) => piece(pts[i], p, profile, signal)));
+    const parts = await Promise.all(pts.slice(1).map((p, i) => piece(pts[i], p, profile, signal, feature)));
     return withCum(joinSegments(parts, profile));
   }
-  return piece(a, b, profile, signal);
+  return piece(a, b, profile, signal, feature);
 }
 
 const withCum = (r) => ({ ...r, cum: cumulative(r.coords) });
@@ -380,10 +380,10 @@ function straight([x1, y1], [x2, y2]) {
   return Math.hypot((x2 - x1) * k, y2 - y1) * 111320;
 }
 
-async function piece(a, b, profile, signal) {
+async function piece(a, b, profile, signal, feature) {
   const key = `${profile}|${a.map((v) => v.toFixed(6))}|${b.map((v) => v.toFixed(6))}`;
   if (!segmentCache.has(key)) {
-    const job = request(body([a, b], profile), signal).then(([trip]) => parseTrip(trip));
+    const job = request(body([a, b], profile), signal, 'route', feature).then(([trip]) => parseTrip(trip));
     segmentCache.set(key, job);
     job.catch(() => segmentCache.delete(key));
   }

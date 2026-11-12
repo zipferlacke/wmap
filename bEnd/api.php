@@ -33,6 +33,9 @@ $requestArray = json_decode($_POST["request"] ?? "[]", true) ?: [];
 $data = json_decode($_POST["data"] ?? "{}", true) ?: [];
 
 $request = array_shift($requestArray);
+// Wie oft welcher Teil gefragt wird (stats.php) – nur bekannte Namen, damit die Tabelle nicht mit beliebigen Namen wächst
+if (preg_match('/^[a-z]{1,20}$/', (string)$request) && preg_match('/^[a-z_]{1,30}$/', (string)($requestArray[0] ?? "")))
+    count_up("api:$request.".$requestArray[0]);
 switch ($request) {
     case 'auth':    echo json_encode(auth($requestArray, $data)); break;
     case 'tours':   echo json_encode(tours($requestArray, $data)); break;
@@ -58,8 +61,14 @@ function current_user(){
     global $db_helper;
     $h = auth_header();
     if (!preg_match('/^Bearer\s+([A-Za-z0-9_-]{20,})$/', $h, $m)) return null;
-    $r = $db_helper->execSql("SELECT u.id, u.name, u.osm_id FROM Sessions s JOIN Users u ON u.id = s.user_id WHERE s.token = ? AND s.expires > ?", [hash('sha256', $m[1]), time()], "user");
-    return ($r[0] == 0 && count($r[1])) ? $r[1][0] : null;
+    $r = $db_helper->execSql("SELECT u.id, u.name, u.osm_id, u.last_seen FROM Sessions s JOIN Users u ON u.id = s.user_id WHERE s.token = ? AND s.expires > ?", [hash('sha256', $m[1]), time()], "user");
+    if ($r[0] != 0 || !count($r[1])) return null;
+    $u = $r[1][0];
+    // Aktive Konten (stats.php): einmal am Tag festhalten
+    $today = gmdate("Y-m-d");
+    if ($u["last_seen"] !== $today) $db_helper->execSql("UPDATE Users SET last_seen = ? WHERE id = ?", [$today, $u["id"]], "seen");
+    unset($u["last_seen"]);
+    return $u;
 }
 
 function need_user(){

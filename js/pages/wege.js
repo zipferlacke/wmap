@@ -50,7 +50,8 @@ import { folder } from '../data/folder.js';
 import { autoSync } from '../data/auto-sync.js';
 import { mapPage } from '../ui/map-page.js';
 import { carLink, sendToCar } from '../data/car-link.js';
-import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, fmtTime, esc, bbox } from '../core/geo.js';
+import { cumulative, pointAt, nearestOnLine, simplifyTo, distance, fmtDistance, fmtDuration, fmtTime, fmtSpeed, speedUnit, esc, bbox, clockFormat } from '../core/geo.js';
+import { speedOf } from '../core/units.js';
 import { connections, places, DEFAULT_LIST, PLACE_KINDS } from '../data/saved.js';
 import { packJson, unpackJson } from '../data/store.js';
 import { legBadge, changesText, transitLegsHtml } from '../ui/transit-legs.js';
@@ -78,8 +79,8 @@ const yearOf = (tk) => new Date(tk.start).getFullYear();
 const DATE = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short' });
 const SHORT = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 const LONG = new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-const TIME = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' });
-const km = (m) => (m >= 100000 ? t('wege.unit.km', { v: Math.round(m / 1000).toLocaleString(locale) }) : fmtDistance(m));
+const TIME = new Intl.DateTimeFormat(locale, { ...clockFormat() });
+const km = fmtDistance;
 const moving = (tk) => tk.moving || (tk.end - tk.start) / 1000;
 
 /* ── Zustand ──────────────────────────────────────────────────────────────── */
@@ -817,7 +818,7 @@ const clock = (sec) => {
 const tempo = (tk, mps) => {
   if (!mps) return '–';
   const pace = paceOf(tk);
-  return pace ? `${clock(pace.per / mps)} ${pace.unit}` : t('wege.unit.kmh', { v: (mps * 3.6).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) });
+  return pace ? `${clock(pace.per / mps)} ${pace.unit}` : fmtSpeed(mps);
 };
 
 async function select(id, { push = false } = {}) {
@@ -963,8 +964,8 @@ function paintTrack(tk, note = '') {
       <div><strong>${fmtTime(mv)}</strong><small>${t('wege.stats.moving')}</small></div>
       <div><strong>${fmtDistance(tk.length)}</strong><small>${t('wege.stats.length')}</small></div>
       ${pace ? `<div><strong>${mv ? clock(pace.per / (tk.length / mv)) : '–'}</strong><small>${t('wege.stats.avg', { name: esc(pace.unit) })}</small></div>` : ''}
-      <div><strong>${mv ? (tk.length / mv * 3.6).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '–'}</strong><small>${t('wege.stats.avg_kmh')}</small></div>
-      <div><strong>${tk.top ? Math.round(tk.top * 3.6) : '–'}</strong><small>${t('wege.stats.max_kmh')}</small></div>
+      <div><strong>${mv ? speedOf(tk.length / mv).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '–'}</strong><small>${t('wege.stats.avg_kmh').replace(t('common.units.kmh'), speedUnit())}</small></div>
+      <div><strong>${tk.top ? Math.round(speedOf(tk.top)) : '–'}</strong><small>${t('wege.stats.max_kmh').replace(t('common.units.kmh'), speedUnit())}</small></div>
       ${tk.stub ? '' : `<div><strong class="st-up">…</strong><small>${t('wege.stats.up')}</small></div>`}
       ${hr.length ? `<div><strong>${avg(hr)}</strong><small>${t('wege.stats.avg_hr')}</small></div>
         <div><strong>${top(hr)}</strong><small>${t('wege.stats.max_hr')}</small></div>` : ''}
@@ -1197,7 +1198,7 @@ function pickChart(e) {
 content.addEventListener('click', (e) => {
   const tk = selected;
   if (!tk || !('start' in tk)) return;
-  // Diagramm ins Vollbild (Knopf der Bibliothek, das Diagramm steckt jetzt in ihrem <dialog>): Die Umschalter
+  // Diagramm ins Vollbild (Knopf der Bibliothek, das Diagramm steckt in ihrem <dialog>): Die Umschalter
   // ziehen mit um und beim Schließen wieder zurück vor das Diagramm
   if (e.target.closest('.dg_fsbtn') && elevation?.fullscreen) {
     const dlg = $('dialog.dg_fs:open'), bar = $('.weg-chart-tabs', content);

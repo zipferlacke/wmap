@@ -6,6 +6,7 @@
 import { API } from '../core/config.js';
 import { searchFilters } from '../core/categories.js';
 import { t } from '../core/i18n.js';
+import { used } from './usage.js';
 
 // Abfragen dürfen serverseitig 25 s laufen, dazu kommt die Warteschlange
 const SERVER_TIMEOUT_MS = 45000;
@@ -67,10 +68,10 @@ const answers = new Map();          // Abfrage → { at, elements }
  * Absagen. `background` (Ampeln u. Ä.): nicht parallel nachfragen, nur bei
  * einer Absage der nächste Server; sind alle in der Pause, gar nicht.
  */
-export async function run(query, signal, { background = false } = {}) {
+export async function run(query, signal, { background = false, feature = null } = {}) {
   const hit = answers.get(query);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.elements;
-  const elements = await hedged(query, signal, background);
+  const elements = await hedged(query, signal, background, feature);
   answers.set(query, { at: Date.now(), elements });
   if (answers.size > 40) answers.delete(answers.keys().next().value);
   return elements;
@@ -88,7 +89,8 @@ function serverOrder(background) {
   return [...ok, ...API.overpass.filter((u) => !ok.includes(u))];
 }
 
-function hedged(query, signal, background) {
+function hedged(query, signal, background, feature) {
+  used('overpass', feature);
   return new Promise((resolve, reject) => {
     const servers = serverOrder(background);
     const ctrls = [];

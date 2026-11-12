@@ -15,7 +15,7 @@
  * Farbe aus dem Tag „colour“, sonst rot (Bus) bzw. nach Verkehrsart.
  */
 import { run } from './overpass.js';
-import { esc, cumulative, nearestOnLine } from '../core/geo.js';
+import { esc, cumulative, nearestOnLine, clockFormat } from '../core/geo.js';
 import { theme } from '../core/theme.js';
 import { locale, t, words } from '../core/i18n.js';
 
@@ -52,7 +52,7 @@ const quote = (s) => String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
  * `background`: nur Zugabe (Farben) – Overpass ohne parallele Nachfragen
  * → { here: [{ id, route, ref, name, from, to, colour, … }], all: […] }
  */
-export async function linesAt([lon, lat], name, { ref = null, background = false, signal } = {}) {
+export async function linesAt([lon, lat], name, { ref = null, background = false, signal, feature = null } = {}) {
   const at = (r) => `around:${r},${lat.toFixed(6)},${lon.toFixed(6)}`;
   const stop = '[~"^(public_transport|highway|railway|amenity)$"~"^(platform|stop_position|station|bus_stop|tram_stop|halt|stop|bus_station|ferry_terminal)$"]';
   const rel = `[type=route][route~"^(${KINDS})$"]`;
@@ -61,7 +61,7 @@ export async function linesAt([lon, lat], name, { ref = null, background = false
   const q = `[out:json][timeout:25];${mine}make grenze;out;
     (${name ? `nwr(${at(150)})[name="${quote(name)}"]${stop};` : ''}nwr(${at(30)})${stop};)->.s;
     (rel(bn.s)${rel};rel(bw.s)${rel};)->.b;(.b; - .a;)->.c;.c out tags;`;
-  const els = await run(q, signal, { background });
+  const els = await run(q, signal, { background, feature });
   const cut = els.findIndex((e) => e.type === 'grenze');
   const pick = (list) => list.filter((e) => e.type === 'relation').map((e) => ({ id: e.id, ...e.tags }));
   const here = pick(els.slice(0, cut));
@@ -109,20 +109,31 @@ const kmTo = (center, e) => (e.center
   ? Math.hypot((e.center.lon - center[0]) * Math.cos(center[1] * Math.PI / 180), e.center.lat - center[1]) * 111.32 : Infinity);
 
 /**
- * Linien dieses Namens um den Punkt → Relationen wie bei linesAt. Dieselbe Nummer gibt es überall: es bleibt der
- * Verkehrsverbund der nächsten (und was ohnehin ganz nah fährt).
+ * Linien dieses Namens um den Punkt → Relationen wie bei linesAt, je mit `stop` { name, point }: ihr erster Halt (nur
+ * die Mitglieder und Halte, ohne Wege). Dieselbe Nummer gibt es überall: es bleibt der Verkehrsverbund der nächsten
+ * (und was ohnehin ganz nah fährt).
  */
-export async function findLines({ ref, kinds }, center, { signal } = {}) {
+export async function findLines({ ref, kinds }, center, { signal, feature = null } = {}) {
   const dy = LINE_KM / 111.32, dx = dy / Math.cos(center[1] * Math.PI / 180);
   const bbox = [center[1] - dy, center[0] - dx, center[1] + dy, center[0] + dx].map((v) => v.toFixed(4)).join(',');
   // „S3“ steht in OSM auch als „S 3“
   const name = ref.replace(/^([A-Z]+)(\d)/, '$1 ?$2');
-  const els = await run(`[out:json][timeout:25];rel[type=route][route~"^(${kinds?.join('|') ?? KINDS})$"]["ref"~"^${name}$",i](${bbox});out tags center;`, signal);
+  const els = await run(`[out:json][timeout:25];rel[type=route][route~"^(${kinds?.join('|') ?? KINDS})$"]["ref"~"^${name}$",i](${bbox})->.r;.r out body center;node(r.r)->.n;.n out body qt;`, signal, { feature });
+  const nodes = new Map(els.filter((e) => e.type === 'node').map((e) => [e.id, e]));
   const list = els.filter((e) => e.type === 'relation').sort((a, b) => kmTo(center, a) - kmTo(center, b));
   if (!list.length) return [];
   const net = (e) => e.tags?.network ?? e.tags?.operator ?? '';
   const near = net(list[0]);
-  return list.filter((e) => net(e) === near || kmTo(center, e) <= 5).map((e) => ({ id: e.id, ...e.tags }));
+  return list.filter((e) => net(e) === near || kmTo(center, e) <= 5).map((e) => ({ id: e.id, ...e.tags, stop: firstOf(e, nodes) }));
+}
+
+/** Erster Halt einer Relation (Mitglied stop…/platform… als Punkt) → { name, point } oder null */
+function firstOf(rel, nodes) {
+  for (const m of rel.members ?? []) {
+    const n = m.type === 'node' && /^(stop|platform)/.test(m.role) ? nodes.get(m.ref) : null;
+    if (n) return { name: n.tags?.name ?? rel.tags?.from ?? '', point: [n.lon, n.lat] };
+  }
+  return null;
 }
 
 /* ── Liste im Ort-Sheet ───────────────────────────────────────────────────── */
@@ -201,10 +212,10 @@ export function mountTransitLine(map) {
    * Linie holen und zeigen → { tags, stops: [Name], bounds, next }
    * @param from  Haltestelle: der Weg bis hierher blass, was kommt kräftig
    */
-  async function show(id, { from = null } = {}) {
+  async function show(id, { from = null, feature = null } = {}) {
     ctl?.abort();
     ctl = new AbortController();
-    const els = await run(`[out:json][timeout:25];rel(${id})->.r;.r out geom;node(r.r);out qt;way(r.r:"platform");out tags center qt;`, ctl.signal);
+    const els = await run(`[out:json][timeout:25];rel(${id})->.r;.r out geom;node(r.r);out qt;way(r.r:"platform");out tags center qt;`, ctl.signal, { feature });
     const rel = els.find((e) => e.type === 'relation' && e.id === id);
     if (!rel) throw new Error(t('services.transit.not_found'));
     const tags = rel.tags ?? {};
@@ -248,7 +259,7 @@ export function mountTransitLine(map) {
   }
 
   /**
-   * Verlauf einer Fahrt aus dem Fahrplan zeigen (services/departures.js tripCourse) –
+   * Verlauf einer Fahrt aus dem Fahrplan zeigen (services/timetable tripCourse) –
    * ohne OSM. Ab dem Halt `index` kräftig, davor blass.
    * @param key  Kennung für `shown` (Linie und Fahrt)
    * → { stops, next, bounds } wie show(); Halte mit Zeit
@@ -322,7 +333,7 @@ function sliceLine(line, cum, a, b) {
 export function lineStopsHtml({ stops, next }) {
   if (!stops.length) return '';
   const nm = (x) => (typeof x === 'string' ? x : x.name);
-  const tm = (x) => (x?.time ? `<time>${x.time.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</time>` : '');
+  const tm = (x) => (x?.time ? `<time>${x.time.toLocaleTimeString(locale, { ...clockFormat() })}</time>` : '');
   const list = next?.length > 1 ? next : stops;
   const summary = !next ? t('services.transit.stops', { n: stops.length })
     : next.length > 1 ? t('services.transit.stops_left', { n: next.length - 1, to: esc(nm(next.at(-1))), arrival: next.at(-1).time ? t('services.transit.arrival', { time: tm(next.at(-1)).replace(/<\/?time>/g, '') }) : '' })

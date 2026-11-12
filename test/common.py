@@ -20,6 +20,8 @@ class Browser:
     def __init__(self, width=1300, height=900):
         o = webdriver.FirefoxOptions()
         o.add_argument('-headless')
+        # Gerätesprache Deutsch: Firefox meldet sonst Englisch, und WMap startet beim ersten Mal in der Sprache des Geräts
+        o.set_preference('intl.accept_languages', 'de-DE, de')
         o.enable_bidi = True
         self.d = webdriver.Firefox(options=o)
         self.errors = []
@@ -33,6 +35,11 @@ class Browser:
         self.d.quit()
 
     def open(self, path, wait=3):
+        if not getattr(self, '_test_cookie', False):
+            # Cookie vor der ersten echten Seite: der Server zählt alles aus den Tests getrennt (test:…, bEnd/api_stats.php)
+            self.d.get(BASE + 'test-cookie')
+            self.d.add_cookie({'name': 'wmap_test', 'value': '1', 'path': '/'})
+            self._test_cookie = True
         self.d.get(BASE + path)
         time.sleep(wait)
 

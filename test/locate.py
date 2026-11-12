@@ -48,7 +48,7 @@ with Browser(width=420, height=860) as b:
     b.open('index.html', wait=1)
     # Erst wenn die Karte geladen ist, startet der Punkt (im Hintergrund) – vorher getippt liefe es durcheinander
     b.wait("return document.querySelector('.maplibregl-ctrl-geolocate-background')", 40)
-    # Die Karte der Seite (ein eigener import() legte eine zweite an)
+    # Die Karte der Seite (ein eigener import() legt eine zweite an)
     b.js("window.__map = window.__wmap.map; window.__gl = window.__map._controls.find((c) => c._geolocateButton)")
     start = b.js(STATE)
     print('Start:', start)

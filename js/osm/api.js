@@ -14,6 +14,7 @@
 import { OSM_AUTH, APP_VERSION } from '../core/config.js';
 import { local } from '../data/store.js';
 import { locale, t } from '../core/i18n.js';
+import { used } from '../services/usage.js';
 
 const SERVER_KEY = 'wmap.osm.server';
 const tokenKey = (s) => `wmap.osm.token.${s}`;
@@ -133,6 +134,7 @@ async function exchange({ code, state, error }) {
 
 async function api(path, { method = 'GET', body, type } = {}) {
   const token = account.token();
+  used('osm');
   const res = await fetch(`${account.conf().api}${path}`, {
     method,
     headers: {

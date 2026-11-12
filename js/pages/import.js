@@ -28,7 +28,8 @@
  */
 import { mountAppBar } from '../ui/appbar.js';
 import { toast } from '../ui/dialogs.js';
-import { esc } from '../core/geo.js';
+import { esc, fmtDistance } from '../core/geo.js';
+import { imperial } from '../core/units.js';
 import { cadName } from '../data/track-look.js';
 import { encodeShare } from '../data/store.js';
 import { readFiles, takeFile, fileOf } from '../data/import-files.js';
@@ -38,7 +39,7 @@ import { locale, t } from '../core/i18n.js';
 const root = document.querySelector('.import');
 const SHARE = 'wmap-share';
 const DAY = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-const km = (m) => t('import.unit.km', { v: (m / 1000).toLocaleString(locale, { maximumFractionDigits: m < 10000 ? 1 : 0 }) });
+const km = (m) => (imperial() ? fmtDistance(m) : t('import.unit.km', { v: (m / 1000).toLocaleString(locale, { maximumFractionDigits: m < 10000 ? 1 : 0 }) }));
 
 /** [{ name, text, tour, track, id, dup, gain, saved, merged, note, error }] */
 const files = [];

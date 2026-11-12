@@ -9,11 +9,30 @@
     "messages": [],
     "changelog": [
         {
-            "version": "3.1.0",
-            "date": "2026-11-02",
+            "version": "3.1.1",
+            "date": "2026-11-12",
             "appVersion": "2.3.1",
             "changes": [
-                "WMap ist für weitere Sprachen vorbereitet: Die Texte liegen jetzt in einer eigenen Sprachdatei, weitere Sprachen folgen",
+                "Nur Deutschland: Bus & Bahn aus drei Quellen – Abfahrten, Fahrtverlauf und Verbindungen kommen von der NVBW, dem RMV (Hessen) und der EFA-BW; fällt eine aus, übernimmt die nächste",
+                "Nur Deutschland: Ladesäulen mit Belegung – je Stecker die Leistung und „x von y frei“",
+                "Maßeinheiten und Uhrzeit: Kilometer oder Meilen, 24 oder 12 Stunden – in der Begrüßung und unter Einstellungen → Darstellung, voreingestellt nach dem Land deines Geräts",
+                "Android Auto: Menüs und Meldungen in der Sprache der App – mit dem nächsten Update der App",
+                "Maßstab unten rechts auf der Karte, sichtbar beim Zoomen",
+                "Lange auf ein Haus gedrückt: Die Adresse steht im Titel statt „Punkt auf der Karte“",
+                "Fix: Die Karte öffnet wieder dort, wo du sie zuletzt bewegt hast – auch mit einem Ordner für mehrere Geräte",
+                "Fix: Im Ordner gelöschte Touren schreibt ein anderes Gerät nicht mehr zurück",
+                "Fix: Der Willkommenstext beim ersten Start fehlte",
+                "Fix: Nach einem Update fehlten manchmal Texte (etwa in den Einstellungen) oder die Karte blieb leer. Ein Update wird jetzt erst übernommen, wenn alle Dateien vollständig und passend geladen sind"
+            ]
+        },
+        {
+            "version": "3.1.0",
+            "date": "2026-11-03",
+            "appVersion": "2.3.1",
+            "changes": [
+                "WMap gibt es jetzt auf Deutsch, Englisch, Französisch, Polnisch, Schwedisch, Norwegisch und Dänisch – von Anfang an in der Sprache deines Geräts. Sprache und Farbschema lassen sich gleich in der Begrüßung wählen",
+                "Bessere Suche: Antwortet der Suchdienst nicht, sucht WMap über weitere Server weiter. Auch Routen und Fahrplan wechseln selbst, wenn ein Server ausfällt",
+                "Anonyme Nutzungsstatistik: einmal am Tag, ohne Kennung, Ort oder Suchbegriffe – abschaltbar unter Einstellungen → Daten",
                 "Suche, Routen und Fahrplan können künftig selbst zwischen mehreren Servern wechseln, wenn einer ausfällt"
             ]
         },

@@ -25,7 +25,7 @@ const SHARED = new Set([
   // Einstellungen, die der Ordner zwischen Geräten abgleicht (data/folder.js SETTINGS)
   'wmap.theme', 'wmap.nav.zoom', 'wmap.nav.3d', 'wmap.voice', 'wmap.muted', 'wmap.offline', 'wmap.datasaver',
   'wmap.contribute', 'wmap.osm.anon', 'wmap.routePrefs', 'wmap.profile', 'wmap.myname', 'wmap.lapsize', 'wmap.chart',
-  'wmap.tankerkoenig',
+  'wmap.tankerkoenig', 'wmap.units', 'wmap.clock',
 ]);
 const AT = 'wmap~at';
 const copy = store('local');

@@ -1,5 +1,5 @@
 """Suchdienst nicht erreichbar (Photon nachgestellt): keine rohe Fehlermeldung, Treffer aus der Karte.
-1. Fällt Photon aus, wird einmal wiederholt und nie „Failed to fetch“ gezeigt.
+1. Fällt Photon aus, wird je Server einmal wiederholt und nie „Failed to fetch“ gezeigt.
 2. Vorschläge: Namen aus dem geladenen Kartenausschnitt, darunter der Hinweis.
 3. Enter in Start oder Ziel nimmt den ersten Namen aus der Karte; ein Text ohne Treffer gibt eine verständliche Meldung.
 4. Läuft Photon wieder: die normalen Treffer."""
@@ -30,7 +30,9 @@ with Browser(412, 915) as b:
     print('   Vorschläge:', items[:3])
     ok('Treffer aus der Karte', items[0][0] == word and items[0][1] == 'aus der Karte', word)
     ok('Hinweis darunter', items[-1][0] == 'Suche gerade nicht erreichbar')
-    ok('wiederholt (je Anfrage höchstens zwei Versuche)', 2 <= b.js("return _calls") <= 4, b.js("return _calls"))
+    # Ein Vorschlag stellt zwei Anfragen (überall und in der Umgebung), jede geht an zwei Server (Photon, dann die
+    # Weiterleitung von WMap – services/servers.js) mit je höchstens zwei Versuchen
+    ok('wiederholt (je Anfrage und Server höchstens zwei Versuche)', 2 <= b.js("return _calls") <= 8, b.js("return _calls"))
     ok('keine rohe Meldung', not any('fetch' in ' '.join(i).lower() for i in items))
     items = b.js("return _suggest('Xyzzyquatsch')")
     ok('ohne Treffer nur der Hinweis', len(items) == 1 and 'nicht erreichbar' in items[0][1], items)

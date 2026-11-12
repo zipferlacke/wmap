@@ -187,6 +187,7 @@ with Browser(width=420, height=900) as b:
     first = sw_error(b)
     print('Erste Meldung nach dem Aufwachen:', first)
     checks['6. frisch gestartet: Text, kein Schlüssel'] = first == 'Das ist keine ZIP-Datei'
+    kept = EXTRA.read_text(encoding='utf-8') if EXTRA.exists() else None   # echte Übersetzung nicht verlieren
     try:
         EXTRA.write_text(json.dumps({'_meta': {'name': 'English', 'locale': 'en-GB'}, 'backup': {'error': {'not_zip': 'That is no ZIP'}}}), encoding='utf-8')
         b.js("localStorage.setItem('wmap.lang', 'en_GB')")
@@ -194,14 +195,15 @@ with Browser(width=420, height=900) as b:
         print('Sprache der Seite:', english)
         checks['6. Meldung in der Sprache der Seite'] = english == 'That is no ZIP'
         # Eine Sprache, die der Server nicht hat, nur im Speicher
-        b.js("localStorage.setItem('wmap.lang', 'fr_FR')")
+        b.js("localStorage.setItem('wmap.lang', 'it_IT')")
         stored = sw_error(b, """const done = arguments[0];
-          caches.open('wmap-app-test').then((c) => c.put(new URL('appdata/lang/fr_FR.json', location.href).href,
-            new Response(JSON.stringify({ _meta: { name: 'Français', locale: 'fr-FR' }, backup: { error: { not_zip: 'Stored: no ZIP' } } }), { headers: { 'Content-Type': 'application/json' } }))).then(() => done())""")
+          caches.open('wmap-app-test').then((c) => c.put(new URL('appdata/lang/it_IT.json', location.href).href,
+            new Response(JSON.stringify({ _meta: { name: 'Italiano', locale: 'it-IT' }, backup: { error: { not_zip: 'Stored: no ZIP' } } }), { headers: { 'Content-Type': 'application/json' } }))).then(() => done())""")
         print('Aus dem Speicher:', stored)
         checks['6. Sprachdatei aus dem Speicher der Fassung'] = stored == 'Stored: no ZIP'
     finally:
-        EXTRA.unlink(missing_ok=True)
+        if kept is None: EXTRA.unlink(missing_ok=True)
+        else: EXTRA.write_text(kept, encoding='utf-8')
         b.js("localStorage.removeItem('wmap.lang')")
 
     for k, v in checks.items():

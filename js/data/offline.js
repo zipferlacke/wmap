@@ -159,7 +159,7 @@ export function styleAssets(map) {
  */
 export async function saveRouteOffline(map, route, { onProgress } = {}) {
   // Ohne Service Worker (App mit eingepackter Oberfläche: http://tauri.localhost
-  // darf keinen anmelden) käme `ready` nie – dann lädt die Seite selbst vor
+  // darf keinen anmelden) kommt `ready` nie – dann lädt die Seite selbst vor
   const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
   const { template, urls } = styleAssets(map);
   if (!template) throw new Error(t('offline.error.source_not_loaded'));

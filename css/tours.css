@@ -484,7 +484,7 @@ body.wege-page { overflow: hidden; }
     .panel-title-icon { flex-shrink: 0; font-size: 1.5rem; }
     .panel-title-input {
         flex: 1; min-width: 0; padding: .3rem .5rem; border: 0; border-radius: .6rem;
-        /* Ohne „…“: das Feld scrollt, ein abgeschnittener Name sah aus, als ginge er dort zu Ende */
+        /* Ohne „…“: das Feld scrollt, ein mit „…“ gekürzter Name würde wie das Ende des Namens wirken */
         background: none; font: inherit; color: inherit; text-overflow: clip;
         &:hover { background: var(--surface-2); }
         &:focus { background: var(--surface-2); outline: 2px solid var(--route); outline-offset: -2px; }
@@ -492,7 +492,7 @@ body.wege-page { overflow: hidden; }
 }
 .weg-when { line-height: 1.5; .msr { vertical-align: -.25rem; } .muted { font-size: var(--fs-200); } }
 /* Zahlen eines Wegs: die ersten drei (Zeit, Strecke, Tempo) groß nebeneinander, der Rest kompakt in zwei
-   Spalten „Bezeichnung … Wert“ – vorher neun gleich große Kacheln, die den halben Bildschirm füllten */
+   Spalten „Bezeichnung … Wert“ – statt gleich großer Kacheln je Kennzahl */
 .weg-stats {
     display: grid; grid-template-columns: repeat(6, 1fr); gap: .1rem 1rem;
     div {
@@ -611,7 +611,7 @@ body.wege-page { overflow: hidden; }
 .wege-table .ent-stars { font-size: .8rem; }
 .wege-panel:focus, .wege-panel:focus-visible { outline: none; }
 /* In der Panel-Liste nichts zusammendrücken – als Spalte im Scroll-Bereich
-   stauchte WebKit (GNOME Web, Safari) sonst Leerhinweis und Knöpfe */
+   staucht WebKit (GNOME Web, Safari) sonst Leerhinweis und Knöpfe */
 .wege-content > * { flex: none; }
 .wege-content > .chip-row { overflow: visible; flex-wrap: wrap; }
 .ent-groups .wege-year summary { flex-wrap: wrap; row-gap: 0; small { margin-left: 1.75rem; flex-basis: 100%; } }

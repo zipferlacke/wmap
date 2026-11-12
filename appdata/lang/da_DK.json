@@ -1,0 +1,5125 @@
+{
+  "_meta": {
+    "name": "Dansk",
+    "locale": "da-DK"
+  },
+  "common": {
+    "language": {
+      "offer_title": "{name} er tilgængelig",
+      "offer_text": "WMap findes også på {name}. Vil du skifte? Du kan altid ændre det senere i indstillingerne.",
+      "switch": "Skift",
+      "stay": "Ikke nu"
+    },
+    "delete": "Slet",
+    "cancel": "Annullér",
+    "ok": "OK",
+    "sheet": {
+      "grip": "Skift højde: træk, tryk to gange for helt åben eller lukket"
+    },
+    "close": "Luk",
+    "save": "Gem",
+    "back": "Tilbage",
+    "view": "Vis",
+    "not_now": "Ikke nu",
+    "units": {
+      "m": "m",
+      "km": "km",
+      "h": "t",
+      "min": "min",
+      "s": "s",
+      "kmh": "km/t",
+      "mi": "mi",
+      "ft": "ft",
+      "mph": "mph"
+    },
+    "speech": {
+      "kilometers": "{x} kilometer",
+      "meters": "{x} meter",
+      "kilometers_plain": "{x} kilometer",
+      "meters_plain": "{x} meter",
+      "miles": {
+        "one": "{x} mile",
+        "other": "{x} miles"
+      },
+      "feet": "{x} fod",
+      "miles_plain": {
+        "one": "{x} mile",
+        "other": "{x} miles"
+      },
+      "feet_plain": "{x} fod"
+    },
+    "profiles": {
+      "foot": "Til fods",
+      "bike": "Cykel",
+      "car": "Bil",
+      "transit": "Bus & tog",
+      "hike": "Vandring",
+      "walk": "Gåtur",
+      "road": "Racercykel",
+      "tour": "Turcykel",
+      "gravel": "Gravel",
+      "mtb": "Mountainbike",
+      "drive": "Bil"
+    },
+    "osm_test_server": "OSM-testserver",
+    "later": "Senere",
+    "next": "Næste",
+    "done": "Færdig",
+    "nav": {
+      "map": "Kort",
+      "dashboard": "Overblik",
+      "tours": "Ture",
+      "discover": "Udforsk",
+      "plugins": "Plugins",
+      "main": "Hovednavigation",
+      "my_tours": "Mine ture",
+      "plan_tour": "Planlæg tur",
+      "fly": "Flyv",
+      "menu": "Menu"
+    },
+    "weekdays": {
+      "short": {
+        "mo": "Ma",
+        "tu": "Ti",
+        "we": "On",
+        "th": "To",
+        "fr": "Fr",
+        "sa": "Lø",
+        "su": "Sø"
+      }
+    },
+    "months": {
+      "short": {
+        "jan": "jan",
+        "feb": "feb",
+        "mar": "mar",
+        "apr": "apr",
+        "may": "maj",
+        "jun": "jun",
+        "jul": "jul",
+        "aug": "aug",
+        "sep": "sep",
+        "oct": "okt",
+        "nov": "nov",
+        "dec": "dec"
+      },
+      "long": {
+        "jan": "januar",
+        "feb": "februar",
+        "mar": "marts",
+        "apr": "april",
+        "may": "maj",
+        "jun": "juni",
+        "jul": "juli",
+        "aug": "august",
+        "sep": "september",
+        "oct": "oktober",
+        "nov": "november",
+        "dec": "december"
+      }
+    }
+  },
+  "settings": {
+    "look": {
+      "title": "Udseende",
+      "theme": {
+        "title": "Lys eller mørk",
+        "hint": "Til kort og app. „Som systemet“ følger din enheds tilstand, også når den skifter om aftenen.",
+        "options": {
+          "system": "Som systemet",
+          "light": "Lys",
+          "dark": "Mørk"
+        }
+      },
+      "language": {
+        "title": "Sprog"
+      },
+      "units": {
+        "title": "Enheder",
+        "options": {
+          "metric": "Kilometer og meter",
+          "imperial": "Miles og fod"
+        }
+      },
+      "clock": {
+        "title": "Tidsformat",
+        "options": {
+          "24": "24 timer",
+          "12": "12 timer (AM/PM)"
+        }
+      },
+      "geo": "Åbn kortlinks (geo:) med WMap",
+      "permissions": "Tilladelser – lokation, Health Connect"
+    },
+    "way": {
+      "title": "På farten",
+      "zoom": {
+        "title": "Zoom under navigation",
+        "hint": "Automatisk: tæt på i byen, længere væk på motorvejen, tættere på før et sving.",
+        "options": {
+          "auto": "Automatisk",
+          "near": "Tættere",
+          "far": "Mere overblik"
+        }
+      },
+      "along": {
+        "title": "Korte spørgsmål undervejs",
+        "hint": "„Ny vej?“, „Spærret?“, „Findes … stadig?“, „Stadig kø?“ som en lille pille, der forsvinder af sig selv – under navigation og med lokationsprikken på kortet, ubesvarede bagefter under Bidrag. Kun med Bidrag.",
+        "options": {
+          "foot": "Til fods",
+          "bike": "Cykel",
+          "car": "Bil"
+        }
+      },
+      "voice": "Stemme til meddelelser",
+      "fuel": {
+        "title": "Opsæt brændstofpriser",
+        "prompt": "Tankerkönig-API-nøgle (gratis på creativecommons.tankerkoenig.de).\nDen gemmes kun i denne browser. Lad feltet stå tomt for at fjerne den."
+      },
+      "offline_maps": "Offlinekort: hent områder til enheden",
+      "offline": {
+        "title": "Gem kortet offline til navigation",
+        "hint": "Når navigationen starter, hentes kortet langs ruten – så mærker du ikke områder uden dækning."
+      },
+      "nav3d": {
+        "title": "3D-visning under navigation",
+        "hint": "Vippet set fra førerens plads; slået fra: fladt set ovenfra."
+      },
+      "saver": {
+        "title": "Datasparetilstand",
+        "hint": "Ingen 3D-højdedata og ingen offlinekort."
+      },
+      "carlog": {
+        "title": "Android Auto: log kørslen",
+        "hint": "Til fejlfinding, hvis kortet hænger i bilen: skriver en fil pr. tur til Download/WMap. Gælder fra næste gang WMap startes i bilen."
+      }
+    },
+    "account": {
+      "title": "Konto",
+      "intro": "WMap bruger din OpenStreetMap-konto – til at tilføje og forbedre steder, til at dele og bedømme ture og til dine egne plugins. WMap har ikke sin egen adgangskode; alt andet virker uden konto.",
+      "delete": "Slet konto – med ture, plugins og bedømmelser",
+      "none": "Har du ikke en konto endnu? Den opretter du, når du logger ind på openstreetmap.org.",
+      "login_missing": "Login til OpenStreetMap mangler",
+      "signed_in": "Logget ind som {name}",
+      "logout": "Log ud",
+      "not_set_up": "Login er endnu ikke sat op her: WMap skal bruge et OAuth-klient-id fra {web} (se „Til udviklere“). Indtil da kan du sende svar anonymt som tip.",
+      "wmap_missing": "Logget ind på OpenStreetMap som {name}, men WMap-kontoen mangler stadig",
+      "login_again": "log venligst ind igen én gang.",
+      "relogin": "Log ind igen",
+      "queue": "{n} svar venter på at blive uploadet.",
+      "login": "Log ind med OpenStreetMap",
+      "wmap_failed": "Logget ind på OpenStreetMap, men WMap-kontoen kunne ikke oprettes: {error}",
+      "developer": {
+        "title": "Til udviklere",
+        "hint": "WMap-kontoen virker kun med openstreetmap.org og WMaps klient-id; på testserveren kan du kun prøve at redigere kortet.",
+        "server": "Server",
+        "client": {
+          "title": "OAuth-klient-id",
+          "hint": "registrér hos {web}"
+        },
+        "redirect": "Omdirigerings-URL"
+      }
+    },
+    "contribute": {
+      "title": "Bidrag til OpenStreetMap",
+      "clear": "Slet optagelse",
+      "trace": {
+        "title": "Optag din vej og spørg bagefter",
+        "hint": "WMap husker på denne enhed, hvor du har været (14 dage), og stiller bagefter et kort spørgsmål – f.eks. om en parkeringsplads koster noget. Intet forlader enheden, før du svarer og uploader."
+      },
+      "anon": {
+        "title": "Send som tip uden konto",
+        "hint": "Uden konto sendes dine svar anonymt som tip til OpenStreetMap – kortlæggere tilføjer dem så. Med konto går de direkte ind i kortet."
+      },
+      "stats": {
+        "none": "Endnu ingen bidrag fra denne enhed.",
+        "mine": "Du har {stats} via WMap.",
+        "all": "Alle tilsammen: {stats}.",
+        "anon_count": "Der tælles anonymt, kun antallet – uden konto, enhed eller sted."
+      }
+    },
+    "data": {
+      "title": "Data",
+      "trackshow": {
+        "title": "Optagne ture på kortet",
+        "hint": "Hvilke af dine ture under „Mine ture“, der automatisk vises på kortet. Ældre ture står stadig på listen; dér kan hvert år og hver tur vises og skjules enkeltvis. Jo ældre en tur er, jo svagere er den tegnet."
+      },
+      "sync": "Sikkerhedskopi &amp; synkronisering – mappe, Health Connect, ZIP",
+      "tracks": "Se optagne ruter",
+      "clear_history": "Slet søgehistorik",
+      "history": {
+        "title": "Husk hver navigation",
+        "hint": "Også almindelige navigationer havner under Optagne ture. Planlagte ture, du starter, og „Optag“ gemmes altid."
+      },
+      "stats": {
+        "title": "Anonym brugsstatistik",
+        "hint": "Én gang om dagen: at WMap var åben i dag, og hvor ofte hver tjeneste blev spurgt (f.eks. søgning 12×). Uden ID, uden position, uden søgeord."
+      },
+      "repair": {
+        "title": "Kontrollér og genindlæs appen",
+        "hint": "Kontrollerer hver gemt fil i appen, henter beskadigede filer og en eventuel nyere version fra serveren og genindlæser – hvis noget mangler efter en opdatering.",
+        "running": "Kontrollerer …"
+      }
+    },
+    "map": {
+      "title": "Kortets udseende",
+      "sharpness": {
+        "title": "Kortets skarphed",
+        "hint": "Hvor fint kortet tegnes (pixeltæthed). Højere: tekst, linjer og huse bliver skarpere – men det kræver mere hukommelse og batteri, og kortet kører mindre flydende. Lavere: mere sparsomt og flydende, men lidt utydeligt. Denne skærm har {dpr}. Gælder fra næste gang kortet åbnes."
+      }
+    },
+    "toast": {
+      "saver_off": "Datasparetilstand slået fra",
+      "saver_on": "Datasparetilstand slået til – ingen 3D-højdedata",
+      "next_open": "Gælder fra næste gang kortet åbnes",
+      "geo": "Browseren spørger nu, om WMap må åbne kortlinks",
+      "history_cleared": "Søgehistorik slettet",
+      "trace_cleared": "Optagelse slettet",
+      "fuel_on": "Brændstofpriser sat op",
+      "fuel_off": "Brændstofpriser slået fra",
+      "geo_failed": "Virker ikke i denne browser ({error})",
+      "signed_in": "Logget ind som {name}"
+    },
+    "page_title": "Indstillinger – WMap",
+    "title": "Indstillinger"
+  },
+  "dashboard": {
+    "page_title": "Overblik – WMap",
+    "title": "Overblik",
+    "tiles": {
+      "label": "Visninger",
+      "sync": {
+        "state": {
+          "busy": "Synkroniserer …",
+          "error": "Fejl ved synkronisering",
+          "folder_at": "Mappe {name} · {date}",
+          "folder": "Mappe {name}",
+          "health_error": "Fejl ved Health Connect",
+          "health_at": "Health Connect · {date}"
+        },
+        "title": "Sikkerhedskopi og synkronisering",
+        "text": "Mappe (Nextcloud, Drive …), Health Connect, sikkerhedskopi"
+      },
+      "map": {
+        "title": "Kort",
+        "text": "Søg, planlæg rute, naviger, optag"
+      },
+      "planned": {
+        "title": "Planlagte ture",
+        "text": "Klar til at køre eller gå afsted",
+        "none": "endnu ingen",
+        "count": {
+          "one": "{count} tur",
+          "other": "{count} ture"
+        }
+      },
+      "recorded": {
+        "title": "Optagne ture",
+        "text": "Det, du har cyklet og gået",
+        "none": "endnu ingen",
+        "this_year": " · {year}: {km}",
+        "count": {
+          "one": "{count} rute",
+          "other": "{count} ruter"
+        }
+      },
+      "discover": {
+        "title": "Opdag",
+        "text": "Vandre- og cykelruter, andres ture"
+      },
+      "plugins": {
+        "title": "Plugins",
+        "text": "Luftfotos, geologi, egne data, udvidelser",
+        "active": "{n} aktive"
+      },
+      "offline": {
+        "title": "Offline",
+        "text": "Kortområder, ture og navigationskort på enheden – til når du er af sted uden net",
+        "count": {
+          "one": "{count} område · {size}",
+          "other": "{count} områder · {size}"
+        }
+      },
+      "survey": {
+        "title": "Vær med",
+        "text": "Korte spørgsmål, der gør OpenStreetMap bedre",
+        "count": {
+          "one": "{count} nyt spørgsmål",
+          "other": "{count} nye spørgsmål"
+        }
+      },
+      "settings": {
+        "title": "Indstillinger",
+        "text": "Lys/mørk, navigation, offline, konto"
+      }
+    },
+    "store": {
+      "title": "Gemt på denne enhed",
+      "nav": {
+        "title": "Kort til navigation",
+        "none": "Ingen navigation forudindlæst",
+        "loaded": {
+          "one": "{count} navigation forudindlæst – så man ikke opdager huller i dækningen. Hver bliver liggende i {days} dage; hvis pladsen bliver knap, må den ældste vige.",
+          "other": "{count} navigationer forudindlæst – så man ikke opdager huller i dækningen. Hver bliver liggende i {days} dage; hvis pladsen bliver knap, må den ældste vige."
+        },
+        "item": "{date} · {tiles} · {days} tilbage",
+        "tiles": {
+          "one": "{count} felt",
+          "other": "{count} felter"
+        },
+        "days": {
+          "one": "{count} dag",
+          "other": "{count} dage"
+        },
+        "viewed": "Dertil {tiles} af områder, du har set på.",
+        "areas": "Områder, du selv har hentet, bliver liggende – de står sammen med alt det andet, der er tilgængeligt uden net, under <a href=\"./offline-daten.html\">Offline</a>.",
+        "delete": {
+          "title": "Slet navigationernes kort?",
+          "text": "Næste gang du navigerer, hentes kortene langs ruten igen. Dine offlineområder bliver.",
+          "done": "Navigationernes kort slettet"
+        }
+      },
+      "routes": {
+        "title": "Seneste ruter",
+        "unnamed": "Rute",
+        "forget": "Glem denne rute",
+        "none": "Ingen",
+        "delete_all": "Alle",
+        "deleted": "Seneste ruter slettet"
+      },
+      "history": {
+        "title": "Søgehistorik",
+        "empty": "Tom",
+        "count": {
+          "one": "{count} post",
+          "other": "{count} poster"
+        },
+        "deleted": "Søgehistorik slettet"
+      },
+      "usage_quota": "I alt fylder WMap {used} på denne enhed (tilladt: {quota}).",
+      "usage": "I alt fylder WMap {used} på denne enhed."
+    },
+    "thanks": {
+      "title": "Tak!",
+      "text": "WMap findes kun, fordi mange mennesker deler deres data og tjenester åbent:",
+      "support": "WMap er gratis, uden reklamer og uden sporing. Hvis den hjælper dig:",
+      "support_link": "Støt udviklingen"
+    },
+    "about": {
+      "changelog": "Hvad er nyt",
+      "text": "– kort og navigation baseret på åbne data",
+      "imprint": "Juridiske oplysninger",
+      "privacy": "Privatliv",
+      "version_app": "{version} · App {app}"
+    },
+    "unit": {
+      "km": "{v} km",
+      "mb": "{v} MB"
+    }
+  },
+  "delete_konto": {
+    "page_title": "Slet konto – WMap",
+    "title": "Slet konto",
+    "what": {
+      "title": "Hvad er en WMap-konto?",
+      "text": "WMap fungerer uden konto. Du skal kun bruge en konto for at dele ture eller plugins og for at bedømme ture. Du logger ind med din OpenStreetMap-konto; WMap gemmer kun dit OSM-navn og dit OSM-brugernummer – ingen adgangskode og ingen e-mailadresse."
+    },
+    "deleted": {
+      "title": "Hvad der slettes",
+      "name": "dit navn og dit OSM-brugernummer på WMap-serveren",
+      "tours": "alle ture, du har gemt – private og offentliggjorte – samt andres bedømmelser af dem",
+      "plugins": "alle plugins, du har oprettet – private og offentliggjorte, med uploadede data",
+      "ratings": "dine bedømmelser og kommentarer til andres ture",
+      "logins": "alle logins på alle enheder",
+      "final": "Sletningen sker med det samme og er endelig; der bliver intet tilbage på serveren.",
+      "not_server": "Ligger ikke på serveren: optagne ruter, gemte steder, offlinekort og indstillinger. De bliver på din enhed, indtil du sletter appen eller hjemmesidens data i browseren. Din OpenStreetMap-konto og alt, hvad du har tilføjet dér, bliver – det administrerer du på openstreetmap.org."
+    },
+    "now": {
+      "title": "Slet nu",
+      "wait": "Et øjeblik …",
+      "button": "Slet konto endeligt",
+      "hint": "Det er WMap-kontoen, der hører til den OpenStreetMap-konto, du er logget ind med, som slettes.",
+      "login": "Log ind med OpenStreetMap"
+    },
+    "no_login": {
+      "title": "Kan du ikke logge ind?",
+      "text": "Hvis du ikke længere kan logge ind, så skriv til <a href=\"mailto:contact@wuefl.de?subject=WMap-Konto%20l%C3%B6schen\">contact@wuefl.de</a> med dit OpenStreetMap-navn og – hvis muligt – navnet på en af dine ture eller plugins. Så sletter vi kontoen i hånden, senest inden for 30 dage, og bekræfter det over for dig."
+    },
+    "summary": {
+      "published": " ({n} offentliggjort)",
+      "tours": {
+        "one": "{n} tur",
+        "other": "{n} ture"
+      },
+      "plugins": {
+        "one": "{n} plugin",
+        "other": "{n} plugins"
+      },
+      "ratings": {
+        "one": "{n} bedømmelse",
+        "other": "{n} bedømmelser"
+      }
+    },
+    "status": {
+      "logged_out": "Du er ikke logget ind her. Log ind med den OpenStreetMap-konto, som din WMap-konto hører til – så kan du slette den.",
+      "signed_in": "Logget ind som <strong>{name}</strong>.",
+      "contains": "Det omfatter {list}.",
+      "empty": "Til denne konto hører ingen ture, plugins eller bedømmelser.",
+      "expired": "{error} – log venligst ind igen.",
+      "deleted_with": "Kontoen <strong>{name}</strong> er slettet – med {list}.",
+      "deleted": "Kontoen <strong>{name}</strong> er slettet.",
+      "revoke": "Godkendelsen til WMap kan du tilbagekalde på openstreetmap.org under Indstillinger → OAuth 2-applikationer → Godkendte applikationer."
+    },
+    "login_reason": "For at slette",
+    "confirm": {
+      "title": "Slet kontoen for alvor?",
+      "text": "Din WMap-konto og alle dine ture, plugins og bedømmelser slettes med det samme og endeligt. Det kan ikke fortrydes. Din OpenStreetMap-konto forbliver, som den er.",
+      "button": "Slet endeligt"
+    },
+    "error": {
+      "title": "Sletningen mislykkedes"
+    }
+  },
+  "ebenen": {
+    "page_title": "Egne lag – WMap",
+    "title": "Egne lag",
+    "back": "Til kortet",
+    "panel_label": "Lag",
+    "add": {
+      "file": "Indlæs GeoJSON",
+      "url": "Indlæs fra link",
+      "loaded": "„{name}“ indlæst – {count} objekter",
+      "link": {
+        "title": "GeoJSON fra et link",
+        "text": "Serveren skal tillade hentning fra browseren (CORS). Dataene hentes én gang og gemmes.",
+        "load": "Indlæs",
+        "status": "Serveren svarer med {status}",
+        "cors": "Kan ikke hentes – måske tillader serveren ikke hentning fra browseren (CORS)"
+      },
+      "default_name": "Lag"
+    },
+    "intro": "Egne data som lag – fx geologiske målepunkter eller måleværdier som GeoJSON. De forbliver private på denne enhed. Talværdier kan vises som farveforløb.",
+    "list": {
+      "empty": "Endnu ingen lag. Indlæs en GeoJSON-fil – fx eksporteret fra QGIS.",
+      "source": {
+        "url": "fra {host}",
+        "plugin": "Plugin fra {operator}",
+        "file": "fra fil"
+      },
+      "color": "Farve",
+      "tiles": "Kortfelter",
+      "objects": "{count} objekter",
+      "hide": "Skjul",
+      "show": "Vis",
+      "fit": "Zoom ind",
+      "opacity": "Dækningsgrad",
+      "color_by": {
+        "title": "Farve efter",
+        "single": "– én farve –"
+      },
+      "on_main": "Også på hovedkortet",
+      "as_plugin": "Som plugin"
+    },
+    "delete": {
+      "title": "Slet „{name}“?",
+      "text": "Laget forsvinder fra denne enhed."
+    },
+    "plugin": {
+      "too_big": "For stort til et plugin (maks. 2 MB) – tilbyd det som link i stedet",
+      "login_reason": "For at uploade som plugin",
+      "title": "Gem som plugin",
+      "name": "Navn",
+      "description": {
+        "title": "Beskrivelse",
+        "placeholder": "Hvad viser laget? Hvordan er der målt?"
+      },
+      "operator": "Udbyder",
+      "data_date": "Dataenes aktualitet",
+      "publish": "Tilbyd offentligt – ellers kun for dig",
+      "upload": "Upload",
+      "published": "Offentliggjort som plugin",
+      "private": "Uploadet – kun for dig (også på andre enheder)"
+    },
+    "info": {
+      "object": "Objekt"
+    }
+  },
+  "oauth": {
+    "page_title": "WMap – Login",
+    "text": "Logger ind hos OpenStreetMap …"
+  },
+  "import": {
+    "page_title": "Åbn GPX – WMap",
+    "title": "Åbn GPX",
+    "unit": {
+      "km": "{v} km"
+    },
+    "values": {
+      "hr": "Puls",
+      "pow": "Effekt"
+    },
+    "card": {
+      "error": "Kan ikke åbnes: {error}",
+      "no_times": "uden tider",
+      "saved": "Gemt – se den",
+      "merged": "Suppleret – se den",
+      "merge": "Slå sammen med den eksisterende tur …",
+      "exists": "Findes allerede – se den",
+      "save_track": "Gem som optaget tur",
+      "plan_only": "Uden tider i filen kan den kun åbnes som planlagt tur.",
+      "dup": {
+        "known": "Du har allerede denne rute: „{name}“.",
+        "kept": "Intet overtaget – de eksisterende værdier bliver.",
+        "nothing": "Filen har ikke noget, der mangler her."
+      },
+      "view": "Se",
+      "open_plan": "Åbn som planlagt tur"
+    },
+    "more": {
+      "missing": "{values} (mangler her)",
+      "marks": "Omgange fra uret (mangler her)",
+      "points": "mere nøjagtig rute ({file} i stedet for {here} punkter)",
+      "differ": "{values} afviger",
+      "has": "Filen har mere: {list}.",
+      "differs": "Filen afviger."
+    },
+    "summary": {
+      "fresh": "{n} nye",
+      "plus": "{n} til en tur, der allerede findes",
+      "same": "{n} findes allerede",
+      "done": "{n} overtaget",
+      "plain": "{n} uden tider (kun som planlagt tur)",
+      "bad": "{n} ikke læsbare",
+      "title": "{n} filer",
+      "taking": "Overtager {i} af {n} …",
+      "waiting": "Venter på dit svar …",
+      "take": {
+        "one": "Overtag én fil …",
+        "other": "Overtag alle {n} …"
+      },
+      "saved": {
+        "one": "{n} tur overtaget",
+        "other": "{n} ture overtaget"
+      },
+      "merged": "{n} slået sammen",
+      "later": {
+        "one": "{n} gemmes til senere",
+        "other": "{n} gemmes til senere"
+      },
+      "nothing": "Intet nyt – turene findes allerede"
+    },
+    "empty": {
+      "title": "Åbn GPX- eller FIT-fil",
+      "text": "Vælg en GPX- eller FIT-fil – f.eks. fra Garmin, Zepp, Komoot eller en anden app. Med tider kan du gemme den som optaget tur, ellers åbne den som planlagt tur."
+    },
+    "pick": {
+      "more": "Vælg en fil mere",
+      "first": "Vælg fil"
+    },
+    "toast": {
+      "kept": "Intet overtaget – de eksisterende værdier bliver",
+      "exists": "Denne rute findes allerede",
+      "nothing": "Intet at overtage",
+      "saved": "„{name}“ gemt",
+      "merged": "„{name}“ suppleret"
+    },
+    "default_file": "Fil.gpx",
+    "error": {
+      "no_fit": "Ikke en FIT-fil",
+      "fit_damaged": "FIT-filen er beskadiget",
+      "no_gpx": "Ikke en gyldig GPX-fil",
+      "no_route": "Ingen rute i filen"
+    },
+    "default_file_name": "Fil.gpx",
+    "note": {
+      "in_folder": "Den eksisterende tur ligger i mappen – {reason}"
+    },
+    "ask": {
+      "skip": "Importér ikke",
+      "all": {
+        "text": "{text} Overtage de mere nøjagtige data overalt?",
+        "best": "Ja, de mere nøjagtige data overalt",
+        "each": "Indstil selv"
+      },
+      "new": {
+        "text": "{text} Overtage?",
+        "take": "Overtag alle",
+        "each": "Vælg"
+      },
+      "file": {
+        "title_n": "Ny fil ({i} af {n})",
+        "title": "Ny fil",
+        "take": "Overtag",
+        "from": "„{file}“{what}. Hvad vil du overtage?",
+        "planned": "En planlagt tur – uden tider.",
+        "always": "Rute, tid og kilometer følger altid med.",
+        "only_route": "Kun ruten – ellers ingen måledata i filen."
+      },
+      "same": "Overtag på samme måde for alle filer",
+      "continue_later": "Fortsæt senere",
+      "all_best": "De mere nøjagtige data for alle",
+      "files_title": "{n} filer",
+      "new_tours": {
+        "one": "{n} ny tur",
+        "other": "{n} nye ture"
+      },
+      "to_existing": "{n} til en tur, der allerede findes"
+    },
+    "merge": {
+      "title_n": "Slå sammen ({i} af {n})",
+      "title": "Slå sammen",
+      "label": {
+        "shape": "Rute · tid · kilometer",
+        "hr": "Puls",
+        "pow": "Effekt",
+        "marks": "Omgange fra uret"
+      },
+      "shape_hint": "hører sammen – de stammer fra de samme punkter",
+      "file_named": "filen „{name}“",
+      "file": "filen",
+      "old_name": "turen „{name}“, som den er i WMap",
+      "new": "Ny",
+      "old": "Hidtil",
+      "exists": "Turen „{name}“ findes allerede.",
+      "note_both": "For hver linje: „Ny“ erstatter det hidtidige, „Hidtil“ lader det være, som det er. Navn, type og farve forbliver altid de hidtidige.",
+      "note_single": "Uden hak følger måleværdien ikke med."
+    }
+  },
+  "offline_data": {
+    "page_title": "Offline – WMap",
+    "title": "Offline",
+    "back": "Til oversigten",
+    "tracks": {
+      "keep": {
+        "days30": "fra de seneste 30 dage",
+        "days90": "fra de seneste 90 dage",
+        "year": "fra det seneste år",
+        "all": "alle",
+        "span": "dem fra {span}",
+        "recent": "fra den seneste tid"
+      },
+      "empty": "Ingen optagede ture endnu.",
+      "all_here": {
+        "one": "Alle {count} tur ligger helt på denne enhed. Uden en forbundet mappe flyttes intet ud, og intet slettes efter tid.",
+        "other": "Alle {count} ture ligger helt på denne enhed. Uden en forbundet mappe flyttes intet ud, og intet slettes efter tid."
+      },
+      "pinned": " og {count} markeret som „tilgængelig offline“",
+      "split": {
+        "one": "{n} af {tours} ligger helt i appen: {which}{pinned}.",
+        "other": "{n} af {tours} ligger helt i appen: {which}{pinned}."
+      },
+      "count": {
+        "one": "{count} tur",
+        "other": "{count} ture"
+      },
+      "rest": {
+        "one": "Den resterende ligger i mappen – i appen står kartotekskortet (navn, rute, tid, grov forløb).",
+        "other": "De øvrige {n} ligger i mappen – i appen står kartotekskortet (navn, rute, tid, grov forløb)."
+      },
+      "title": "Optagede ture",
+      "pin_hint": "Gør tilgængelig offline: åbn turen og tryk på „Tilgængelig offline“. Hvor længe ture automatisk bliver helt i appen, indstiller du under <a href=\"./sync.html\">Sikkerhedskopi &amp; synkronisering</a> („Behold i appen“).",
+      "view": "Se optagede ture",
+      "unpinned": "„{name}“ ligger efter næste afstemning kun i mappen"
+    },
+    "unit": {
+      "gb": "{v} GB",
+      "mb": "{v} MB"
+    },
+    "not_offline": "Ikke længere offline",
+    "tiles": {
+      "one": "{count} felt",
+      "other": "{count} felter"
+    },
+    "areas": {
+      "terrain": "med terræn",
+      "date": "Pr. {date}",
+      "partial": "Ufuldstændig",
+      "resume": "i editoren „Hent videre“",
+      "title": "Kortområder",
+      "state_size": {
+        "one": "{count} område ligger helt på enheden – i alt {size}. Det bliver, indtil du fjerner det.",
+        "other": "{count} områder ligger helt på enheden – i alt {size}. De bliver, indtil du fjerner dem."
+      },
+      "state": {
+        "one": "{count} område ligger helt på enheden. Det bliver, indtil du fjerner det.",
+        "other": "{count} områder ligger helt på enheden. De bliver, indtil du fjerner dem."
+      },
+      "empty": "Intet område hentet endnu. Et område er et stykke kort, der ligger helt på enheden – til brug undervejs uden net.",
+      "new": "Nyt område",
+      "edit": "Redigér områder",
+      "hint": "Kortet i et område bliver, som det var, da det blev hentet. Opdatér: tryk på området og vælg dér „Hent igen“.",
+      "remove": {
+        "title": "„{name}“ ikke længere offline?",
+        "freed": "{size} bliver frigjort.",
+        "text": "Området slettes fra enheden – uden net er kortet der så ikke længere.",
+        "button": "Fjern",
+        "done": "„{name}“ fjernet"
+      }
+    },
+    "default_tour": "Tur",
+    "planned": {
+      "title": "Planlagte ture",
+      "state": {
+        "one": "{count} planlagt tur ligger helt i appen – så du kan komme af sted også uden net. Hent et område til kortet undervejs; under navigation forhåndshenter WMap selv kortet langs ruten.",
+        "other": "{count} planlagte ture ligger helt i appen – så du kan komme af sted også uden net. Hent et område til kortet undervejs; under navigation forhåndshenter WMap selv kortet langs ruten."
+      },
+      "empty": "Ingen planlagte ture endnu.",
+      "view_all": "Se alle {n}"
+    },
+    "nav": {
+      "title": "Kort til navigation",
+      "state": {
+        "one": "{count} navigation forhåndshentet – så huller i dækningen ikke mærkes undervejs. Hver bliver i {days} dage; bliver pladsen knap, må den ældste vige.",
+        "other": "{count} navigationer forhåndshentet – så huller i dækningen ikke mærkes undervejs. Hver bliver i {days} dage; bliver pladsen knap, må den ældste vige."
+      },
+      "empty": "Ingen navigation forhåndshentet. Når en navigation starter, henter WMap selv kortet langs ruten.",
+      "item": "Navigation fra {date}",
+      "item_sub": "{tiles} · endnu {days}",
+      "days": {
+        "one": "{count} dag",
+        "other": "{count} dage"
+      },
+      "viewed": "Dertil {tiles} fra områder, du har set på – de bliver, så længe der er plads.",
+      "delete_all": "Slet alle",
+      "deleted_one": "Navigationens kort slettet",
+      "delete": {
+        "title": "Slet navigationernes kort?",
+        "text": "Næste gang du navigerer, hentes kortene langs ruten igen. Dine områder bliver.",
+        "done": "Navigationernes kort slettet"
+      }
+    },
+    "usage_quota": "I alt fylder WMap {used} på denne enhed (tilladt: {quota}).",
+    "usage": "I alt fylder WMap {used} på denne enhed.",
+    "app_offline": "Selve appen kører også uden net; søgning og ruteberegning kræver det."
+  },
+  "offline": {
+    "page_title": "Offlinekort – WMap",
+    "title": "Offlinekort",
+    "back": "Til „Offline“",
+    "panel_label": "Offlinekort",
+    "new": {
+      "button": "Nyt område",
+      "title": "Nyt område",
+      "shape": {
+        "label": "Form",
+        "rect": "Rektangel",
+        "free": "Fri form"
+      },
+      "remove_last": "Slet sidste punkt",
+      "restart": "Start forfra",
+      "name": {
+        "title": "Navn",
+        "placeholder": "f.eks. Himmelbjerget",
+        "around": "Område omkring {place}",
+        "default": "Område"
+      },
+      "detail": "Detaljer",
+      "terrain": "Tag terræn med – skygge og 3D",
+      "download": "Hent",
+      "remove_selected": "Slet markeret punkt",
+      "min_points": "Sæt mindst tre punkter.",
+      "hint": {
+        "rect": "Træk i rektanglets hjørner for at tilpasse det.",
+        "free": "Tryk på kortet for at sætte punkter – et tryk tæt på en kant sætter punktet ind dér. Punkter kan trækkes; et tryk markerer, dobbelttryk sletter."
+      },
+      "too_big": "For stort – vælg et mindre område eller „Oversigt“.",
+      "calculating": "{count} felter – størrelsen beregnes …",
+      "estimate": "<strong>ca. {size}</strong> · {tiles} felter",
+      "tight": "Der er kun {size} ledigt – det rækker nok ikke.",
+      "no_estimate": "Størrelsen kan ikke hentes ({error}) – {count} felter"
+    },
+    "intro": "Områder, der ligger helt på enheden – til brug undervejs uden net. De bliver, indtil du sletter dem, og kan til enhver tid hentes igen.",
+    "unit": {
+      "mb": "{v} MB",
+      "gb": "{v} GB"
+    },
+    "list": {
+      "terrain": "med terræn",
+      "loading": "Henter … {pct} % · {size}",
+      "ok": "{size} · {tiles} felter · {what} · pr. {date}",
+      "partial_size": "Ufuldstændig ({size}) – {what}",
+      "partial": "Ufuldstændig – {what}",
+      "fit": "Zoom ind",
+      "stop": "Stop",
+      "resume": "Hent videre",
+      "refresh": "Hent igen",
+      "rename": "Omdøb",
+      "empty": "Ingen områder endnu. Tryk på „Nyt område“ og vælg på kortet, hvad der skal være tilgængeligt offline."
+    },
+    "usage": {
+      "total": "Områder i alt: {size}.",
+      "free": "Ledigt til WMap: {size}."
+    },
+    "toast": {
+      "stopped": "„{name}“ stoppet – hent videre senere",
+      "done": "„{name}“ er tilgængeligt offline ({size})",
+      "failed": "„{name}“: {failed} felter mangler – „Hent videre“ prøver igen"
+    },
+    "delete": {
+      "title": "Slet „{name}“?",
+      "freed": "{size} bliver frigjort.",
+      "text": "Uden net er kortet der så ikke længere."
+    },
+    "areas": {
+      "detail": {
+        "full": "Alt – veje, stier, huse",
+        "overview": "Oversigt – steder og store veje",
+        "full_short": "Alt",
+        "overview_short": "Oversigt"
+      },
+      "error": {
+        "browser": "Offlinekort fungerer ikke i denne browser",
+        "too_big": "Området er for stort",
+        "map_not_loaded": "Kortet er ikke indlæst endnu",
+        "storage_full": "Lageret er fuldt – vælg et mindre område eller kun oversigt"
+      }
+    },
+    "error": {
+      "source_not_loaded": "Kortkilden er ikke indlæst endnu"
+    }
+  },
+  "plugins": {
+    "page_title": "Plugins – WMap",
+    "title": "Plugins",
+    "search": "Søg i plugins",
+    "add": {
+      "title": "Tilføj",
+      "file": "GeoJSON-fil",
+      "folder": "Tilføj plugin-mappe",
+      "folder_once": "Indlæs mappe",
+      "source": "Adresse (også med adgangskode)",
+      "script": "Udvidelse via adresse",
+      "offer": "Udbyd plugin",
+      "howto": "Sådan bygger du et plugin – opbygning af en plugin-mappe",
+      "hint": "Egne lag bliver kun på denne enhed. „Udbyd plugin“ lægger et lag eller en udvidelse i kataloget – privat (kun til dig, på alle enheder) eller offentligt; det kræver en WMap-konto."
+    },
+    "filter": {
+      "all": "Alle",
+      "layer": "Kortlag",
+      "extension": "Udvidelser",
+      "own": "Egne",
+      "active": "Aktive"
+    },
+    "kind": {
+      "layer": "Kortlag",
+      "extension": "Udvidelse",
+      "own": "Eget lag"
+    },
+    "type": {
+      "geojson": "Data (GeoJSON)",
+      "raster": "Kortfliser",
+      "stored": "Måledata, gemt her",
+      "script": "JavaScript",
+      "raster_private": "Kortfliser, privat",
+      "objects": "{count} objekter"
+    },
+    "builtin": {
+      "hiking": {
+        "name": "Vandrestier",
+        "text": "Alle afmærkede vandrestier – fra rundture til europæiske fjernvandrestier, med deres mærker."
+      },
+      "cycling": {
+        "name": "Cykelruter",
+        "text": "Afmærkede cykelruter: nationale, regionale og lokale ruter."
+      },
+      "mtb": {
+        "name": "Mountainbike",
+        "text": "Skiltede mountainbike-ruter."
+      },
+      "description": "{text} Data fra OpenStreetMap, tegnet af waymarkedtrails.org (CC BY-SA)."
+    },
+    "source": {
+      "self": "dig selv",
+      "ext_folder": "Fra din plugin-mappe: {path}",
+      "ext_url": "Selv tilføjet via adresse.",
+      "plugin_folder": "fra en plugin-mappe",
+      "folder": "fra en mappe",
+      "file": "fra en fil",
+      "file_path": "Fil: {path}"
+    },
+    "list": {
+      "empty_own": "Endnu ingen egne lag – tilføj en GeoJSON-fil, en mappe eller en adresse nedenfor.",
+      "empty_active": "Intet er aktivt endnu.",
+      "empty": "Intet fundet.",
+      "server_error": "Kataloget kan ikke nås lige nu: {error}"
+    },
+    "detail": {
+      "page_title": "{name} – Plugins – WMap",
+      "operator": "Udbyder: {operator}",
+      "data_date": "Dataenes stand: {date}",
+      "contact": "Kontakt: {contact}",
+      "private": "Privat – kun til dig",
+      "local": "Kun på denne enhed",
+      "back": "Alle plugins",
+      "deactivate": "Deaktivér",
+      "activate": "Aktivér",
+      "on_map": "Se på kortet",
+      "warning": "En udvidelse er programkode. Når den er aktiv, må den alt, hvad WMap må – også se din position. Aktivér kun det, du kender, og hvor du stoler på udbyderen.",
+      "source": "Kilde: {url}",
+      "opacity": {
+        "title": "Dækningsgrad",
+        "label": "Dækningsgrad i procent",
+        "value": "{v} %"
+      }
+    },
+    "activate": {
+      "title": "Aktivér „{name}“?",
+      "text_url": "Udvidelsen henter programkode fra {host} og må alt i WMap – også se din position. Aktivér kun, hvis du stoler på udbyderen.",
+      "text_folder": "Udvidelsen fra din plugin-mappe ({path}) må alt i WMap – også se din position. Aktivér kun, hvis du stoler på udbyderen."
+    },
+    "toast": {
+      "active": "„{name}“ er aktivt – på kortet i lagmenuen",
+      "off": "„{name}“ er slået fra"
+    },
+    "error": {
+      "status": "Udbyderen svarer med {status}",
+      "unreachable": "Udbyderen kan ikke nås (eller tillader ikke hentning fra browseren)"
+    },
+    "delete": {
+      "title": "Slet „{name}“?",
+      "server": "Pluginet forsvinder fra kataloget – for alle.",
+      "local": "Det forsvinder fra denne enhed.",
+      "done": "Slettet"
+    },
+    "script": {
+      "hint": "Et JavaScript-modul (https, .js/.mjs) med <code>export function activate(wmap)</code>. Det kører først, når du aktiverer det.",
+      "name": "Navn",
+      "url": {
+        "title": "Adresse",
+        "placeholder": "https://…/udvidelse.js"
+      },
+      "add": "Tilføj",
+      "bad_url": "Angiv en https-adresse til en .js-fil"
+    },
+    "offer": {
+      "login_reason": "For at udbyde et plugin",
+      "hint": "Et kortlag eller en udvidelse, der ligger hos dig eller en udbyder. Egne måledata uploader du som plugin under „Egne lag“.",
+      "name": "Navn",
+      "description": "Beskrivelse",
+      "operator": "Udbyder",
+      "contact": "Kontakt (web eller e-mail)",
+      "kind": {
+        "title": "Type",
+        "geojson": "GeoJSON-link",
+        "raster": "Kortfliser eller WMS",
+        "script": "Udvidelse (JavaScript)"
+      },
+      "link": "Link (https)",
+      "attribution": "Kildeangivelse",
+      "data_date": "Dataenes stand",
+      "publish": "Udbyd offentligt – ellers kun til dig",
+      "published": "Udgivet – for alle i kataloget",
+      "private": "Gemt – kun til dig"
+    },
+    "folders": {
+      "add_failed": "Mappen virkede ikke: {error}",
+      "remove": {
+        "title": "Fjern „{name}“?",
+        "text": "WMap glemmer mappen og fjerner lagene og udvidelserne fra den igen. Filerne i mappen bliver liggende.",
+        "button": "Fjern",
+        "label": "Fjern mappe"
+      },
+      "and": " og ",
+      "loaded": "{what} fra „{name}“",
+      "nothing": "Intet fundet i „{name}“",
+      "unreadable": " – kan ikke læses: {files}",
+      "layers": {
+        "one": "{n} lag",
+        "other": "{n} lag"
+      },
+      "extensions": {
+        "one": "{n} udvidelse",
+        "other": "{n} udvidelser"
+      },
+      "once_hint": "Denne browser kan kun indlæse en mappe én gang og ikke huske den – det kan appen samt Chrome og Edge. Indlæs igen: vælg bare den samme mappe en gang til.",
+      "title": "Plugin-mapper",
+      "reload": "Indlæs igen"
+    },
+    "files": {
+      "some_failed": " – {n} kunne ikke læses",
+      "invalid": "Ingen gyldig GeoJSON-fil ({files})",
+      "none": "Ingen GeoJSON-filer fundet",
+      "loaded": {
+        "one": "{n} lag indlæst",
+        "other": "{n} lag indlæst"
+      }
+    },
+    "folder": {
+      "fallback_name": "Mappe",
+      "operator": "fra din mappe",
+      "default_name": "Plugin",
+      "error": {
+        "no_script": "script mangler",
+        "no_data": "ingen data",
+        "once": "Denne browser kan kun indlæse mapper én gang",
+        "unknown": "Mappen er ikke længere kendt",
+        "no_access": "Ingen adgang til mappen – giv tilladelse"
+      }
+    }
+  },
+  "plugin_howto": {
+    "page_title": "Byg plugins – WMap",
+    "title": "Byg plugins",
+    "intro": {
+      "title": "Hvad det handler om",
+      "text": "En plugin-mappe er en helt almindelig mappe på din enhed – eller i Nextcloud, Drive, Syncthing … WMap læser <strong>kortlag</strong> og <strong>udvidelser</strong> fra den. Du kan tilføje flere mapper; WMap husker dem, og „Indlæs igen“ henter ændrede filer.",
+      "layer": "<strong>Kun et lag:</strong> læg en GeoJSON-fil i mappen – så er du færdig.",
+      "named": "<strong>Lag med navn, beskrivelse og farve:</strong> en undermappe med en <code>wmap-plugin.json</code>.",
+      "tiles": "<strong>Kortfliser</strong> (f.eks. et geologisk kort, WMS): også via <code>wmap-plugin.json</code>.",
+      "extension": "<strong>Et rigtigt plugin med programkode</strong> (udvidelse): en JavaScript-fil, der gør noget på kortet."
+    },
+    "where": {
+      "title": "Hvor det virker",
+      "app": "<strong>WMap-appen</strong> (Android, Windows, macOS, Linux): vælg mappe, WMap husker den.",
+      "chrome": "<strong>Chrome og Edge</strong> (også som installeret webapp): på samme måde – efter en genstart spørger browseren én gang, om WMap igen må læse.",
+      "firefox": "<strong>Firefox og Safari:</strong> kun <em>indlæs én gang</em>. Disse browsere tilbyder ikke grænsefladen til varig mappeadgang (File System Access) – Mozilla anser den for for risikabel, fordi en webside kunne skrive i rigtige mapper med den. For at opdatere skal du bare vælge den samme mappe igen.",
+      "add": "Tilføj: <a href=\"./plugins.html\">Plugins</a> → Tilføj → „Tilføj plugin-mappe“."
+    },
+    "layout": {
+      "title": "Opbygning af en mappe",
+      "code": "Mine plugins/\n├── Jagttaarne.geojson            → Lag „Jagttaarne“\n├── Maalenet/\n│   ├── wmap-plugin.json          → Lag med navn, beskrivelse, farve\n│   └── maalestationer.geojson\n├── Geologi/\n│   └── wmap-plugin.json          → Kortfliser (tiles)\n└── Vejrvarsel/\n    ├── wmap-plugin.json          → Udvidelse (script)\n    └── main.js",
+      "loose_data": "Løse <code>.geojson</code>/<code>.json</code>-filer bliver til ét lag hver, opkaldt efter filen.",
+      "loose_js": "Løse <code>.js</code>-filer bliver til udvidelser (se nedenfor).",
+      "subfolder": "Alt i en undermappe med <code>wmap-plugin.json</code> hører til dette plugin.",
+      "depth": "Undermapper op til 5 niveauer dybt; filer og mapper, der begynder med punktum, springes over."
+    },
+    "geojson": {
+      "title": "wmap-plugin.json – lag fra GeoJSON",
+      "code": "{\n  \"name\": \"Målenet Harzen\",\n  \"description\": \"Grundvandsmålestationer, opdateret månedligt.\",\n  \"operator\": \"Vandforbundet Harzen\",\n  \"attribution\": \"© Vandforbundet Harzen, CC BY 4.0\",\n  \"data\": \"messstellen.geojson\",\n  \"color\": \"#1a73e8\",\n  \"colorBy\": \"pegel\"\n}",
+      "fields": {
+        "name": "Navn i WMap (ellers mappens navn)",
+        "description": "Beskrivelse på pluginsiden",
+        "operator": "Udbyder og kildeangivelse",
+        "color": "Farve på punkter, linjer og flader",
+        "color_by": "Egenskab med tal – farvelagt fra blå (lav) til rød (høj)",
+        "data": "en fil eller en liste (<code>[\"a.geojson\", \"b.geojson\"]</code>); mangler den, tager WMap alle GeoJSON-filer i mappen"
+      },
+      "hint": "GeoJSON i WGS84 (længde- og breddegrad), som QGIS, geojson.io &amp; co. skriver det. WMap viser objekternes egenskaber, når du trykker på dem."
+    },
+    "tiles": {
+      "title": "wmap-plugin.json – kortfliser",
+      "code": "{\n  \"name\": \"Geologisk kort\",\n  \"tiles\": \"https://example.org/tiles/{z}/{x}/{y}.png\",\n  \"attribution\": \"© Landesamt …\",\n  \"minzoom\": 6,\n  \"maxzoom\": 16,\n  \"opacity\": 0.7\n}",
+      "wms": "Til en WMS-tjeneste: en flisskabelon med <code>BBOX={bbox-epsg-3857}</code>, <code>CRS=EPSG:3857</code>, <code>WIDTH=512&amp;HEIGHT=512</code>."
+    },
+    "extension": {
+      "title": "Udvidelse – et rigtigt plugin",
+      "json": {
+        "code": "{\n  \"name\": \"Vejrvarsel\",\n  \"description\": \"Viser stormvarsler som en flade.\",\n  \"type\": \"extension\",\n  \"script\": \"main.js\"\n}"
+      },
+      "script": {
+        "code": "// main.js – et ES-modul i én fil\nexport function activate(wmap) {\n  wmap.onMapReady((map) => {\n    map.addSource('warnung', { type: 'geojson', data: 'https://example.org/warnungen.geojson' });\n    map.addLayer({ id: 'warnung', type: 'fill', source: 'warnung',\n      paint: { 'fill-color': '#e03131', 'fill-opacity': 0.3 } });\n  });\n  wmap.addMenuItem('warning', 'Varsler', () => wmap.toast('Varsler til'));\n}"
+      },
+      "api": {
+        "map": "kortet (MapLibre)",
+        "maplibregl": "MapLibre selv (markører, popups …)",
+        "on_map_ready": "fn(map), så snart kortet er indlæst",
+        "add_menu_item": "Punkt i kortets menu (ikoner: Material Symbols)",
+        "toast": "kort besked nederst",
+        "storage": "lille lager kun til denne udvidelse",
+        "version": "WMap-version"
+      },
+      "one_file": "Én fil, uden <code>import</code> af andre egne filer (biblioteker via <code>https://</code>-adresse går fint).",
+      "activate": "Udvidelser kører først, når du <strong>aktiverer</strong> dem på pluginsiden – de må alt i WMap, også se din position.",
+      "reload": "Efter ændringer: „Indlæs igen“, og åbn derefter kortet igen."
+    },
+    "share": {
+      "title": "Del",
+      "text": "Plugin-mapper bliver på din enhed. Du giver andre et plugin ved at dele mappen – eller ved at lægge det i kataloget via „Udbyd plugin“ på pluginsiden (privat eller offentligt, med WMap-konto)."
+    }
+  },
+  "sync": {
+    "page_title": "Sikkerhedskopi og synkronisering – WMap",
+    "title": "Sikkerhedskopi og synkronisering",
+    "never": "aldrig",
+    "auto": {
+      "options": {
+        "off": "Fra – kun manuelt",
+        "start": "Når WMap åbnes",
+        "every30": "Når WMap åbnes og hvert 30. minut"
+      },
+      "title": "Automatisk"
+    },
+    "folder": {
+      "keep": {
+        "options": {
+          "days30": "Seneste 30 dage",
+          "days90": "Seneste 90 dage",
+          "year": "Seneste år",
+          "all": "Alt"
+        },
+        "title": "Behold i appen",
+        "shelf": " Lige nu: {cards} af {total} kun i mappen.",
+        "hint": "Optagede ture fra denne periode ligger helt i appen, ældre kun i mappen – i appen bliver der et kartotekskort (navn, strækning, tid, grov rute), resten hentes fra mappen, når du åbner turen. Det, du markerer som „tilgængelig offline“ under „Mine ture“, bliver altid helt i appen. Planlagte ture bliver det under alle omstændigheder.",
+        "toast_all": "Alle ture bliver helt i appen",
+        "toast": "I appen: {span} – ældre ligger i mappen"
+      },
+      "tree": {
+        "title": "Mappestruktur forklaret",
+        "code": "Din mappe/\n├─ settings.json            Indstillinger\n├─ Geplante Touren/         én GPX-fil pr. tur\n├─ Aufgezeichnete Touren/\n│  └─ 2026/09 September/    én GPX-fil pr. tur (med puls &amp; co.) eller urets FIT-fil\n├─ Bus &amp; Bahn/              én JSON-fil pr. gemt forbindelse\n├─ Lesezeichen.json         Hjem, arbejde, bogmærker og lister\n├─ Unbekannte Dateien/         det, der ikke kunne læses – slettes efter 30 dage\n└─ Inhalt.json              Indeks til hurtig afstemning",
+        "hint": "Hver WMap, der forbinder den samme mappe, læser den ind og afstemmer med den. Brug en mappe kun til WMap. GPX- og FIT-filer fra andre steder (ur, Garmin, Komoot …) lægger du bare ind, lige meget hvor: WMap spørger, hvad der skal ske med dem, og sorterer dem på plads – også fra egne undermapper. En FIT-fil bliver, som uret skrev den. Andre filer (fotos, dokumenter) rører WMap ikke. Sletter du en turfil, forsvinder posten også i WMap."
+      },
+      "import": "Importér fra mappe",
+      "export": "Eksportér (ZIP)",
+      "restore": {
+        "text": "Gendan en eksport som ZIP:",
+        "pick": "Vælg ZIP"
+      },
+      "broken": {
+        "reveal": "Åbn i filhåndtering",
+        "state": {
+          "one": "En fil er ikke en tur eller kunne ikke læses og ligger i mappen under „Unbekannte Dateien“: {files}{more}. Se selv efter, om der er noget vigtigt iblandt – WMap sletter den 30 dage efter fundet (den første den {until}).",
+          "other": "{n} filer er ikke ture eller kunne ikke læses og ligger i mappen under „Unbekannte Dateien“: {files}{more}. Se selv efter, om der er noget vigtigt iblandt – WMap sletter dem 30 dage efter fundet (den første den {until})."
+        }
+      },
+      "others": {
+        "state": {
+          "one": "En fil i mappen er ikke en tur og bliver liggende: {files}{more}.",
+          "other": "{n} filer i mappen er ikke ture og bliver liggende: {files}{more}."
+        },
+        "tidy": "Ryd op …"
+      },
+      "title": "Mappe",
+      "unsupported": "Vedvarende synkronisering fungerer i <strong>WMap-appen</strong> (Android, Linux, macOS, Windows) og i Chrome eller Edge. Her kan du importere én gang eller eksportere alt som ZIP.",
+      "connecting": "Forbinder mappen …",
+      "importing": "Importerer …",
+      "none": "Ingen mappe synkroniseret. Vælg en mappe, som dit synkroniseringsprogram holder opdateret (Nextcloud, Proton Drive, Google Drive, Syncthing …) – så har alle dine enheder de samme ture, ruter, forbindelser, bogmærker og indstillinger.",
+      "connect": "Synkronisér mappe",
+      "connected": "Synkroniseret med <strong>{name}</strong>",
+      "permission": "Browseren har igen brug for din tilladelse til mappen.",
+      "pending": "Den seneste afstemning blev afbrudt – den fortsætter, næste gang du åbner en side.",
+      "busy_hint": "Du kan blive ved med at bruge WMap. Skifter du side, fortsætter den næste, hvor denne afstemning slap.",
+      "error_at": "Fejl den {when}: {error}",
+      "inbox": {
+        "state": {
+          "one": "En ny fil ligger i mappen og venter på din beslutning: {files}{more}",
+          "other": "{n} nye filer ligger i mappen og venter på din beslutning: {files}{more}"
+        },
+        "view": "Se nye filer"
+      },
+      "allow_sync": "Tillad og afstem",
+      "sync_now": "Afstem nu",
+      "change": "Skift mappe",
+      "disconnect": {
+        "button": "Afbryd",
+        "title": "Afbryd mappen?",
+        "text": "WMap afstemmer så ikke længere. Filerne i mappen bliver, som de er; ture, der kun lå i mappen, henter WMap først ind i appen.",
+        "done": "Mappen er afbrudt – filerne bliver, hvor de er"
+      },
+      "auto_hint": "WMap afstemmer, når du åbner den, og kort efter hver ændring; om ønsket også hvert 30. minut, så længe WMap er åben.",
+      "change_ask": {
+        "title": "Vælge en anden mappe?",
+        "text": "WMap afstemmer derefter med den nye mappe og skriver alt ind i den. Den gamle mappe bliver, som den er.",
+        "button": "Vælg mappe"
+      },
+      "fallback_name": "Mappe",
+      "error": {
+        "app_only": "Virker kun i appen",
+        "not_connected": "Mappen er ikke forbundet",
+        "unreachable": "Mappen er ikke tilgængelig lige nu",
+        "file_missing": "Filen til denne rute mangler i mappen",
+        "file_unreadable": "Filen i mappen kunne ikke læses",
+        "move_needs_app": "Flytning kræver den nye app"
+      },
+      "step": {
+        "load_setting": "Indlæs indstilling",
+        "check_folder": "Tjek mappen",
+        "read_file": "Læs filen",
+        "evaluate": "vurdér"
+      }
+    },
+    "progress": {
+      "lift": "Flytter fra undermappen „WMap“",
+      "sync": "Afstemmer",
+      "list": "Læser mappen …",
+      "what": "{what} …",
+      "rest": {
+        "soon": " · næsten færdig",
+        "seconds": " · ca. {n} sek. tilbage",
+        "minutes": " · ca. {n} min. tilbage"
+      },
+      "state": "{what} … {i} af {n} ({pct} %){rest}"
+    },
+    "error": {
+      "no_page": "Ingen side af WMap er åben",
+      "command": "Kommandoen virkede ikke",
+      "message": "Fejl: {error}"
+    },
+    "last_with": "Seneste afstemning: {when} – {result}",
+    "last": "Seneste afstemning: {when}",
+    "health": {
+      "not_granted": "Endnu ikke givet adgang – WMap må ikke læse Health Connect endnu.",
+      "granted": {
+        "title": "Adgang givet",
+        "routes_always": ", ruter altid",
+        "routes_ask": ", ruter med forespørgsel",
+        "values": ", med puls &amp; co."
+      },
+      "taking": "Henter {i} af {n} træninger …",
+      "reading": "Læser Health Connect …",
+      "imported": "{n} importeret",
+      "nothing_new": "intet nyt",
+      "denied": ", {n} ruter uden adgang",
+      "fetching": "Henter træninger …",
+      "fetch": "Hent træninger",
+      "permissions": "Tilladelser",
+      "denied_hint": "For ruter med forespørgsel: tryk på WMap i Health Connect, og sæt træningsruterne til „Tillad altid“.",
+      "auto_hint": "Nye træninger med rute kommer af sig selv med som ruter – uden at spørge.",
+      "toast_nothing": "Intet nyt i Health Connect",
+      "toast_added": {
+        "one": "{n} træning importeret",
+        "other": "{n} træninger importeret"
+      }
+    },
+    "dups": {
+      "values": {
+        "hr": "Puls",
+        "cad": "Kadence",
+        "pow": "Effekt",
+        "hr_avg": "Puls (gns. {avg})"
+      },
+      "origin": {
+        "health_app": "Health Connect · {app}",
+        "health": "Health Connect",
+        "gpx": "GPX-fil",
+        "nav": "Optaget under navigation",
+        "wmap": "Optaget med WMap"
+      },
+      "points": "{count} punkter",
+      "recorded": "{n} optagede",
+      "planned": "{n} planlagte",
+      "and": " og ",
+      "no_name": "Uden navn",
+      "route_from": "Strækning (GPS) fra",
+      "values_from": "Sundhedsdata fra",
+      "values_one": "Sundhedsdata: {origin} – {values}",
+      "title": "Dobbelte ture",
+      "state": {
+        "one": "{what} tur findes to gange – fx optaget med både ur og telefon eller fra Health Connect og fra mappen.",
+        "other": "{what} ture findes to gange – fx optaget med både ur og telefon eller fra Health Connect og fra mappen."
+      },
+      "hint": "Disse ture findes fra flere kilder. Vælg for hver tur, hvis strækning der bliver – dens tid og kilometer gælder. Sundhedsdata (puls, kadence, effekt) kommer til; har flere optagelser nogen, vælger du også, fra hvilken.",
+      "merge": {
+        "button": "Slå sammen",
+        "title": {
+          "one": "Slå {n} dobbelt tur sammen?",
+          "other": "Slå {n} dobbelte ture sammen?"
+        },
+        "text": "Af hver dobbelt tur bliver den valgte strækning med de valgte sundhedsdata. På andre enheder forsvinder dubletterne også ved næste afstemning.",
+        "done": {
+          "one": "{n} dobbelt tur slået sammen",
+          "other": "{n} dobbelte ture slået sammen"
+        }
+      }
+    },
+    "note": "Alt bliver på dine enheder – WMap har ingen server til det. Det, der ligger i mappen, afstemmes kun af dit eget synkroniseringsprogram.",
+    "import": {
+      "taken": "{n} overtaget",
+      "skipped": ", {n} fandtes allerede",
+      "all_there": "Alt er der allerede",
+      "none": "Ingen GPX-filer i mappen"
+    },
+    "toast": {
+      "no_permission": "Uden tilladelse ingen afstemning",
+      "connected": "Mappe forbundet – {result}",
+      "connect_failed": "Det lykkedes ikke at forbinde: {error}",
+      "reveal_failed": "Filhåndteringen kunne ikke åbnes – mappen hedder „Unbekannte Dateien“",
+      "synced": "Afstemt – {result}",
+      "sync_failed": "Afstemningen mislykkedes: {error}",
+      "import_failed": "Importen mislykkedes: {error}",
+      "backup_failed": "Sikkerhedskopien mislykkedes: {error}",
+      "auto_folder": "Mappe: {label}",
+      "auto_health": "Health Connect: {label}",
+      "folder_empty": "Der er ingen filer i mappen",
+      "no_file": "Ingen fil valgt",
+      "restored": "{n} poster overtaget fra sikkerhedskopien",
+      "no_folder": "Ingen mappe valgt",
+      "failed": "Afstemningen mislykkedes"
+    },
+    "export": {
+      "title": "Eksportér som",
+      "text": "Alle ture i én ZIP-fil. Optagede ture som GPX (indeholder alt, hvad WMap ved) eller som FIT (sportsurenes format: punkter, puls, kadence, effekt, omgange, sportsgren). Planlagte ture er altid GPX.",
+      "gpx": "Optagelser som GPX",
+      "fit": "Optagelser som FIT"
+    },
+    "summary": {
+      "imported": "{n} overtaget",
+      "written": "{n} gemt",
+      "removed": "{n} slettet",
+      "moved": "{n} flyttet",
+      "merged": "{n} dubletter slået sammen",
+      "skipped": "{n} ikke importeret",
+      "settings": "Indstillinger overtaget",
+      "nothing": "alt er ajour"
+    },
+    "times": {
+      "list": "list {time}",
+      "read": "{n} læst {time}",
+      "write": "{n} skrevet {time}",
+      "remove": "{n} slettet {time}"
+    },
+    "inbox": {
+      "fresh": {
+        "title": {
+          "one": "Ny fil i mappen",
+          "other": "{n} nye filer i mappen"
+        },
+        "also": {
+          "one": " – plus en til en tur, der allerede findes (bagefter)",
+          "other": " – plus {n} til en tur, der allerede findes (bagefter)"
+        },
+        "text": {
+          "one": "I den forbundne mappe ligger en fil, som WMap endnu ikke kender{also}.",
+          "other": "I den forbundne mappe ligger filer, som WMap endnu ikke kender{also}."
+        }
+      },
+      "toast": "Mappe: {summary}",
+      "merges": {
+        "title": {
+          "one": "Fil til en tur, der allerede findes",
+          "other": "{n} filer til ture, der allerede findes"
+        },
+        "text": {
+          "one": "I den forbundne mappe ligger en fil til en tur, som allerede findes i WMap.",
+          "other": "I den forbundne mappe ligger filer til ture, som allerede findes i WMap."
+        }
+      },
+      "failed": "Afstemningen mislykkedes",
+      "others": {
+        "title": {
+          "one": "En anden fil i mappen",
+          "other": "{n} andre filer i mappen"
+        },
+        "text": {
+          "one": "I den forbundne mappe ligger en fil, der ikke er en tur: {names}. WMap holder mappen ryddelig: Skal den flyttes til „Unbekannte Dateien“? Dér sletter WMap den efter 30 dage – det gælder så også alt, der kommer til senere.",
+          "other": "I den forbundne mappe ligger filer, der ikke er ture: {names}. WMap holder mappen ryddelig: Skal de flyttes til „Unbekannte Dateien“? Dér sletter WMap dem efter 30 dage – det gælder så også alt, der kommer til senere."
+        },
+        "move": "Til „Unbekannte Dateien“",
+        "keep": "Lad dem ligge"
+      }
+    }
+  },
+  "wege": {
+    "page_title": "Mine ture – WMap",
+    "compare": {
+      "option": "{date} · {name} · {length}",
+      "default_name": "Rute",
+      "unit": {
+        "kmh": "{v} km/t",
+        "zero_m": "±0 m",
+        "watt": "{v} W",
+        "pct": "{v} %"
+      },
+      "rows": {
+        "time": "Tid i bevægelse",
+        "dist": "Distance",
+        "pace": "Ø tempo",
+        "speed": "Ø hastighed",
+        "top": "maks. hastighed",
+        "hr": "Ø puls",
+        "hr_max": "maks. puls",
+        "beats": "Hjerteslag pr. km",
+        "cad": "Ø {name}",
+        "pow": "Ø effekt"
+      },
+      "refs": {
+        "prev": "Forrige gang",
+        "last5": "Seneste 5",
+        "avg": "Gennemsnit",
+        "best": "Bedste",
+        "worst": "Dårligste",
+        "avg_of": "Ø af {n}",
+        "label": "Sammenlign med"
+      },
+      "kinds": {
+        "speed": "Tempo",
+        "hr": "Puls",
+        "cad": "Frekvens",
+        "pow": "Effekt"
+      },
+      "table": {
+        "to_prev": "til forrige gang",
+        "to_next": "til næste gang",
+        "title": "Alle som tabel"
+      },
+      "pick": {
+        "set": "I sammenligningen",
+        "set_title": "Ture i sammenligningen",
+        "set_summary": "{n} ture",
+        "focus": "Aktuel",
+        "focus_title": "Hvilken er den aktuelle?"
+      },
+      "intro": {
+        "same": "Samme strækning, {n} gange",
+        "count": "{n} træningspas",
+        "legend": "– den aktuelle fremhævet, sammenlignet med de andre: <span class=\"cmp-good\">grøn</span> bedre, <span class=\"cmp-bad\">rød</span> dårligere."
+      },
+      "along": {
+        "title": "Forløb langs strækningen",
+        "label": "Størrelser i diagrammet",
+        "none": "Uden tider er der ingen forløb at sammenligne."
+      },
+      "trend": {
+        "title": "Udvikling",
+        "label": "Størrelse for udviklingen",
+        "hint": "Pr. træningspas, det ældste til venstre – den store prik er det aktuelle.",
+        "time": "Samlet tid"
+      },
+      "tile": {
+        "none": "ingen angivelse"
+      },
+      "same_route": "Samme strækning",
+      "title": "Sammenligning",
+      "need_two": "Man skal bruge mindst to ruter for at sammenligne",
+      "loading": "Henter ruterne …",
+      "folder_away": "“{name}” ligger i mappen – den kan ikke nås lige nu"
+    },
+    "groups": {
+      "foot": "Til fods",
+      "bike": "Cykel",
+      "car": "Bil"
+    },
+    "origin": {
+      "nav": "Navigation"
+    },
+    "unit": {
+      "km": "{v} km",
+      "kmh": "{v} km/t",
+      "m": "{v} m"
+    },
+    "title": "Mine ture",
+    "view": {
+      "sort": {
+        "date": "Dato",
+        "length": "Længde",
+        "time": "Varighed",
+        "speed": "Tempo",
+        "name": "Navn",
+        "label": "Sortér efter"
+      },
+      "since": {
+        "any": "Når som helst",
+        "days30": "Seneste 30 dage",
+        "days90": "Seneste 90 dage",
+        "year": "Seneste år",
+        "this_year": "I år",
+        "label": "Periode"
+      },
+      "toolbar": "Sortér og filtrér",
+      "dir": {
+        "down": "Faldende – tryk for stigende",
+        "up": "Stigende – tryk for faldende"
+      },
+      "sport": {
+        "label": "Type",
+        "all": "Alle typer"
+      },
+      "tag": {
+        "label": "Tag",
+        "all": "Alle tags"
+      },
+      "reset": "Alle"
+    },
+    "pick": {
+      "all": "Vælg alle",
+      "label": "Valgt",
+      "tag": "Tag",
+      "compare": "Sammenlign",
+      "count": "{n} valgt",
+      "none": "Afkryds ruter",
+      "had_tag": "Alle havde allerede “{tag}”",
+      "tagged": {
+        "one": "Tag “{tag}” på {n} rute",
+        "other": "Tag “{tag}” på {n} ruter"
+      },
+      "more": "Afkryds flere ruter til sammenligning"
+    },
+    "conn": {
+      "name": "{from} → {to}",
+      "start": "Start",
+      "dest": "Mål",
+      "next": "Kommende",
+      "past": "Tidligere",
+      "count": {
+        "one": "{n} forbindelse",
+        "other": "{n} forbindelser"
+      },
+      "deleted": "Forbindelse slettet",
+      "in_past": "Denne forbindelse ligger i fortiden.",
+      "again": "Søg igen",
+      "ticket": "Billet hos banen"
+    },
+    "empty": {
+      "places": {
+        "title": "Ingen steder gemt endnu.",
+        "text": "Tryk på et sted på kortet og derefter på “Gem” – i “Generelt” eller en egen liste som “Hannover ferie”.",
+        "button": "Til kortet"
+      },
+      "transit": {
+        "title": "Ingen forbindelser gemt endnu.",
+        "text": "Planlæg en rute med bus &amp; tog på kortet og tryk på “Gem” ved den rigtige forbindelse.",
+        "button": "Planlæg rute"
+      },
+      "planned": {
+        "title": "Ingen ture planlagt endnu.",
+        "text": "Planlæg en tur punkt for punkt, overtag en kendt vandrerute under “Udforsk” – eller gem en rute som tur."
+      },
+      "recorded": {
+        "title": "Ingen ruter optaget endnu.",
+        "text": "Når du navigerer, husker WMap strækningen – eller start selv en optagelse."
+      }
+    },
+    "tools": {
+      "plan": "Planlæg tur",
+      "record": "Optag",
+      "import": "Importér GPX/FIT"
+    },
+    "tabs": {
+      "planned": "Planlagt",
+      "recorded": "Optaget",
+      "transit": "Bus &amp; tog",
+      "places": "Steder"
+    },
+    "hint": {
+      "places": "Steder: dine bogmærker i lister – hver liste kan deles, alt på kortet.",
+      "transit": "Bus & tog: gemte forbindelser – kommende øverst, tidligere foldet sammen nedenunder.",
+      "planned": "Planlagt: ture, du stadig vil køre eller gå – fra planlæggeren, overtaget eller importeret.",
+      "recorded": "Optaget: ruter, du faktisk har kørt eller gået.",
+      "on_map": "På kortet: <strong>{label}</strong> – øjet ved året viser og skjuler. <a href=\"./settings.html\">Ændr</a>"
+    },
+    "search": {
+      "places": "Søg – navn, liste, sted …",
+      "transit": "Søg – sted, linje, dato …",
+      "planned": "Søg – navn, beskrivelse, link …",
+      "recorded": "Søg – navn, sted, tag, link …",
+      "label": "Søg",
+      "open_link": "Åbn link"
+    },
+    "sync_hint": "Alt bliver på denne enhed. Til andre enheder via en mappe (Nextcloud, Drive …), Health Connect eller en sikkerhedskopi: <strong>Sikkerhedskopi &amp; synkronisering</strong>",
+    "dup_hint": {
+      "one": "<strong>{n} tur findes dobbelt</strong> – flet og vælg, hvis strækning og sundhedsdata der bliver",
+      "other": "<strong>{n} ture findes dobbelt</strong> – flet og vælg, hvis strækning og sundhedsdata der bliver"
+    },
+    "places": {
+      "route": "Rute dertil",
+      "shared": {
+        "text": "Delt liste <strong>“{name}”</strong> – {n} steder (røde på kortet)",
+        "take": "Overtag som liste",
+        "drop": "Kassér",
+        "default_name": "Delt liste",
+        "default_place": "Sted",
+        "bad": "Den delte liste kunne ikke læses"
+      },
+      "fixed": "Hjem &amp; arbejde",
+      "count": {
+        "one": "{n} sted",
+        "other": "{n} steder"
+      },
+      "share": "Del liste",
+      "on_map": "På kortet",
+      "share_title": "Liste “{name}”",
+      "share_text": "{name} – {n} steder i WMap",
+      "name_shared": "{name} (delt)",
+      "taken": {
+        "one": "{n} sted overtaget i “{name}”",
+        "other": "{n} steder overtaget i “{name}”"
+      }
+    },
+    "none_for": "Intet fundet for “{q}”.",
+    "planned": {
+      "sum": {
+        "one": "{n} tur · {km}",
+        "other": "{n} ture · {km}"
+      },
+      "fixed": "fast forløb",
+      "ascent": "↗ {v} m",
+      "updated": "Sidst ændret den {date}",
+      "start": "Start tur",
+      "car_title": "Send til WMap i Android Auto – der er oversigten med “Kør”",
+      "car": "Til bilen",
+      "open": "Åbn i planlæggeren",
+      "gpx": "GPX"
+    },
+    "default_tour": "Tur",
+    "default_way": "Rute",
+    "row": {
+      "health": "Med sundhedsdata (puls, frekvens, effekt)",
+      "pinned": "Tilgængelig offline",
+      "stub": "Ligger i mappen – hentes ved åbning",
+      "compare": "Til sammenligning",
+      "hide": "Skjul på kortet",
+      "show": "Vis på kortet"
+    },
+    "recorded": {
+      "sum": {
+        "one": "{n} rute · {km} · {time}",
+        "other": "{n} ruter · {km} · {time}"
+      },
+      "none": "Intet fundet – ændr filter eller søgning.",
+      "year_hide": "Skjul {y} på kortet",
+      "year_show": "Vis {y} på kortet",
+      "shown": " · {n} på kortet"
+    },
+    "window_title": "{name} – WMap",
+    "import": {
+      "description": "Importeret fra {name}",
+      "no_times": " (uden tider)",
+      "original": " – med originalt forløb",
+      "planned": {
+        "one": "{n} tur importeret som planlagt tur",
+        "other": "{n} ture importeret som planlagt tur"
+      },
+      "failed": "{n} kunne ikke læses",
+      "nothing": "Intet overtaget",
+      "no_tour": "Der var ingen tur i filen"
+    },
+    "drop": {
+      "title": "Slip GPX eller FIT her",
+      "planned": "overtages som planlagt tur",
+      "recorded": "overtages som optaget tur",
+      "bad": "Det er ikke GPX- eller FIT-filer"
+    },
+    "charts": {
+      "ele": "Højde",
+      "speed": "Tempo",
+      "hr": "Puls",
+      "cad": "Frekvens",
+      "pow": "Effekt",
+      "label": "Diagram",
+      "mean": "Gennemsnit",
+      "max": "Maksimum"
+    },
+    "track": {
+      "fetching": "Henter turen fra mappen …",
+      "missing": "Punkter og måleværdier ligger i mappen – {error}.",
+      "time": "kl. {from}–{to}",
+      "from_health": " · fra Health Connect",
+      "opened": "Åbnet fil – ikke gemt endnu.",
+      "shared": "Delt optagelse – ikke gemt endnu.",
+      "name_saved": "Navn gemt",
+      "need_folder": "Det kræver turen fra mappen – den kan ikke nås lige nu"
+    },
+    "same": {
+      "go": {
+        "one": "Sammenlign med {n} tur",
+        "other": "Sammenlign med {n} ture"
+      },
+      "label": "Hvor nøjagtigt ens",
+      "title": "{n} flere – højst {near} m ved siden af, længde ±{len} %"
+    },
+    "tags": {
+      "label": "Tags",
+      "remove": "Fjern tag",
+      "add": "Tag",
+      "ask": {
+        "title": "Tilføj tag",
+        "label": "Tag",
+        "placeholder": "fx løb",
+        "add": "Tilføj"
+      }
+    },
+    "stats": {
+      "moving": "i bevægelse",
+      "length": "Distance",
+      "avg": "Ø {name}",
+      "avg_kmh": "Ø km/t",
+      "max_kmh": "maks. km/t",
+      "up": "Stigning",
+      "avg_hr": "Ø puls",
+      "max_hr": "maks. puls",
+      "watt": "{v} W",
+      "avg_pow": "Ø effekt",
+      "time": "Varighed",
+      "down": "Fald"
+    },
+    "legend": {
+      "slow": "langsom",
+      "fast": "hurtig"
+    },
+    "look": {
+      "title": "Type, farve og visning",
+      "hidden": "skjult",
+      "pinned": "tilgængelig offline",
+      "sport": {
+        "title": "Type",
+        "label": "Turens type",
+        "standard": "{name} (standard)",
+        "none": "Ingen – kun GPX"
+      },
+      "color": {
+        "label": "Farve på kortet",
+        "title": "Farve",
+        "auto": "Typens farve ({name})",
+        "own": "Egen farve"
+      },
+      "on_map": "På kortet",
+      "pin_title": "Bliver helt i appen – også uden mappen",
+      "pin_on": "Bliver helt i appen",
+      "pin_off": "Ligger efter næste afstemning kun i mappen"
+    },
+    "actions": {
+      "save_track": "Gem som optaget tur",
+      "plan_title": "Åbn i planlæggeren som ny tur – først der bliver den gemt",
+      "open_plan": "Åbn som planlagt tur",
+      "keep": "Gem hos mig",
+      "download_title": "Som GPX- eller FIT-fil",
+      "download": "Download",
+      "navigate": "Naviger",
+      "as_plan": "Åbn som plan",
+      "share_title": "Del optagelsen som link – med tider, tempo og om ønsket puls m.m.",
+      "share": "Del",
+      "compare_title": "Sammenlign med andre optagelser – sæt kryds på listen"
+    },
+    "laps": {
+      "fastest": "hurtigste",
+      "slowest": "langsomste",
+      "title": "Omgange",
+      "size": "Længde på en omgang",
+      "watch": "Ur",
+      "head": {
+        "lap": "Omgang",
+        "time": "Tid",
+        "pace": "Tempo"
+      }
+    },
+    "file_default": "rute",
+    "delete": {
+      "title": "Slet „{name}“?",
+      "track": "Ruten forsvinder fra denne enhed.",
+      "tour": "Turen forsvinder fra denne enhed."
+    },
+    "share": {
+      "title": "Del optagelse",
+      "text": "Turen deles, som du har optaget den: rute, tider og tempo.",
+      "choose": " Vælg, hvad der ellers skal med:",
+      "link": "Del som link",
+      "short": "30 dage online (kort link)",
+      "send": "Send fil …",
+      "file": "Download …",
+      "message": "{title} – {facts}",
+      "short_failed": "Det korte link kunne ikke oprettes",
+      "short_note": "Kort link: Turen ligger i den forbindelse 30 dage på WMap-serveren – derefter virker linket ikke mere."
+    },
+    "download": {
+      "send_title": "Send fil som",
+      "title": "Download som",
+      "text": "GPX indeholder alt, hvad WMap ved om turen – også type, farve og urets omgange. FIT er sportsurenes format: punkter, puls, frekvens, effekt, omgange og sportsgren.",
+      "gpx": "GPX-fil",
+      "fit": "FIT-fil",
+      "no_send": "Det kan ikke sendes her – filen downloades"
+    },
+    "shared": {
+      "file_gone": "Filen findes ikke mere – åbn den venligst igen",
+      "bad_link": "Linket kunne ikke læses",
+      "twin_folder": "Den eksisterende tur ligger i mappen – {error}",
+      "new_name": "den delte optagelse fra linket",
+      "merged": "„{name}“ udvidet",
+      "same": "Turen har du allerede – filen indeholder ikke noget andet",
+      "saved": "Gemt under Optagne ture"
+    },
+    "auto_names": {
+      "one": "{n} tur har fået et navn ud fra type, område og tidspunkt på dagen",
+      "other": "{n} ture har fået et navn ud fra type, område og tidspunkt på dagen"
+    }
+  },
+  "entdecken": {
+    "page_title": "Udforsk – WMap",
+    "tabs": {
+      "ways": "Stier",
+      "others": "Fra andre"
+    },
+    "title": "Udforsk",
+    "account": {
+      "signed_in": "Logget ind som <strong>{name}</strong>",
+      "need": "For at bedømme, udgive og tilbyde skal du bruge en konto – din OpenStreetMap-konto.",
+      "logout": {
+        "button": "Log ud",
+        "title": "Log ud, {name}?",
+        "text": "Dine ture og bedømmelser bevares. Du er så også logget ud af redigering af kortet."
+      },
+      "login": "Log ind",
+      "login_reason": "For at bedømme og udgive"
+    },
+    "ways": {
+      "attribution": "Stier: <a href=\"https://waymarkedtrails.org\" target=\"_blank\" rel=\"noopener\">Waymarked Trails</a> (CC BY-SA)",
+      "search": {
+        "placeholder": "Filtrer – eller Enter: søg overalt",
+        "label": "Filtrer eller søg i stier",
+        "min": "Skriv mindst tre bogstaver for at søge",
+        "here_more": "{n} i udsnittet – søger videre …",
+        "here": "{n} i udsnittet · ",
+        "everywhere": "Søg „{q}“ overalt …",
+        "found": "{n} stier til „{q}“",
+        "none": "Ingen {kind}-sti „{q}“ fundet"
+      },
+      "tip": "Tip: Tryk på en markeret linje på kortet – så vises stierne netop det sted.",
+      "zoom_in": "Zoom tættere på, så vises alle stier i kortudsnittet her – eller søg efter et navn øverst.",
+      "searching": "Søger stier i kortudsnittet …",
+      "found": {
+        "clipped": "{n} stier omkring kortets midte",
+        "box": "{n} stier i kortudsnittet"
+      },
+      "error_retry": "Kan ikke hentes lige nu – prøv igen om lidt ({error})",
+      "round": "Rundtur",
+      "more": "Flere stier",
+      "stages_here": {
+        "one": "{n} etape her",
+        "other": "{n} etaper her"
+      },
+      "whole": "Se hele stien",
+      "filtered": "{i} af {n} – filtreret efter „{filter}“",
+      "back_to_box": "tilbage til udsnittet",
+      "here": {
+        "loading": "Hvilke stier går her …",
+        "found": "{n} stier på dette sted – hvilken?",
+        "none": "Her går ingen markeret sti – zoom tættere på og tryk præcis på linjen"
+      },
+      "error": "Kan ikke hentes lige nu ({error})"
+    },
+    "known": {
+      "loading": "Forløbet indlæses …",
+      "mark": "<strong>Afmærkning:</strong> {mark}",
+      "osm": "Hos OpenStreetMap",
+      "stages": "Etaper i kortudsnittet",
+      "planner_hint": "I planlæggeren ser du højdeprofil og stityper og kan gemme, ændre eller dele turen.",
+      "opening": "Åbnes …",
+      "open_failed": "Kunne ikke åbnes: {error}",
+      "load_failed": "Forløbet kunne ikke indlæses: {error}"
+    },
+    "open_planner": "Åbn i planlæggeren",
+    "others": {
+      "intro": "Ture, som WMap-brugere har delt – i kortudsnittet. Dine egne deler du i planlæggeren via menuen → „Udgiv“.",
+      "loading": "Indlæser …",
+      "count": "{n} ture her",
+      "none": "Her har ingen delt en tur endnu – zoom længere ud?",
+      "stars": "{stars} af 5 ({votes})",
+      "not_rated": "ikke bedømt endnu",
+      "by": "af {author}",
+      "only_you": "kun for dig"
+    },
+    "tour": {
+      "title": "Tur",
+      "rating": "{stars} ({votes})",
+      "ascent": "{m} m",
+      "rate": {
+        "title": "Din bedømmelse",
+        "stars": "Stjerner",
+        "star_n": "{n} stjerner",
+        "placeholder": "Hvordan var det? (valgfrit)",
+        "button": "Bedøm",
+        "need_stars": "Tryk på stjernerne",
+        "login_reason": "For at bedømme",
+        "thanks": "Tak for bedømmelsen!"
+      },
+      "private": "Kun synlig for dig.",
+      "shared_by": "Delt af {author} på WMap",
+      "delete": {
+        "title": "Slet „{name}“?",
+        "text": "Turen forsvinder for alle.",
+        "done": "Slettet"
+      }
+    }
+  },
+  "tour": {
+    "page_title": "Planlæg tur – WMap",
+    "name": "Turens navn",
+    "save": "Gem tur",
+    "search": {
+      "placeholder": "Søg efter sted – og vælg det så på kortet",
+      "label": "Søg efter sted",
+      "none": "Ingen resultater"
+    },
+    "help": {
+      "button": "Vejledning: sådan planlægger du en tur",
+      "title": "Sådan planlægger du en tur",
+      "start": "<strong>Sæt start:</strong> tryk på kortet – eller søg efter et sted øverst.",
+      "points": "<strong>Flere punkter:</strong> tryk på kortet. Ruten følger veje, der passer til den valgte type (vandring over stier, racercykel over asfalt …).",
+      "change": "<strong>Ændre:</strong> flyt punkter ved at trække dem. Tryk på et punkt – fjern det eller start derfra. Tryk på linjen – sæt et punkt ind der.",
+      "template": "<strong>Skabelon</strong> (stier fra Udforsk): punkter falder på plads på den violette sti, og mellem dem følger ruten præcis stien.",
+      "save": "<strong>Gemmer</strong> sker automatisk, så snart der er en rute. Du finder turen under „Mine ture“.",
+      "ok": "Forstået"
+    },
+    "tools": {
+      "undo": "Fortryd",
+      "reverse": "Vend om",
+      "roundtrip": "Tilbage til start",
+      "clear": "Slet alle punkter",
+      "discover": "Udforsk ture"
+    },
+    "stats": {
+      "length": "Distance",
+      "time": "Varighed ca.",
+      "up": "Stigning",
+      "down": "Nedstigning"
+    },
+    "profile": {
+      "title": "Undervejs som",
+      "label": "Turtype"
+    },
+    "stages": {
+      "button": "Etaper – del i dagsture"
+    },
+    "description": {
+      "title": "Beskrivelse",
+      "placeholder": "Hvad handler turen om? Spisested, parkering, tips …"
+    },
+    "more": {
+      "share": "Del",
+      "gpx": "GPX",
+      "publish": "Udgiv"
+    },
+    "toast": {
+      "bad_link": "Linket er ufuldstændigt eller beskadiget",
+      "not_found": "Turen blev ikke fundet – her kan du starte en ny",
+      "own_change": "Egen ændring – ruten beregnes nu igen",
+      "min_points": "Sæt mindst to punkter",
+      "saved": "Tur gemt",
+      "need_route": "Planlæg først en rute"
+    },
+    "panel": {
+      "label": "Planlæg tur",
+      "back": "Til mine ture",
+      "close": "Luk – til kortet"
+    },
+    "save_state": {
+      "shared": "Tilføj til mine ture – denne tur er endnu ikke gemt",
+      "saved": "Gemt – du finder den under „Mine ture“",
+      "dirty": "Gemmer …"
+    },
+    "window_title": "{name} – WMap",
+    "new_name": "Ny tur",
+    "hint": {
+      "start": "Tryk på kortet for at sætte starten",
+      "next": "Tryk nu på det næste mål"
+    },
+    "point": {
+      "copy": "Kopiér",
+      "copied": "Kopieret: {where}",
+      "remove": "Fjern punkt",
+      "also_dest": "Også som mål – rundtur",
+      "start_end": "Start og slut her",
+      "make_start": "Gør til start",
+      "make_dest": "Gør til mål"
+    },
+    "found": {
+      "start": "Sæt som start",
+      "append": "Tilføj som næste punkt",
+      "insert": "Indsæt, hvor det passer",
+      "discard": "Kassér",
+      "added": "„{title}“ er føjet til turen"
+    },
+    "bg": {
+      "gone": "Denne tur findes ikke længere",
+      "own_tour": "Egen tur",
+      "known_way": "Kendt sti",
+      "loading": "Indlæser …",
+      "own_tour_small": "egen tur",
+      "from_osm": "fra OpenStreetMap",
+      "pieces": " · {n} stykker",
+      "joining": ", forløbet samles …",
+      "take": {
+        "title": "Overtag hele forløbet",
+        "button": "Overtag sådan",
+        "busy": "Overtager …",
+        "failed": "Kunne ikke overtages ({error})"
+      },
+      "remove": "Fjern fra baggrunden",
+      "title": "Baggrund",
+      "hint": "Sæt dine punkter selv – på baggrunden følger ruten præcis stien, ved siden af bliver den beregnet. Eller overtag hele forløbet.",
+      "add": "Læg en sti eller tur på",
+      "hide": "Skjul",
+      "show": "Vis",
+      "fresh": "Planlæg forfra",
+      "search": {
+        "placeholder": "Kendt sti eller egen tur …",
+        "label": "Søg efter sti eller tur",
+        "busy": "Søger efter kendte stier …",
+        "failed": "Stier kan ikke hentes lige nu ({error})"
+      },
+      "fresh_toast": "Sæt dine punkter – baggrunden bliver",
+      "own_tour_length": "Egen tur · {length}"
+    },
+    "status": {
+      "computing": "Ruten beregnes …",
+      "original": "Oprindeligt forløb – ændr det ved at flytte eller tilføje punkter"
+    },
+    "unit": {
+      "m": "{v} m"
+    },
+    "ways": {
+      "loading": "Vejtyper bestemmes …",
+      "types": "Vejtyper",
+      "surfaces": "Underlag"
+    },
+    "default_name": {
+      "date": "Tur den {date}",
+      "place": "{profile} fra {place}"
+    },
+    "default_tour": "Tur",
+    "share": {
+      "title": "Del tur",
+      "live": "Denne tur planlægger I allerede sammen – linket forbliver det samme.",
+      "text": "Kun vise – eller planlægge sammen: Alle med linket kan ændre med, og alle ser hver ændring.",
+      "view": "Link til visning",
+      "collab_link": "Link til at planlægge med",
+      "message": "Tur: {name}"
+    },
+    "collab": {
+      "title": "Planlæg sammen",
+      "link_failed": "Linket til at planlægge med kunne ikke oprettes",
+      "message": "Planlæg med: {name}",
+      "note": "Alle med linket kan ændre turen. Den ligger krypteret i 30 dage på WMap-serveren.",
+      "chip": "Fælles tur",
+      "last_editor": "sidst ændret af {name}",
+      "join": {
+        "invited_by": "{by} inviterer dig til at planlægge „{name}“ med.",
+        "invited": "Du er inviteret til at planlægge „{name}“ med.",
+        "into": "Eller forbind den med en af dine ture – så samles begge:",
+        "new": "Som ny tur",
+        "merge": "Forbind med den valgte"
+      },
+      "changed": "{name} har ændret turen",
+      "someone": "Nogen",
+      "expired": "Fælles planlægning er udløbet – turen bliver hos dig",
+      "push_failed": "Ændringen nåede ikke frem til serveren – den følger med ved næste gemning",
+      "joined": "Forbundet – alle med linket kan se dine ændringer",
+      "opened": "Fælles tur – alle med linket kan se dine ændringer"
+    },
+    "merge": {
+      "title": "Saml{step}",
+      "points": "Du og {who} har ændret de samme punkter. Tryk på kortet på den version, der skal blive.",
+      "mine": "Din (blå)",
+      "theirs": "Fra {who} (orange)",
+      "later": "Senere",
+      "step": " ({n} af {total})",
+      "fixed": "fast tegnet",
+      "free": "frit planlagt",
+      "empty": "(tom)",
+      "what": {
+        "name": "navnet",
+        "description": "beskrivelsen",
+        "profile": "turtypen",
+        "fixed": "ruten"
+      },
+      "other": "Du og {who} har ændret {what}. Hvilken version skal blive?",
+      "mine_value": "Din: {v}",
+      "theirs_value": "Fra {who}: {v}",
+      "others": "den anden",
+      "done": "Samlet med {who}s ændringer",
+      "both": "{name} har også ændret – begge dele er nu med"
+    },
+    "file_default": "tur",
+    "publish": {
+      "title": "Udgiv tur",
+      "text": "Andre ser den med det samme under „Udforsk → Fra andre“ og kan vurdere den. Dit navn vises sammen med den.",
+      "login_reason": "For at udgive",
+      "done": "Udgivet – kan ses under „Udforsk“"
+    },
+    "delete_confirm": "Slet „{name}“ for altid?"
+  },
+  "osm": {
+    "login": {
+      "no_client": "Der er endnu ikke indtastet noget OSM-klient-id til denne app (Indstillinger)",
+      "cancelled": "Login annulleret",
+      "failed_with": "Login mislykkedes: {error}",
+      "invalid": "Ugyldigt login – prøv igen",
+      "failed": "Login mislykkedes",
+      "no_id_token": "OpenStreetMap har ikke sendt noget login til WMap-kontoen med",
+      "expired": "OSM-login er udløbet – log ind igen",
+      "return_wmap_error": "Logget ind på OpenStreetMap som {name} – WMap-konto: {error}",
+      "signed_in": "Logget ind som {name}"
+    },
+    "error": {
+      "status": "OSM: {status} {text}",
+      "not_logged_in": "Ikke logget ind på OSM",
+      "no_answer": "OSM svarer ikke ({status})"
+    },
+    "stats": {
+      "added": "{n} nye tilføjet",
+      "answered": {
+        "one": "{n} spørgsmål besvaret",
+        "other": "{n} spørgsmål besvaret"
+      },
+      "edited": {
+        "one": "{n} sted redigeret",
+        "other": "{n} steder redigeret"
+      },
+      "notes": " (heraf {n} som note)"
+    },
+    "quick_ask": {
+      "no": "Nej, spørg ikke",
+      "confirm": "Bekræft"
+    },
+    "hours": {
+      "days": {
+        "mo": "Mandag",
+        "tu": "Tirsdag",
+        "we": "Onsdag",
+        "th": "Torsdag",
+        "fr": "Fredag",
+        "sa": "Lørdag",
+        "su": "Søndag",
+        "holidays": "Helligdage"
+      },
+      "from": "{name} fra",
+      "to": "{name} til",
+      "remove": {
+        "title": "Fjern dette tidspunkt",
+        "label": "Fjern tidspunkt"
+      },
+      "closed": "lukket",
+      "ph_none": "som andre dage – ingen oplysning",
+      "add": {
+        "title": "Tilføj tidspunkt",
+        "times": "Tidspunkter",
+        "time": "Tidspunkt"
+      },
+      "like_sunday": "som søndag",
+      "none": "ingen oplysning",
+      "gone_summary": "lukket for altid",
+      "always": {
+        "text": "Åbent døgnet rundt",
+        "back": "Angiv alligevel tider for hver dag"
+      },
+      "gone": {
+        "text": "Lukket for altid – stedet findes ikke længere. Det sendes som note til kortlæggerne, som så fjerner det.",
+        "back": "Angiv alligevel tider"
+      },
+      "raw": {
+        "text": "Disse tider er for indviklede til listen (f.eks. måneder eller skoleferie) – vist her som tekst i OSM-skrivemåde.",
+        "back": "Indtast i stedet på ny for hver dag"
+      },
+      "title": "Åbningstider",
+      "quick": {
+        "copy": "Mandag til tir–fre",
+        "always": "Åbent 24/7",
+        "gone": "Lukket for altid",
+        "raw": "Som tekst"
+      }
+    },
+    "edit": {
+      "types": {
+        "groups": {
+          "shopping": "Indkøb",
+          "food": "Mad og drikke",
+          "services": "Service",
+          "culture": "Kultur og fritid"
+        },
+        "items": {
+          "shop": "Butik (anden)",
+          "supermarket": "Supermarked",
+          "bakery": "Bageri",
+          "butcher": "Slagter",
+          "beverages": "Drikkevarebutik",
+          "kiosk": "Kiosk",
+          "chemist": "Matas / materialist",
+          "pharmacy": "Apotek",
+          "farm": "Gårdbutik",
+          "florist": "Blomster",
+          "books": "Boghandel",
+          "clothes": "Tøj",
+          "shoes": "Sko",
+          "electronics": "Elektronik",
+          "doityourself": "Byggemarked",
+          "bicycle": "Cykelbutik",
+          "optician": "Optiker",
+          "hairdresser": "Frisør",
+          "fuel": "Tankstation",
+          "cafe": "Café",
+          "restaurant": "Restaurant",
+          "fast_food": "Fastfood",
+          "ice_cream": "Isbar",
+          "bar": "Bar / værtshus",
+          "biergarten": "Ølhave",
+          "office": "Firma / kontor",
+          "craft": "Håndværksvirksomhed",
+          "car_repair": "Autoværksted",
+          "doctors": "Lægeklinik",
+          "dentist": "Tandlæge",
+          "bank": "Bank",
+          "post_office": "Posthus",
+          "hotel": "Hotel / pension",
+          "apartment": "Feriebolig",
+          "events_venue": "Spillested",
+          "community_centre": "Forsamlingshus / sal",
+          "theatre": "Teater",
+          "cinema": "Biograf",
+          "nightclub": "Natklub / diskotek",
+          "museum": "Museum",
+          "sports_centre": "Idrætshal / -anlæg"
+        }
+      },
+      "fields": {
+        "name": {
+          "title": "Navn",
+          "placeholder": "f.eks. Bageri Møller"
+        },
+        "phone": {
+          "title": "Telefon",
+          "placeholder": "+45 …"
+        },
+        "website": {
+          "title": "Hjemmeside",
+          "placeholder": "https://…"
+        },
+        "events": {
+          "title": "Arrangementer – side med datoerne",
+          "placeholder": "https://…/program"
+        },
+        "image": {
+          "title": "Billede – link til et frit foto",
+          "placeholder": "f.eks. commons.wikimedia.org/wiki/File:…"
+        },
+        "address": {
+          "street": "Vej",
+          "housenumber": "Nr.",
+          "postcode": "Postnr.",
+          "city": "By"
+        },
+        "description": {
+          "title": "Beskrivelse – kort og saglig, ingen reklame",
+          "placeholder": "f.eks. Økologisk bageri med café, brød af eget surdej"
+        }
+      },
+      "traits": {
+        "toilets": "Toiletter for alle",
+        "wheelchair": "Kørestolsegnet",
+        "values": {
+          "yes": "Ja",
+          "only": "Kun",
+          "limited": "Delvist",
+          "wlan": "Ja",
+          "no": "Nej",
+          "customers": "Kun gæster"
+        },
+        "title": "Egenskaber"
+      },
+      "sockets": {
+        "count": "Antal",
+        "power": "Effekt",
+        "power_placeholder": "f.eks. 22 kW"
+      },
+      "facts": {
+        "title": "Oplysninger",
+        "hint": "som på stedkortet"
+      },
+      "more": {
+        "title": "Andet",
+        "address": "Adresse",
+        "events": "Program",
+        "image": "Billede",
+        "traits": "Egenskaber",
+        "all_tags": "alle tags",
+        "more_tags": "flere tags"
+      },
+      "raw": {
+        "all": "Alle tags",
+        "more": "Flere tags",
+        "hint": "for kendere – nøgle=værdi, én linje pr. tag",
+        "placeholder": "f.eks. payment:cash=yes",
+        "edit_hint": "Det, du ændrer i felterne ovenfor, har forrang for det, der står her. Slet linje = fjern tag.",
+        "add_hint": "Kommer oveni oplysningerne ovenfor."
+      },
+      "no_account": {
+        "title": "Forbind OpenStreetMap-konto",
+        "text": "{what} havner direkte i OpenStreetMap – det åbne kort, som WMap bruger. Til det skal du bruge en gratis OSM-konto; når den én gang er forbundet i Indstillinger, kommer alt ind på kortet under dit navn.",
+        "anon": "Uden konto kan du også sende det som en anonym note – kortlæggere fra området registrerer det så.",
+        "note": "Send som note",
+        "connect": "Forbind konto"
+      },
+      "toast": {
+        "conflict": "Imens har en anden ændret det – indlæs venligst igen",
+        "note_sent": "Note sendt – tak!",
+        "saved": "Registreret i OpenStreetMap – tak!",
+        "view": "Se",
+        "failed": "Det lykkedes ikke: {error}",
+        "unchanged": "Intet ændret",
+        "need_name": "Angiv et navn"
+      },
+      "what_change": "Din ændring",
+      "edit": {
+        "title": "Rediger {name}",
+        "hint": "Skriv kun det ind, du selv ved – f.eks. fra skiltet på stedet."
+      },
+      "place": "Sted",
+      "send_note": "Send note",
+      "what_new": "Det nye sted",
+      "add": {
+        "title": "Tilføj sted",
+        "what": "Hvad er her?",
+        "brand": {
+          "title": "Mærke / kæde",
+          "placeholder": "f.eks. Netto – lad stå tomt, hvis det ikke er en kæde"
+        },
+        "hint": "Punktet ligger der, hvor du trykkede længe. Skriv kun det ind, der virkelig findes – set på stedet.",
+        "button": "Tilføj"
+      }
+    },
+    "survey": {
+      "mode": {
+        "foot": "til fods",
+        "bike": "på cykel",
+        "car": "i bil"
+      },
+      "surface": {
+        "asphalt": "Asfalt",
+        "paving_stones": "Fliser",
+        "sett": "Brosten",
+        "concrete": "Beton",
+        "compacted": "Komprimeret grus",
+        "gravel": "Grus",
+        "ground": "Jord",
+        "grass": "Græs",
+        "grass_paver": "Græsarmering"
+      },
+      "way": {
+        "residential": "Boligvej",
+        "road": "Vej",
+        "service": "Adgangsvej",
+        "track": "Markvej",
+        "living_street": "Legegade",
+        "pedestrian": "Gågade",
+        "footway": "Gangsti",
+        "cycleway": "Cykelsti",
+        "path": "Sti",
+        "bridleway": "Ridesti",
+        "fallback": "Vej",
+        "here": "{way} her"
+      },
+      "quests": {
+        "parking_fee": {
+          "summary": "Parkeringsgebyr",
+          "title": "Koster det noget at parkere her?",
+          "free": "Gratis",
+          "paid": "Betaling"
+        },
+        "surface_summary": "Belægning",
+        "parking_surface": {
+          "title": "Hvilken belægning har parkeringspladsen?"
+        },
+        "hours_summary": "Åbningstider",
+        "hours_check": {
+          "title": "Har {name} stadig disse åbningstider?"
+        },
+        "hours_missing": {
+          "title": "Hvornår har {name} åbent?"
+        },
+        "road_surface": {
+          "title": "Hvilken belægning har {name}?"
+        },
+        "way_lit": {
+          "summary": "Belysning",
+          "title": "Er {name} oplyst?",
+          "yes": "Ja, gadelygter",
+          "no": "Nej"
+        },
+        "missing_way": {
+          "summary": "manglende vej",
+          "title": "Her var du uden for alle veje på kortet – er der en vej her?",
+          "none": "Nej, GPS upræcis"
+        },
+        "exists": {
+          "summary": "Bekræftet",
+          "title": "Findes {name} stadig?",
+          "yes": "Ja, findes stadig",
+          "gone": "Findes ikke mere"
+        },
+        "detour": {
+          "summary": "Afspærring",
+          "title": "Du afveg fra ruten her – hvorfor?",
+          "choice": "Valgte bare en anden vej",
+          "temporary": "Midlertidigt spærret",
+          "gone": "Vejen findes ikke / permanent spærret"
+        }
+      },
+      "parking": "Parkeringsplads",
+      "say": {
+        "fee": {
+          "no": "gratis",
+          "yes": "med betaling"
+        },
+        "access": {
+          "yes": "åben for alle",
+          "customers": "kun for kunder",
+          "private": "privat"
+        },
+        "lit": {
+          "yes": "oplyst",
+          "no": "ikke oplyst"
+        },
+        "per_hour": " € pr. time",
+        "per_day": " € pr. dag",
+        "charge": "Pris {v}",
+        "hours": "Åbningstider: {v}",
+        "surface": "Belægning: {v}"
+      },
+      "comment": "{parts} tilføjet eller bekræftet – registreret på stedet med WMap",
+      "this_place": "dette sted",
+      "name": {
+        "detour": "Afvigelse fra ruten",
+        "missing_way": "Vej uden for kortet"
+      },
+      "overpass_failed": "Butikker og parkeringspladser kunne ikke tjekkes lige nu (Overpass er overbelastet)",
+      "ui": {
+        "mode": {
+          "foot": "til fods",
+          "bike": "på cykel",
+          "car": "i bil"
+        },
+        "off": "Slået fra",
+        "none": "Ingen åbne spørgsmål",
+        "searching": "leder efter flere …",
+        "count": {
+          "one": "{n} spørgsmål om steder, du har været",
+          "other": "{n} spørgsmål om steder, du har været"
+        },
+        "disabled": "Bidrag er slået fra. Du kan slå det til i indstillingerne – så husker WMap din rute på denne enhed og stiller dig bagefter et par korte spørgsmål.",
+        "looking": "Ser efter, hvor du har været …",
+        "empty": "Efter din næste tur eller gåtur med WMap dukker der korte spørgsmål op her – f.eks. om en parkeringsplads koster noget, eller om bageren stadig har de samme åbningstider. Dine svar forbedrer OpenStreetMap.",
+        "scan": "Tjek nu",
+        "account": {
+          "test_server": "Testserver",
+          "signed_in": "Logget ind som <strong>{name}</strong>",
+          "upload": "Upload {n}",
+          "waiting": {
+            "one": "{n} svar venter på at blive uploadet.",
+            "other": "{n} svar venter på at blive uploadet."
+          },
+          "login": "Log ind på OpenStreetMap"
+        },
+        "hours": {
+          "still": "Passer stadig",
+          "other": "Andre tider",
+          "gone": "Findes ikke mere",
+          "always": "Døgnet rundt"
+        },
+        "card": {
+          "show": "Vis på kortet",
+          "delete": "Slet spørgsmål",
+          "later": "Ved ikke / senere"
+        },
+        "editor": {
+          "open": "Åbent?",
+          "closed": "lukket",
+          "from": "{d} fra",
+          "to": "{d} til",
+          "after_break": "{d} efter pausen fra",
+          "lunch": "Frokostpause",
+          "pause": "Pause",
+          "back": "Tilbage",
+          "copy": "Brug mandag til tir–fre",
+          "no_day": "Lukket alle dage?",
+          "need_day": "Angiv mindst én dag med tider"
+        },
+        "toast": {
+          "uploading": "Tak! Uploades …",
+          "as_note": "Tak! Sendes som note til OpenStreetMap",
+          "saved": "Tak! Gemt – uploades efter login",
+          "note_sent": "Sendt som note til OpenStreetMap – tak!",
+          "uploaded": "Uploadet til OpenStreetMap – tak!"
+        },
+        "result": {
+          "changes": {
+            "one": "{n} ændring",
+            "other": "{n} ændringer"
+          },
+          "skipped": "{n} sprunget over (der er sket noget nyt dér i mellemtiden)",
+          "one_note": "1 note",
+          "sent": "Sendt: {parts}. Tak!"
+        }
+      }
+    }
+  },
+  "map": {
+    "my_location": "Min position",
+    "point_on_map": "Punkt på kortet",
+    "in_place": "i {place}",
+    "near_place": "ved {place}",
+    "around_here": "her i nærheden",
+    "sheet": {
+      "grip": "Skift højde: træk, dobbelttryk for helt åben eller lukket"
+    },
+    "menu": {
+      "record": "Optag",
+      "street_view": "Street View",
+      "share_location": "Del position",
+      "request_location": "Bed om position",
+      "settings": "Indstillinger"
+    },
+    "keys": {
+      "title": "Tastatur",
+      "ok": "Forstået",
+      "rows": {
+        "move": "frem / tilbage",
+        "side": "til venstre / højre",
+        "turn": "dreje",
+        "look": "se op / ned",
+        "space": "Mellemrumstast",
+        "up": "højere",
+        "down": "lavere",
+        "esc": "normal visning – under navigation: til din egen position",
+        "fly_key": "Flyve",
+        "fly": "Menu → Flyve: musen kigger, W flyver mod billedets midte, Esc afslutter"
+      }
+    },
+    "share_location": {
+      "text": "Her er jeg lige nu (kl. {time}):",
+      "of_person": "{name}s position",
+      "plain": "Position"
+    },
+    "request": {
+      "title": "Hvor er du?",
+      "text": "{name} vil gerne vide, hvor du er lige nu. Tryk på linket for at sende din position:",
+      "answer": {
+        "title": "{name} spørger, hvor du er",
+        "text": "Din position deles én gang som et link – du vælger selv, med hvem. Intet bliver gemt.",
+        "send": "Send position"
+      }
+    },
+    "link": {
+      "tour_missing": "Turen findes ikke på denne enhed",
+      "tour_no_route": "Der kunne ikke beregnes en rute for turen",
+      "geo_unreadable": "WMap kan ikke læse dette kortlink",
+      "nothing_found": "Intet fundet for „{query}“",
+      "shared": {
+        "place": "Delt sted",
+        "now": "Delt lige nu",
+        "minutes": "Delt for {n} min. siden",
+        "date": "Delt den {date}"
+      }
+    },
+    "locate": {
+      "waiting": "Endnu ingen position – WMap leder videre (ingen GPS-modtagelse?)",
+      "switched_off": "Positionen er slået fra på telefonen",
+      "not_found": "Ingen position fundet – WMap leder videre",
+      "unsupported": "Position understøttes ikke",
+      "denied": "Adgang til position nægtet",
+      "unavailable": "Position ikke tilgængelig"
+    },
+    "area": {
+      "radius": "inden for 5 km",
+      "view": "i kortudsnittet"
+    },
+    "attribution": {
+      "search": "Søgning:",
+      "routing": "Rutning:",
+      "heights": "Højder:",
+      "imprint": "Juridisk information"
+    },
+    "sharpness": {
+      "auto": "Automatisk (højst 2)",
+      "low": "Sparsom (1)",
+      "medium": "Middel (1,5)",
+      "high": "Skarp (2)",
+      "max": "Skærmens fulde opløsning"
+    },
+    "cellular": {
+      "title": "Mobilnetværk registreret",
+      "text": "3D-visningen henter terræn- og højdedata løbende. På mobilnettet kan det koste mærkbart meget data. Aktivér nu?",
+      "no": "Bliv ved 2D",
+      "yes": "Aktivér 3D"
+    },
+    "fly": {
+      "locked": "<b>Mus</b> se dig omkring · <b>W/S</b> frem/tilbage · <b>A/D</b> sideværts · <b>Mellemrum/Shift</b> op/ned · <b>Esc</b> afslut",
+      "free": "Markøren mod kanten styrer blikket · <b>Klik</b> i kortet: musen kigger frit · <b>W/S/A/D</b> flyve · <b>Esc</b> afslut"
+    }
+  },
+  "street": {
+    "stop": "Stoppested {name}",
+    "off_road": "Uden for vejene",
+    "share": "Del denne visning",
+    "share_text": "Se lige her:",
+    "close": "Kort",
+    "hint": {
+      "touch": "<b>Én finger</b> drejer · <b>Zoombevægelse</b> frem/tilbage · <b>Dobbelttryk</b> gå derhen",
+      "locked": "<b>Mus</b> se dig omkring · <b>W/A/S/D</b> gå · <b>Shift</b> løbe · <b>Esc</b> frigiv musen",
+      "free": "<b>Klik i billedet</b>: musen kigger · <b>W/A/S/D</b> gå · <b>Dobbeltklik</b> gå derhen"
+    }
+  },
+  "layers": {
+    "object": {
+      "default_name": "Objekt",
+      "layer": "Lag „{name}“",
+      "no_properties": "Ingen egenskaber"
+    },
+    "geojson": {
+      "invalid": "Det er ikke gyldig GeoJSON (JSON-fejl)",
+      "not_geojson": "Det er ikke GeoJSON – der forventes en FeatureCollection",
+      "empty": "Filen indeholder ingen objekter med koordinater",
+      "not_degrees": "Koordinaterne er ikke i grader (WGS84) – omregn dem først, f.eks. med QGIS"
+    },
+    "extensions": {
+      "failed": "Udvidelsen „{name}“ kunne ikke startes: {error}"
+    },
+    "info": {
+      "loading": "Hvad lagene ved om stedet her …",
+      "all_unavailable": "Lagene kan ikke hentes lige nu ({error})",
+      "unavailable": "Kan ikke hentes lige nu ({error})",
+      "answer": "{source} svarer med {status}",
+      "unit": "Geologisk enhed",
+      "rows": {
+        "age": "Alder",
+        "age_range": "{from} til {to}",
+        "million_years": "Millioner år",
+        "rock": "Bjergart",
+        "description": "Beskrivelse"
+      },
+      "legend": {
+        "summary": "Signaturforklaring: {title}",
+        "alt": "Signaturforklaring {title}"
+      }
+    },
+    "presets": {
+      "attribution": "Geologi:",
+      "bgr_operator": "BGR – Bundesanstalt für Geowissenschaften und Rohstoffe",
+      "geo_de": {
+        "name": "Geologi Tyskland",
+        "text": "Geologisk oversigtskort 1:250 000 (GÜK250): hvilke bjergarter der ligger i overfladen, farvet efter geologisk tidsalder, med forkastninger og brud. Kan ses fra zoom 9 – fra kreds til by. Et langt tryk på kortet viser tidsalderen på det sted.",
+        "legend": "Geologiske tidsaldre"
+      },
+      "geo_rock": {
+        "name": "Bjergarter Tyskland",
+        "text": "Samme oversigtskort (GÜK250), farvet efter bjergart i stedet for alder: sand, ler, kalk, granit, skifer … Godt til vandreture og jordbund. Kan ses fra zoom 9. Et langt tryk på kortet viser bjergarten på det sted.",
+        "legend": "Bjergarter"
+      },
+      "geo_world": {
+        "name": "Geologi verden over",
+        "operator": "Macrostrat (University of Wisconsin–Madison)",
+        "text": "Geologiske kort fra hele verden, sat sammen af mange kilder – grove for hele lande, mere nøjagtige hvor der findes gode kort. Farvet efter geologisk tidsalder. Et langt tryk på kortet viser bjergart og alder på det sted.",
+        "legend_text": "Farverne følger den internationale tidsskala: violet trias, blå jura, grøn kridt, gul/orange tertiær og kvartær, brun/grå palæozoikum. Et langt tryk nævner enhed og alder."
+      }
+    }
+  },
+  "search": {
+    "here": "Søg i dette område",
+    "input": {
+      "title": "Søgning",
+      "placeholder": "Sted, adresse, koordinat, link …",
+      "clear": "Ryd",
+      "plan_route": "Planlæg rute",
+      "categories": "Også kategorier: {list} …"
+    },
+    "sections": {
+      "recent": "Senest brugt",
+      "saved": "Bogmærker",
+      "results": "Søgeresultater",
+      "discover": "Udforsk"
+    },
+    "discover": {
+      "reach": {
+        "title": "Hvad kan nås herfra?",
+        "subtitle": "i minutter eller kilometer fra din position"
+      }
+    },
+    "types": {
+      "category": "Kategori",
+      "search": "Søgning",
+      "route": "Rute"
+    },
+    "by_name": {
+      "title": "„{query}“ i nærheden",
+      "subtitle": "alle med dette navn her i området"
+    },
+    "local": {
+      "subtitle": "fra kortet",
+      "type": "Kort",
+      "unreachable": "Søgningen er ikke tilgængelig lige nu",
+      "only_names": "Kun navne fra det indlæste kortudsnit"
+    },
+    "direct": {
+      "kinds": {
+        "latlon": "Koordinat",
+        "mgrs": "MGRS",
+        "utm": "UTM",
+        "plus": "Plus Code",
+        "link": "Link"
+      },
+      "pages": {
+        "tour": "Tur",
+        "tracks": "Optagelse eller liste",
+        "map": "Sted eller rute",
+        "discover": "Udforsk"
+      },
+      "plus_place_missing": "„{text}“ ikke fundet – nær kortets midte",
+      "wmap_link": "Åbn WMap-link",
+      "short_link": {
+        "title": "Kort link – det kan kun Google løse",
+        "subtitle": "Åbn linket i browseren og indsæt den lange adresse",
+        "toast": "Korte links (maps.app.goo.gl) kan kun Google løse: åbn dem i browseren, og kopiér derefter den lange adresse"
+      },
+      "osm": {
+        "missing": "Dette OSM-objekt findes ikke (længere)",
+        "object": "OSM-objekt {id}"
+      }
+    },
+    "bookmark": {
+      "title": "Bogmærke",
+      "name": {
+        "title": "Navn",
+        "placeholder": "f.eks. Mormor, klub, yndlingsbager"
+      },
+      "list": {
+        "title": "Liste",
+        "new_option": "Ny liste …",
+        "new": {
+          "title": "Ny liste",
+          "placeholder": "f.eks. Ferie i Aarhus"
+        }
+      },
+      "as_home": "Som hjem",
+      "as_work": "Som arbejde",
+      "remove": "Fjern",
+      "toast": {
+        "saved_in": "Gemt i „{list}“",
+        "change": "Ændr",
+        "removed": "Bogmærke fjernet",
+        "saved_as": "Gemt som „{name}“",
+        "saved_name": "Gemt som „{name}“"
+      }
+    },
+    "toast": {
+      "not_found": "„{text}“ ikke fundet",
+      "nothing_found": "Intet fundet"
+    },
+    "geocode": {
+      "types": {
+        "city": "By",
+        "town": "Stationsby",
+        "village": "Landsby",
+        "hamlet": "Bebyggelse",
+        "suburb": "Bydel",
+        "river": "Flod",
+        "stream": "Bæk",
+        "canal": "Kanal",
+        "lake": "Sø",
+        "water": "Vand",
+        "peak": "Tinde",
+        "station": "Banegård",
+        "halt": "Holdested",
+        "bus_stop": "Stoppested",
+        "parking": "Parkeringsplads",
+        "fuel": "Tankstation",
+        "restaurant": "Restaurant",
+        "cafe": "Café",
+        "bakery": "Bageri",
+        "supermarket": "Supermarked",
+        "pitch": "Sportsplads",
+        "park": "Park",
+        "forest": "Skov",
+        "wood": "Skov",
+        "castle": "Borg",
+        "museum": "Museum",
+        "hotel": "Hotel",
+        "school": "Skole",
+        "hospital": "Hospital",
+        "pharmacy": "Apotek",
+        "charging_station": "Ladestander",
+        "place_of_worship": "Kirke",
+        "viewpoint": "Udsigtspunkt",
+        "playground": "Legeplads",
+        "residential": "Vej",
+        "primary": "Vej",
+        "secondary": "Vej",
+        "tertiary": "Vej",
+        "unclassified": "Vej",
+        "living_street": "Vej",
+        "service": "Sti",
+        "footway": "Gangsti",
+        "path": "Sti",
+        "track": "Markvej",
+        "cycleway": "Cykelsti",
+        "motorway": "Motorvej",
+        "administrative": "Område",
+        "state": "Delstat",
+        "country": "Land",
+        "county": "Kommune",
+        "house": "Adresse"
+      },
+      "offline": "Ingen forbindelse til nettet – søgningen kræver internet",
+      "unreachable": "Søgningen er ikke tilgængelig lige nu – tryk på et punkt på kortet eller prøv igen om lidt",
+      "failed": "Søgningen mislykkedes ({status})",
+      "place": "Sted",
+      "station_words": [
+        "hbf",
+        "hovedbanegård",
+        "hovedbanegården",
+        "banegård",
+        "banegården",
+        "station",
+        "st"
+      ]
+    },
+    "words": {
+      "filler": [
+        "i",
+        "ved",
+        "nær",
+        "nærheden",
+        "omkring",
+        "på",
+        "af",
+        "den",
+        "det",
+        "de",
+        "en",
+        "et",
+        "fra",
+        "til",
+        "nærmeste",
+        "her",
+        "vis",
+        "søg",
+        "mig",
+        "alle",
+        "med",
+        "og",
+        "for",
+        "omegn"
+      ]
+    }
+  },
+  "category": {
+    "recent_nearby": "i nærheden",
+    "searching": "Søger {area} …",
+    "found_so_far": "{n} fundet {area} …",
+    "found": "{n} fundet {area}",
+    "hidden": "{n} skjult",
+    "none": "Ingen {category} {area}",
+    "failed": "{error} – prøv igen om lidt",
+    "no_shapes": "Omrids kan ikke hentes lige nu",
+    "distance": "{distance} væk",
+    "filter": {
+      "title": "Filter",
+      "only_open": "Kun åbne",
+      "closed": "{n} lukket",
+      "also_private": "Også private"
+    },
+    "charging": {
+      "only_free": "Kun ledige",
+      "plugs": "Stik",
+      "searching": "Søger efter ledige ladepunkter …",
+      "found_free": "{n} steder med ledigt ladepunkt",
+      "none_free": "Intet ledigt ladepunkt inden for {km} km",
+      "failed": "Belægning ikke tilgængelig – ladere fra kortet"
+    }
+  },
+  "lines": {
+    "directions": "Retninger",
+    "searching": "Søger linje …",
+    "none": "Ingen linje {ref} {where} fundet",
+    "unavailable": "Linjer kan ikke hentes lige nu ({error})",
+    "item": {
+      "type": "Linje",
+      "in_place": "Linje i {place}",
+      "around_here": "Linje her i området"
+    },
+    "toast": {
+      "unavailable": "Linjen kan ikke hentes lige nu ({error})"
+    },
+    "words": {
+      "line": [
+        "linje",
+        "linjer",
+        "linie",
+        "line"
+      ],
+      "bus": [
+        "buslinje",
+        "buslinjer",
+        "bus",
+        "busser"
+      ],
+      "tram": [
+        "sporvogn",
+        "sporvogne",
+        "tram",
+        "strab"
+      ],
+      "light_rail": [
+        "letbane",
+        "stadtbahn"
+      ],
+      "subway": [
+        "metro",
+        "u-bahn",
+        "ubahn"
+      ],
+      "suburban": [
+        "s-tog",
+        "stog",
+        "s-bahn",
+        "sbahn"
+      ]
+    },
+    "labels": {
+      "line": "Linje",
+      "bus": "Bus",
+      "tram": "Sporvogn",
+      "light_rail": "Letbane",
+      "subway": "Metro",
+      "suburban": "S-Bahn",
+      "train": "Tog"
+    },
+    "place_words": [
+      "i"
+    ]
+  },
+  "stops": {
+    "departures": {
+      "title": "Afgange",
+      "unavailable": "Køreplanen kan ikke hentes lige nu ({error})",
+      "loading": "Henter køreplan …",
+      "none": "Ingen afgange fra dette stoppested i den nærmeste tid",
+      "cancelled": "aflyst",
+      "in_minutes": "om {n} min",
+      "platform": "Spor {platform}",
+      "more": "Flere afgange",
+      "trip_unavailable": "Forløbet for {line} kan ikke hentes lige nu",
+      "filter": {
+        "here": "Her",
+        "here_platform": "Her · spor {platform}",
+        "all": "Alle spor"
+      },
+      "earlier": {
+        "title": "Tidligere afgange",
+        "none": "Ingen tidligere afgange fundet",
+        "failed": "Tidligere afgange kan ikke hentes lige nu – prøv igen om lidt"
+      },
+      "source": {
+        "title": "Køreplan: NVBW EFA-BW",
+        "realtime": "med realtid",
+        "platform_only": "kun dette spor"
+      }
+    },
+    "lines": {
+      "title": "Linjer her",
+      "unavailable": "Kan ikke hentes lige nu ({error})",
+      "loading": "Hvilke linjer standser her …",
+      "at_platform": "Linjer på dette spor",
+      "at_platform_side": "Linjer på dette spor ({side})",
+      "all": "Alle linjer ved stoppestedet",
+      "all_count": "Alle {n} linjer ved stoppestedet",
+      "only_platform": "Kun dette spor"
+    }
+  },
+  "place": {
+    "address_searching": "Søger adresse …",
+    "wikipedia": "Wikipedia",
+    "nearby": {
+      "title": "I nærheden",
+      "this_point": "dette punkt"
+    },
+    "coords": {
+      "copy": "Kopiér",
+      "more": "Flere formater",
+      "copied": "Kopieret: {text}",
+      "copy_failed": "Kunne ikke kopiere",
+      "formats": {
+        "utm": "UTM",
+        "plus": "Plus Code",
+        "dms": "Grader, minutter, sekunder"
+      }
+    },
+    "actions": {
+      "add_stop": "Tilføj stop",
+      "as_destination": "Som mål",
+      "as_start": "Som start",
+      "route": "Rute",
+      "to_car": "Til bilen",
+      "share": "Del",
+      "look_around": "Se dig omkring",
+      "save": "Gem",
+      "saved": "Gemt",
+      "add_here": "Tilføj her",
+      "edit": "Rediger"
+    },
+    "fuel": {
+      "euro": "€",
+      "e5": "Super E5",
+      "e10": "Super E10",
+      "diesel": "Diesel",
+      "live": "Priser live",
+      "closed": "Lukket lige nu",
+      "source": "Kilde: MTS-K via Tankerkönig"
+    },
+    "charging": {
+      "title": "Ladepunkter",
+      "free": "{free} af {total} ledige",
+      "busy": "{n} optaget",
+      "broken": "{n} ude af drift",
+      "points": "{n} ladepunkter",
+      "no_live": "Belægning meldes ikke",
+      "updated": "Status {time}",
+      "source": "Kilde: MobiData BW (Bundesnetzagentur, operatører)",
+      "plugs": {
+        "ccs": "CCS",
+        "type2": "Type 2",
+        "chademo": "CHAdeMO",
+        "tesla": "Tesla",
+        "schuko": "Schuko",
+        "other": "Andre"
+      }
+    }
+  },
+  "reach": {
+    "title": "Rækkevidde",
+    "search_in": "Søg heri",
+    "metric": {
+      "title": "Mål",
+      "time": "Tid",
+      "distance": "Afstand"
+    },
+    "unit": {
+      "min": "min",
+      "km": "km"
+    },
+    "computing": "Fra {from} · {profile} · beregner …",
+    "result": "Fra {from} · {profile} · op til {value} {unit}",
+    "up_to": "op til {value} {unit}",
+    "searching": "Søger {category} inden for rækkevidde …",
+    "none": "Ingen {category} inden for rækkevidde"
+  },
+  "contribute": {
+    "title": "Vær med",
+    "offer": {
+      "one": "{n} kort spørgsmål om din rute",
+      "other": "{n} korte spørgsmål om din rute"
+    },
+    "first": {
+      "title": "Vær med i OpenStreetMap",
+      "text": "WMap husker din rute på denne enhed og stiller dig bagefter korte spørgsmål – for eksempel om parkeringspladsen koster noget, eller om bageren stadig har de åbningstider. Dine svar gør kortet bedre for alle. Optagelsen forlader ikke enheden og kan slås fra i indstillingerne.",
+      "no": "Optag ikke",
+      "yes": "Det er i orden"
+    }
+  },
+  "ask_along": {
+    "missing_way": {
+      "name": "Vej uden for kortet",
+      "road": "Ny vej?",
+      "way": "Ny sti?"
+    },
+    "detour": {
+      "name": "Afvigelse fra ruten",
+      "title": "Spærret?"
+    },
+    "exists": {
+      "title": "Findes {name} stadig?"
+    }
+  },
+  "report": {
+    "thanks": "Tak!",
+    "goes": {
+      "account": "Går direkte ind på kortet med din OSM-konto.",
+      "anonymous": "Sendes uden konto som en note til OpenStreetMap.",
+      "later": "Gemmes, indtil du logger ind på OSM."
+    },
+    "still": {
+      "roadworks": "Stadig vejarbejde?",
+      "closure": "Stadig spærret?",
+      "jam": "Stadig kø?",
+      "accident": "Stadig en ulykke?",
+      "other": "Stadig forhindring?",
+      "gone": "Nej, er væk"
+    },
+    "here": {
+      "title": "Hvad vil du melde?",
+      "shared": "Andre kan se din melding i et par timer.",
+      "local": "Endnu ingen meldeserver – meldingen bliver indtil videre på denne enhed.",
+      "toast_shared": "{kind} meldt – tak!",
+      "toast_local": "{kind} noteret"
+    },
+    "parking": {
+      "name": "Parkeringsplads",
+      "named": "“{name}”",
+      "this_one": "parkeringspladsen her",
+      "thanks": "Tak! Det hjælper alle, der vil parkere her.",
+      "fee": {
+        "title": "Er {what} gratis?",
+        "sub": "Du er lige ankommet",
+        "free": "Gratis",
+        "paid": "Koster noget",
+        "unknown": "Ved ikke"
+      },
+      "price": {
+        "title": "Cirka hvor meget?",
+        "per_hour": "{price} €/time",
+        "other": "Andet …",
+        "ask": "Hvad koster det?",
+        "placeholder": "f.eks. 1,50 € i timen eller 6 € om dagen"
+      },
+      "access": {
+        "title": "Kan alle parkere der?",
+        "all": "Ja, alle",
+        "customers": "Kun kunder",
+        "private": "Privat"
+      },
+      "remark": {
+        "title": "Noget mere til andre?",
+        "sub": "f.eks. bom, højdebegrænsning, kun til kl. 20",
+        "placeholder": "Bemærkning (valgfri)",
+        "no": "Nej tak"
+      }
+    }
+  },
+  "traffic": {
+    "title": "Trafikforhold motorvej",
+    "blocked": "Fuld spærring",
+    "source": "Kilde: Autobahn GmbH des Bundes",
+    "closures": {
+      "one": "En fuld spærring på ruten",
+      "other": "{n} fulde spærringer på ruten"
+    },
+    "avoid": "Kør udenom",
+    "at": "om {distance}",
+    "kinds": {
+      "closure": "Spærring",
+      "roadworks": "Vejarbejde",
+      "warning": "Melding",
+      "jam": "Kø",
+      "accident": "Ulykke",
+      "hazard": "Fare"
+    },
+    "reported": {
+      "title": "Meldt {n}×",
+      "by": {
+        "one": "Meldt af {n} person, senest {time}",
+        "other": "Meldt af {n} personer, senest {time}"
+      }
+    }
+  },
+  "route": {
+    "line": {
+      "change": "Ændr rute",
+      "prefs": "Indstillinger: motorvej, færger, transportmidler …"
+    },
+    "form": {
+      "swap": "Byt start og mål",
+      "add_via": "Mellemmål",
+      "profiles": {
+        "title": "Transportform",
+        "foot": "Til fods",
+        "bike": "Cykel",
+        "car": "Bil",
+        "transit": "Bus & tog"
+      }
+    },
+    "when": {
+      "mode": {
+        "title": "Afgang eller ankomst",
+        "departure": "Afgang fra",
+        "arrival": "Ankomst senest"
+      },
+      "time": "Tidspunkt",
+      "now": "Nu"
+    },
+    "waypoint": {
+      "start": "Vælg start",
+      "destination": "Vælg mål",
+      "via": "Vælg mellemmål",
+      "my_location_hint": "aktuel GPS-position",
+      "point": "Punkt",
+      "tour_start": "Start: {name}"
+    },
+    "status": {
+      "computing": "Ruten beregnes …",
+      "failed": "Ruten kunne ikke hentes lige nu – prøv igen om lidt",
+      "retry": "Prøv igen"
+    },
+    "park": "Turen slutter ved parkeringspladsen før – {distance} til {place}",
+    "ascent": "↗ {m} m",
+    "ticket": "Billet hos banen",
+    "connection_saved": "Forbindelse gemt – under Mine ture → Forbindelser",
+    "new_tour": "Ny tur",
+    "tags": {
+      "highway": "Motorvej",
+      "no_highway": "uden motorvej",
+      "toll": "Betalingsvej",
+      "ferry": "Færge",
+      "fastest": "Hurtigst",
+      "latest": "Seneste afgang",
+      "alternative": "Alternativ",
+      "change": "≥ {min} min skiftetid",
+      "tight": "knap: {min} min skiftetid"
+    },
+    "alternative": {
+      "same": "±0 min"
+    },
+    "earlier": {
+      "title": "Tidligere forbindelser",
+      "none": "Ingen tidligere forbindelser fundet",
+      "failed": "Tidligere forbindelser kan ikke hentes lige nu – prøv igen om lidt"
+    },
+    "share": {
+      "title": "Rute",
+      "text": "Rute fra {from} til {to} ({profile}, {time}, {distance})",
+      "my_location": "min position",
+      "start": "Start"
+    },
+    "along": {
+      "title": "Langs ruten",
+      "searching": "Søger {category} langs ruten …",
+      "none": "Ingen {category} langs ruten",
+      "none_visible": "Ingen {category} langs ruten – kun skjulte",
+      "distance": "om {along} · {offset} fra ruten"
+    },
+    "sheet": {
+      "end": "Afslut planlægning",
+      "options": "Ruter",
+      "steps": "Rutevejledning",
+      "share": "Del rute",
+      "save": "Gem som tur",
+      "send_car": "Send til bilen",
+      "start": "Start"
+    }
+  },
+  "nav": {
+    "kmh": "km/t",
+    "pip_failed": "Billede-i-billede virkede ikke: {error}",
+    "buttons": {
+      "record": "Optag",
+      "north_up": "Nord opad",
+      "heading_up": "Drej i kørselsretningen",
+      "report": "Meld: kø, ulykke, vejarbejde …",
+      "pip": "Billede-i-billede – anvisninger oven på andre apps",
+      "overview": "Vis hele ruten",
+      "mute": "Slå vejledning fra",
+      "unmute": "Slå vejledning til",
+      "follow_flat": "Følger dig – tryk: flad visning",
+      "follow_tilted": "Følger dig – tryk: skråtstillet visning",
+      "back_to_me": "Tilbage til min position",
+      "stop": "Afslut navigation",
+      "share": "Del ankomst",
+      "search": "Søg langs ruten"
+    },
+    "banner": {
+      "exit": "{n}. afkørsel",
+      "toward": "Mod {places}",
+      "lane_left": "Hold til venstre",
+      "lane_right": "Hold til højre",
+      "then": "Derefter",
+      "arrived": "Du er fremme",
+      "arrived_remaining": "0 min · 0 m"
+    },
+    "gps": {
+      "unsupported": "Denne enhed understøtter ikke positionsbestemmelse",
+      "weak": "Svagt GPS-signal – søger position …",
+      "coarse": "Kun cirka-position er givet adgang. Tillad „Præcis position“ for browseren i telefonens indstillinger.",
+      "denied": "Adgang til position er ikke givet – tillad det i browserens indstillinger."
+    },
+    "offline": {
+      "loading": "Kortet til strækningen gemmes",
+      "ok": "Kortet til strækningen er gemt offline",
+      "off": "Offline – ny beregning er først mulig igen med netforbindelse",
+      "back_to_route": "Offline – tilbage til ruten, ny beregning er først mulig igen med netforbindelse"
+    },
+    "share": {
+      "title": "Jeg er på vej",
+      "text": "Jeg er på vej til {where} – ankomst ca. kl. {time}. Her er jeg lige nu:",
+      "my_destination": "mit mål",
+      "place": "På vej"
+    },
+    "search_along": {
+      "title": "Langs ruten",
+      "subtitle": "Hvad der ligger foran dig på strækningen",
+      "searching": "Søger {category} foran dig …",
+      "none": "Ingen {category} foran dig på strækningen",
+      "distance": "om {along} · {offset} fra ruten"
+    },
+    "resume": {
+      "title": "Fortsæt navigationen?",
+      "to": "Fortsæt mod {place}.",
+      "unfinished": "Sidste tur blev ikke afsluttet.",
+      "stop": "Afslut",
+      "go": "Fortsæt"
+    },
+    "record": {
+      "running": "Optagelse kører",
+      "paused": "Optagelse sat på pause",
+      "continues": "Optagelsen kører videre",
+      "already": "Der kører allerede en optagelse",
+      "simulation": "Der optages ikke i simuleringen",
+      "saved": "Optagelse gemt ({distance})",
+      "drive_saved": "Tur gemt ({distance})",
+      "too_short": "For kort til at gemme",
+      "discarded": "Optagelse kasseret",
+      "track_name": "Til {place}",
+      "dialog": {
+        "text": "Navigationen kører videre imens.",
+        "resume": "Optag videre",
+        "pause": "Pause",
+        "stop": "Afslut og gem",
+        "discard": "Kassér"
+      },
+      "ask": {
+        "title": "Optag tur?",
+        "text": "Strækningen havner med tid og tempo under „Optagne ture“. Du kan sætte på pause, afslutte eller starte senere undervejs med optageknappen til højre.",
+        "no": "Uden optagelse"
+      }
+    },
+    "voice_dialog": {
+      "title": "Stemme til vejledning",
+      "select": "Stemme",
+      "online": "online",
+      "android": "Appen bruger Androids talesyntese – stemme og tempo indstiller du i Android-indstillingerne under „Tekst-til-tale“.",
+      "none": "Denne browser tilbyder ingen dansk stemme.",
+      "hint": "Lyder det metallisk eller forvrænget, er der som regel valgt en simpel systemstemme (eSpeak).\n       „Google Dansk“ i Chrome eller stemmerne fra Android, Windows og macOS lyder tydeligt bedre.",
+      "test": "Prøve",
+      "sample": "Om 300 meter drej til højre, og hold derefter til venstre.",
+      "done": "Færdig"
+    },
+    "voice": {
+      "route_ready": "Ruten er beregnet.",
+      "new_route": "Ny rute beregnet.",
+      "recalculating": "Ruten beregnes igen.",
+      "stop_added": "Mellemstop indplanlægges.",
+      "no_connection": "Ingen forbindelse. Vend tilbage til ruten.",
+      "follow": "Følg ruten i {distance}.",
+      "soon": "Om {distance} {what}.",
+      "lane_left": "Hold til venstre.",
+      "lane_right": "Hold til højre.",
+      "then": ", derefter {action}",
+      "onto": "{action} ind på {ref}",
+      "toward": "{what} mod {places}",
+      "and": "og",
+      "at_signal": "ved lyskrydset {what}",
+      "arrive": {
+        "now": "Du er fremme ved dit mål.",
+        "on_right": "Det ligger til højre.",
+        "on_left": "Det ligger til venstre.",
+        "soon": "Om {distance} er du fremme ved dit mål.",
+        "then": "derefter er du fremme ved dit mål"
+      },
+      "ordinal": {
+        "first": "første",
+        "second": "anden",
+        "third": "tredje",
+        "fourth": "fjerde",
+        "fifth": "femte",
+        "sixth": "sjette",
+        "seventh": "syvende",
+        "eighth": "ottende"
+      },
+      "action": {
+        "depart": "kør af sted",
+        "continue": "fortsæt ligeud",
+        "keep_straight": "hold ligeud",
+        "slight_right": "drej let til højre",
+        "right": "drej til højre",
+        "sharp_right": "drej skarpt til højre",
+        "slight_left": "drej let til venstre",
+        "left": "drej til venstre",
+        "sharp_left": "drej skarpt til venstre",
+        "u_turn": "vend om",
+        "keep_right": "hold til højre",
+        "keep_left": "hold til venstre",
+        "merge": "flet ind",
+        "merge_right": "flet ind til højre",
+        "merge_left": "flet ind til venstre",
+        "ferry_on": "kør om bord på færgen",
+        "ferry_off": "kør af færgen",
+        "roundabout": "tag den {nth} afkørsel i rundkørslen",
+        "ramp": {
+          "straight": "ligeud ad tilkørslen",
+          "right": "til højre ad tilkørslen",
+          "left": "til venstre ad tilkørslen"
+        },
+        "ramp_ref": {
+          "straight": "kør op på {ref}",
+          "right": "kør til højre op på {ref}",
+          "left": "kør til venstre op på {ref}"
+        },
+        "exit": {
+          "right": "tag afkørslen til højre",
+          "right_number": "tag afkørsel {nr} til højre",
+          "left": "tag afkørslen til venstre",
+          "left_number": "tag afkørsel {nr} til venstre"
+        }
+      }
+    }
+  },
+  "car": {
+    "nearby": "I nærheden",
+    "destination": "Mål",
+    "tour": "Tur",
+    "allow_location": "Tillad position på telefonen i WMap",
+    "ask": {
+      "confirm": "Bekræft"
+    },
+    "errors": {
+      "unknown_category": "Ukendt kategori",
+      "no_route_computed": "Ruten kunne ikke beregnes",
+      "place_unknown": "Stedet er ikke længere kendt",
+      "sent_unreadable": "Det sendte kunne ikke læses",
+      "tour_missing": "Turen er endnu ikke nået frem til bilen – åbn WMap på telefonen én gang",
+      "tour_not_car": "Turen er ikke planlagt til bil",
+      "unknown_setting": "Ukendt indstilling",
+      "no_route": "Ingen rute valgt"
+    },
+    "native": {
+      "route": "Rute",
+      "place": "Sted",
+      "search": "Søg",
+      "arrived": "Destinationen er nået",
+      "follow": "Følg ruten",
+      "nearby": "I nærheden",
+      "bookmarks": "Bogmærker",
+      "bookmarks_empty": "Intet gemt endnu – åbn et sted, og tryk på stjernen",
+      "bookmarks_hint": "Hjem, arbejde, gemte steder",
+      "nearby_empty": "Intet fundet i nærheden",
+      "nearby_hint": "Parkering, tankning, opladning, pause …",
+      "search_tours": "Søg tur …",
+      "search_where": "Hvorhen?",
+      "search_hint": "Sted, adresse, parkering …",
+      "places": "Steder",
+      "my_tours": "Mine ture",
+      "tours_empty": "Ingen ture planlagt til bilen",
+      "nothing": "Intet fundet",
+      "no_route": "Ingen rute fundet",
+      "place_missing": "Stedet blev ikke fundet",
+      "route_one": "rute",
+      "route_many": "ruter",
+      "tap_map": "tryk på kortet",
+      "go": "Start",
+      "computing": "Ruten beregnes stadig …",
+      "filter": "Filter",
+      "cancel": "Annuller",
+      "saved": "Gemt",
+      "chosen": "Valgt",
+      "alternative": "Alternativ",
+      "avoid_highways": "Undgå motorveje",
+      "avoid_tolls": "Undgå betalingsveje",
+      "avoid_ferries": "Undgå færger"
+    }
+  },
+  "permissions": {
+    "location": {
+      "denied": "Adgang til position afvist",
+      "coarse": "Kun cirka – slå „Præcis position“ til for navigation og optagelse",
+      "off": "Positionen er slået fra på enheden",
+      "turn_on": "Slå position til",
+      "allow": "Tillad position",
+      "title": "Position",
+      "text": "Til din position på kortet, ruter fra »Min position«, navigation og optagelse af dine ture. Optagede positionsdata bliver på din enhed og bliver hverken analyseret eller delt."
+    },
+    "notice": {
+      "title": "Notifikationer",
+      "p1": "For at WMap kan fortsætte en startet optagelse, også når skærmen er slukket eller du bruger en anden app, skal WMap vise en notifikation.",
+      "p2": "Så længe optagelsen kører, står <strong>»WMap optager«</strong> i statuslinjen – så kan du altid se, at din tur bliver optaget. Android spørger derfor straks, om WMap må sende notifikationer.",
+      "p3": "WMap sender ingen andre notifikationer.",
+      "allow": "Tillad"
+    },
+    "status": {
+      "blocked": "Ikke tilladt – Android spørger ikke mere, tillad det i indstillingerne",
+      "granted": "Tilladt",
+      "not_yet": "Endnu ikke tilladt"
+    },
+    "button": {
+      "change": "Skift i indstillingerne",
+      "allow_settings": "Tillad i indstillingerne"
+    },
+    "notification": {
+      "title": "Notifikation",
+      "text": "Kun under en optagelse: Så står »WMap optager« i statuslinjen. WMap har brug for denne notifikation, for at optagelsen kan fortsætte, når skærmen er slukket eller du bruger en anden app. WMap sender ingen andre notifikationer.",
+      "allow": "Tillad notifikation"
+    },
+    "health": {
+      "text": "Læser træninger fra andre apps – Fitbit, Strava, Zepp, Samsung Health … – med rute og målinger (puls, skridt- og pedalfrekvens, effekt), så du kan se dem under Mine ture som ruter med diagrammer og omgange. WMap læser kun og skriver intet tilbage.",
+      "title": "Health Connect",
+      "not_granted": "Endnu ikke givet adgang",
+      "grant": "Giv adgang til Health Connect",
+      "hint_change": "For at ændre eller trække tilladelsen tilbage åbnes Health Connect – tryk på WMap der (ellers under „Flere sundhedsapps“).",
+      "hint_routes": "Ruter: Health Connect spørger stadig ved hver enkelt træning.\n      Sæt i Health Connect <strong>WMap → Træningsruter</strong> til „Tillad altid“ (WMap står ellers under „Flere sundhedsapps“) – så kommer alle uden spørgsmål.",
+      "hint_values": "Puls og lignende er endnu ikke givet adgang til –\n      uden dem får du kun tempo og højde til turene.",
+      "all": "Træninger, ruter og målinger tilladt",
+      "routes_yes": "Træninger og ruter tilladt",
+      "routes_ask": "Træninger tilladt, ruter med spørgsmål",
+      "values_yes": "Målinger tilladt",
+      "values_no": "Målinger ikke",
+      "grant_values": "Giv adgang til puls og lignende",
+      "change": "Skift i Health Connect",
+      "open": "Åbn Health Connect"
+    },
+    "intro": {
+      "location": "Til det har WMap brug for din position.",
+      "health": "Til det har WMap brug for adgang til Health Connect.",
+      "default": "WMap spørger kun om det, en funktion virkelig har brug for.",
+      "change_later": "Alt kan senere ændres under <strong>Indstillinger → Tilladelser</strong>."
+    },
+    "title": "Tilladelser"
+  },
+  "tracks": {
+    "error": {
+      "save_aborted": "Lagring afbrudt",
+      "storage_full": "Lageret er fuldt – turen kunne ikke gemmes",
+      "only_in_folder": "Ruten findes kun i mappen"
+    },
+    "names": {
+      "imported": "Importeret rute",
+      "tour": "Tur",
+      "words": {
+        "car": "Biltur",
+        "drive": "Køretur",
+        "ride": "Cykeltur",
+        "walk": "Gåtur",
+        "hike": "Vandretur",
+        "run": "Løbetur",
+        "other": "På farten",
+        "rowing": "Roning",
+        "paddling": "Padling",
+        "sailing": "Sejlads",
+        "swimming": "Svømning",
+        "skiing": "Skiløb",
+        "snowboarding": "Snowboarding",
+        "snowshoeing": "Snesko-vandring",
+        "skating": "Rulleskøjteløb",
+        "ice_skating": "Skøjteløb",
+        "surfing": "Surfing",
+        "paragliding": "Paragliding",
+        "climbing": "Klatring",
+        "golf": "Golf"
+      },
+      "when": {
+        "night": "{what} om natten {day}",
+        "morning": "{what} {day} morgen",
+        "noon": "{what} {day} middag",
+        "afternoon": "{what} {day} eftermiddag",
+        "evening": "{what} {day} aften"
+      },
+      "with_place": "{what} i {place}",
+      "filler": [
+        "rute",
+        "tur",
+        "fra",
+        "den",
+        "kl",
+        "klokken",
+        "og",
+        "importeret",
+        "aktivitet",
+        "løb",
+        "løbetur",
+        "løbe",
+        "jogging",
+        "cykeltur",
+        "cykel",
+        "cykling",
+        "cykle",
+        "gåtur",
+        "gå",
+        "vandretur",
+        "vandring",
+        "vandre",
+        "roning",
+        "ro",
+        "svømning",
+        "svømme",
+        "unavngivet",
+        "ny"
+      ]
+    },
+    "gpx": {
+      "start": "Start",
+      "goal": "Mål",
+      "point": "Punkt {i}"
+    },
+    "toast": {
+      "oldest_removed": {
+        "one": "Lageret er fuldt – den ældste tur blev slettet",
+        "other": "Lageret er fuldt – de {n} ældste ture blev slettet"
+      },
+      "shelved": "Lageret er fuldt – {n} ældre ture ligger nu kun i mappen"
+    },
+    "step": {
+      "load_part": "Indlæs mappedel"
+    },
+    "duplicates": {
+      "where": {
+        "file": "i filen",
+        "double": "i dubletten"
+      },
+      "points": "{n} punkter",
+      "points_more": "{n} punkter mere {where} ({there} i stedet for {here})",
+      "points_fewer": "{n} punkter færre {where} ({there} i stedet for {here})",
+      "value_missing": "mangler her – {where} Ø {avg}",
+      "none": "ingen",
+      "value_differs": "Ø {there} {where}, Ø {here} her",
+      "laps_new": "{n} omgange {where}, ingen her",
+      "laps": {
+        "one": "{n} omgang",
+        "other": "{n} omgange"
+      },
+      "laps_differ": "{there} omgange {where}, {here} her",
+      "laps_in_file": "{n} omgange {where}",
+      "ask": {
+        "source_file": "Fil",
+        "source_wmap": "optaget med WMap",
+        "title": {
+          "one": "En tur findes to gange",
+          "other": "{n} ture findes to gange"
+        },
+        "text": "Den samme tur findes flere gange – f.eks. fra ur og mobil eller fra en fil. Ved sammenlægning beholdes én optagelse pr. tur.",
+        "from": "Turen „{name}“ findes to gange. Én optagelse beholdes – vælg for hver række, hvis data den skal beholde.",
+        "new_name": "dubletten{name}{source} – den slettes bagefter",
+        "old_name": "optagelsen, der beholdes{source}",
+        "merged": {
+          "one": "{n} dobbelt tur lagt sammen",
+          "other": "{n} dobbelte ture lagt sammen"
+        },
+        "nothing": "Intet lagt sammen",
+        "failed": "Sammenlægningen mislykkedes"
+      }
+    },
+    "recorded_on": "Optaget den {date}",
+    "same_route": {
+      "exact": "Præcis",
+      "close": "Ligner",
+      "rough": "Nogenlunde"
+    },
+    "sports": {
+      "driving": "Bil",
+      "gpx": "GPX"
+    },
+    "show": {
+      "all": "Alle",
+      "year": "I år",
+      "days_365": "Seneste 365 dage",
+      "days_30": "Seneste 30 dage"
+    },
+    "cadence": {
+      "stroke": "Slagfrekvens",
+      "swim": "Tagfrekvens",
+      "pedal": "Pedalfrekvens",
+      "step": "Skridtfrekvens",
+      "other": "Frekvens"
+    }
+  },
+  "backup": {
+    "error": {
+      "not_zip": "Det er ikke en ZIP-fil",
+      "zip_method": "{path}: Komprimeringsmetoden {method} understøttes ikke",
+      "not_backup": "Det er ikke en WMap-sikkerhedskopi"
+    },
+    "to_folder": "Gem i „{name}“",
+    "to_zip": "Gem som ZIP",
+    "done": "Sikkerhedskopieret – {summary}",
+    "creating": "Opretter sikkerhedskopien …",
+    "saved_as": "Gemt som „{name}“",
+    "failed": "Sikkerhedskopieringen mislykkedes: {reason}"
+  },
+  "share": {
+    "tour": {
+      "default_name": "Delt tur",
+      "error": {
+        "no_tour": "Linket indeholder ingen tur"
+      }
+    },
+    "link": {
+      "error": {
+        "key": "Linket er ufuldstændigt – nøglen passer ikke",
+        "open": "Linket kunne ikke åbnes"
+      }
+    },
+    "collab": {
+      "error": {
+        "https": "Fælles planlægning virker kun via https"
+      },
+      "days_left": {
+        "one": "{n} dag tilbage",
+        "other": "{n} dage tilbage"
+      },
+      "expired": "Deling udløbet",
+      "shared": "Delt",
+      "invited_by": "Inviteret af {by}",
+      "invited": "Inviteret"
+    },
+    "open_link": {
+      "title": "Åbn link",
+      "text": "Indsæt et delt WMap-link her – tur, fælles planlægning eller optagelse.",
+      "input": "Link",
+      "open": "Åbn",
+      "invalid": "Det er ikke et delt WMap-link"
+    },
+    "error": {
+      "desktop": "Deling i desktop-appen kræver PUBLIC_URL i core/config.js"
+    },
+    "wmap_link": "WMap: {url}",
+    "menu": {
+      "share": "Del …",
+      "copy_text": "Kopiér tekst med link",
+      "copy_link": "Kopiér kun link",
+      "short": "Opret kort link"
+    },
+    "short": {
+      "failed": "Det korte link kunne ikke oprettes",
+      "note": "Kort link: Turen ligger i den forbindelse 30 dage på WMap-serveren – derefter virker linket ikke mere."
+    },
+    "copied": {
+      "text": "Tekst med link kopieret",
+      "link": "Link kopieret",
+      "then": "{done} – indsæt og send nu",
+      "failed": "Kopieringen mislykkedes – markér og kopiér selv:"
+    },
+    "my_name": {
+      "title": "Hvad hedder du?",
+      "text": "Navnet står i forespørgslen, så man ved, hvem der spørger. Det bliver på denne enhed.",
+      "placeholder": "Fornavn"
+    },
+    "route": {
+      "shared_point": "Delt punkt"
+    }
+  },
+  "places": {
+    "kinds": {
+      "home": "Hjem",
+      "work": "Arbejde",
+      "stop": "Stoppested",
+      "fav": "Husket"
+    },
+    "default_list": "Generelt"
+  },
+  "services": {
+    "health": {
+      "types": {
+        "walking": "Gåtur",
+        "hiking": "Vandring",
+        "snowshoeing": "Snesko",
+        "running": "Løb",
+        "running_treadmill": "Løbebånd",
+        "biking": "Cykling",
+        "biking_stationary": "Kondicykel",
+        "wheelchair": "Kørestol",
+        "skating": "Skøjter",
+        "ice_skating": "Skøjteløb",
+        "skiing": "Ski",
+        "snowboarding": "Snowboard",
+        "rowing": "Roning",
+        "rowing_machine": "Romaskine",
+        "paddling": "Padling",
+        "sailing": "Sejlads",
+        "surfing": "Surfing",
+        "scuba_diving": "Dykning",
+        "swimming_open_water": "Svømning",
+        "swimming_pool": "Svømmehal",
+        "water_polo": "Vandpolo",
+        "paragliding": "Paragliding",
+        "rock_climbing": "Klatring",
+        "golf": "Golf",
+        "frisbee_disc": "Frisbee",
+        "soccer": "Fodbold",
+        "football_american": "Amerikansk fodbold",
+        "football_australian": "Australsk fodbold",
+        "rugby": "Rugby",
+        "basketball": "Basketball",
+        "volleyball": "Volleyball",
+        "handball": "Håndbold",
+        "baseball": "Baseball",
+        "softball": "Softball",
+        "cricket": "Cricket",
+        "tennis": "Tennis",
+        "table_tennis": "Bordtennis",
+        "badminton": "Badminton",
+        "squash": "Squash",
+        "racquetball": "Racquetball",
+        "ice_hockey": "Ishockey",
+        "roller_hockey": "Rullehockey",
+        "martial_arts": "Kampsport",
+        "boxing": "Boksning",
+        "fencing": "Fægtning",
+        "dancing": "Dans",
+        "gymnastics": "Gymnastik",
+        "yoga": "Yoga",
+        "pilates": "Pilates",
+        "stretching": "Udstrækning",
+        "meditation": "Meditation",
+        "guided_breathing": "Åndedrætsøvelse",
+        "elliptical": "Crosstrainer",
+        "stair_climbing": "Trappegang",
+        "stair_climbing_machine": "Stepmaskine",
+        "weightlifting": "Vægtløftning",
+        "strength_training": "Styrketræning",
+        "calisthenics": "Calisthenics",
+        "high_intensity_interval_training": "HIIT",
+        "boot_camp": "Bootcamp",
+        "exercise_class": "Hold",
+        "workout": "Workout",
+        "other_workout": "Træning"
+      },
+      "error": {
+        "android_only": "Kun i Android-appen",
+        "update_needed": "Health Connect skal opdateres først",
+        "not_on_device": "Health Connect findes ikke på denne enhed",
+        "no_access": "Uden adgang til træninger kan WMap ikke læse noget",
+        "not_granted": "Health Connect er endnu ikke givet adgang"
+      }
+    },
+    "api": {
+      "error": {
+        "unreachable": "WMap-serveren kan ikke nås lige nu",
+        "bad_answer": "WMap-serveren svarer ikke korrekt",
+        "server": "Fejl på serveren"
+      }
+    },
+    "departures": {
+      "error": {
+        "status": "Køreplanen svarer med {status}",
+        "no_course": "Ingen rute kendt",
+        "no_connection": "Ingen forbindelse med bus og tog fundet"
+      },
+      "walk": {
+        "left": {
+          "into": "Til venstre ind på {name}",
+          "turn": "Drej til venstre"
+        },
+        "right": {
+          "into": "Til højre ind på {name}",
+          "turn": "Drej til højre"
+        },
+        "slight_left": {
+          "into": "Let til venstre ind på {name}",
+          "turn": "Drej let til venstre"
+        },
+        "slight_right": {
+          "into": "Let til højre ind på {name}",
+          "turn": "Drej let til højre"
+        },
+        "sharp_left": {
+          "into": "Skarpt til venstre ind på {name}",
+          "turn": "Drej skarpt til venstre"
+        },
+        "sharp_right": {
+          "into": "Skarpt til højre ind på {name}",
+          "turn": "Drej skarpt til højre"
+        },
+        "straight": {
+          "into": "Ligeud ind på {name}",
+          "turn": "Fortsæt ligeud"
+        },
+        "uturn": {
+          "into": "Vend om ind på {name}",
+          "turn": "Vend om"
+        },
+        "straight_on": "Ligeud",
+        "title": "Gåtur"
+      }
+    },
+    "konto": {
+      "login": {
+        "why_default": "Til det",
+        "title": "Log ind med OpenStreetMap",
+        "text": "<p>{why} skal du have en konto. WMap bruger din OpenStreetMap-konto til det – WMap har ikke sin egen adgangskode.</p>",
+        "hint": "Har du ikke en endnu? Den opretter du ved login på openstreetmap.org. Så kan du også indtegne og forbedre steder på kortet.",
+        "button": "Log ind",
+        "rejected": "WMap-serveren har ikke accepteret login",
+        "failed": "Login mislykkedes"
+      },
+      "no_client": {
+        "title": "Login er ikke sat op",
+        "text": "Denne WMap mangler endnu OpenStreetMap-klient-ID'et (Indstillinger → Konto → Til udviklere)."
+      }
+    },
+    "known_tours": {
+      "kinds": {
+        "hike": "Vandring",
+        "bike": "Cykel",
+        "mtb": "Mountainbike"
+      },
+      "networks": {
+        "hike_europe": "Europæisk fjernvandrerute",
+        "hike_national": "National fjernvandrerute",
+        "hike_regional": "Regional vandrerute",
+        "hike_local": "Lokal vandrerute",
+        "bike_europe": "Europæisk cykelrute",
+        "bike_national": "National cykelrute",
+        "bike_regional": "Regional cykelrute",
+        "bike_local": "Lokal cykelrute",
+        "mtb_international": "International MTB-rute",
+        "mtb_national": "National MTB-rute",
+        "mtb_regional": "Regional MTB-rute",
+        "mtb_local": "Lokal MTB-rute"
+      },
+      "error": {
+        "not_found": "Ruten blev ikke fundet",
+        "status": "Waymarked Trails svarer med {status}",
+        "no_course": "Denne rute har ikke noget forløb",
+        "too_long": "Denne vej er for lang til at tage på én gang – vælg en etape"
+      },
+      "unnamed": "Vej uden navn",
+      "way": "Vej",
+      "marking": "Afmærkning {ref}",
+      "source": "Kilde: OpenStreetMap, rute {id}"
+    },
+    "media": {
+      "fuel_no_answer": "Tankerkönig svarer ikke"
+    },
+    "overpass": {
+      "error": {
+        "busy": "Overpass er optaget lige nu",
+        "unreachable": "Overpass kan ikke nås",
+        "status": "Overpass svarer ikke ({status})",
+        "no_answer": "Overpass svarer ikke lige nu"
+      }
+    },
+    "routing": {
+      "error": {
+        "offline": "Ingen forbindelse til nettet – WMap skal bruge internettet til ruten",
+        "busy": "Ruteserveren er overbelastet lige nu – prøv igen om lidt",
+        "unreachable": "Ruteserveren kan ikke nås lige nu – prøv igen om lidt",
+        "no_route": "Ingen rute fundet mellem disse punkter",
+        "not_near_way": "Punktet ligger ikke i nærheden af en vej",
+        "too_long": "Strækningen er for lang til denne profil",
+        "failed": "Ruteberegning mislykkedes ({status})"
+      },
+      "surface": {
+        "paved_smooth": "Asfalt",
+        "paved": "Befæstet",
+        "paved_rough": "Brosten",
+        "compacted": "Komprimeret",
+        "dirt": "Jordvej",
+        "gravel": "Grus",
+        "path": "NaturstI",
+        "impassable": "Ufremkommelig",
+        "unknown": "Ukendt"
+      },
+      "way": {
+        "cycleway": "Cykelsti",
+        "footway": "Gangsti",
+        "mountain_path": "Bjergsti",
+        "path": "Sti",
+        "track": "Markvej",
+        "steps": "Trappe",
+        "ferry": "Færge",
+        "motorway": "Motorvej",
+        "primary": "Hovedvej",
+        "residential": "Villavej",
+        "minor": "Sidevej"
+      }
+    },
+    "traffic": {
+      "error": {
+        "status": "Autobahn-API: {status}"
+      }
+    },
+    "transit": {
+      "kinds": {
+        "bus": "Bus",
+        "trolleybus": "Trolleybus",
+        "share_taxi": "Teletaxa",
+        "tram": "Sporvogn",
+        "light_rail": "Letbane",
+        "subway": "Metro",
+        "train": "Tog",
+        "monorail": "Bane",
+        "ferry": "Færge"
+      },
+      "lines_here": "Linjer her",
+      "line": "Linje",
+      "show_course": "Vis forløb",
+      "all_lines": "Alle {n} linjer",
+      "not_found": "Linjen blev ikke fundet",
+      "stops": "{n} stop",
+      "arrival": " (ank. {time})",
+      "stops_left": {
+        "one": "Stadig {n} stop til {to}{arrival}",
+        "other": "Stadig {n} stop til {to}{arrival}"
+      },
+      "ends_here": "Slutter her – {n} stop hertil"
+    },
+    "car": {
+      "sent": "Sendt til bilen",
+      "waiting": "Sendt – åbn WMap i bilen",
+      "none": "Ingen bil forbundet"
+    }
+  },
+  "categories": {
+    "parking": {
+      "label": "Parkeringspladser",
+      "one": "Parkeringsplads",
+      "terms": [
+        "parkering",
+        "parkeringsplads",
+        "parkeringspladser",
+        "parkeringshus",
+        "p-hus",
+        "parkere",
+        "parkeringskælder"
+      ]
+    },
+    "fuel": {
+      "label": "Tankstationer",
+      "one": "Tankstation",
+      "terms": [
+        "tankstation",
+        "tanke",
+        "benzin",
+        "diesel",
+        "brændstof",
+        "benzinstation"
+      ]
+    },
+    "charging": {
+      "label": "Ladestandere",
+      "one": "Ladestander",
+      "terms": [
+        "ladestander",
+        "ladestandere",
+        "ladestation",
+        "ladepunkt",
+        "elbil opladning",
+        "oplade elbil",
+        "wallbox",
+        "lade elbil"
+      ]
+    },
+    "bakery": {
+      "label": "Bagerier",
+      "one": "Bageri",
+      "terms": [
+        "bageri",
+        "bagerier",
+        "bager",
+        "rundstykker",
+        "brød",
+        "wienerbrød"
+      ]
+    },
+    "supermarket": {
+      "label": "Supermarkeder",
+      "one": "Supermarked",
+      "terms": [
+        "supermarked",
+        "supermarkeder",
+        "indkøb",
+        "dagligvarer",
+        "discountbutik",
+        "købmand"
+      ]
+    },
+    "restaurant": {
+      "label": "Restauranter",
+      "one": "Restaurant",
+      "terms": [
+        "restaurant",
+        "restauranter",
+        "spisested",
+        "mad",
+        "spise"
+      ]
+    },
+    "fastfood": {
+      "label": "Fastfood",
+      "one": "Fastfoodrestaurant",
+      "terms": [
+        "fastfood",
+        "grillbar",
+        "pizzeria",
+        "pizza",
+        "burger",
+        "pommes frites",
+        "kebab",
+        "pølsevogn"
+      ]
+    },
+    "cafe": {
+      "label": "Caféer",
+      "one": "Café",
+      "terms": [
+        "cafe",
+        "café",
+        "caféer",
+        "kaffe",
+        "kage",
+        "konditori"
+      ]
+    },
+    "icecream": {
+      "label": "Isbarer",
+      "one": "Isbar",
+      "terms": [
+        "isbar",
+        "isbutik",
+        "is",
+        "softice",
+        "iskiosk"
+      ]
+    },
+    "pub": {
+      "label": "Barer & ølhaver",
+      "one": "Bar",
+      "terms": [
+        "bar",
+        "barer",
+        "pub",
+        "værtshus",
+        "ølhave",
+        "øl",
+        "bodega"
+      ]
+    },
+    "toilets": {
+      "label": "Toiletter",
+      "one": "Toilet",
+      "terms": [
+        "toilet",
+        "toiletter",
+        "wc",
+        "offentligt toilet",
+        "lokum"
+      ]
+    },
+    "water": {
+      "label": "Drikkevand",
+      "one": "Drikkevand",
+      "terms": [
+        "drikkevand",
+        "vandpost",
+        "drikkefontæne",
+        "vandhane",
+        "fylde vand på",
+        "brønd"
+      ]
+    },
+    "rest": {
+      "label": "Rastepladser",
+      "one": "Rasteplads",
+      "terms": [
+        "rasteplads",
+        "rastepladser",
+        "hvilested",
+        "motorvejsrasteplads",
+        "pause"
+      ]
+    },
+    "shelter": {
+      "label": "Hytter & shelters",
+      "one": "Hytte",
+      "terms": [
+        "hytte",
+        "hytter",
+        "shelter",
+        "læskur",
+        "madpakkehus",
+        "bjerghytte",
+        "udkigshytte"
+      ]
+    },
+    "bench": {
+      "label": "Bænke",
+      "one": "Bænk",
+      "terms": [
+        "bænk",
+        "bænke",
+        "siddebænk",
+        "bord og bænke",
+        "picnic"
+      ]
+    },
+    "viewpoint": {
+      "label": "Udsigtspunkter",
+      "one": "Udsigtspunkt",
+      "terms": [
+        "udsigt",
+        "udsigtspunkt",
+        "udsigtstårn",
+        "panorama",
+        "kig"
+      ]
+    },
+    "peak": {
+      "label": "Bjergtoppe",
+      "one": "Bjergtop",
+      "terms": [
+        "bjergtop",
+        "top",
+        "bjerg",
+        "bjerge",
+        "bakketop",
+        "høj"
+      ]
+    },
+    "hotel": {
+      "label": "Overnatning",
+      "one": "Overnatning",
+      "terms": [
+        "hotel",
+        "hoteller",
+        "overnatning",
+        "pensionat",
+        "vandrerhjem",
+        "hostel",
+        "motel",
+        "ferielejlighed",
+        "bed and breakfast"
+      ]
+    },
+    "camping": {
+      "label": "Campingpladser",
+      "one": "Campingplads",
+      "terms": [
+        "camping",
+        "campingplads",
+        "teltplads",
+        "autocamper",
+        "campingvogn",
+        "bivuak"
+      ]
+    },
+    "pharmacy": {
+      "label": "Apoteker",
+      "one": "Apotek",
+      "terms": [
+        "apotek",
+        "apoteker",
+        "medicin",
+        "håndkøbsmedicin"
+      ]
+    },
+    "hospital": {
+      "label": "Hospitaler",
+      "one": "Hospital",
+      "terms": [
+        "hospital",
+        "hospitaler",
+        "sygehus",
+        "skadestue",
+        "akutmodtagelse",
+        "klinik"
+      ]
+    },
+    "doctor": {
+      "label": "Læger",
+      "one": "Læge",
+      "terms": [
+        "læge",
+        "læger",
+        "lægehus",
+        "lægeklinik",
+        "praktiserende læge",
+        "lægepraksis"
+      ]
+    },
+    "atm": {
+      "label": "Pengeautomater",
+      "one": "Pengeautomat",
+      "terms": [
+        "pengeautomat",
+        "hæveautomat",
+        "hæve penge",
+        "atm",
+        "kontanter"
+      ]
+    },
+    "bus": {
+      "label": "Busstoppesteder",
+      "one": "Busstoppested",
+      "terms": [
+        "busstoppested",
+        "busstop",
+        "stoppested",
+        "bus",
+        "busser"
+      ]
+    },
+    "train": {
+      "label": "Togstationer",
+      "one": "Togstation",
+      "terms": [
+        "togstation",
+        "togstationer",
+        "jernbanestation",
+        "tog",
+        "station",
+        "s-bahn",
+        "holdepunkt"
+      ]
+    },
+    "bikeshop": {
+      "label": "Cykelbutikker",
+      "one": "Cykelbutik",
+      "terms": [
+        "cykelbutik",
+        "cykelforhandler",
+        "cykelværksted",
+        "cykelreparation",
+        "cykler"
+      ]
+    },
+    "bikeparking": {
+      "label": "Cykelstativer",
+      "one": "Cykelstativ",
+      "terms": [
+        "cykelstativ",
+        "cykelstativer",
+        "cykelparkering",
+        "cykelskur",
+        "parkere cykel"
+      ]
+    },
+    "carrepair": {
+      "label": "Autoværksteder",
+      "one": "Autoværksted",
+      "terms": [
+        "autoværksted",
+        "værksted",
+        "bilværksted",
+        "mekaniker",
+        "dæk",
+        "bilreparation"
+      ]
+    },
+    "playground": {
+      "label": "Legepladser",
+      "one": "Legeplads",
+      "terms": [
+        "legeplads",
+        "legepladser",
+        "børn",
+        "vippe"
+      ]
+    },
+    "soccer": {
+      "label": "Fodboldbaner",
+      "one": "Fodboldbane",
+      "terms": [
+        "fodboldbane",
+        "fodboldbaner",
+        "fodbold",
+        "boldbane",
+        "fodboldmål"
+      ]
+    },
+    "sports": {
+      "label": "Sportsanlæg",
+      "one": "Sportsanlæg",
+      "terms": [
+        "sportsanlæg",
+        "idrætsanlæg",
+        "sportshal",
+        "idrætshal",
+        "stadion",
+        "fitness",
+        "gymnastiksal"
+      ]
+    },
+    "pool": {
+      "label": "Svømmehaller",
+      "one": "Svømmehal",
+      "terms": [
+        "svømmehal",
+        "svømmehaller",
+        "svømmebad",
+        "badeland",
+        "svømme",
+        "badesø",
+        "svømmeområde"
+      ]
+    },
+    "river": {
+      "label": "Floder",
+      "one": "Flod",
+      "terms": [
+        "flod",
+        "floder",
+        "å",
+        "åer",
+        "elv"
+      ]
+    },
+    "stream": {
+      "label": "Bække & kanaler",
+      "one": "Bæk",
+      "terms": [
+        "bæk",
+        "bække",
+        "kanal",
+        "kanaler",
+        "grøft",
+        "rende"
+      ]
+    },
+    "lake": {
+      "label": "Søer & damme",
+      "one": "Sø",
+      "terms": [
+        "sø",
+        "søer",
+        "dam",
+        "damme",
+        "vandhul",
+        "reservoir",
+        "stemmesø"
+      ]
+    },
+    "park": {
+      "label": "Parker",
+      "one": "Park",
+      "terms": [
+        "park",
+        "parker",
+        "anlæg",
+        "grønt område",
+        "have",
+        "haveanlæg"
+      ]
+    },
+    "forest": {
+      "label": "Skove",
+      "one": "Skov",
+      "terms": [
+        "skov",
+        "skove",
+        "plantage",
+        "lund"
+      ]
+    },
+    "church": {
+      "label": "Kirker",
+      "one": "Kirke",
+      "terms": [
+        "kirke",
+        "kirker",
+        "kapel",
+        "domkirke",
+        "moské",
+        "synagoge"
+      ]
+    },
+    "castle": {
+      "label": "Borge & slotte",
+      "one": "Borg",
+      "terms": [
+        "borg",
+        "borge",
+        "slot",
+        "slotte",
+        "ruin",
+        "herregård",
+        "voldsted"
+      ]
+    },
+    "museum": {
+      "label": "Museer",
+      "one": "Museum",
+      "terms": [
+        "museum",
+        "museer",
+        "udstilling",
+        "galleri",
+        "kunstmuseum"
+      ]
+    },
+    "cinema": {
+      "label": "Biografer",
+      "one": "Biograf",
+      "terms": [
+        "biograf",
+        "biografer",
+        "bio",
+        "film"
+      ]
+    },
+    "school": {
+      "label": "Skoler",
+      "one": "Skole",
+      "terms": [
+        "skole",
+        "skoler",
+        "gymnasium",
+        "folkeskole",
+        "uddannelse"
+      ]
+    },
+    "police": {
+      "label": "Politi",
+      "one": "Politi",
+      "terms": [
+        "politi",
+        "politistation",
+        "politigård"
+      ]
+    }
+  },
+  "credits": {
+    "map_data": {
+      "what": "Kortdata",
+      "name": "OpenStreetMap-bidragydere"
+    },
+    "tiles": {
+      "what": "Kortfliser"
+    },
+    "schema": {
+      "what": "Kortdesign"
+    },
+    "heights": {
+      "what": "Højder"
+    },
+    "search": {
+      "what": "Søgning"
+    },
+    "routing": {
+      "what": "Ruteberegning",
+      "name": "Valhalla på FOSSGIS' servere"
+    },
+    "places": {
+      "what": "Steder og veje"
+    },
+    "trails": {
+      "what": "Vandre- og cykelruter",
+      "note": "CC BY-SA"
+    },
+    "satellite": {
+      "what": "Satellitbillede",
+      "name": "Sentinel-2 cloudless fra EOX",
+      "note": "Copernicus-data"
+    },
+    "geology_de": {
+      "what": "Geologi Tyskland",
+      "name": "BGR, GÜK250",
+      "note": "Plugin"
+    },
+    "geology_world": {
+      "what": "Geologi verden over",
+      "note": "CC BY 4.0, plugin"
+    },
+    "images": {
+      "what": "Billeder og tekster"
+    },
+    "transit": {
+      "what": "Bus & tog, afgange",
+      "name": "Rejseplan (EFA) fra NVBW",
+      "note": "Køreplandata fra DELFI"
+    },
+    "aerial": {
+      "what": "Luftfotos",
+      "name": "Landenes opmålingsmyndigheder",
+      "note": "bl.a. CC BY 4.0, dl-de"
+    },
+    "traffic": {
+      "what": "Trafiksituation",
+      "name": "Die Autobahn GmbH des Bundes"
+    },
+    "fuel": {
+      "what": "Brændstofpriser",
+      "note": "CC BY 4.0"
+    },
+    "rendering": {
+      "what": "Kortgengivelse"
+    }
+  },
+  "map_page": {
+    "back_dashboard": "Tilbage til oversigten",
+    "close_to_map": "Luk – til kortet",
+    "name": "Navn",
+    "back_list": "Tilbage til listen"
+  },
+  "elevation": {
+    "chips": {
+      "ascent": "Stigning",
+      "descent": "Fald",
+      "highest": "Højeste punkt",
+      "lowest": "Laveste punkt"
+    },
+    "height": "Højde",
+    "title": "Højdemeter"
+  },
+  "layers_menu": {
+    "own_source": {
+      "title": "Egen kilde",
+      "hint": "Kortfliser, en WMS-tjeneste eller GeoJSON – også privat med brugernavn og adgangskode. Alt bliver kun på denne enhed.",
+      "name": "Navn",
+      "name_example": "f.eks. Målenet Harzen",
+      "kind": "Type",
+      "kinds": {
+        "tiles": "Kortfliser ({z}/{x}/{y})",
+        "wms": "WMS-tjeneste",
+        "geojson": "GeoJSON-fil"
+      },
+      "url": "Adresse (https)",
+      "layer": "WMS-lag (kun ved WMS)",
+      "layer_example": "f.eks. ni_dop20",
+      "user": "Brugernavn (valgfrit)",
+      "password": "Adgangskode (valgfrit)",
+      "add": "Tilføj",
+      "error": {
+        "https": "Adressen skal begynde med https://",
+        "denied": "Adgang afvist – tjek brugernavn og adgangskode",
+        "status": "Serveren svarer med {status}",
+        "no_layer": "Angiv WMS-laget",
+        "no_zxy": "Fliseadresser skal indeholde {z}, {x} og {y}",
+        "cors": "Kan ikke nås – måske tillader serveren ikke hentning fra browseren (CORS)"
+      },
+      "added": "„{name}“ er nu på kortet"
+    },
+    "attribution": {
+      "satellite": "Satellit: <a href=\"https://s2maps.eu\" target=\"_blank\" rel=\"noopener\">Sentinel-2 cloudless fra EOX</a> (Copernicus-data 2020)",
+      "trails": "Stier: <a href=\"https://waymarkedtrails.org\" target=\"_blank\" rel=\"noopener\">Waymarked Trails</a> (CC BY-SA)",
+      "sat_ni": "Luftfoto Niedersachsen: © LGLN (CC BY 4.0)",
+      "sat_nw": "Luftfoto NRW: © Geobasis NRW (dl-de/zero-2-0)",
+      "sat_by": "Luftfoto Bayern: © Bayerische Vermessungsverwaltung (CC BY 4.0)",
+      "sat_he": "Luftfoto Hessen: © HVBG",
+      "sat_th": "Luftfoto Thüringen: © GDI-Th (CC BY 4.0)",
+      "sat_sn": "Luftfoto Sachsen: © GeoSN (dl-de/by-2-0)",
+      "sat_bb": "Luftfoto Brandenburg: © GeoBasis-DE/LGB (dl-de/by-2-0)",
+      "sat_be": "Luftfoto Berlin: © Geoportal Berlin (dl-de/zero-2-0)",
+      "sat_mv": "Luftfoto M-V: © GeoBasis-DE/M-V",
+      "sat_rp": "Luftfoto Rheinland-Pfalz: © GeoBasis-DE/LVermGeoRP (dl-de/by-2-0)",
+      "sat_sl": "Luftfoto Saarland: © LVGL",
+      "sat_bw": "Luftfoto Baden-Württemberg: © LGL-BW (dl-de/by-2-0)"
+    },
+    "trails": {
+      "hiking": "Vandrestier",
+      "cycling": "Cykelstier",
+      "mtb": "Mountainbike",
+      "hint": "afmærkede ruter, Waymarked Trails"
+    },
+    "title": "Lag",
+    "base": {
+      "map": "Kort",
+      "sat": "Satellit"
+    },
+    "focus": {
+      "title": "Vandring & cykel",
+      "hint": "Store veje træder i baggrunden, vandrestier og relief træder frem"
+    },
+    "relief": {
+      "title": "Relief",
+      "hint": "Skygger på skråninger – også på fladt kort set oppefra"
+    },
+    "own": {
+      "title": "Egne lag & plugins",
+      "plugin_by": "Plugin fra {operator}",
+      "private": "privat kilde",
+      "tiles": "Kortfliser",
+      "objects": "{count} objekter",
+      "none": "Ingen endnu – under „Administrer“ finder du geologi, luftfotos og mere."
+    },
+    "manage": "Administrer",
+    "button": "Lag: satellit, vandrestier, plugins"
+  },
+  "news": {
+    "message_title": "Nyhed",
+    "welcome": {
+      "title": "Velkommen til WMap",
+      "go": "Kom i gang",
+      "text": [
+        "<b>WMap</b> er et kort uden sporing: søg, navigér, planlæg og optag ruter og ture – til fods, på cykel, i bil og med bus &amp; tog.",
+        "Alt bygger på åbne data fra OpenStreetMap. Du behøver ingen konto og har fuld kontrol over dine data.",
+        "Skriv et sted, en adresse eller blot „bager“ øverst for at finde bagere i nærheden – eller tryk på <span class=\"msr\">directions</span> for at planlægge en rute."
+      ]
+    },
+    "version": "Version {version}",
+    "changelog": {
+      "all": "Hvad der er i WMap",
+      "one": "Nyt i WMap {version}",
+      "since": "Nyt siden version {version}"
+    },
+    "update": {
+      "button": "Opdater",
+      "forced_title": "Opdatering nødvendig",
+      "title": "Ny version tilgængelig",
+      "forced_text": "Denne version af WMap ({version}) fungerer ikke længere – opdater venligst, det tager kun et øjeblik.",
+      "text": "WMap {version} er klar. Opdatere nu? Bagefter kan du se, hvad der er nyt.",
+      "loading": "WMap {version} indlæses. Bagefter kan du se, hvad der er nyt.",
+      "moment": "Et øjeblik …",
+      "percent": "{pct} %",
+      "failed": "Indlæsningen mislykkedes. Din version forbliver, som den er.",
+      "unavailable": "Opdateringen er ikke tilgængelig endnu: den er ikke komplet på serveren. Din version forbliver, som den er – prøv igen senere."
+    },
+    "app": {
+      "title": "Ny version af WMap-appen",
+      "via_store": "i Play Store",
+      "via_site": "via wuefl.de",
+      "text": "WMap-appen {want} er klar – du har {app}. Opdater den {where}. Den nye brugerflade kommer bagefter af sig selv.",
+      "to_store": "Til Play Store",
+      "to_site": "Til downloadsiden",
+      "required_title": "Opdater WMap-appen",
+      "required_text": "Denne version kræver en nyere WMap-app (mindst {min}). Tag først en sikkerhedskopi af dine data, og opdater derefter {where}."
+    },
+    "stats": {
+      "text": "For at kunne se, hvor mange der bruger WMap, og hvilke tjenester der bruges, sender WMap én gang om dagen en anonym meddelelse til WMap-serveren: at appen var åben i dag, og hvor ofte den spurgte hver tjeneste. Uden ID, uden position, uden søgeord. Du kan ændre det når som helst under <strong>Indstillinger → Data</strong>.",
+      "allow": "Tillad",
+      "deny": "Send ikke"
+    },
+    "changes": {
+      "3.1.1": [
+        "Kun Tyskland: bus og tog fra tre kilder – afgange, turens forløb og forbindelser kommer fra NVBW, RMV (Hessen) og EFA-BW; falder én ud, tager den næste over",
+        "Kun Tyskland: ladestandere med ledige pladser – effekt pr. stik og „x af y ledige“",
+        "Enheder og tidsformat: kilometer eller miles, 24 eller 12 timer – i velkomsten og under Indstillinger → Udseende, forvalgt efter din enheds land",
+        "Android Auto: menuer og meddelelser på appens sprog – med den næste opdatering af appen",
+        "Målestok nederst til højre på kortet, synlig når du zoomer",
+        "Langt tryk på et hus: adressen står som titel i stedet for „Punkt på kortet“",
+        "Rettelse: kortet åbner igen dér, hvor du sidst flyttede det – også med en mappe til flere enheder",
+        "Rettelse: ture, der er slettet i mappen, skrives ikke længere tilbage af en anden enhed",
+        "Rettelse: velkomstteksten manglede ved første start",
+        "Rettelse: efter en opdatering manglede der nogle gange tekster (f.eks. i indstillingerne), eller kortet forblev tomt. En opdatering tages nu først i brug, når alle filer er hentet fuldstændigt og passer sammen"
+      ],
+      "3.1.0": [
+        "WMap findes nu på tysk, engelsk, fransk, polsk, svensk, norsk og dansk – fra starten på din enheds sprog. Sprog og farveskema vælger du direkte i velkomstvinduet",
+        "Bedre søgning: svarer søgetjenesten ikke, søger WMap videre via andre servere. Også ruter og køreplaner skifter selv, når en server svigter",
+        "Anonym brugsstatistik: én gang om dagen, uden ID, position eller søgeord – kan slås fra under Indstillinger → Data",
+        "Søgning, ruter og køreplaner kan nu selv skifte mellem flere servere, når en svigter"
+      ]
+    }
+  },
+  "record": {
+    "title": "Optag",
+    "choose_hint": "Hvordan er du på farten? Optagelsen bliver på denne enhed.",
+    "stats": {
+      "distance": "Distance",
+      "time": "Tid"
+    },
+    "pause": "Pause",
+    "stop": "Afslut",
+    "follow": {
+      "title": "Lad kortet følge din position igen",
+      "label": "Følg"
+    },
+    "home": {
+      "title": "Rute tilbage til optagelsens start",
+      "label": "Til start",
+      "target": "Optagelsens start"
+    },
+    "toast": {
+      "running": "Optagelse kører",
+      "no_point": "Endnu intet punkt optaget",
+      "discarded": "Optagelse kasseret",
+      "too_short": "For kort til at gemme",
+      "saved": "„{name}“ gemt",
+      "view": "Se",
+      "save_failed": "Kunne ikke gemme: {reason}",
+      "location_blocked": "Position er spærret – uden den ingen optagelse"
+    },
+    "finish": {
+      "title": "Afslut optagelse",
+      "name": "Navn",
+      "discard": "Kassér",
+      "confirm_discard": "Vil du virkelig kassere optagelsen?",
+      "save": "Gem"
+    }
+  },
+  "route_prefs": {
+    "modes": {
+      "long": "Fjerntog (ICE, IC)",
+      "regional": "Regionaltog, S-Bahn",
+      "urban": "U-Bahn, sporvogn",
+      "bus": "Bus"
+    },
+    "transit": {
+      "title": "Forbindelser",
+      "modes": "Transportmidler",
+      "change": "Mindste skiftetid",
+      "fastest": "Vis også hurtigste forbindelse",
+      "fastest_hint": "også hvis skiftet er knapt"
+    },
+    "avoid": {
+      "ferries": "Undgå færger",
+      "highways": "Undgå motorveje",
+      "tolls": "Undgå betalingsveje",
+      "unpaved": "Undgå befæstede veje ikke"
+    },
+    "title": "Rute"
+  },
+  "tour_stages": {
+    "toast": {
+      "start": "Tryk på linjen, hvor en dag skal slutte – eller lad turen deles automatisk",
+      "on_line": "Tryk præcis på linjen for at sætte en dagsafslutning",
+      "saved": "{n} dagsture gemt – under „Mine ture“"
+    },
+    "marker": "Slut dag {n} – tryk for at fjerne",
+    "title": "Etaper",
+    "hint": {
+      "active": "Tryk på linjen, hvor en dag skal slutte; tryk på et flag for at fjerne det.",
+      "idle": "Med „Etaper“ øverst kan du ændre dagenes afslutning."
+    },
+    "auto": {
+      "every": "Hver",
+      "split": "Del automatisk"
+    },
+    "clear": "Fjern alle",
+    "day": "Dag {n}",
+    "goal": "Mål",
+    "until_unknown": "til …",
+    "save": "Gem som {n} dagsture",
+    "saved": {
+      "name": "{base} – dag {n}",
+      "until": " (til {end})",
+      "description": "Etape {i} af {n}{end} · fra „{base}“"
+    }
+  },
+  "transit_legs": {
+    "walk": "Gåtur",
+    "changes": "{n} × skift",
+    "no_change": "uden skift",
+    "vehicle": {
+      "bus": "Bus",
+      "express_bus": "Ekspresbus",
+      "tram": "Sporvogn",
+      "light_rail": "Letbane",
+      "subway": "U-Bahn",
+      "suburban": "S-Bahn",
+      "ferry": "Færge",
+      "community_bus": "Borgerbus",
+      "on_call_bus": "Teletaxa-bus",
+      "replacement": "Togbus"
+    },
+    "walk_to": "Gå til {to}",
+    "platform": "Perron {n}",
+    "take": "Tag {vehicle}{to}",
+    "ride": "{from}{platform} → {to}{platform_to}, ankomst {time}",
+    "stops": {
+      "one": "{n} stop",
+      "other": "{n} stop"
+    },
+    "gap": "{n} min til skift{at}"
+  },
+  "poi": {
+    "values": {
+      "yes_no": {
+        "yes": "ja",
+        "no": "nej",
+        "limited": "begrænset",
+        "designated": "ja",
+        "only": "udelukkende"
+      },
+      "surface": {
+        "asphalt": "Asfalt",
+        "paved": "befæstet",
+        "concrete": "Beton",
+        "concrete_plates": "Betonplader",
+        "paving_stones": "Fliser",
+        "sett": "Brosten",
+        "cobblestone": "Brosten",
+        "unhewn_cobblestone": "Marksten",
+        "compacted": "komprimeret",
+        "fine_gravel": "Fint grus",
+        "gravel": "Grus",
+        "pebblestone": "Småsten",
+        "unpaved": "ubefæstet",
+        "dirt": "Jord",
+        "earth": "Jord",
+        "ground": "Naturbund",
+        "grass": "Græs",
+        "grass_paver": "Græsarmering",
+        "sand": "Sand",
+        "wood": "Træ",
+        "metal": "Metal",
+        "mud": "Mudder",
+        "rock": "Fjeld",
+        "artificial_turf": "Kunstgræs",
+        "tartan": "Tartan"
+      },
+      "parking": {
+        "surface": "Parkeringsplads",
+        "multi_storey": "Parkeringshus",
+        "underground": "Parkeringskælder",
+        "street_side": "Vejkant",
+        "lane": "Parkeringsbane",
+        "rooftop": "Parkering på taget",
+        "carports": "Carporte",
+        "garage_boxes": "Garager"
+      },
+      "access": {
+        "yes": "offentlig",
+        "public": "offentlig",
+        "customers": "kun kunder",
+        "private": "privat",
+        "permissive": "tålt",
+        "permit": "med tilladelse",
+        "destination": "kun ærinde på stedet",
+        "residents": "kun beboere",
+        "no": "ingen adgang"
+      },
+      "sockets": {
+        "type2": "Type 2",
+        "type2_combo": "CCS",
+        "chademo": "CHAdeMO",
+        "schuko": "Schuko",
+        "tesla_supercharger": "Tesla",
+        "type2_cable": "Type 2 (kabel)",
+        "cee_blue": "CEE blå"
+      },
+      "fuels": {
+        "diesel": "Diesel",
+        "octane_95": "Benzin 95",
+        "e10": "E10",
+        "octane_98": "Benzin 98",
+        "lpg": "Autogas",
+        "cng": "Naturgas",
+        "adblue": "AdBlue",
+        "hydrogen": "Brint",
+        "HGV_diesel": "Lastbil-diesel"
+      },
+      "payment": {
+        "cash": "kontant",
+        "debit_cards": "Betalingskort",
+        "credit_cards": "Kreditkort",
+        "contactless": "kontaktløs",
+        "app": "App"
+      },
+      "fee": {
+        "no": "gratis",
+        "yes": "mod betaling"
+      }
+    },
+    "hours": {
+      "until": "til",
+      "status": {
+        "always": "Åbent døgnet rundt",
+        "open": "Åbent nu · til {until}",
+        "off_season": "Lukket · åbent {when}",
+        "next": "Lukket · åbner kl. {next}",
+        "today_closed": "Lukket i dag"
+      },
+      "closed": "lukket",
+      "all_day": "hele dagen",
+      "open_months": "Åbent {months}",
+      "holiday": "Helligdag",
+      "holidays": "Helligdage: {hours}",
+      "always": "døgnet rundt",
+      "school_holidays": "Skoleferie"
+    },
+    "links": {
+      "website": "Websted",
+      "menu": "Menukort",
+      "events": "Program",
+      "instagram": "Instagram",
+      "facebook": "Facebook"
+    },
+    "facts": {
+      "hours": "Åbningstider",
+      "fee": "Gebyr",
+      "surface": "Belægning",
+      "access": "Adgang",
+      "operator": "Driftsansvarlig",
+      "phone": "Telefon",
+      "cuisine": "Køkken",
+      "payment": "Betaling",
+      "ele": "Højde",
+      "capacity": "Pladser (i alt)",
+      "kind": "Type",
+      "maxstay": "Maks. parkeringstid",
+      "disabled": "Handicapparkering",
+      "charging": "Ladepladser",
+      "fuels": "Brændstoffer",
+      "shop": "Butik",
+      "charge_points": "Ladepunkter",
+      "sockets": "Stik",
+      "water": "Drikkevand",
+      "seasonal": "Sæsonbetonet",
+      "covered": "Overdækket",
+      "min_age": "Mindstealder"
+    },
+    "edit_hint": {
+      "operator": "f.eks. Aarhus Vand",
+      "cuisine": "f.eks. italian;pizza",
+      "ele": "Meter over havet",
+      "capacity": "alle, ikke kun de ledige",
+      "maxstay": "f.eks. 2 hours",
+      "charge_points": "Køretøjer, der kan lade samtidig",
+      "min_age": "År"
+    },
+    "traits": {
+      "delivery": {
+        "name": "Levering",
+        "only": "Kun levering"
+      },
+      "takeaway": {
+        "name": "Takeaway",
+        "only": "Kun takeaway"
+      },
+      "organic": {
+        "name": "Økologisk",
+        "only": "Kun økologisk"
+      },
+      "vegan": {
+        "name": "Vegansk",
+        "yes": "Veganske retter"
+      },
+      "vegetarian": {
+        "name": "Vegetarisk",
+        "yes": "Vegetariske retter"
+      },
+      "drive_through": {
+        "name": "Drive-in"
+      }
+    },
+    "equipment": {
+      "wheelchair": {
+        "yes": "Kørestolsvenlig",
+        "limited": "Delvist kørestolsvenlig",
+        "no": "Ikke kørestolsvenlig"
+      },
+      "outdoor": "Udendørs pladser",
+      "toilets": {
+        "name": "Toiletter",
+        "guests": "Toiletter for gæster",
+        "public": "Offentlige toiletter"
+      },
+      "changing": "Puslebord",
+      "wlan": "Wi-Fi",
+      "air": "Aircondition",
+      "dog": "Hunde tilladt"
+    },
+    "access_note": {
+      "customers": "Kun for kunder",
+      "destination": "Kun for ærinde på stedet",
+      "delivery": "Kun varelevering",
+      "private": "Privat – ikke offentlig",
+      "no": "Ingen adgang",
+      "residents": "Kun for beboere",
+      "permit": "Kun med tilladelse"
+    },
+    "card": {
+      "unknown": "ukendt",
+      "place": "Sted",
+      "still_unknown": "Endnu ukendt:",
+      "equipment": "Faciliteter"
+    }
+  },
+  "server": {
+    "tours": {
+      "not_found": "Turen blev ikke fundet",
+      "needs_name": "Turen skal have et navn",
+      "no_geometry": "Ruten mangler eller er for lang",
+      "no_position": "Turens placering mangler",
+      "not_yours": "Det er ikke din tur",
+      "no_rating": "Denne tur kan ikke bedømmes"
+    },
+    "login": {
+      "invalid": "Ugyldigt login – prøv igen",
+      "method": "Ugyldigt login (metode)",
+      "osm_down": "OpenStreetMap kan ikke nås lige nu – prøv igen senere",
+      "signature": "Ugyldigt login (signatur)",
+      "osm_only": "WMap-kontoen virker kun med en konto på openstreetmap.org",
+      "foreign_app": "Login via et fremmed program – log ind i WMap",
+      "expired": "Login udløbet – prøv igen",
+      "user": "Ugyldigt login (bruger)",
+      "required": "Log ind først"
+    },
+    "plugins": {
+      "needs_name": "Pluginet skal have et navn",
+      "data_size": "Dataene mangler eller er større end 2 MB",
+      "geojson": "Forventet er en GeoJSON-FeatureCollection",
+      "https": "Kilden skal være et https-link",
+      "tile_link": "Fliselinks skal indeholde {z}/{x}/{y} – WMS-links {bbox-epsg-3857}",
+      "script": "En udvidelse er en JavaScript-fil (.js eller .mjs)",
+      "not_yours": "Det er ikke dit plugin",
+      "not_found": "Plugin ikke fundet eller privat"
+    },
+    "share": {
+      "unknown_kind": "Ukendt type",
+      "bad_content": "Indholdet passer ikke",
+      "short_too_big": "Turen er for stor til et kort link",
+      "too_many": "I dag er der allerede oprettet meget mange korte links – brug det lange link",
+      "short_failed": "Det korte link kunne ikke oprettes",
+      "incomplete": "Linket er ikke komplet",
+      "link_gone": "Dette link findes ikke længere – delte ture slettes af serveren efter {days} dage",
+      "too_big": "Turen er for stor",
+      "collab_gone": "Denne fælles tur findes ikke længere – den lå {days} dage på serveren",
+      "view_only": "Du må kun se denne tur",
+      "save_failed": "Ændringen kunne ikke gemmes"
+    },
+    "account": {
+      "delete_failed": "Sletningen mislykkedes – der blev ikke slettet noget. Prøv igen senere."
+    },
+    "bad_request": "Ikke fundet... Forkert forespørgsel"
+  }
+}

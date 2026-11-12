@@ -3,8 +3,8 @@
  * wo es passt – einer Zahl. Darunter Gespeichertes und der Dank.
  */
 
-/* Nur die Seite scrollt, und nur nach unten: vorher waren html und body beide
-   Scroll-Bereiche – am Handy ließ sich die ganze Seite seitlich verschieben */
+/* Nur die Seite scrollt, und nur nach unten: html und body sind nicht beide
+   Scroll-Bereiche, die Seite lässt sich am Handy nicht seitlich verschieben */
 html:has(.dash-page) { height: auto; overflow-x: hidden; overflow-y: auto; overscroll-behavior-x: none; }
 body.dash-page { height: auto; overflow: visible; overflow-x: clip; }
 

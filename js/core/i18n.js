@@ -8,7 +8,8 @@
  *   <h1 data-i18n="settings.title">     fest im HTML; auch data-i18n-placeholder, -title, -aria-label
  *
  * Neue Sprache: Datei dazulegen und appdata/version.py laufen lassen – das trägt sie in languages.json ein.
- * Gibt es die Sprache des Geräts, bietet die App sie einmal an (ui/news.js), wählen lässt sie sich in den Einstellungen.
+ * Beim ersten Start gilt die Sprache des Geräts, sonst Englisch; wählen lässt sie sich in der Begrüßung (ui/news.js)
+ * und in den Einstellungen.
  *
  * Wartet beim Laden auf die Datei (top-level await), damit alle Module beim Start schon Texte haben. Darum nie aus dem
  * Service Worker (js/sw/, sw.js) laden: Dort ist das nicht erlaubt. Was er lädt, nimmt core/i18n-text.js.
@@ -18,6 +19,8 @@ import { CHOICE, FALLBACK, lang, locale, setTexts, t, tBase, textOf, words, ownV
 export { FALLBACK, lang, locale, t, tBase, textOf, words, ownValue, baseValue };
 
 const ASKED = 'wmap.lang.asked';
+const SEEN = 'wmap.seen';      // ui/news.js
+const DEFAULT = 'en_GB';       // erster Start, wenn es die Sprache des Geräts nicht gibt
 
 const storage = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
@@ -31,7 +34,16 @@ async function read(file) {
   } catch { return null; }
 }
 
-const wanted = storage.get(CHOICE) ?? FALLBACK;
+/** Erster Start: die Sprache des Geräts, gibt es sie nicht, Englisch → Code */
+export const firstLanguage = (codes, device) => matchLanguage(codes, device) ?? (codes.includes(DEFAULT) ? DEFAULT : FALLBACK);
+
+// Wer WMap schon kennt (Begrüßung gesehen) und nichts gewählt hat, bleibt bei Deutsch – ihm bietet
+// ui/news.js die Sprache des Geräts einmal an. Neu: gleich die Sprache des Geräts, merken (nur einmal nachsehen)
+let wanted = storage.get(CHOICE) ?? (storage.get(SEEN) ? FALLBACK : null);
+if (!wanted) {
+  wanted = firstLanguage((await languages()).map((l) => l.code), navigator.languages ?? [navigator.language]);
+  setLanguage(wanted);
+}
 const own = await read(wanted);
 const base = wanted === FALLBACK && own ? own : await read(FALLBACK);
 setTexts(wanted, own, base);

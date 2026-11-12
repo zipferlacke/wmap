@@ -49,7 +49,7 @@ with Browser(412, 915) as b:
     for k, v in cases.items():
         ok(f'lesen: {k}', got[k] == v, got[k])
     b.js("const t = document.createElement('script'); t.textContent = arguments[0]; document.head.append(t);", FAKE)
-    # Module nur aus der Seite holen – import() aus der Sandbox von Selenium startete die App ein zweites Mal
+    # Module nur aus der Seite holen – import() aus der Sandbox von Selenium startet die App ein zweites Mal
     b.js("""const t = document.createElement('script'); t.type = 'module';
       t.textContent = `window._stops = await import('./js/app/stops.js'); window._search = await import('./js/app/search.js');`;
       document.head.append(t);""")

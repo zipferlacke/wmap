@@ -8,9 +8,9 @@ import { routeCategories } from '../core/categories.js';
 import { getRoutes, maneuverIcon } from '../services/routing.js';
 import { ElevationProfile } from '../ui/elevation.js';
 import { recent, tours, shapeOf } from '../data/store.js';
-import { journeys, refineJourney } from '../services/departures.js';
+import { journeys, refineJourney } from '../services/timetable/index.js';
 import { legBadge, changesText, transitLegsHtml } from '../ui/transit-legs.js';
-import { prefs, transitParams } from '../ui/route-prefs.js';
+import { prefs, transitClasses } from '../ui/route-prefs.js';
 import { connections } from '../data/saved.js';
 import { share, routeUrl, clock } from '../ui/share.js';
 import { toast } from '../ui/dialogs.js';
@@ -22,6 +22,7 @@ import { compactRoute, isSet, transitWhen } from './route-plan.js';
 import { loadTraffic, runAlong } from './traffic-along.js';
 import { closeSheet, openSheet } from './views.js';
 import { t } from '../core/i18n.js';
+import { feature } from '../services/usage.js';
 
 /* ── Routen berechnen und zeigen ──────────────────────────────────────────── */
 
@@ -55,8 +56,9 @@ export async function computeRoutes() {
     if (signal.aborted) return;
     const drive = park ? [...points.slice(0, -1), park.point] : points;
     // Bus & Bahn: Verbindungen nach Fahrplan (Zwischenziele zählen hier nicht)
+    if (PROFILES[state.profile].transit) feature('transit_route');
     const routes = PROFILES[state.profile].transit
-      ? await journeys(points[0], points.at(-1), { ...transitWhen(), params: transitParams(), change: prefs.change, fastest: prefs.fastest, signal })
+      ? await journeys(points[0], points.at(-1), { ...transitWhen(), classes: transitClasses(), change: prefs.change, fastest: prefs.fastest, signal, feature: 'transit_route' })
       : await getRoutes(drive, state.profile, {
         highways: prefs.highways, avoid: state.avoid.map((p) => avoidRing(p)), signal,
       });
@@ -69,7 +71,7 @@ export async function computeRoutes() {
     compactRoute(true);
     selectRoute(routes[0].id, { fit: true });
     // Im Auto erst mit „Los“ (car/car.js): dort rechnet schon das Ansehen eines Orts die Route –
-    // „zuletzt gefahren“ füllte sich sonst mit Zielen, zu denen man nie gefahren ist
+    // „zuletzt gefahren“ soll nur Ziele enthalten, zu denen man gefahren ist
     if (!CAR) rememberRoute();
   } catch (err) {
     if (err.name === 'AbortError') return;
@@ -168,7 +170,7 @@ export function selectRoute(id, { fit = false } = {}) {
   if (fit) fitRouteSettled();
   // Bus & Bahn: echten Verlauf und Fußwege der gewählten Verbindung nachladen
   if (r.transit && !r.refined) {
-    refineJourney(r).then((changed) => {
+    refineJourney(r, { feature: 'transit_route' }).then((changed) => {
       if (!changed || current() !== r) return;
       showRoutes(map, state.routes, r.id, state.leg);
       const box = $('[data-view="route"] .transit-legs');
@@ -205,7 +207,7 @@ async function loadEarlier() {
   const first = routes[0].transit;
   try {
     const list = await journeys(state.points[0], state.points.at(-1), {
-      when: new Date(first.arr - 60000), arrive: true, params: transitParams(), change: prefs.change, signal: routeCtl?.signal,
+      when: new Date(first.arr - 60000), arrive: true, classes: transitClasses(), change: prefs.change, src: first.src, signal: routeCtl?.signal, feature: 'transit_route',
     });
     if (state.routes !== routes) return;
     const known = new Set(routes.map((x) => x.transit.key));
@@ -249,7 +251,7 @@ function renderTransitSheet(view, r) {
     </button>
     ${x.id === r.id ? `<ol class="step-list transit-legs">${transitLegsHtml(trip, state.leg, prefs.change)}</ol>` : ''}`).join('')}`;
   $('.along', view).innerHTML = '';
-  // Die Wegbeschreibung unten entfällt – sie steht jetzt oben bei der Verbindung
+  // Die Wegbeschreibung unten entfällt – sie steht oben bei der Verbindung
   $('.steps .step-list', view).innerHTML = '';
   const saved = connections.all().some((c) => c.key === trip.key);
   $('.transit-actions', view).innerHTML = `

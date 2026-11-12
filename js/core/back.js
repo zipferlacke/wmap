@@ -79,7 +79,7 @@ addEventListener('popstate', (e) => {
 /* Ein sichtbarer Knopf mit [data-back] (nach dem Laden gesucht – auch einer, den die Seite erst anlegt) */
 const visible = (el) => !!el && !el.closest('[hidden], [inert]') && el.getClientRects().length > 0;
 addEventListener('load', async () => {
-  // Module, die auf die Texte warten (top-level await in core/i18n.js), laufen erst nach „load“ – ihr Knopf käme zu spät
+  // Module, die auf die Texte warten (top-level await in core/i18n.js), laufen erst nach „load“ – ihr Knopf wäre sonst zu spät da
   await import('./i18n.js');
   await new Promise((ok) => { setTimeout(ok); });
   if (press || !document.querySelector('[data-back]')) return;
@@ -92,7 +92,7 @@ addEventListener('load', async () => {
 
 /**
  * Erst wenn das stille Zurück eines gerade geschlossenen Dialogs durch ist – vorher zu einer anderen Seite
- * wechseln (location.href = …) bricht das nachlaufende history.back() wieder ab: man bliebe auf der Seite
+ * wechseln (location.href = …) bricht das nachlaufende history.back() ab
  */
 export function settled() {
   return new Promise((ok) => {

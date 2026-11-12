@@ -36,7 +36,7 @@ export async function openLinkText(v) {
   const to = linkTarget(v);
   if (!to) { toast(t('share.open_link.invalid')); return; }
   // Der Dialog nimmt beim Schließen seinen Eintrag im Verlauf zurück (core/back.js) – erst danach wechseln,
-  // sonst bricht dieses Zurück den Wechsel ab (in der App blieb man auf Meine Touren)
+  // damit dieses Zurück den Wechsel nicht abbricht
   await settled();
   // Dieselbe Seite: nur das # ändert sich – neu laden, damit sie den Link liest
   const same = new URL(to, location.href).pathname === location.pathname;

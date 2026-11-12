@@ -31,6 +31,7 @@ import { trace, trips } from '../data/trace.js';
 import { distance, simplifyTo, cumulative, nearestOnLine } from '../core/geo.js';
 import { parseWeek } from '../ui/poi-info.js';
 import { locale, t, tBase } from '../core/i18n.js';
+import { used } from '../services/usage.js';
 
 const QUESTIONS = 'wmap.survey.questions';
 const DONE = 'wmap.survey.done';
@@ -431,6 +432,7 @@ const around = (pts, r) => `around:${r},${pts.map(([x, y]) => `${y.toFixed(5)},$
 async function waysById(ids, signal) {
   const out = [];
   for (let i = 0; i < ids.length; i += 100) {
+    used('osm');
     const res = await fetch(`${API.osm}/ways.json?ways=${ids.slice(i, i + 100).join(',')}`, { signal });
     if (!res.ok) throw new Error(`OSM-API: ${res.status}`);
     out.push(...(await res.json()).elements.filter((e) => e.tags?.highway));

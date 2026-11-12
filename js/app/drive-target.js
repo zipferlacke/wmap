@@ -14,7 +14,7 @@ import { map } from './core.js';
 /*
  * „Davor“ heißt: Der Rand des Parkplatzes liegt höchstens so weit vom Punkt des Orts (Meter) – bei einem großen
  * Markt ist das schon die halbe Halle. Ein Parkplatz weiter weg gehört meist zu etwas anderem; dann bleibt es
- * beim Ort selbst (die Route endet wie bisher an der nächsten Straße). Die Kartenkacheln kennen nur die Mitte
+ * beim Ort selbst (die Route endet an der nächsten Straße). Die Kartenkacheln kennen nur die Mitte
  * des Parkplatzes, darum dort etwas mehr.
  */
 const EDGE_M = 75;
@@ -41,7 +41,7 @@ const memo = new Map();             // "lon,lat" → Parkplatz | null
 
 /**
  * Der nächste Parkplatz am Ort: erst mit Overpass (kennt „privat“), sonst aus den Kartenkacheln.
- * → { point, dist, name } oder null (keiner direkt am Ort – die Route endet wie bisher an der nächsten Straße)
+ * → { point, dist, name } oder null (keiner direkt am Ort – die Route endet an der nächsten Straße)
  */
 export async function parkingNear(point, { signal } = {}) {
   const key = point.map((v) => v.toFixed(5)).join();

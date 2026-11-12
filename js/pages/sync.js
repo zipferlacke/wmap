@@ -17,7 +17,7 @@
  */
 import { mountAppBar } from '../ui/appbar.js';
 import { ask, toast } from '../ui/dialogs.js';
-import { esc, fmtDistance, fmtDuration } from '../core/geo.js';
+import { esc, fmtDistance, fmtDuration, clockFormat } from '../core/geo.js';
 import { download } from '../data/store.js';
 import { restore, trackEnd, sameTrack, tracks } from '../data/tracks.js';
 import { folder, zipBackup, restoreZip, importFolder, syncSummary } from '../data/folder.js';
@@ -29,7 +29,7 @@ import { findDuplicates, removeDuplicates, valueKinds } from '../data/duplicates
 import { locale, t } from '../core/i18n.js';
 
 const root = document.querySelector('.sync');
-const WHEN = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const WHEN = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', ...clockFormat() });
 const when = (ms) => (ms ? WHEN.format(ms) : t('sync.never'));
 let connecting = false;
 let importing = false;
@@ -201,7 +201,7 @@ function dupValues(x) {
   const hr = (x.hr ?? []).filter((v) => v > 0);
   return valueKinds(x).map((k) => (k === 'hr' && hr.length ? t('sync.dups.values.hr_avg', { avg: Math.round(hr.reduce((a, b) => a + b, 0) / hr.length) }) : VALUE_NAME[k])).join(' · ');
 }
-const dupDate = (x) => new Date(x.start).toLocaleString(locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+const dupDate = (x) => new Date(x.start).toLocaleString(locale, { day: 'numeric', month: 'short', year: 'numeric', ...clockFormat() });
 
 async function duplicatesHtml() {
   if (folder.busy || healthSyncing()) return '';

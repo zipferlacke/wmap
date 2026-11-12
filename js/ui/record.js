@@ -16,7 +16,8 @@
 import { recorder, defaultName } from '../data/tracks.js';
 import { geo } from '../core/native.js';
 import { PROFILES } from '../core/config.js';
-import { distance, fmtDistance, esc } from '../core/geo.js';
+import { distance, fmtDistance, speedUnit, esc } from '../core/geo.js';
+import { speedOf } from '../core/units.js';
 import { ask } from './dialogs.js';
 import { recordingNotice } from './permissions.js';
 import { locale, t } from '../core/i18n.js';
@@ -81,7 +82,7 @@ class RecordUi {
       <div class="rec-stats">
         <div><strong class="rec-time">0:00</strong><small>${t('record.stats.time')}</small></div>
         <div><strong class="rec-dist">${fmtDistance(0)}</strong><small>${t('record.stats.distance')}</small></div>
-        <div><strong class="rec-speed">–</strong><small>${t('common.units.kmh')}</small></div>
+        <div><strong class="rec-speed">–</strong><small>${speedUnit()}</small></div>
       </div>
       <div class="rec-buttons">
         <button type="button" class="button rec-pause" data-shape="round" data-act="pause" title="${t('record.pause')}"><span class="msr">pause</span></button>
@@ -179,7 +180,7 @@ class RecordUi {
     let d = 0;
     for (let i = k + 1; i < pts.length; i += 1) d += distance(pts[i - 1], pts[i]);
     const dt = last ? (last[2] - pts[k][2]) / 1000 : 0;
-    $('.rec-speed').textContent = dt > 3 && Date.now() - last[2] < 20000 ? (d / dt * 3.6).toLocaleString(locale, { minimumFractionDigits: d / dt * 3.6 < 10 ? 1 : 0, maximumFractionDigits: d / dt * 3.6 < 10 ? 1 : 0 }) : '–';
+    $('.rec-speed').textContent = dt > 3 && Date.now() - last[2] < 20000 ? speedOf(d / dt).toLocaleString(locale, { minimumFractionDigits: speedOf(d / dt) < 10 ? 1 : 0, maximumFractionDigits: speedOf(d / dt) < 10 ? 1 : 0 }) : '–';
     const pause = $('.rec-pause');
     pause.querySelector('.msr').textContent = info.paused ? 'play_arrow' : 'pause';
     pause.title = info.paused ? t('common.next') : t('record.pause');

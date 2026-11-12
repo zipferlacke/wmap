@@ -84,6 +84,7 @@ class WMapSession : Session() {
   private val navigation get() = carContext.getCarService(NavigationManager::class.java)
 
   override fun onCreateScreen(intent: Intent): Screen {
+    CarTexts.load(carContext)
     web = CarWeb(carContext, ::onEvent)
     CarLink.session = this
     carContext.getCarService(AppManager::class.java).setSurfaceCallback(web)
@@ -151,6 +152,8 @@ class WMapSession : Session() {
   private fun onEvent(type: String, data: Any?) {
     val o = data as? JSONObject
     when (type) {
+      // Texte der Vorlagen in der Sprache der App: Was schon zu sehen ist, wird neu gezeichnet
+      "texts" -> if (o != null && CarTexts.set(carContext, o)) runCatching { screens.top.invalidate() }
       "ready" -> {
         web.call("init", mapOf("dark" to carContext.isDarkMode)) { v, _ ->
           if ((v as? JSONObject)?.optBoolean("navigating") == true) setNav(true, "")

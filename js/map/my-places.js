@@ -80,7 +80,7 @@ export function mountMyPlaces(map) {
   };
   const refresh = () => map.getSource(MY_PLACES_LAYER)?.setData(data());
   // Schon geladen? map.loaded() ist auch danach falsch, solange Kacheln nachkommen – und „load“ kommt nur einmal.
-  // Am Handy lud dieses Modul erst danach: die Ebene kam nie. Die eigenen Quellen aus map.js zeigen „geladen“
+  // Die eigenen Quellen aus map.js zeigen „geladen“
   if (map.getSource('routes')) add(); else map.once('load', add);
   addEventListener('wmap:saved', refresh);
   addEventListener('wmap:theme', () => paint(map));

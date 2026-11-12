@@ -267,7 +267,7 @@ wpList.addEventListener('keydown', async (e) => {
   const text = input.value.trim();
   if (!text || Number.isNaN(i)) return;
   cancelSuggestions();                 // offene Vorschläge verwerfen
-  updateRouteSuggestions.cancel();     // und eine noch ausstehende – sie käme sonst über das Ergebnis
+  updateRouteSuggestions.cancel();     // und eine noch ausstehende – eine verspätete Antwort würde das Ergebnis überschreiben
   suggest.hide();
   if (/^mein standort$/i.test(text)) { setWaypoint(i, me()); return; }
   try {

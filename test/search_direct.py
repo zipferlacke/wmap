@@ -39,7 +39,7 @@ def typed(b, text, sel='#q'):
 with Browser(1200, 850) as b:
     # Ohne Willkommen – das nähme dem Suchfeld den Fokus
     b.open('index.html', 2)
-    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] }))")
+    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] })); localStorage.setItem('wmap.stats.asked', '1')")
     b.open('index.html', 5)
 
     # 1. und 2. Lesen

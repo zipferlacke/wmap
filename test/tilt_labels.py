@@ -50,7 +50,7 @@ with Browser(500, 900) as b:
     b.d.script.add_preload_script(PRELOAD)
     b.d.set_script_timeout(60)
     b.open('index.html', 2)
-    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] })); sessionStorage.removeItem('sig')")
+    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] })); localStorage.setItem('wmap.stats.asked', '1'); sessionStorage.removeItem('sig')")
     b.open(VIEW, 4)
     b.wait("return window.__wmap?.map?.getLayer('building-3d') && window.__wmap.map.loaded()", 60)
     time.sleep(3)

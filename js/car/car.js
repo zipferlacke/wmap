@@ -11,6 +11,7 @@
  *   Kotlin → Seite   wmapCar.call(id, 'methode', [argumente])
  *   Seite → Kotlin   WMapCar.post('reply', { id, ok, value | error })
  *                    WMapCar.post('guidance' | 'navEnd' | 'ask' | 'toast' | 'list', …)
+ *                    WMapCar.post('texts', { … })   Texte der Vorlagen in der Sprache der App (car.native)
  *
  * Kurze Fragen (Pillen, „Immer noch Stau?“) und Hinweise erscheinen im Auto
  * als dessen Hinweise mit „Ja“/„Nein“ (osm/quick-ask.js, ui/dialogs.js).
@@ -43,7 +44,7 @@ import { nav, navTour, startNav } from '../app/nav.js';
 import { closeSheet } from '../app/views.js';
 import { startDrive, pauseDrive, resumeDrive, hudInsets, recenterIcon } from './drive.js';
 import { timed } from './carlog.js';
-import { t } from '../core/i18n.js';
+import { baseValue, ownValue, t } from '../core/i18n.js';
 
 // Das Auto zeigt ein Video der Karte, meist mit 30 Bildern je Sekunde – mehr zu zeichnen kostet nur
 // Rechenzeit und Wärme (core/fps.js). 20 reichen für eine ruhige Fahrt.
@@ -458,7 +459,7 @@ let gestureTimer = null;
 function hold() {
   nav.pauseFollow();
   pauseDrive();
-  // Mit dem Finger auf der Karte zählt jedes Bild – solange öfter zeichnen, sonst ruckelt das Verschieben
+  // Mit dem Finger auf der Karte zählt jedes Bild: währenddessen öfter zeichnen, damit das Verschieben nicht ruckelt
   capFps(GESTURE_FPS);
   clearTimeout(gestureTimer);
   gestureTimer = setTimeout(() => capFps(CAR_FPS), 1200);
@@ -535,7 +536,7 @@ const methods = {
   /** Standort (wieder) abfragen – nach der Freigabe am Handy */
   locate() { startDrive(); return true; },
   // Verschieben und Zoomen mit dem Finger: Das Auto meldet viele kleine Schritte – je Bild einer,
-  // zusammengefasst (sonst arbeitet eine träge Seite jeden einzeln nach und die Karte läuft dem Finger hinterher)
+  // zusammengefasst (einzeln abgearbeitet liefe die Karte dem Finger hinterher)
   pan(dx, dy) {
     hold();
     gesture.dx += dx; gesture.dy += dy;
@@ -696,13 +697,15 @@ setInterval(() => {
 }, 400);
 
 // Grafik verloren (kommt im Auto vor, z. B. nach dem Wechsel der Fläche):
-// kommt sie nicht gleich wieder, die Seite neu laden – sonst bleibt die Karte weiß
+// kommt sie nicht gleich wieder, wird die Seite neu geladen (die Karte bliebe weiß)
 map.on('webglcontextlost', () => {
   console.warn('WebGL-Kontext verloren');
   const timer = setTimeout(() => location.reload(), 3000);
   map.once('webglcontextrestored', () => clearTimeout(timer));
 });
 
+// Texte der Vorlagen in der Sprache der App (tools/android/car/CarTexts.kt) – vor allem anderen
+send('texts', ownValue('car.native') ?? baseValue('car.native') ?? {});
 // Stand der Karte gleich melden: Kotlin wartet darauf, bevor es fragt
 if (map.loaded()) send('ready', {}); else map.once('load', () => send('ready', {}));
 export { methods as carMethods };

@@ -49,10 +49,9 @@ let stopTimer = null;
 let lastOptions = {};     // die der letzten Abfrage – für den Neustart (geo.wake)
 const pacers = new Set(); // Punkte auf der Karte (paced) – geo.wake setzt sie auf „in Bewegung“
 /*
- * Beantwortet die App „watch_position“? Bis App 2.1.0 tat das Plugin das nie –
- * und jeder offene Aufruf hielt einen Arbeits-Thread der App fest; nach acht
- * antwortete sie auf nichts mehr („Webseite nicht verfügbar“). Die App bringt
- * das Plugin jetzt korrigiert mit (src-tauri/plugins/geolocation/WMAP.md).
+ * Beantwortet die App „watch_position“? Plugin-Fassungen bis App 2.1.0 taten das nie,
+ * und jeder offene Aufruf hielt einen Arbeits-Thread der App fest
+ * (src-tauri/plugins/geolocation/WMAP.md).
  * Solange keine Antwort kam, wird nur neu gestartet, wenn es öfter sein muss.
  */
 let answers = false;

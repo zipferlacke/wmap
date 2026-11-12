@@ -2,12 +2,13 @@
  * Haltestellen: Abfahrten nach Fahrplan, Steige, Fahrt im Detail, Linien aus OSM.
  */
 import { linesAt, transitHtml, mountTransitLine, lineStopsHtml, colorOf } from '../services/transit.js';
-import { departures, samePlatform, tripCourse } from '../services/departures.js';
+import { departures, samePlatform, tripCourse } from '../services/timetable/index.js';
 import { clock } from '../ui/share.js';
 import { toast } from '../ui/dialogs.js';
 import { distance, esc } from '../core/geo.js';
 import { $, afterLayout, fitTo, map } from './core.js';
 import { locale, t } from '../core/i18n.js';
+import { feature } from '../services/usage.js';
 
 // Haltestelle → Linien; eine davon komplett auf der Karte
 export const transitLine = mountTransitLine(map);
@@ -24,7 +25,7 @@ export function resetStop() { stop = null; }
  * Straße, also eine Richtung. Daraus „Linien an diesem Steig“ (Linie →
  * Ziel, nächste Abfahrt) und die Abfahrten. OSM (Overpass, oft Sekunden)
  * läuft nebenher: Linienfarben und der Verlauf auf der Karte; ohne Fahrplan
- * (Ausland) zeigt es die Linien wie bisher.
+ * (Ausland) zeigt es die Linien.
  */
 export async function showStop(f, tags, title, signal) {
   const point = f.geometry.coordinates;
@@ -40,13 +41,14 @@ export async function showStop(f, tags, title, signal) {
   const ref = f.properties.osm_type && f.properties.osm_id ? { type: f.properties.osm_type, id: f.properties.osm_id } : null;
   // OSM: mit Fahrplan nur für die Linienfarben (im Hintergrund), ohne ihn die Linien selbst
   const osmLines = (background) => {
-    stop.osm = linesAt(point, name, { ref, background, signal }).then(({ here, all }) => {
+    stop.osm = linesAt(point, name, { ref, background, signal, feature: 'departures' }).then(({ here, all }) => {
       if (stop !== mine) return;
       Object.assign(stop, { here, all });
       paintStop();
     }).catch((err) => { if (err.name !== 'AbortError' && stop === mine) { stop.error = err.message; stop.all = []; paintStop(); } });
   };
-  departures(point, { name, ifopt: stop.ifopt, signal }).then(({ list, stopId }) => {
+  feature('departures');
+  departures(point, { name, ifopt: stop.ifopt, signal, feature: 'departures' }).then(({ list, stopId }) => {
     if (stop !== mine) return;
     stop.deps = list;
     stop.stopId = stopId;
@@ -76,7 +78,7 @@ async function loadEarlier() {
   try {
     let found = [];
     for (const min of EARLIER_MIN) {
-      const { list } = await departures(s.point, { name: s.name, stopId: s.stopId, when: new Date(first - min * 60000), signal: s.signal });
+      const { list } = await departures(s.point, { name: s.name, stopId: s.stopId, when: new Date(first - min * 60000), signal: s.signal, feature: 'departures' });
       found = list.filter((x) => +x.time < first && !known.has(tripKey(x)));
       if (found.length) break;
     }
@@ -110,7 +112,7 @@ function sideOf(s) {
   return new Set(near.filter(([, d]) => d <= near[0][1] + 8).map(([id]) => id));
 }
 
-const tripKey = (x) => `${x.lineId}|${x.tripCode}|${+x.time}`;
+const tripKey = (x) => x.key;
 
 /** Passende OSM-Linie zu einer Abfahrt (gleiche Nummer, Ziel passt) */
 function relFor(x, all = stop?.all ?? []) {
@@ -238,7 +240,7 @@ $('[data-view="place"] .place-transit').addEventListener('click', async (e) => {
   const mine = stop;
   try {
     // Ab dieser Haltestelle kräftig – der Weg bis hierher blass
-    const line = await transitLine.show(id, { from: stop.point });
+    const line = await transitLine.show(id, { from: stop.point, feature: 'departures' });
     if (stop !== mine) return;
     stop.active = id; stop.activeLine = line;
     stop.more = true;
@@ -267,7 +269,7 @@ async function showTrip(x, btn) {
   btn?.classList.add('loading');
   const mine = stop;
   try {
-    const course = await tripCourse(x);
+    const course = await tripCourse(x, { feature: 'departures' });
     if (stop !== mine) return;
     const rel = relFor(x, stop.all ?? []);
     const line = transitLine.showCourse(key, { ...course, color: rel ? colorOf(rel) : x.color });
@@ -281,7 +283,7 @@ async function showTrip(x, btn) {
     const rel = stop === mine && relFor(x, stop.all ?? []);
     if (!rel) { toast(t('stops.departures.trip_unavailable', { line: x.line })); paintStop(); return; }
     try {
-      const line = await transitLine.show(rel.id, { from: stop.point });
+      const line = await transitLine.show(rel.id, { from: stop.point, feature: 'departures' });
       if (stop !== mine) return;
       stop.active = key; stop.activeLine = line;
       paintStop();

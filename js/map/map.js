@@ -18,6 +18,7 @@ import { mountBuildings } from './buildings.js';
 import { tiltGestures } from './tilt-gestures.js';
 import { POI_ICON, addPoiIcon } from './poi-icons.js';
 import { t } from '../core/i18n.js';
+import { imperial } from '../core/units.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const fc = (features) => ({ type: 'FeatureCollection', features });
@@ -133,6 +134,17 @@ export function createMap(container, {
   collapseAttribution(map.getContainer());
   keepSized(map);
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+  // Maßstab unten rechts: beim Zoomen sichtbar, kurz danach wieder weg (css/maplibre_custom.css)
+  const scale = new maplibregl.ScaleControl({ maxWidth: 110, unit: imperial() ? 'imperial' : 'metric' });
+  map.addControl(scale, 'bottom-right');
+  // Maßeinheiten in der Begrüßung oder den Einstellungen umgestellt
+  addEventListener('wmap:units', () => scale.setUnit(imperial() ? 'imperial' : 'metric'));
+  let scaleOff = null;
+  map.on('zoom', () => {
+    map.getContainer().classList.add('scale-on');
+    clearTimeout(scaleOff);
+    scaleOff = setTimeout(() => map.getContainer().classList.remove('scale-on'), 2500);
+  });
 
   // App: Der Punkt auf der Karte nutzt dieselbe Standortabfrage wie die
   // Navigation (Plugin, core/native.js) – in Bewegung jede Sekunde, im Stand
@@ -1351,13 +1363,12 @@ export function showHover(map, lngLat) {
  * Karte so groß wie ihr Platz: Hat der Platz beim Start noch keine Größe (App
  * startet, Seite noch nicht gelayoutet), nimmt MapLibre 400 × 300 und
  * übersieht die erste Änderung danach (sein ResizeObserver verwirft den
- * ersten Aufruf) – die Karte blieb dann klein in der Ecke, bis man neu lud.
- * Darum selbst nachsehen und bei Abweichung anpassen.
+ * ersten Aufruf). Darum selbst nachsehen und bei Abweichung anpassen.
  */
 /*
  * Scheitert das Laden einer Kartenquelle (TileJSON von OpenFreeMap: kurz kein Netz beim Start, Aussetzer),
- * versucht MapLibre es nie wieder – die Karte blieb dann bis zum Neustart ohne Straßen, Orte und Namen, nur mit
- * Relief. Darum selbst neu laden: nach 2, 5, 10 s, dann alle 30 s, und sofort, wenn das Netz zurück ist oder die
+ * versucht MapLibre es nicht erneut; die Karte hätte bis zum Neustart keine Straßen, Orte und Namen, nur Relief.
+ * Darum lädt diese Funktion selbst neu: nach 2, 5, 10 s, dann alle 30 s, und sofort, wenn das Netz zurück ist oder die
  * App wieder vorn ist.
  */
 function retryFailedSources(map) {

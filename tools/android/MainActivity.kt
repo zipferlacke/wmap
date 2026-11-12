@@ -51,8 +51,8 @@ import de.wuefl.wmap.car.CarLink
  *
  * Links der Testversion (https://dev.wuefl.de/wmap…): Für sie meldet sich nur die Debug-Fassung
  * (src/debug/AndroidManifest.xml, tools/android-einbinden.py). Das Deep-Link-Plugin nimmt nur Adressen aus
- * tauri.conf.json an – dort steht app.wuefl.de, sonst bekäme auch die Store-App dev. Darum hier vorher auf
- * app.wuefl.de umschreiben: Die App nimmt vom Link ohnehin nur Seite, ?… und #… (link_target in lib.rs).
+ * tauri.conf.json an – dort steht app.wuefl.de (die Store-App nimmt keine dev-Links). Darum wird der Link hier vorher auf
+ * app.wuefl.de umgeschrieben: Die App nimmt vom Link ohnehin nur Seite, ?… und #… (link_target in lib.rs).
  */
 class MainActivity : TauriActivity() {
   private var web: WebView? = null

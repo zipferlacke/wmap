@@ -10,6 +10,7 @@
 import { REPORTS } from '../core/config.js';
 import { local } from '../data/store.js';
 import { t } from '../core/i18n.js';
+import { used } from '../services/usage.js';
 
 export const REPORT_KINDS = {
   jam: { label: t('traffic.kinds.jam'), icon: 'traffic', color: '#e8590c' },
@@ -38,6 +39,7 @@ export async function report({ kind, point, answer = 'new', ref = null }) {
   local.set(LOCAL, list.slice(-200));
   if (!reportsShared()) return { shared: false };
   try {
+    used('reports');
     const res = await fetch(`${REPORTS.url}/rest/v1/reports`, {
       method: 'POST', headers: { ...headers(), Prefer: 'return=minimal' },
       body: JSON.stringify({ kind, lon: item.lon, lat: item.lat, answer, ref }),
@@ -60,6 +62,7 @@ export async function reportsIn([w, s, e, n], { signal } = {}) {
   if (!reportsShared()) return [];
   const since = new Date(Date.now() - KEEP_MS).toISOString();
   const q = `lon=gte.${w}&lon=lte.${e}&lat=gte.${s}&lat=lte.${n}&created_at=gte.${since}&select=kind,lon,lat,answer,created_at`;
+  used('reports');
   const res = await fetch(`${REPORTS.url}/rest/v1/reports?${q}`, { headers: headers(), signal });
   if (!res.ok) return [];
   const rows = await res.json();

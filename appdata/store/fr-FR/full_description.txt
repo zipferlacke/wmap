@@ -1,0 +1,56 @@
+WMap est une carte pour vos déplacements : chercher des lieux, planifier des itinéraires, naviguer, planifier et enregistrer des parcours, découvrir des sentiers. Tout repose sur les données ouvertes d'OpenStreetMap. Ni compte, ni abonnement, ni publicité : vos trajets restent sur votre appareil.
+
+Carte
+• Carte claire aux noms locaux, clair ou sombre selon l'appareil
+• Relief et bâtiments en 3D, altitudes au mètre près, la Terre en globe en dézoomant
+• Satellite : images aériennes pour une grande partie de l'Allemagne, Sentinel-2 dans le monde. Bâtiments en 3D, image sur le toit
+• Sentiers, pistes cyclables et VTT de Waymarked Trails, relief, feux
+
+Recherche et itinéraire
+• Adresses, lieux et catégories (café, station-service, aire de jeux), dans la zone ou le long du trajet
+• Itinéraires à pied, à vélo, et en voiture, avec variantes et profil altimétrique
+• Favoris avec noms personnalisés et listes ; Domicile et Travail en tête de la recherche
+• Zone accessible : jusqu'où aller en 5 à 60 minutes, et ce qu'il y a là
+
+Allemagne uniquement :
+• Bus et train : itinéraires, départs (horaires, temps réel si disponible), trajet de la course, recherche de ligne
+• Bornes de recharge avec occupation « x sur y libres »
+• Trafic : chantiers, fermetures, informations
+• Prix des carburants en station-service
+
+Navigation
+• Instructions vocales au bon moment, voies, limitation de vitesse, heure d'arrivée
+• Tuiles de l'itinéraire chargées d'avance : zones sans réseau inaperçues
+• En voiture vers un commerce ou un restaurant : le trajet finit sur le parking juste devant
+• Image dans l'image : carte, flèche et distance restent visibles en mini-fenêtre
+
+Android Auto
+• Carte, recherche et navigation sur l'écran de la voiture, instructions par haut-parleurs
+• Parcours prévus pour la voiture, favoris et dernières destinations, plus parkings, stations-service et bornes proches
+• Planifié sur le téléphone, suivi en voiture : envoyez lieu, itinéraire ou parcours d'une touche
+• Même sans itinéraire : vitesse, limitation et nom de la rue
+
+Parcours
+• Planifiez un parcours en randonnée, promenade, vélo de route, vélo de randonnée, gravel, VTT ou voiture, en étapes si besoin
+• Reprenez des sentiers connus et replanifiez-les, l'original reste en fond
+• Enregistrez vos trajets (durée, distance, vitesse, dénivelé), bilan annuel – même écran éteint
+• Analyse : graphiques d'altitude, vitesse, pouls, cadence et puissance, tours le plus rapide et le plus lent
+• Comparez vos entraînements et votre progression
+• Reprenez de Health Connect les entraînements avec itinéraire, p. ex. de la montre
+• Ouvrez des fichiers GPX et FIT, enregistrez en GPX ou FIT, partagez ou publiez des parcours
+
+Découvrir
+Sentiers balisés, itinéraires cyclables longue distance et parcours VTT à proximité ou par nom : tracé, étapes, longueur, balisage, description. Une touche l'ouvre dans le planificateur.
+
+Hors ligne
+Téléchargez des zones à l'avance, la taille est indiquée avant. La page « Hors ligne » liste ce qui marche sans réseau : zones, parcours, cartes de navigation.
+
+Vos données
+Parcours et enregistrements restent sur votre appareil. Si vous le souhaitez, connectez un dossier, p. ex. Nextcloud, Dropbox ou Proton Drive. Chaque parcours y est un fichier GPX lisible par toute autre appli, et vos appareils se synchronisent ainsi. Un compte ne sert qu'à publier et pour les plugins (connexion via OpenStreetMap).
+
+Contribuer
+Ajoutez directement dans OpenStreetMap les horaires manquants ou de nouveaux lieux. En chemin, WMap pose une petite question, p. ex. « La boulangerie existe-t-elle encore ? » – une touche suffit. La carte s'améliore pour tous.
+
+WMap existe aussi dans le navigateur (app.wuefl.de/wmap) et pour Linux, Windows et macOS.
+
+Remarque : WMap est un projet privé, sans lien avec une autorité. Sources ouvertes : cartes d'OpenStreetMap (openstreetmap.org), informations routières de l'Autobahn GmbH des Bundes (verkehr.autobahn.de), horaires via NVBW, RMV et EFA-BW (efa-bw.de).

@@ -12,7 +12,8 @@
  */
 import { PROFILES } from '../core/config.js';
 import { geo } from '../core/native.js';
-import { nearestOnLine, pointAt, bearing, destination, distance, fmtDistance, fmtDuration, fmtClock, speakDistance, esc } from '../core/geo.js';
+import { nearestOnLine, pointAt, bearing, destination, distance, fmtDistance, fmtDuration, fmtClock, speakDistance, speedUnit, esc } from '../core/geo.js';
+import { limitOf, speedOf } from '../core/units.js';
 import { reroute as fetchReroute, maneuverIcon } from '../services/routing.js';
 import { showRoutes, showHover, showNavExtras, showNavRoad, ROAD_ZOOM } from '../map/map.js';
 import { routeExtras, limitAt, lanesAt, roadFeatures, laneShiftAt } from './extras.js';
@@ -871,9 +872,10 @@ export class Navigation {
   /** Aktuelles Tempo und – wenn bekannt – das erlaubte. */
   #paintSpeed(along) {
     const $ = (s) => this.#el.querySelector(s);
-    const kmh = Math.round(this.#speed * 3.6);
-    const limit = limitAt(this.#extras, along);
+    const kmh = Math.round(speedOf(this.#speed));
+    const limit = limitOf(limitAt(this.#extras, along));
     $('.nav-kmh strong').textContent = kmh;
+    $('.nav-kmh small').textContent = speedUnit();
     const lim = $('.nav-limit');
     lim.hidden = !limit || this.#profile === 'foot';
     lim.textContent = limit ?? '';

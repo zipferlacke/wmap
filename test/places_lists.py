@@ -5,7 +5,7 @@ from common import Browser
 
 with Browser(width=420, height=900) as b:
     b.open('index.html', wait=2)
-    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] }))")
+    b.js("localStorage.setItem('wmap.seen', JSON.stringify({ version: '9.9.9', messages: [] })); localStorage.setItem('wmap.stats.asked', '1')")
     b.open('index.html', wait=4)
     b.d.execute_async_script("""const done = arguments[0]; (async () => {
       const { places } = await import('./js/data/saved.js');

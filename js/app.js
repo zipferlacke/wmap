@@ -34,6 +34,7 @@ import './app/traffic-along.js';
 import './app/stops.js';
 import './app/report.js';
 import { locale, t } from './core/i18n.js';
+import { clockFormat } from './core/geo.js';
 
 /* ══════════════════════════════════════════════════════════════════════════
    Startansicht, Menü oben rechts, Maße
@@ -58,7 +59,12 @@ if (!CAR && !/[?&](view|q|from|to|reach|geo|ort|tour|track)=/.test(location.sear
   const own = local.get('wmap.view');
   folder.readView().catch(() => null).then((v) => {
     const newer = v && v.at > (own?.at ?? 0) + 1000;
-    if (newer && !touched) map.jumpTo({ center: v.center, zoom: v.zoom, pitch: v.pitch ?? 0, bearing: v.bearing ?? 0 });
+    if (newer && !touched) {
+      map.jumpTo({ center: v.center, zoom: v.zoom, pitch: v.pitch ?? 0, bearing: v.bearing ?? 0 });
+      // Der Ausschnitt des anderen Geräts gilt hier weiter mit dessen Zeit
+      local.set('wmap.view', { center: v.center, zoom: v.zoom, pitch: v.pitch ?? 0, bearing: v.bearing ?? 0, at: v.at });
+      savedKey = viewKey();
+    }
     if (Date.now() - Math.max(own?.at ?? 0, v?.at ?? 0) < DAY_MS) return;
     flyHome();
     // Gerade im Dialog zu den Berechtigungen erlaubt (erster Start): jetzt hin
@@ -66,14 +72,29 @@ if (!CAR && !/[?&](view|q|from|to|reach|geo|ort|tour|track)=/.test(location.sear
   });
 }
 
+/** Der Ausschnitt als Text, gerundet auf rund einen Meter – zum Vergleich mit dem zuletzt gespeicherten */
+const viewKey = () => [...map.getCenter().toArray().map((x) => x.toFixed(5)), map.getZoom().toFixed(2),
+  map.getPitch().toFixed(0), map.getBearing().toFixed(0)].join(' ');
+// Stand beim Laden: der gespeicherte Ausschnitt bzw. die Startansicht – beides wird nicht neu gespeichert
+let savedKey = viewKey();
+let unsent = null;   // gespeichert, aber noch nicht im Ordner
+
 const saveView = ({ now = false } = {}) => {
   // Im Auto nicht: der Ausschnitt dort ist ein anderer als am Handy. In Street View auch nicht – Neigung bis 150°
   // und Zoom 21 sind keine Kartenansicht (beim Beenden wird die vorherige Ansicht ohnehin wieder gespeichert)
   if (nav.active || CAR || document.body.classList.contains('street-view')) return;
-  const view = { center: map.getCenter().toArray(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), at: Date.now() };
-  local.set('wmap.view', view);
+  // Nur ein geänderter Ausschnitt bekommt eine neue Zeit: Laden, Wechsel des Tabs und Verlassen ohne Bewegung
+  // lassen den gespeicherten stehen – über den Ordner gilt auf allen Geräten der, der zuletzt bewegt wurde
+  const key = viewKey();
+  if (key !== savedKey) {
+    savedKey = key;
+    unsent = { center: map.getCenter().toArray(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), at: Date.now() };
+    local.set('wmap.view', unsent);
+  }
+  if (!unsent) return;
   // In den Ordner: beim Verlassen, sonst höchstens alle 2 Minuten (data/folder.js)
-  folder.writeView(view, { now }).catch(() => {});
+  const view = unsent;
+  folder.writeView(view, { now }).then((ok) => { if (ok && unsent === view) unsent = null; }).catch(() => {});
 };
 map.on('moveend', debounce(() => saveView(), 400));
 // Auch beim Verlassen sofort – wer gleich danach die Seite wechselt oder die
@@ -266,7 +287,7 @@ function openShared(p) {
   if (mins) {
     const ago = Math.round((Date.now() - mins * 60000) / 60000);
     sub.textContent = ago < 1 ? t('map.link.shared.now') : ago < 90 ? t('map.link.shared.minutes', { n: ago })
-      : t('map.link.shared.date', { date: new Date(mins * 60000).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) });
+      : t('map.link.shared.date', { date: new Date(mins * 60000).toLocaleString(locale, { day: 'numeric', month: 'short', ...clockFormat() }) });
   }
   geocode.reverse([lon, lat]).then((r) => {
     if (state.place !== f || !r) return;
@@ -325,8 +346,7 @@ if (!CAR) { if (map.loaded()) resumeNav(); else map.once('load', resumeNav); }
 // Willkommen, Neues nach einem Update, Nachrichten – nur beim normalen Start,
 // nicht wenn ein Link etwas öffnet und nicht vor einer unterbrochenen
 // Navigation („Navigation fortsetzen?“). Gleich jetzt, nicht erst wenn die
-// Karte fertig geladen ist: bei schwachem Netz käme das Willkommen sonst
-// irgendwann, mitten in die Bedienung
+// Karte fertig geladen ist (bei schwachem Netz käme es sonst mitten in der Bedienung)
 if (!CAR) {
   const linked = /[?&](view|q|from|to|reach|action|ort|route|anfrage|geo|sim|tour|track)\b/.test(location.search);
   appNews({ dialogs: !linked && !nav.active && !savedNav() });
