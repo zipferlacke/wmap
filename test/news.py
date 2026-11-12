@@ -35,12 +35,20 @@ with Browser(1200, 850) as b:
     # Farbschema gleich hier: wirkt sofort, ohne neu zu laden
     b.js("const s = document.querySelector('dialog.news[open] select[name=theme]'); s.value = 'dark'; s.dispatchEvent(new Event('change', { bubbles: true }));")
     dark = b.js("return [localStorage.getItem('wmap.theme'), !!document.querySelector('dialog.news[open]')]")
+    # Maßeinheiten und Uhrzeit: voreingestellt nach dem Land des Geräts (hier Deutschland), die Wahl wird gespeichert
+    units = b.js("""const u = document.querySelector('dialog.news[open] select[name=units]'), c = document.querySelector('dialog.news[open] select[name=clock]');
+        const before = [u?.value, c?.value, localStorage.getItem('wmap.units')];
+        u.value = 'imperial'; u.dispatchEvent(new Event('change', { bubbles: true }));
+        const set = localStorage.getItem('wmap.units');
+        u.value = 'metric'; u.dispatchEvent(new Event('change', { bubbles: true }));
+        return [before, set]""")
     pick(b, 'en_GB')
     english = dialog(b)
     pick(b, 'de_DE')
     german = dialog(b)
-    langs_ok = choice == ['de_DE', codes] and dark == ['dark', True] and stats == [True, '1'] and english[0] == title('en_GB') and german[0] == title('de_DE')
-    print('1b. Sprache, Farbschema und Statistik in der Begrüßung:', choice, dark, stats, english, german, '→', langs_ok)
+    langs_ok = choice == ['de_DE', codes] and dark == ['dark', True] and stats == [True, '1'] and english[0] == title('en_GB') and german[0] == title('de_DE') \
+        and units == [['metric', '24', None], '"imperial"']
+    print('1b. Sprache, Farbschema, Maßeinheiten und Statistik in der Begrüßung:', choice, dark, stats, units, english, german, '→', langs_ok)
     if not langs_ok:
         b.errors.append(('news', 'Sprachwahl in der Begrüßung stimmt nicht'))
     ok(b)

@@ -181,7 +181,7 @@ addEventListener('wmap:login', (e) => {
 root.addEventListener('change', (e) => {
   const el = e.target;
   if (el.name === 'language') { setLanguage(el.value); location.reload(); }
-  if (el.name === 'units') { local.set(UNITS_KEY, el.value); refreshUnits(); }
+  if (el.name === 'units') { local.set(UNITS_KEY, el.value); refreshUnits(); dispatchEvent(new Event('wmap:units')); }
   if (el.name === 'clock') { local.set(CLOCK_KEY, el.value); refreshUnits(); }
   if (el.name === 'offline') offlineSetting.set(el.checked);
   if (el.name === 'theme') theme.set(el.value);

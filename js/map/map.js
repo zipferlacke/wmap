@@ -135,7 +135,10 @@ export function createMap(container, {
   keepSized(map);
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
   // Maßstab unten rechts: beim Zoomen sichtbar, kurz danach wieder weg (css/maplibre_custom.css)
-  map.addControl(new maplibregl.ScaleControl({ maxWidth: 110, unit: imperial() ? 'imperial' : 'metric' }), 'bottom-right');
+  const scale = new maplibregl.ScaleControl({ maxWidth: 110, unit: imperial() ? 'imperial' : 'metric' });
+  map.addControl(scale, 'bottom-right');
+  // Maßeinheiten in der Begrüßung oder den Einstellungen umgestellt
+  addEventListener('wmap:units', () => scale.setUnit(imperial() ? 'imperial' : 'metric'));
   let scaleOff = null;
   map.on('zoom', () => {
     map.getContainer().classList.add('scale-on');

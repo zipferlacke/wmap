@@ -56,6 +56,7 @@ import { local } from '../data/store.js';
 import { ask, whenFree } from './dialogs.js';
 import { esc } from '../core/geo.js';
 import { theme } from '../core/theme.js';
+import { CLOCK_KEY, UNITS_KEY, clockSystem, refreshUnits, unitSystem } from '../core/units.js';
 import { statsSetting } from '../services/usage.js';
 import { lang, languageAsked, languageOffer, languages, locale, setLanguage, t, textOf, ownValue } from '../core/i18n.js';
 
@@ -178,7 +179,7 @@ async function askStats() {
 const paragraphs = (text) => [].concat(text ?? []).map((p) => `<p>${p}</p>`).join('');
 
 async function welcome(m) {
-  // Sprache und Farbschema gleich hier einstellen (wie in den Einstellungen). Neue Sprache: neu laden, dann begrüßt
+  // Sprache, Farbschema, Maßeinheiten und Uhrzeit gleich hier einstellen (wie in den Einstellungen). Neue Sprache: neu laden, dann begrüßt
   // WMap noch einmal in ihr
   const langs = await languages();
   const select = (name, title, options, value) => `<label class="news-choice">
@@ -188,6 +189,8 @@ async function welcome(m) {
   const choices = `<div class="news-choices">
       ${langs.length > 1 ? select('language', t('settings.look.language.title'), langs.map((l) => [l.code, l.name]), lang) : ''}
       ${select('theme', t('settings.look.theme.title'), ['system', 'light', 'dark'].map((v) => [v, t(`settings.look.theme.options.${v}`)]), theme.get())}
+      ${select('units', t('settings.look.units.title'), ['metric', 'imperial'].map((v) => [v, t(`settings.look.units.options.${v}`)]), unitSystem())}
+      ${select('clock', t('settings.look.clock.title'), ['24', '12'].map((v) => [v, t(`settings.look.clock.options.${v}`)]), clockSystem())}
       <label class="news-stats">
         <input type="checkbox" name="stats" ${statsSetting.get() ? 'checked' : ''}>
         <span><strong>${t('settings.data.stats.title')}</strong><small>${t('settings.data.stats.hint')}</small></span>
@@ -201,6 +204,9 @@ async function welcome(m) {
     buttons: [{ value: 'ok', label: t('news.welcome.go'), icon: 'map', primary: true }],
     setup: (dlg) => dlg.querySelector('.news-choices').addEventListener('change', (e) => {
       if (e.target.name === 'theme') theme.set(e.target.value);
+      // Voreingestellt nach dem Land des Geräts (core/units.js) – gespeichert wird erst eine eigene Wahl
+      if (e.target.name === 'units') { local.set(UNITS_KEY, e.target.value); refreshUnits(); dispatchEvent(new Event('wmap:units')); }
+      if (e.target.name === 'clock') { local.set(CLOCK_KEY, e.target.value); refreshUnits(); }
       if (e.target.name === 'stats') statsSetting.set(e.target.checked);
       if (e.target.name !== 'language') return;
       setLanguage(e.target.value);
