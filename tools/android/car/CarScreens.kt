@@ -141,7 +141,7 @@ private fun JSONArray?.objects(): List<JSONObject> = if (this == null) emptyList
  * neben der Karte: als Entfernung des Autos), alles andere führt weiter.
  */
 private fun row(o: JSONObject, click: () -> Unit): Row {
-  val b = Row.Builder().setTitle(o.optString("title").ifEmpty { "Ort" })
+  val b = Row.Builder().setTitle(o.optString("title").ifEmpty { CarTexts["place"] })
   val sub = o.optString("sub")
   val dist = if (o.has("dist") && !o.isNull("dist")) o.optDouble("dist") else null
   // Ungefähr (Luftlinie): dieselbe Entfernungsangabe des Autos, mit „≈“ davor. Als bloßer Text ging es
@@ -205,7 +205,7 @@ class MapScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx) {
         g == null -> b.setNavigationInfo(RoutingInfo.Builder().setLoading(true).build())
         g.optBoolean("arrived") -> {
           b.setNavigationInfo(
-            MessageInfo.Builder("Ziel erreicht").apply {
+            MessageInfo.Builder(CarTexts["arrived"]).apply {
               g.optString("street").takeIf { it.isNotEmpty() }?.let { setText(it) }
               g.optString("icon").takeIf { it.isNotEmpty() }?.let { setImage(CarIcons.png(it)) }
             }.build(),
@@ -246,7 +246,7 @@ class MapScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx) {
       b.setActionStrip(
         ActionStrip.Builder()
           .addAction(
-            Action.Builder().setTitle("Suchen").setIcon(CarIcons.res(carContext, R.drawable.wmap_car_search))
+            Action.Builder().setTitle(CarTexts["search"]).setIcon(CarIcons.res(carContext, R.drawable.wmap_car_search))
               .setFlags(Action.FLAG_PRIMARY).setBackgroundColor(CarColor.BLUE)
               .setOnClickListener { screenManager.push(SearchScreen(carContext, s)) }.build(),
           )
@@ -269,7 +269,7 @@ class MapScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx) {
    */
   private fun home(): Template {
     val bar = Row.Builder()
-      .setTitle("Suchen")
+      .setTitle(CarTexts["search"])
       .setImage(CarIcons.res(carContext, R.drawable.wmap_car_search, CarIcons.BLUE))
       .setOnClickListener { screenManager.push(SearchScreen(carContext, s)) }
     if (carContext.api(CarAppApiLevels.LEVEL_6)) {
@@ -298,7 +298,7 @@ class MapScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx) {
     if (needsExit(g) && exit > 0) m.setRoundaboutExitNumber(exit)
     g.optString("icon").takeIf { it.isNotEmpty() }?.let { m.setIcon(CarIcons.png(it)) }
     val cue = listOf(g.optString("street"), g.optString("toward")).filter { it.isNotEmpty() && it != "null" }.joinToString(" · ")
-    return Step.Builder(cue.ifEmpty { "Der Route folgen" }).setManeuver(m.build()).build()
+    return Step.Builder(cue.ifEmpty { CarTexts["follow"] }).setManeuver(m.build()).build()
   }
 
   private fun needsExit(g: JSONObject) = g.optInt("type", -1) == 26 && g.optInt("exit", 0) > 0
@@ -411,9 +411,9 @@ class NearbyScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx) {
 
   override fun onGetTemplate(): Template {
     val b = GridTemplate.Builder()
-    if (carContext.api(CarAppApiLevels.LEVEL_7)) b.setHeader(header(this, "In der Nähe"))
+    if (carContext.api(CarAppApiLevels.LEVEL_7)) b.setHeader(header(this, CarTexts["nearby"]))
     else {
-      @Suppress("DEPRECATION") b.setTitle("In der Nähe")
+      @Suppress("DEPRECATION") b.setTitle(CarTexts["nearby"])
       @Suppress("DEPRECATION") b.setHeaderAction(Action.BACK)
     }
     val list = items
@@ -446,9 +446,9 @@ class BookmarksScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx)
 
   override fun onGetTemplate(): Template {
     val b = GridTemplate.Builder()
-    if (carContext.api(CarAppApiLevels.LEVEL_7)) b.setHeader(header(this, "Lesezeichen"))
+    if (carContext.api(CarAppApiLevels.LEVEL_7)) b.setHeader(header(this, CarTexts["bookmarks"]))
     else {
-      @Suppress("DEPRECATION") b.setTitle("Lesezeichen")
+      @Suppress("DEPRECATION") b.setTitle(CarTexts["bookmarks"])
       @Suppress("DEPRECATION") b.setHeaderAction(Action.BACK)
     }
     val list = items
@@ -459,14 +459,14 @@ class BookmarksScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx)
     } else 6
     val il = ItemList.Builder()
     list.take(limit).forEach { o ->
-      val item = GridItem.Builder().setTitle(o.optString("title").ifEmpty { "Ort" })
+      val item = GridItem.Builder().setTitle(o.optString("title").ifEmpty { CarTexts["place"] })
         .setImage(CarIcons.png(o.optString("png")))
         .setOnClickListener { screenManager.push(RoutePreviewScreen(carContext, s) { d -> s.web.call("routeTo", o.optString("key"), done = d) }) }
       // Darunter die Entfernung auf der Straße; ohne sie der Ort
       o.optString("sub").substringBefore(" · ").takeIf { it.isNotEmpty() }?.let { item.setText(it) }
       il.addItem(item.build())
     }
-    il.setNoItemsMessage("Noch nichts gemerkt – einen Ort öffnen und den Stern antippen")
+    il.setNoItemsMessage(CarTexts["bookmarks_empty"])
     return b.setSingleList(il.build()).build()
   }
 }
@@ -478,7 +478,7 @@ class BookmarksScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx)
  * hintereinander, mit dem Ort dazwischen blieb die Routenwahl leer.
  */
 class CategoryScreen(ctx: CarContext, s: WMapSession, private val id: String, title: String) :
-  ListScreen(ctx, s, title, "Nichts in der Nähe gefunden") {
+  ListScreen(ctx, s, title, CarTexts["nearby_empty"]) {
   private var token = -1
 
   override fun pick(o: JSONObject) {
@@ -563,7 +563,7 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
 
   /** „In der Nähe“ mit Parkplatz und Tanken als Knöpfe (zwei je Zeile gehen ab Car API 8) */
   private fun nearbyRow(): Row {
-    val b = Row.Builder().setTitle("In der Nähe").addText("Parkplätze, Tanken, Laden, Pause …")
+    val b = Row.Builder().setTitle(CarTexts["nearby"]).addText(CarTexts["nearby_hint"])
       .setImage(CarIcons.res(carContext, R.drawable.wmap_car_nearby, CarIcons.BLUE))
       .setOnClickListener { replace { NearbyScreen(carContext, s) } }
     if (carContext.api(CarAppApiLevels.LEVEL_8)) {
@@ -573,7 +573,7 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
       }
     }
     return try { b.build() } catch (_: Exception) {
-      Row.Builder().setTitle("In der Nähe").addText("Parkplätze, Tanken, Laden, Pause …").setBrowsable(true)
+      Row.Builder().setTitle(CarTexts["nearby"]).addText(CarTexts["nearby_hint"]).setBrowsable(true)
         .setOnClickListener { replace { NearbyScreen(carContext, s) } }.build()
     }
   }
@@ -581,10 +581,10 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
   /** „Lesezeichen“ wie „In der Nähe“: die Zeile öffnet die Kacheln, Zuhause und Arbeit gehen als Knöpfe gleich zur Route */
   private fun bookmarksRow(): Row {
     // Die Zeile steht immer da – auch ohne Gemerktes weiß man so, wo es später zu finden ist
-    val names = if (saved.isEmpty()) "Zuhause, Arbeit, gemerkte Orte"
+    val names = if (saved.isEmpty()) CarTexts["bookmarks_hint"]
       else saved.take(3).joinToString(", ") { it.optString("title") } + if (saved.size > 3) " …" else ""
     val plain = {
-      Row.Builder().setTitle("Lesezeichen").addText(names)
+      Row.Builder().setTitle(CarTexts["bookmarks"]).addText(names)
         .setImage(CarIcons.res(carContext, R.drawable.wmap_car_star, CarIcons.BLUE))
         .setOnClickListener { replace { BookmarksScreen(carContext, s) } }
     }
@@ -613,10 +613,10 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
       }
     })
       .setHeaderAction(Action.BACK)
-      .setSearchHint(if (tours) "Tour suchen …" else if (route) "Wohin?" else "Ort, Adresse, Parkplatz …")
+      .setSearchHint(if (tours) CarTexts["search_tours"] else if (route) CarTexts["search_where"] else CarTexts["search_hint"])
       .setShowKeyboardByDefault(false)
       .setActionStrip(ActionStrip.Builder().addAction(
-        Action.Builder().setTitle(if (tours) "Orte" else "Meine Touren")
+        Action.Builder().setTitle(if (tours) CarTexts["places"] else CarTexts["my_tours"])
           .setIcon(CarIcons.res(carContext, if (tours) R.drawable.wmap_car_search else R.drawable.wmap_car_tours))
           .setOnClickListener { tours = !tours; items = null; query(); invalidate() }.build(),
       ).build())
@@ -635,7 +635,7 @@ class SearchScreen(ctx: CarContext, private val s: WMapSession, initial: String 
           else openItem(carContext, s, this, o, route)
         })
       }
-      il.setNoItemsMessage(if (tours) "Keine Touren fürs Auto geplant" else "Nichts gefunden")
+      il.setNoItemsMessage(if (tours) CarTexts["tours_empty"] else CarTexts["nothing"])
       b.setItemList(il.build())
     }
     return b.build()
@@ -665,7 +665,7 @@ class PlaceScreen(ctx: CarContext, private val s: WMapSession, place: JSONObject
   private fun routed(v: Any?, err: String?) {
     val list = (v as? JSONObject)?.optJSONArray("routes").objects()
     if (list.isNotEmpty()) { routes = list; selected = 0 }
-    else { routes = emptyList(); CarToast.makeText(carContext, err ?: "Keine Route gefunden", CarToast.LENGTH_LONG).show() }
+    else { routes = emptyList(); CarToast.makeText(carContext, err ?: CarTexts["no_route"], CarToast.LENGTH_LONG).show() }
     invalidate()
   }
 
@@ -683,7 +683,7 @@ class PlaceScreen(ctx: CarContext, private val s: WMapSession, place: JSONObject
         if (key == null) return
         s.web.call("place", key) { v, err ->
           if (v is JSONObject) { this@PlaceScreen.place = v; invalidate(); route() }
-          else { CarToast.makeText(carContext, err ?: "Ort nicht gefunden", CarToast.LENGTH_SHORT).show(); screenManager.pop() }
+          else { CarToast.makeText(carContext, err ?: CarTexts["place_missing"], CarToast.LENGTH_SHORT).show(); screenManager.pop() }
         }
       }
 
@@ -723,10 +723,10 @@ class PlaceScreen(ctx: CarContext, private val s: WMapSession, place: JSONObject
       val chosen = list?.getOrNull(selected.coerceIn(0, maxOf(0, list.size - 1)))
       // Mit Route: Dauer und Strecke der gewählten – dieselben Zahlen, mit denen „Los“ dann fährt
       val first = listOf(p.optString("type"), chosen?.optString("title") ?: p.optString("distText")).filter { it.isNotEmpty() }.joinToString(" · ")
-      pane.addRow(Row.Builder().setTitle(first.ifEmpty { "Ort" }).apply {
+      pane.addRow(Row.Builder().setTitle(first.ifEmpty { CarTexts["place"] }).apply {
         p.optString("address").takeIf { it.isNotEmpty() }?.let { addText(it) }
         // Kurz: Die Zeile wird im Auto nach rund 28 Zeichen abgeschnitten
-        if (list != null && list.size > 1) addText("+${list.size - 1} ${if (list.size == 2) "Route" else "Routen"} · Karte antippen")
+        if (list != null && list.size > 1) addText("+${list.size - 1} ${if (list.size == 2) CarTexts["route_one"] else CarTexts["route_many"]} · ${CarTexts["tap_map"]}")
         p.optString("png").takeIf { it.isNotEmpty() }?.let { setImage(CarIcons.png(it)) }
       }.build())
       p.optString("status").takeIf { it.isNotEmpty() }?.let { st ->
@@ -738,38 +738,38 @@ class PlaceScreen(ctx: CarContext, private val s: WMapSession, place: JSONObject
       val placeKey = p.optString("key")
       if (direct) {
         pane.addAction(
-          Action.Builder().setTitle("Los").setIcon(CarIcons.res(carContext, R.drawable.wmap_car_navigation))
+          Action.Builder().setTitle(CarTexts["go"]).setIcon(CarIcons.res(carContext, R.drawable.wmap_car_navigation))
             .setBackgroundColor(CarColor.BLUE).setFlags(Action.FLAG_PRIMARY)
             .setOnClickListener {
               when {
                 chosen != null -> start()
-                list == null -> CarToast.makeText(carContext, "Die Route wird noch berechnet …", CarToast.LENGTH_SHORT).show()
-                else -> CarToast.makeText(carContext, "Keine Route gefunden", CarToast.LENGTH_SHORT).show()
+                list == null -> CarToast.makeText(carContext, CarTexts["computing"], CarToast.LENGTH_SHORT).show()
+                else -> CarToast.makeText(carContext, CarTexts["no_route"], CarToast.LENGTH_SHORT).show()
               }
             }.build(),
         )
         // Filter: Autobahnen, Maut, Fähren vermeiden – dieselben Einstellungen wie in der App
         pane.addAction(
-          Action.Builder().setTitle("Filter").setIcon(CarIcons.res(carContext, R.drawable.wmap_car_tune))
+          Action.Builder().setTitle(CarTexts["filter"]).setIcon(CarIcons.res(carContext, R.drawable.wmap_car_tune))
             .setOnClickListener { screenManager.push(RoutePrefsScreen(carContext, s)) }.build(),
         )
       } else {
         pane.addAction(
-          Action.Builder().setTitle("Route").setIcon(CarIcons.res(carContext, R.drawable.wmap_car_directions))
+          Action.Builder().setTitle(CarTexts["route"]).setIcon(CarIcons.res(carContext, R.drawable.wmap_car_directions))
             .setBackgroundColor(CarColor.BLUE).setFlags(Action.FLAG_PRIMARY)
             .setOnClickListener {
               screenManager.push(RoutePreviewScreen(carContext, s) { d -> s.web.call("routeTo", placeKey, done = d) })
             }.build(),
         )
-        pane.addAction(Action.Builder().setTitle("Abbrechen").setOnClickListener { screenManager.pop() }.build())
+        pane.addAction(Action.Builder().setTitle(CarTexts["cancel"]).setOnClickListener { screenManager.pop() }.build())
       }
     }
-    val title = p?.optString("title")?.ifEmpty { "Ort" } ?: "Ort"
+    val title = p?.optString("title")?.ifEmpty { CarTexts["place"] } ?: CarTexts["place"]
     // Merken als Stern oben rechts
     val star = if (p != null && !p.optBoolean("saved")) Action.Builder().setIcon(CarIcons.res(carContext, R.drawable.wmap_car_star))
       .setOnClickListener {
         s.web.call("save", p.optString("key")) { v, _ ->
-          if (v == true) { p.put("saved", true); CarToast.makeText(carContext, "Gemerkt", CarToast.LENGTH_SHORT).show(); invalidate() }
+          if (v == true) { p.put("saved", true); CarToast.makeText(carContext, CarTexts["saved"], CarToast.LENGTH_SHORT).show(); invalidate() }
         }
       }.build() else null
     val content = PaneTemplate.Builder(pane.build()).apply {
@@ -817,7 +817,7 @@ class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private va
       selected = maxOf(0, v.optJSONArray("routes").objects().indexOfFirst { it.optInt("id") == v.optInt("selected", -1) })
       invalidate()
     }
-    else { CarToast.makeText(carContext, err ?: "Keine Route gefunden", CarToast.LENGTH_LONG).show(); screenManager.pop() }
+    else { CarToast.makeText(carContext, err ?: CarTexts["no_route"], CarToast.LENGTH_LONG).show(); screenManager.pop() }
   }
 
   init {
@@ -856,11 +856,11 @@ class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private va
     s.web.call("selectRoute", routes[i].optInt("id"))
   }
 
-  private val go get() = Action.Builder().setTitle("Los").setIcon(CarIcons.res(carContext, R.drawable.wmap_car_navigation))
+  private val go get() = Action.Builder().setTitle(CarTexts["go"]).setIcon(CarIcons.res(carContext, R.drawable.wmap_car_navigation))
 
   override fun onGetTemplate(): Template {
     val r = result
-    val title = r?.optString("title")?.ifEmpty { "Route" } ?: "Route"
+    val title = r?.optString("title")?.ifEmpty { CarTexts["route"] } ?: CarTexts["route"]
     val routes = r?.optJSONArray("routes").objects()
     if (!carContext.api(CarAppApiLevels.LEVEL_7)) return classic(title, r, routes)
 
@@ -873,7 +873,7 @@ class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private va
       // auf die Route in der Karte wählt sie.
       routes.indices.take(4).forEach { i ->
         val o = routes[i]
-        val sub = listOf(if (routes.size > 1) (if (i == at) "Gewählt" else "Alternative") else "", o.optString("sub")).filter { it.isNotEmpty() }.joinToString(" · ")
+        val sub = listOf(if (routes.size > 1) (if (i == at) CarTexts["chosen"] else CarTexts["alternative"]) else "", o.optString("sub")).filter { it.isNotEmpty() }.joinToString(" · ")
         pane.addRow(Row.Builder().setTitle(o.optString("title")).apply {
           if (sub.isNotEmpty()) addText(sub)
           if (i == at) setImage(CarIcons.res(carContext, R.drawable.wmap_car_navigation, CarIcons.BLUE))
@@ -883,7 +883,7 @@ class RoutePreviewScreen(ctx: CarContext, private val s: WMapSession, private va
       pane.addAction(go.setBackgroundColor(CarColor.BLUE).setFlags(Action.FLAG_PRIMARY).setOnClickListener { start() }.build())
       // Filter: Autobahnen, Maut, Fähren vermeiden – dieselben Einstellungen wie in der App
       pane.addAction(
-        Action.Builder().setTitle("Filter").setIcon(CarIcons.res(carContext, R.drawable.wmap_car_tune))
+        Action.Builder().setTitle(CarTexts["filter"]).setIcon(CarIcons.res(carContext, R.drawable.wmap_car_tune))
           .setOnClickListener { screenManager.push(RoutePrefsScreen(carContext, s)) }.build(),
       )
     }
@@ -940,12 +940,12 @@ class RoutePrefsScreen(ctx: CarContext, private val s: WMapSession) : Screen(ctx
   }
 
   override fun onGetTemplate(): Template {
-    val list = ListTemplate.Builder().setHeader(header(this, "Filter", close = false))
+    val list = ListTemplate.Builder().setHeader(header(this, CarTexts["filter"], close = false))
     val a = avoid
     if (a == null) list.setLoading(true)
     else {
       val items = ItemList.Builder()
-      listOf("highways" to "Autobahnen vermeiden", "tolls" to "Mautstraßen vermeiden", "ferries" to "Fähren vermeiden").forEach { (key, label) ->
+      listOf("highways" to CarTexts["avoid_highways"], "tolls" to CarTexts["avoid_tolls"], "ferries" to CarTexts["avoid_ferries"]).forEach { (key, label) ->
         items.addItem(
           Row.Builder().setTitle(label).setToggle(
             Toggle.Builder { on ->

@@ -38,6 +38,9 @@ def events(b, kind):
 with Browser(width=800, height=480) as b:
     b.open('index.html?car&view=9.9355,51.5335,15.5', wait=6)
     b.wait("return (window.__carOut ?? []).some((e) => e.type === 'ready')", 30)
+    # Texte der Vorlagen in der Sprache der App – vor „ready“ geschickt
+    texts = b.js("const o = window.__carOut; const i = o.findIndex((e) => e.type === 'texts'); return [i >= 0 && i < o.findIndex((e) => e.type === 'ready'), o[i]?.data?.nearby, Object.keys(o[i]?.data ?? {}).length]")
+    print('Texte fürs Auto:', texts)
     b.js("window.__wmap.state.position = [9.9355, 51.5335]")
     # GPS nachstellen, bevor init die freie Fahrt startet
     b.js("""window.__fix = null; Object.defineProperty(navigator, 'geolocation', { configurable: true, get: () => ({
@@ -231,6 +234,8 @@ with Browser(width=800, height=480) as b:
     }
     for k, v in checks.items():
         print(('ok    ' if v else 'FALSCH') + ' ' + k)
-    if not all(checks.values()):
+    ok_texts = texts[0] and texts[1] == 'In der Nähe' and texts[2] >= 30
+    print(('ok    ' if ok_texts else 'FALSCH') + ' Texte der Vorlagen in der Sprache der App vor „ready“ geschickt')
+    if not all(checks.values()) or not ok_texts:
         sys.exit(1)
     sys.exit(b.report())

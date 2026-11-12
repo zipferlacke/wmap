@@ -11,6 +11,7 @@
  *   Kotlin → Seite   wmapCar.call(id, 'methode', [argumente])
  *   Seite → Kotlin   WMapCar.post('reply', { id, ok, value | error })
  *                    WMapCar.post('guidance' | 'navEnd' | 'ask' | 'toast' | 'list', …)
+ *                    WMapCar.post('texts', { … })   Texte der Vorlagen in der Sprache der App (car.native)
  *
  * Kurze Fragen (Pillen, „Immer noch Stau?“) und Hinweise erscheinen im Auto
  * als dessen Hinweise mit „Ja“/„Nein“ (osm/quick-ask.js, ui/dialogs.js).
@@ -43,7 +44,7 @@ import { nav, navTour, startNav } from '../app/nav.js';
 import { closeSheet } from '../app/views.js';
 import { startDrive, pauseDrive, resumeDrive, hudInsets, recenterIcon } from './drive.js';
 import { timed } from './carlog.js';
-import { t } from '../core/i18n.js';
+import { baseValue, ownValue, t } from '../core/i18n.js';
 
 // Das Auto zeigt ein Video der Karte, meist mit 30 Bildern je Sekunde – mehr zu zeichnen kostet nur
 // Rechenzeit und Wärme (core/fps.js). 20 reichen für eine ruhige Fahrt.
@@ -703,6 +704,8 @@ map.on('webglcontextlost', () => {
   map.once('webglcontextrestored', () => clearTimeout(timer));
 });
 
+// Texte der Vorlagen in der Sprache der App (tools/android/car/CarTexts.kt) – vor allem anderen
+send('texts', ownValue('car.native') ?? baseValue('car.native') ?? {});
 // Stand der Karte gleich melden: Kotlin wartet darauf, bevor es fragt
 if (map.loaded()) send('ready', {}); else map.once('load', () => send('ready', {}));
 export { methods as carMethods };
